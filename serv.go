@@ -146,6 +146,28 @@ func stringsToState(pfStrings []string) (*PfState, error) {
 	return pfState, nil
 }
 
+func groupIndent(lines []string) ([][]string) {
+	var groups [][]string
+	var group []string
+
+	for _, line := range lines {
+		if len(line) == 0 {
+			continue
+		}
+		if []rune(line)[0] != ' ' {
+			if len(group) > 0 {
+				groups = append(groups, group)
+			}
+			group = nil
+			group = append(group, line)
+		} else {
+			group = append(group, line)
+		}
+	}
+
+	return groups
+}
+
 func pfStates() ([]*PfState, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "states").Output()
 	if err != nil {
@@ -157,26 +179,10 @@ func pfStates() ([]*PfState, error) {
 	outString := string(outBytes)
 	outLines := strings.Split(outString, "\n")
 
-	var stateLines []string
-	stateStrings := make([][]string, 0, 50)
+	groups := groupIndent(outLines)
 
-	for _, line := range outLines {
-		if len(line) == 0 {
-			continue
-		}
-		if []rune(line)[0] != ' ' {
-			if len(stateLines) > 0 {
-				stateStrings = append(stateStrings, stateLines)
-			}
-			stateLines = nil
-			stateLines = append(stateLines, line)
-		} else {
-			stateLines = append(stateLines, line)
-		}
-	}
-
-	for _, ss := range stateStrings {
-		state, err := stringsToState(ss)
+	for _, group := range groups {
+		state, err := stringsToState(group)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -185,6 +191,47 @@ func pfStates() ([]*PfState, error) {
 	}
 
 	return states, nil
+}
+
+type PfRule struct {
+	Rule           string
+	Number         int
+	Evaluations    int
+	Packets        int
+	Bytes          int
+	States         int
+	StateCreations int
+}
+
+func stringsToRule([]string) (*PfRule, error) {
+
+
+	return nil, nil
+}
+
+func pfRules() ([]*PfRule, error) {
+	outBytes, err := exec.Command("pfctl", "-vv", "-s", "rules").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var rules []*PfRule
+
+	outString := string(outBytes)
+	outLines := strings.Split(outString, "\n")
+
+	groups := groupIndent(outLines)
+
+	for _, group := range groups {
+		rule, err := stringsToRule(group)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		rules = append(rules, rule)
+	}
+
+	return rules, nil
 }
 
 func main() {
