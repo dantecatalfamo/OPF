@@ -165,6 +165,8 @@ func groupIndent(lines []string) [][]string {
 		}
 	}
 
+	groups = append(groups, group)
+
 	return groups
 }
 
