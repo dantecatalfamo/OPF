@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	// "io/ioutil"
 	// "net/http"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -38,7 +38,6 @@ func stringsToState(pfStrings []string) (*PfState, error) {
 	var gw string
 
 	summary := strings.Fields(pfStrings[0])
-	fmt.Println(summary)
 	pfState.Proto = summary[1]
 
 	if []rune(summary[3])[0] == '(' {
@@ -437,7 +436,28 @@ type PfInfo struct {
 }
 
 func pfInfo() (*PfInfo, error) {
-	return nil, nil
+	outBytes, err := exec.Command("pfctl", "-v", "-s", "info").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	info := &PfInfo{}
+
+	outString := string(outBytes)
+	outLines := strings.Split(outString, "\n")
+
+	statusLine := outLines[0]
+	statusFields := strings.Fields(statusLine)
+	status := strings.Join(statusFields[1:len(statusFields)-3], " ")
+
+	info.Status = status
+	info.Debug = statusFields[len(statusFields)-1]
+	info.HostId = strings.Fields(outLines[2])[1]
+	info.Checksum = strings.Fields(outLines[3])[1]
+
+	groups := groupIndent(outLines)
+
+	return info, nil
 }
 
 func main() {
@@ -449,11 +469,6 @@ func main() {
 	for _, s := range states {
 		fmt.Printf("%v\n", s)
 	}
-	js, err := json.Marshal(states)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(js))
 
 	rules, err := pfRuleStates()
 	if err != nil {
@@ -463,9 +478,6 @@ func main() {
 	for _, r := range rules {
 		fmt.Printf("%v\n", r)
 	}
-	jr, err := json.Marshal(rules)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(jr))
+
+	pfInfo()
 }
