@@ -280,6 +280,160 @@ func pfRuleStates() ([]*PfRuleState, error) {
 	return rules, nil
 }
 
+type Info struct {
+	Status     string `json:"status"`
+	Debug      string `json:"debug"`
+	HostId     string `json:"host_id"`
+	Checksum   string `json:"checksum"`
+	StateTable struct {
+		CurrentEntries int
+		HalfOpenTcp    int
+		Searches struct {
+			Total int
+			Rate  float64
+		}
+		Inserts struct {
+			Total int
+			Rate float64
+		}
+		Removals struct {
+			Total int
+			Rate  float64
+		}
+	}
+	SourceTrackingTable struct {
+		CurrentEntries int
+		Searches struct {
+			Total int
+			Rate float64
+		}
+		Inserts struct {
+			Total int
+			Rate float64
+		}
+		Removals struct {
+			Total int
+			Rate float64
+		}
+	}
+	Counters struct {
+		Match struct {
+			Total int
+			Rate float64
+		}
+		BadOffsets struct {
+			Total int
+			Rate float64
+		}
+		Fragments struct {
+			Total int
+			Rate float64
+		}
+		Short struct {
+			Total int
+			Rate float64
+		}
+		Normalize struct {
+			Total int
+			Rate float64
+		}
+		Memory struct {
+			Total int
+			Rate float64
+		}
+		BadTimestamp struct {
+			Total int
+			Rate float64
+		}
+		Congestion struct {
+			Total int
+			Rate float64
+		}
+		IpOption struct {
+			Total int
+			Rate float64
+		}
+		ProtoCksum struct {
+			Total int
+			Rate float64
+		}
+		StateMismatch struct {
+			Total int
+			Rate float64
+		}
+		StateInsert struct {
+			Total int
+			Rate float64
+		}
+		StateLimit struct {
+			Total int
+			Rate float64
+		}
+		SrcLimit struct {
+			Total int
+			Rate float64
+		}
+		SynProxy struct {
+			Total int
+			Rate float64
+		}
+		Translate struct {
+			Total int
+			Rate float64
+		}
+		NoRoute struct {
+			Total int
+			Rate float64
+		}
+	}
+	LimitCounters struct {
+		MaxStatesPerRule struct {
+			Total int
+			Rate float64
+		}
+		MaxSrcStates struct {
+			Total int
+			Rate float64
+		}
+		MaxSrcNodes struct {
+			Total int
+			Rate float64
+		}
+		MaxSrcConn struct {
+			Total int
+			Rate float64
+		}
+		MaxSrcConnRate struct {
+			Total int
+			Rate float64
+		}
+		OverloadTableInsertion struct {
+			Total int
+			Rate float64
+		}
+		OverloadFlushStates struct {
+			Total int
+			Rate float64
+		}
+		SynfloodsDetected struct {
+			Total int
+			Rate float64
+		}
+		SyncookiesSent struct {
+			Total int
+			Rate float64
+		}
+		SyncookiesValidated struct {
+			Total int
+			Rate float64
+		}
+	}
+	AdaptiveSyncookiesWatermarks struct {
+		Start int
+		End int
+	}
+}
+
 func main() {
 	states, err := pfStates()
 	if err != nil {
