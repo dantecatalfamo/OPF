@@ -280,7 +280,7 @@ func pfRuleStates() ([]*PfRuleState, error) {
 	return rules, nil
 }
 
-type Info struct {
+type PfInfo struct {
 	Status     string `json:"status"`
 	Debug      string `json:"debug"`
 	HostId     string `json:"host_id"`
@@ -432,6 +432,10 @@ type Info struct {
 		Start int
 		End int
 	}
+}
+
+func pfInfo() (*PfInfo, error) {
+	return nil, nil
 }
 
 func main() {
