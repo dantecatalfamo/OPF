@@ -193,7 +193,8 @@ func pfStates() ([]*PfState, error) {
 	return states, nil
 }
 
-type PfRule struct {
+// TODO: create PfRule struct
+type PfRuleState struct {
 	Rule           string
 	Number         int
 	Evaluations    int
@@ -203,19 +204,62 @@ type PfRule struct {
 	StateCreations int
 }
 
-func stringsToRule([]string) (*PfRule, error) {
+func stringsToRuleState(lines []string) (*PfRuleState, error) {
+	pfRuleState := &PfRuleState{}
 
+	ruleFields := strings.SplitN(lines[0], " ", 2)
+	number, err := strconv.Atoi(ruleFields[0][1:])
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	pfRuleState.Number = number
+	pfRuleState.Rule = ruleFields[1]
+
+	details := strings.Fields(lines[1])
+
+	evaluations, err := strconv.Atoi(details[2])
+	if err != nil {
+		return nil, err
+	}
+	pfRuleState.Evaluations = evaluations
+
+	packets, err := strconv.Atoi(details[4])
+	if err != nil {
+		return nil, err
+	}
+	pfRuleState.Packets = packets
+
+	bytes, err := strconv.Atoi(details[6])
+	if err != nil {
+		return nil, err
+	}
+	pfRuleState.Bytes = bytes
+
+	states, err := strconv.Atoi(details[8])
+	if err != nil {
+		return nil, err
+	}
+	pfRuleState.States = states
+
+	lastLine := strings.Fields(lines[2])
+
+	stateCreations, err := strconv.Atoi(lastLine[8])
+	if err != nil {
+		return nil, err
+	}
+	pfRuleState.StateCreations = stateCreations
+
+	return pfRuleState, nil
 }
 
-func pfRules() ([]*PfRule, error) {
+func pfRuleStates() ([]*PfRuleState, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "rules").Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var rules []*PfRule
+	var rules []*PfRuleState
 
 	outString := string(outBytes)
 	outLines := strings.Split(outString, "\n")
@@ -223,7 +267,7 @@ func pfRules() ([]*PfRule, error) {
 	groups := groupIndent(outLines)
 
 	for _, group := range groups {
-		rule, err := stringsToRule(group)
+		rule, err := stringsToRuleState(group)
 		if err != nil {
 			fmt.Println(err)
 			continue
