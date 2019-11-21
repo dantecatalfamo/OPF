@@ -146,7 +146,7 @@ func stringsToState(pfStrings []string) (*PfState, error) {
 	return pfState, nil
 }
 
-func groupIndent(lines []string) ([][]string) {
+func groupIndent(lines []string) [][]string {
 	var groups [][]string
 	var group []string
 
@@ -195,13 +195,13 @@ func pfStates() ([]*PfState, error) {
 
 // TODO: create PfRule struct
 type PfRuleState struct {
-	Rule           string
-	Number         int
-	Evaluations    int
-	Packets        int
-	Bytes          int
-	States         int
-	StateCreations int
+	Rule           string `json:"rule"`
+	Number         int    `json:"number"`
+	Evaluations    int    `json:"evaluations"`
+	Packets        int    `json:"packets"`
+	Bytes          int    `json:"bytes"`
+	States         int    `json:"bytes"`
+	StateCreations int    `json:"state_creations"`
 }
 
 func stringsToRuleState(lines []string) (*PfRuleState, error) {
@@ -236,7 +236,8 @@ func stringsToRuleState(lines []string) (*PfRuleState, error) {
 	}
 	pfRuleState.Bytes = bytes
 
-	states, err := strconv.Atoi(details[8])
+	trimmedSates := strings.TrimRight(details[8], "]")
+	states, err := strconv.Atoi(trimmedSates)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +245,8 @@ func stringsToRuleState(lines []string) (*PfRuleState, error) {
 
 	lastLine := strings.Fields(lines[2])
 
-	stateCreations, err := strconv.Atoi(lastLine[8])
+	trimmedStateCreations := strings.TrimRight(lastLine[8], "]")
+	stateCreations, err := strconv.Atoi(trimmedStateCreations)
 	if err != nil {
 		return nil, err
 	}
@@ -287,9 +289,23 @@ func main() {
 	for _, s := range states {
 		fmt.Printf("%v\n", s)
 	}
-	j, err := json.Marshal(states)
+	js, err := json.Marshal(states)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(j))
+	fmt.Println(string(js))
+
+	rules, err := pfRuleStates()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	for _, r := range rules {
+		fmt.Printf("%v\n", r)
+	}
+	jr, err := json.Marshal(rules)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(jr))
 }
