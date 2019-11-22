@@ -38,14 +38,14 @@ type PfState struct {
 	Expires         string `json:"expires"`
 	State           string `json:"state"`
 	Gateway         string `json:"gateway"`
-	SourceIP        string `json:"source_ip"`
-	DestinationIP   string `json:"destination_ip"`
-	SourcePort      int    `json:"source_port"`
-	DestinationPort int    `json:"destination_port"`
-	PacketsSent     int    `json:"packets_sent"`
-	PacketsReveived int    `json:"packets_received"`
-	BytesSent       int    `json:"bytes_sent"`
-	BytesReived     int    `json:"butes_received"`
+	SourceIP        string `json:"sourceIp"`
+	DestinationIP   string `json:"destinationIp"`
+	SourcePort      int    `json:"sourcePort"`
+	DestinationPort int    `json:"destinationPort"`
+	PacketsSent     int    `json:"packetsSent"`
+	PacketsReveived int    `json:"packetsReceived"`
+	BytesSent       int    `json:"bytesSent"`
+	BytesReived     int    `json:"butesReceived"`
 	Rule            int    `json:"rule"`
 	Direction       string `json:"direction"`
 }
@@ -220,7 +220,7 @@ type PfRuleState struct {
 	Packets        int    `json:"packets"`
 	Bytes          int    `json:"bytes"`
 	States         int    `json:"bytes"`
-	StateCreations int    `json:"state_creations"`
+	StateCreations int    `json:"stateCreations"`
 }
 
 func stringsToRuleState(lines []string) (*PfRuleState, error) {
