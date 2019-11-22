@@ -35,25 +35,26 @@ func stringsToRuleState(lines []string) (*PfRuleState, error) {
 	if err != nil {
 		return nil, err
 	}
-	pfRuleState.Evaluations = evaluations
 
 	packets, err := strconv.Atoi(details[4])
 	if err != nil {
 		return nil, err
 	}
-	pfRuleState.Packets = packets
 
 	bytes, err := strconv.Atoi(details[6])
 	if err != nil {
 		return nil, err
 	}
-	pfRuleState.Bytes = bytes
 
 	trimmedSates := strings.TrimRight(details[8], "]")
 	states, err := strconv.Atoi(trimmedSates)
 	if err != nil {
 		return nil, err
 	}
+
+	pfRuleState.Evaluations = evaluations
+	pfRuleState.Packets = packets
+	pfRuleState.Bytes = bytes
 	pfRuleState.States = states
 
 	lastLine := strings.Fields(lines[2])
@@ -63,6 +64,7 @@ func stringsToRuleState(lines []string) (*PfRuleState, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	pfRuleState.StateCreations = stateCreations
 
 	return pfRuleState, nil
