@@ -56,5 +56,39 @@ func main() {
 		w.Write(jStates)
 	})
 
+	http.HandleFunc("/rulestates", func(w http.ResponseWriter, r *http.Request) {
+		rules, err := pfRuleStates()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		jRules, err := json.Marshal(rules)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jRules)
+	})
+
+	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+		info, err := pfInfo()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		jInfo, err := json.Marshal(info)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jInfo)
+	})
+
 	http.ListenAndServe(":8001", nil)
 }
