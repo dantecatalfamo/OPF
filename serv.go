@@ -2,14 +2,34 @@ package main
 
 import (
 	"os"
+	// "io"
 	"os/exec"
 	// "io/ioutil"
-	// "net/http"
-	// "encoding/json"
+	"net/http"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+func splitIp(ip string) (string, int, error) {
+	if strings.Contains(ip, ".") {
+		ipSplit := strings.Split(ip, ":")
+		port, err := strconv.Atoi(ipSplit[1])
+		if err != nil {
+			return "", 0, err
+		}
+		return ipSplit[0], port, nil
+	} else {
+		ipSplit := strings.Split(ip, "[")
+		portStr := strings.Trim(ipSplit[1], "]")
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return "", 0, err
+		}
+		return ipSplit[0], port, nil
+	}
+}
 
 type PfState struct {
 	Proto           string `json:"proto"`
@@ -18,7 +38,7 @@ type PfState struct {
 	Expires         string `json:"expires"`
 	State           string `json:"state"`
 	Gateway         string `json:"gateway"`
-	SourceIP        string `josn:"source_ip"`
+	SourceIP        string `json:"source_ip"`
 	DestinationIP   string `json:"destination_ip"`
 	SourcePort      int    `json:"source_port"`
 	DestinationPort int    `json:"destination_port"`
@@ -62,22 +82,20 @@ func stringsToState(pfStrings []string) (*PfState, error) {
 		}
 	}
 
-	dstSplit := strings.Split(dst, ":")
-	dstPort, err := strconv.Atoi(dstSplit[1])
+	dstIp, dstPort, err := splitIp(dst)
 	if err != nil {
 		return nil, err
 	}
-	pfState.DestinationIP = dstSplit[0]
+
+	srcIp, srcPort, err := splitIp(src)
+	if err != nil {
+		return nil, err
+	}
+
+	pfState.DestinationIP = dstIp
 	pfState.DestinationPort = dstPort
-
-	srcSplit := strings.Split(src, ":")
-	srcPort, err := strconv.Atoi(srcSplit[1])
-	if err != nil {
-		return nil, err
-	}
-	pfState.SourceIP = srcSplit[0]
+	pfState.SourceIP = srcIp
 	pfState.SourcePort = srcPort
-
 	pfState.State = summary[len(summary)-1]
 
 	var detailString string
@@ -780,4 +798,23 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println(info)
+
+	http.HandleFunc("/states", func(w http.ResponseWriter, r *http.Request) {
+		states, err := pfStates()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		jStates, err := json.Marshal(states)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jStates)
+	})
+
+	http.ListenAndServe(":8001", nil)
 }
