@@ -80,6 +80,7 @@ func main() {
 	http.HandleFunc("/rc-all", rcAllHandler)
 	http.HandleFunc("/rc-on", rcOnHandler)
 	http.HandleFunc("/rc-started", rcStartedHandler)
+	http.HandleFunc("/netstat-interfaces", netstatInterfacesHandler)
 	http.HandleFunc("/uptime", uptimeHandler)
 	http.HandleFunc("/uname", unameHandler)
 
