@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type PfRuleState struct {
