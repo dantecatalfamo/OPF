@@ -1,10 +1,9 @@
 package main
 
 import (
-	// "fmt"
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type PfInfo struct {
@@ -17,142 +16,142 @@ type PfInfo struct {
 		CurrentEntries int `json:"currentEntries"`
 		HalfOpenTcp    int `json:"halfOpenTcp"`
 		Searches       struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"searches"`
 		Inserts struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"inserts"`
 		Removals struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"removals"`
 	} `json:"stateTable"`
 	SourceTrackingTable struct {
 		CurrentEntries int `json:"currentEntries"`
 		Searches       struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"searches"`
 		Inserts struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"inserts"`
 		Removals struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"removals"`
 	} `json:"sourceTrackingTable"`
 	Counters struct {
 		Match struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"match"`
 		BadOffsets struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"badOffsets"`
 		Fragments struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"fragments"`
 		Short struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"shorts"`
 		Normalize struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"normalize"`
 		Memory struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"memory"`
 		BadTimestamp struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"badTimestamp"`
 		Congestion struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"congestion"`
 		IpOption struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"ipOption"`
 		ProtoCksum struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"protoCksum"`
 		StateMismatch struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"stateMismatch"`
 		StateInsert struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"stateInsert"`
 		StateLimit struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"stateLimit"`
 		SrcLimit struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"srcLimit"`
 		Synproxy struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"synproxy"`
 		Translate struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"translate"`
 		NoRoute struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"noRoute"`
 	} `json:"counters"`
 	LimitCounters struct {
 		MaxStatesPerRule struct {
-			Total int  `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:"rate"`
 		} `json:"maxStatesPerRule"`
 		MaxSrcStates struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"maxSrcStates"`
 		MaxSrcNodes struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"maxSrcNodes"`
 		MaxSrcConn struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"maxSrcConn"`
 		MaxSrcConnRate struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"maxSrcConnRate"`
 		OverloadTableInsertion struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"overloadTableInsertion"`
 		OverloadFlushStates struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"overloadFlushStates"`
 		SynfloodsDetected struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"synFloodsDetected"`
 		SyncookiesSent struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"syncookiesSent"`
 		SyncookiesValidated struct {
-			Total int `json:"total"`
+			Total int     `json:"total"`
 			Rate  float64 `json:rate"`
 		} `json:"syncookiesValidated"`
 	} `json:"limitCounters"`
@@ -162,7 +161,7 @@ type PfInfo struct {
 	} `json:"adaptiveSyncookiesWatermarks"`
 }
 
-func infoRow(row string) (int, float64, error) {
+func pfInfoLine(row string) (int, float64, error) {
 	rowFields := strings.Fields(row)
 	total, err := strconv.Atoi(rowFields[len(rowFields)-2])
 	if err != nil {
@@ -218,21 +217,21 @@ func pfInfo() (*PfInfo, error) {
 	}
 	info.StateTable.HalfOpenTcp = halfOpenTcpTotal
 
-	stateSearchesTotal, stateSearchesRate, err := infoRow(statesTable[3])
+	stateSearchesTotal, stateSearchesRate, err := pfInfoLine(statesTable[3])
 	if err != nil {
 		return nil, err
 	}
 	info.StateTable.Searches.Total = stateSearchesTotal
 	info.StateTable.Searches.Rate = stateSearchesRate
 
-	stateInsertTotal, stateInsertRate, err := infoRow(statesTable[4])
+	stateInsertTotal, stateInsertRate, err := pfInfoLine(statesTable[4])
 	if err != nil {
 		return nil, err
 	}
 	info.StateTable.Inserts.Total = stateInsertTotal
 	info.StateTable.Inserts.Rate = stateInsertRate
 
-	stateRemovalTotal, stateRemovalRate, err := infoRow(statesTable[5])
+	stateRemovalTotal, stateRemovalRate, err := pfInfoLine(statesTable[5])
 	if err != nil {
 		return nil, err
 	}
@@ -248,21 +247,21 @@ func pfInfo() (*PfInfo, error) {
 	}
 	info.SourceTrackingTable.CurrentEntries = sourceCurrentTotal
 
-	sourceSearchTotal, sourceSearchRate, err := infoRow(sourceTable[2])
+	sourceSearchTotal, sourceSearchRate, err := pfInfoLine(sourceTable[2])
 	if err != nil {
 		return nil, err
 	}
 	info.SourceTrackingTable.Searches.Total = sourceSearchTotal
 	info.SourceTrackingTable.Searches.Rate = sourceSearchRate
 
-	sourceInsertTotal, sourceInsertRate, err := infoRow(sourceTable[3])
+	sourceInsertTotal, sourceInsertRate, err := pfInfoLine(sourceTable[3])
 	if err != nil {
 		return nil, err
 	}
 	info.SourceTrackingTable.Inserts.Total = sourceInsertTotal
 	info.SourceTrackingTable.Inserts.Rate = sourceInsertRate
 
-	sourceRemovalTotal, sourceRemovalRate, err := infoRow(sourceTable[4])
+	sourceRemovalTotal, sourceRemovalRate, err := pfInfoLine(sourceTable[4])
 	if err != nil {
 		return nil, err
 	}
@@ -271,119 +270,119 @@ func pfInfo() (*PfInfo, error) {
 
 	counterTable := groups[5]
 
-	counterMatchTotal, counterMatchRate, err := infoRow(counterTable[1])
+	counterMatchTotal, counterMatchRate, err := pfInfoLine(counterTable[1])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Match.Total = counterMatchTotal
 	info.Counters.Match.Rate = counterMatchRate
 
-	counterBadOffsetsTotal, counterBadOffsetsRate, err := infoRow(counterTable[2])
+	counterBadOffsetsTotal, counterBadOffsetsRate, err := pfInfoLine(counterTable[2])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.BadOffsets.Total = counterBadOffsetsTotal
 	info.Counters.BadOffsets.Rate = counterBadOffsetsRate
 
-	counterFragmentsTotal, counterFragmentsRate, err := infoRow(counterTable[3])
+	counterFragmentsTotal, counterFragmentsRate, err := pfInfoLine(counterTable[3])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Fragments.Total = counterFragmentsTotal
 	info.Counters.Fragments.Rate = counterFragmentsRate
 
-	counterShortTotal, counterShortRate, err := infoRow(counterTable[4])
+	counterShortTotal, counterShortRate, err := pfInfoLine(counterTable[4])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Short.Total = counterShortTotal
 	info.Counters.Short.Rate = counterShortRate
 
-	counterNormalizeTotal, counterNormalizeRate, err := infoRow(counterTable[5])
+	counterNormalizeTotal, counterNormalizeRate, err := pfInfoLine(counterTable[5])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Normalize.Total = counterNormalizeTotal
 	info.Counters.Normalize.Rate = counterNormalizeRate
 
-	counterMemoryTotal, counterMemoryRate, err := infoRow(counterTable[6])
+	counterMemoryTotal, counterMemoryRate, err := pfInfoLine(counterTable[6])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Memory.Total = counterMemoryTotal
 	info.Counters.Memory.Rate = counterMemoryRate
 
-	counterBadTimestampTotal, counterBadTimestampRate, err := infoRow(counterTable[7])
+	counterBadTimestampTotal, counterBadTimestampRate, err := pfInfoLine(counterTable[7])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.BadTimestamp.Total = counterBadTimestampTotal
 	info.Counters.BadTimestamp.Rate = counterBadTimestampRate
 
-	counterCongestionTotal, counterCongestionRate, err := infoRow(counterTable[8])
+	counterCongestionTotal, counterCongestionRate, err := pfInfoLine(counterTable[8])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Congestion.Total = counterCongestionTotal
 	info.Counters.Congestion.Rate = counterCongestionRate
 
-	counterIpOptionTotal, counterIpOptionRate, err := infoRow(counterTable[9])
+	counterIpOptionTotal, counterIpOptionRate, err := pfInfoLine(counterTable[9])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.IpOption.Total = counterIpOptionTotal
 	info.Counters.IpOption.Rate = counterIpOptionRate
 
-	counterProtoCksumTotal, counterProtoCksumRate, err := infoRow(counterTable[10])
+	counterProtoCksumTotal, counterProtoCksumRate, err := pfInfoLine(counterTable[10])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.ProtoCksum.Total = counterProtoCksumTotal
 	info.Counters.ProtoCksum.Rate = counterProtoCksumRate
 
-	counterStateMismatchTotal, counterStateMismatchRate, err := infoRow(counterTable[11])
+	counterStateMismatchTotal, counterStateMismatchRate, err := pfInfoLine(counterTable[11])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.StateMismatch.Total = counterStateMismatchTotal
 	info.Counters.StateMismatch.Rate = counterStateMismatchRate
 
-	counterStateInsertTotal, counterStateInsertRate, err := infoRow(counterTable[12])
+	counterStateInsertTotal, counterStateInsertRate, err := pfInfoLine(counterTable[12])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.StateInsert.Total = counterStateInsertTotal
 	info.Counters.StateInsert.Rate = counterStateInsertRate
 
-	counterStateLimitTotal, counterStateLimitRate, err := infoRow(counterTable[13])
+	counterStateLimitTotal, counterStateLimitRate, err := pfInfoLine(counterTable[13])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.StateLimit.Total = counterStateLimitTotal
 	info.Counters.StateLimit.Rate = counterStateLimitRate
 
-	counterSrcLimitTotal, counterSrcLimitRate, err := infoRow(counterTable[14])
+	counterSrcLimitTotal, counterSrcLimitRate, err := pfInfoLine(counterTable[14])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.SrcLimit.Total = counterSrcLimitTotal
 	info.Counters.SrcLimit.Rate = counterSrcLimitRate
 
-	counterSynproxyTotal, counterSynproxyRate, err := infoRow(counterTable[15])
+	counterSynproxyTotal, counterSynproxyRate, err := pfInfoLine(counterTable[15])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Synproxy.Total = counterSynproxyTotal
 	info.Counters.Synproxy.Rate = counterSynproxyRate
 
-	counterTranslateTotal, counterTranslateRate, err := infoRow(counterTable[16])
+	counterTranslateTotal, counterTranslateRate, err := pfInfoLine(counterTable[16])
 	if err != nil {
 		return nil, err
 	}
 	info.Counters.Translate.Total = counterTranslateTotal
 	info.Counters.Translate.Rate = counterTranslateRate
 
-	counterNoRouteTotal, counterNoRouteRate, err := infoRow(counterTable[17])
+	counterNoRouteTotal, counterNoRouteRate, err := pfInfoLine(counterTable[17])
 	if err != nil {
 		return nil, err
 	}
@@ -392,70 +391,70 @@ func pfInfo() (*PfInfo, error) {
 
 	limitTable := groups[6]
 
-	limitMaxStatesPerRuleTotal, limitMaxStatesPerRuleRate, err := infoRow(limitTable[1])
+	limitMaxStatesPerRuleTotal, limitMaxStatesPerRuleRate, err := pfInfoLine(limitTable[1])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.MaxStatesPerRule.Total = limitMaxStatesPerRuleTotal
 	info.LimitCounters.MaxStatesPerRule.Rate = limitMaxStatesPerRuleRate
 
-	limitMaxSrcStatesTotal, limitMaxSrcStatesRate, err := infoRow(limitTable[2])
+	limitMaxSrcStatesTotal, limitMaxSrcStatesRate, err := pfInfoLine(limitTable[2])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.MaxSrcStates.Total = limitMaxSrcStatesTotal
 	info.LimitCounters.MaxSrcStates.Rate = limitMaxSrcStatesRate
 
-	limitMaxSrcNodesTotal, limitMaxSrcNodesRate, err := infoRow(limitTable[3])
+	limitMaxSrcNodesTotal, limitMaxSrcNodesRate, err := pfInfoLine(limitTable[3])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.MaxSrcNodes.Total = limitMaxSrcNodesTotal
 	info.LimitCounters.MaxSrcNodes.Rate = limitMaxSrcNodesRate
 
-	limitMaxSrcConnTotal, limitMaxSrcConnRate, err := infoRow(limitTable[4])
+	limitMaxSrcConnTotal, limitMaxSrcConnRate, err := pfInfoLine(limitTable[4])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.MaxSrcConn.Total = limitMaxSrcConnTotal
 	info.LimitCounters.MaxSrcConn.Rate = limitMaxSrcConnRate
 
-	limitMaxSrcConnRateTotal, limitMaxSrcConnRateRate, err := infoRow(limitTable[5])
+	limitMaxSrcConnRateTotal, limitMaxSrcConnRateRate, err := pfInfoLine(limitTable[5])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.MaxSrcConnRate.Total = limitMaxSrcConnRateTotal
 	info.LimitCounters.MaxSrcConnRate.Rate = limitMaxSrcConnRateRate
 
-	limitOverloadTableInsertionTotal, limitOverloadTableInsertionRate, err := infoRow(limitTable[6])
+	limitOverloadTableInsertionTotal, limitOverloadTableInsertionRate, err := pfInfoLine(limitTable[6])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.OverloadTableInsertion.Total = limitOverloadTableInsertionTotal
 	info.LimitCounters.OverloadTableInsertion.Rate = limitOverloadTableInsertionRate
 
-	limitOverloadFlushStatesTotal, limitOverloadFlushStatesRate, err := infoRow(limitTable[7])
+	limitOverloadFlushStatesTotal, limitOverloadFlushStatesRate, err := pfInfoLine(limitTable[7])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.OverloadFlushStates.Total = limitOverloadFlushStatesTotal
 	info.LimitCounters.OverloadFlushStates.Rate = limitOverloadFlushStatesRate
 
-	limitSynfloodsDetectedTotal, limitSynfloodsDetectedRate, err := infoRow(limitTable[8])
+	limitSynfloodsDetectedTotal, limitSynfloodsDetectedRate, err := pfInfoLine(limitTable[8])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.SynfloodsDetected.Total = limitSynfloodsDetectedTotal
 	info.LimitCounters.SynfloodsDetected.Rate = limitSynfloodsDetectedRate
 
-	limitSyncookiesSentTotal, limitSyncookiesSentRate, err := infoRow(limitTable[9])
+	limitSyncookiesSentTotal, limitSyncookiesSentRate, err := pfInfoLine(limitTable[9])
 	if err != nil {
 		return nil, err
 	}
 	info.LimitCounters.SyncookiesSent.Total = limitSyncookiesSentTotal
 	info.LimitCounters.SyncookiesSent.Rate = limitSyncookiesSentRate
 
-	limitSyncookiesValidatedTotal, limitSyncookiesValidatedRate, err := infoRow(limitTable[10])
+	limitSyncookiesValidatedTotal, limitSyncookiesValidatedRate, err := pfInfoLine(limitTable[10])
 	if err != nil {
 		return nil, err
 	}
