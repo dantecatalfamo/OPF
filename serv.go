@@ -73,16 +73,16 @@ func main() {
 		fmt.Printf("%v\n", iface)
 	}
 
-	http.HandleFunc("/pf-states", pfStatesHandler)
-	http.HandleFunc("/pf-rule-states", pfRuleStatesHandler)
-	http.HandleFunc("/pf-info", pfInfoHandler)
-	http.HandleFunc("/pf-interfaces", pfInterfacesHandler)
-	http.HandleFunc("/rc-all", rcAllHandler)
-	http.HandleFunc("/rc-on", rcOnHandler)
-	http.HandleFunc("/rc-started", rcStartedHandler)
-	http.HandleFunc("/netstat-interfaces", netstatInterfacesHandler)
-	http.HandleFunc("/uptime", uptimeHandler)
-	http.HandleFunc("/uname", unameHandler)
+	http.HandleFunc("/api/pf-states", pfStatesHandler)
+	http.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
+	http.HandleFunc("/api/pf-info", pfInfoHandler)
+	http.HandleFunc("/api/pf-interfaces", pfInterfacesHandler)
+	http.HandleFunc("/api/rc-all", rcAllHandler)
+	http.HandleFunc("/api/rc-on", rcOnHandler)
+	http.HandleFunc("/api/rc-started", rcStartedHandler)
+	http.HandleFunc("/api/netstat-interfaces", netstatInterfacesHandler)
+	http.HandleFunc("/api/uptime", uptimeHandler)
+	http.HandleFunc("/api/uname", unameHandler)
 
 	http.ListenAndServe(":8001", nil)
 }
