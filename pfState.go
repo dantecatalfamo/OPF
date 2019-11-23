@@ -14,8 +14,8 @@ type PfState struct {
 	Expires         string `json:"expires"`
 	State           string `json:"state"`
 	Gateway         string `json:"gateway"`
-	SourceIP        string `json:"sourceIp"`
-	DestinationIP   string `json:"destinationIp"`
+	SourceIP        string `json:"sourceIP"`
+	DestinationIP   string `json:"destinationIP"`
 	SourcePort      int    `json:"sourcePort"`
 	DestinationPort int    `json:"destinationPort"`
 	PacketsSent     int    `json:"packetsSent"`
