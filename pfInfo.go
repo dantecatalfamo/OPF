@@ -161,14 +161,14 @@ type PfInfo struct {
 	} `json:"adaptiveSyncookiesWatermarks"`
 }
 
-func pfInfoLine(row string) (int, float64, error) {
-	rowFields := strings.Fields(row)
-	total, err := strconv.Atoi(rowFields[len(rowFields)-2])
+func pfInfoLine(line string) (int, float64, error) {
+	lineFields := strings.Fields(line)
+	total, err := strconv.Atoi(lineFields[len(lineFields)-2])
 	if err != nil {
 		return 0, 0, err
 	}
 
-	rateStr := strings.TrimRight(rowFields[len(rowFields)-1], "/s")
+	rateStr := strings.TrimRight(lineFields[len(lineFields)-1], "/s")
 	rate, err := strconv.ParseFloat(rateStr, 64)
 	if err != nil {
 		return 0, 0, err
@@ -183,8 +183,6 @@ func pfInfo() (*PfInfo, error) {
 		return nil, err
 	}
 
-	info := &PfInfo{}
-
 	outString := string(outBytes)
 	outLines := strings.Split(outString, "\n")
 
@@ -192,290 +190,289 @@ func pfInfo() (*PfInfo, error) {
 	statusFields := strings.Fields(statusLine)
 	status := statusFields[1]
 	since := strings.Join(statusFields[3:len(statusFields)-2], " ")
-
-	info.Status = status
-	info.Since = since
-	info.Debug = statusFields[len(statusFields)-1]
-	info.HostId = strings.Fields(outLines[2])[1]
-	info.Checksum = strings.Fields(outLines[3])[1]
+	debug := statusFields[len(statusFields)-1]
+	hostId := strings.Fields(outLines[2])[1]
+	checksum := strings.Fields(outLines[3])[1]
 
 	groups := groupIndent(outLines)
-
 	statesTable := groups[3]
-
 	currentEntries := strings.Fields(statesTable[1])
-	currentEntriesTotal, err := strconv.Atoi(currentEntries[2])
+	stateCurrentEntriesTotal, err := strconv.Atoi(currentEntries[2])
 	if err != nil {
 		return nil, err
 	}
-	info.StateTable.CurrentEntries = currentEntriesTotal
 
 	halfOpenTcp := strings.Fields(statesTable[2])
-	halfOpenTcpTotal, err := strconv.Atoi(halfOpenTcp[2])
+	stateHalfOpenTcpTotal, err := strconv.Atoi(halfOpenTcp[2])
 	if err != nil {
 		return nil, err
 	}
-	info.StateTable.HalfOpenTcp = halfOpenTcpTotal
 
 	stateSearchesTotal, stateSearchesRate, err := pfInfoLine(statesTable[3])
 	if err != nil {
 		return nil, err
 	}
-	info.StateTable.Searches.Total = stateSearchesTotal
-	info.StateTable.Searches.Rate = stateSearchesRate
 
 	stateInsertTotal, stateInsertRate, err := pfInfoLine(statesTable[4])
 	if err != nil {
 		return nil, err
 	}
-	info.StateTable.Inserts.Total = stateInsertTotal
-	info.StateTable.Inserts.Rate = stateInsertRate
 
 	stateRemovalTotal, stateRemovalRate, err := pfInfoLine(statesTable[5])
 	if err != nil {
 		return nil, err
 	}
-	info.StateTable.Removals.Total = stateRemovalTotal
-	info.StateTable.Removals.Rate = stateRemovalRate
 
 	sourceTable := groups[4]
-
 	sourceCurrent := strings.Fields(sourceTable[1])
 	sourceCurrentTotal, err := strconv.Atoi(sourceCurrent[2])
 	if err != nil {
 		return nil, err
 	}
-	info.SourceTrackingTable.CurrentEntries = sourceCurrentTotal
 
 	sourceSearchTotal, sourceSearchRate, err := pfInfoLine(sourceTable[2])
 	if err != nil {
 		return nil, err
 	}
-	info.SourceTrackingTable.Searches.Total = sourceSearchTotal
-	info.SourceTrackingTable.Searches.Rate = sourceSearchRate
 
 	sourceInsertTotal, sourceInsertRate, err := pfInfoLine(sourceTable[3])
 	if err != nil {
 		return nil, err
 	}
-	info.SourceTrackingTable.Inserts.Total = sourceInsertTotal
-	info.SourceTrackingTable.Inserts.Rate = sourceInsertRate
 
 	sourceRemovalTotal, sourceRemovalRate, err := pfInfoLine(sourceTable[4])
 	if err != nil {
 		return nil, err
 	}
-	info.SourceTrackingTable.Removals.Total = sourceRemovalTotal
-	info.SourceTrackingTable.Removals.Rate = sourceRemovalRate
 
 	counterTable := groups[5]
-
 	counterMatchTotal, counterMatchRate, err := pfInfoLine(counterTable[1])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Match.Total = counterMatchTotal
-	info.Counters.Match.Rate = counterMatchRate
 
 	counterBadOffsetsTotal, counterBadOffsetsRate, err := pfInfoLine(counterTable[2])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.BadOffsets.Total = counterBadOffsetsTotal
-	info.Counters.BadOffsets.Rate = counterBadOffsetsRate
 
 	counterFragmentsTotal, counterFragmentsRate, err := pfInfoLine(counterTable[3])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Fragments.Total = counterFragmentsTotal
-	info.Counters.Fragments.Rate = counterFragmentsRate
 
 	counterShortTotal, counterShortRate, err := pfInfoLine(counterTable[4])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Short.Total = counterShortTotal
-	info.Counters.Short.Rate = counterShortRate
 
 	counterNormalizeTotal, counterNormalizeRate, err := pfInfoLine(counterTable[5])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Normalize.Total = counterNormalizeTotal
-	info.Counters.Normalize.Rate = counterNormalizeRate
 
 	counterMemoryTotal, counterMemoryRate, err := pfInfoLine(counterTable[6])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Memory.Total = counterMemoryTotal
-	info.Counters.Memory.Rate = counterMemoryRate
 
 	counterBadTimestampTotal, counterBadTimestampRate, err := pfInfoLine(counterTable[7])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.BadTimestamp.Total = counterBadTimestampTotal
-	info.Counters.BadTimestamp.Rate = counterBadTimestampRate
 
 	counterCongestionTotal, counterCongestionRate, err := pfInfoLine(counterTable[8])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Congestion.Total = counterCongestionTotal
-	info.Counters.Congestion.Rate = counterCongestionRate
 
 	counterIpOptionTotal, counterIpOptionRate, err := pfInfoLine(counterTable[9])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.IpOption.Total = counterIpOptionTotal
-	info.Counters.IpOption.Rate = counterIpOptionRate
 
 	counterProtoCksumTotal, counterProtoCksumRate, err := pfInfoLine(counterTable[10])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.ProtoCksum.Total = counterProtoCksumTotal
-	info.Counters.ProtoCksum.Rate = counterProtoCksumRate
 
 	counterStateMismatchTotal, counterStateMismatchRate, err := pfInfoLine(counterTable[11])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.StateMismatch.Total = counterStateMismatchTotal
-	info.Counters.StateMismatch.Rate = counterStateMismatchRate
 
 	counterStateInsertTotal, counterStateInsertRate, err := pfInfoLine(counterTable[12])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.StateInsert.Total = counterStateInsertTotal
-	info.Counters.StateInsert.Rate = counterStateInsertRate
 
 	counterStateLimitTotal, counterStateLimitRate, err := pfInfoLine(counterTable[13])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.StateLimit.Total = counterStateLimitTotal
-	info.Counters.StateLimit.Rate = counterStateLimitRate
 
 	counterSrcLimitTotal, counterSrcLimitRate, err := pfInfoLine(counterTable[14])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.SrcLimit.Total = counterSrcLimitTotal
-	info.Counters.SrcLimit.Rate = counterSrcLimitRate
 
 	counterSynproxyTotal, counterSynproxyRate, err := pfInfoLine(counterTable[15])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Synproxy.Total = counterSynproxyTotal
-	info.Counters.Synproxy.Rate = counterSynproxyRate
 
 	counterTranslateTotal, counterTranslateRate, err := pfInfoLine(counterTable[16])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.Translate.Total = counterTranslateTotal
-	info.Counters.Translate.Rate = counterTranslateRate
 
 	counterNoRouteTotal, counterNoRouteRate, err := pfInfoLine(counterTable[17])
 	if err != nil {
 		return nil, err
 	}
-	info.Counters.NoRoute.Total = counterNoRouteTotal
-	info.Counters.NoRoute.Rate = counterNoRouteRate
 
 	limitTable := groups[6]
-
 	limitMaxStatesPerRuleTotal, limitMaxStatesPerRuleRate, err := pfInfoLine(limitTable[1])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.MaxStatesPerRule.Total = limitMaxStatesPerRuleTotal
-	info.LimitCounters.MaxStatesPerRule.Rate = limitMaxStatesPerRuleRate
 
 	limitMaxSrcStatesTotal, limitMaxSrcStatesRate, err := pfInfoLine(limitTable[2])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.MaxSrcStates.Total = limitMaxSrcStatesTotal
-	info.LimitCounters.MaxSrcStates.Rate = limitMaxSrcStatesRate
 
 	limitMaxSrcNodesTotal, limitMaxSrcNodesRate, err := pfInfoLine(limitTable[3])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.MaxSrcNodes.Total = limitMaxSrcNodesTotal
-	info.LimitCounters.MaxSrcNodes.Rate = limitMaxSrcNodesRate
 
 	limitMaxSrcConnTotal, limitMaxSrcConnRate, err := pfInfoLine(limitTable[4])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.MaxSrcConn.Total = limitMaxSrcConnTotal
-	info.LimitCounters.MaxSrcConn.Rate = limitMaxSrcConnRate
 
 	limitMaxSrcConnRateTotal, limitMaxSrcConnRateRate, err := pfInfoLine(limitTable[5])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.MaxSrcConnRate.Total = limitMaxSrcConnRateTotal
-	info.LimitCounters.MaxSrcConnRate.Rate = limitMaxSrcConnRateRate
 
 	limitOverloadTableInsertionTotal, limitOverloadTableInsertionRate, err := pfInfoLine(limitTable[6])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.OverloadTableInsertion.Total = limitOverloadTableInsertionTotal
-	info.LimitCounters.OverloadTableInsertion.Rate = limitOverloadTableInsertionRate
 
 	limitOverloadFlushStatesTotal, limitOverloadFlushStatesRate, err := pfInfoLine(limitTable[7])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.OverloadFlushStates.Total = limitOverloadFlushStatesTotal
-	info.LimitCounters.OverloadFlushStates.Rate = limitOverloadFlushStatesRate
 
 	limitSynfloodsDetectedTotal, limitSynfloodsDetectedRate, err := pfInfoLine(limitTable[8])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.SynfloodsDetected.Total = limitSynfloodsDetectedTotal
-	info.LimitCounters.SynfloodsDetected.Rate = limitSynfloodsDetectedRate
 
 	limitSyncookiesSentTotal, limitSyncookiesSentRate, err := pfInfoLine(limitTable[9])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.SyncookiesSent.Total = limitSyncookiesSentTotal
-	info.LimitCounters.SyncookiesSent.Rate = limitSyncookiesSentRate
 
 	limitSyncookiesValidatedTotal, limitSyncookiesValidatedRate, err := pfInfoLine(limitTable[10])
 	if err != nil {
 		return nil, err
 	}
-	info.LimitCounters.SyncookiesValidated.Total = limitSyncookiesValidatedTotal
-	info.LimitCounters.SyncookiesValidated.Rate = limitSyncookiesValidatedRate
 
 	adaptiveTable := groups[7]
-
 	startFields := strings.Fields(adaptiveTable[1])
 	start, err := strconv.Atoi(startFields[1])
 	if err != nil {
 		return nil, err
 	}
-	info.AdaptiveSyncookiesWatermarks.Start = start
 
 	endFields := strings.Fields(adaptiveTable[2])
 	end, err := strconv.Atoi(endFields[1])
 	if err != nil {
 		return nil, err
 	}
-	info.AdaptiveSyncookiesWatermarks.End = end
 
-	return info, nil
+	pfInfo := &PfInfo{}
+
+	pfInfo.Status = status
+	pfInfo.Since = since
+	pfInfo.Debug = debug
+	pfInfo.HostId = hostId
+	pfInfo.Checksum = checksum
+ 	pfInfo.StateTable.CurrentEntries = stateCurrentEntriesTotal
+	pfInfo.StateTable.HalfOpenTcp = stateHalfOpenTcpTotal
+	pfInfo.StateTable.Searches.Total = stateSearchesTotal
+	pfInfo.StateTable.Searches.Rate = stateSearchesRate
+	pfInfo.StateTable.Inserts.Total = stateInsertTotal
+	pfInfo.StateTable.Inserts.Rate = stateInsertRate
+	pfInfo.StateTable.Removals.Total = stateRemovalTotal
+	pfInfo.StateTable.Removals.Rate = stateRemovalRate
+	pfInfo.SourceTrackingTable.CurrentEntries = sourceCurrentTotal
+	pfInfo.SourceTrackingTable.Searches.Total = sourceSearchTotal
+	pfInfo.SourceTrackingTable.Searches.Rate = sourceSearchRate
+	pfInfo.SourceTrackingTable.Inserts.Total = sourceInsertTotal
+	pfInfo.SourceTrackingTable.Inserts.Rate = sourceInsertRate
+	pfInfo.SourceTrackingTable.Removals.Total = sourceRemovalTotal
+	pfInfo.SourceTrackingTable.Removals.Rate = sourceRemovalRate
+	pfInfo.Counters.Match.Total = counterMatchTotal
+	pfInfo.Counters.Match.Rate = counterMatchRate
+	pfInfo.Counters.BadOffsets.Total = counterBadOffsetsTotal
+	pfInfo.Counters.BadOffsets.Rate = counterBadOffsetsRate
+	pfInfo.Counters.Fragments.Total = counterFragmentsTotal
+	pfInfo.Counters.Fragments.Rate = counterFragmentsRate
+	pfInfo.Counters.Short.Total = counterShortTotal
+	pfInfo.Counters.Short.Rate = counterShortRate
+	pfInfo.Counters.Normalize.Total = counterNormalizeTotal
+	pfInfo.Counters.Normalize.Rate = counterNormalizeRate
+	pfInfo.Counters.Memory.Total = counterMemoryTotal
+	pfInfo.Counters.Memory.Rate = counterMemoryRate
+	pfInfo.Counters.BadTimestamp.Total = counterBadTimestampTotal
+	pfInfo.Counters.BadTimestamp.Rate = counterBadTimestampRate
+	pfInfo.Counters.Congestion.Total = counterCongestionTotal
+	pfInfo.Counters.Congestion.Rate = counterCongestionRate
+	pfInfo.Counters.IpOption.Total = counterIpOptionTotal
+	pfInfo.Counters.IpOption.Rate = counterIpOptionRate
+	pfInfo.Counters.ProtoCksum.Total = counterProtoCksumTotal
+	pfInfo.Counters.ProtoCksum.Rate = counterProtoCksumRate
+	pfInfo.Counters.StateMismatch.Total = counterStateMismatchTotal
+	pfInfo.Counters.StateMismatch.Rate = counterStateMismatchRate
+	pfInfo.Counters.StateInsert.Total = counterStateInsertTotal
+	pfInfo.Counters.StateInsert.Rate = counterStateInsertRate
+	pfInfo.Counters.StateLimit.Total = counterStateLimitTotal
+	pfInfo.Counters.StateLimit.Rate = counterStateLimitRate
+	pfInfo.Counters.SrcLimit.Total = counterSrcLimitTotal
+	pfInfo.Counters.SrcLimit.Rate = counterSrcLimitRate
+	pfInfo.Counters.Synproxy.Total = counterSynproxyTotal
+	pfInfo.Counters.Synproxy.Rate = counterSynproxyRate
+	pfInfo.Counters.Translate.Total = counterTranslateTotal
+	pfInfo.Counters.Translate.Rate = counterTranslateRate
+	pfInfo.Counters.NoRoute.Total = counterNoRouteTotal
+	pfInfo.Counters.NoRoute.Rate = counterNoRouteRate
+	pfInfo.LimitCounters.MaxStatesPerRule.Total = limitMaxStatesPerRuleTotal
+	pfInfo.LimitCounters.MaxStatesPerRule.Rate = limitMaxStatesPerRuleRate
+	pfInfo.LimitCounters.MaxSrcStates.Total = limitMaxSrcStatesTotal
+	pfInfo.LimitCounters.MaxSrcStates.Rate = limitMaxSrcStatesRate
+	pfInfo.LimitCounters.MaxSrcNodes.Total = limitMaxSrcNodesTotal
+	pfInfo.LimitCounters.MaxSrcNodes.Rate = limitMaxSrcNodesRate
+	pfInfo.LimitCounters.MaxSrcConn.Total = limitMaxSrcConnTotal
+	pfInfo.LimitCounters.MaxSrcConn.Rate = limitMaxSrcConnRate
+	pfInfo.LimitCounters.MaxSrcConnRate.Total = limitMaxSrcConnRateTotal
+	pfInfo.LimitCounters.MaxSrcConnRate.Rate = limitMaxSrcConnRateRate
+	pfInfo.LimitCounters.OverloadTableInsertion.Total = limitOverloadTableInsertionTotal
+	pfInfo.LimitCounters.OverloadTableInsertion.Rate = limitOverloadTableInsertionRate
+	pfInfo.LimitCounters.OverloadFlushStates.Total = limitOverloadFlushStatesTotal
+	pfInfo.LimitCounters.OverloadFlushStates.Rate = limitOverloadFlushStatesRate
+	pfInfo.LimitCounters.SynfloodsDetected.Total = limitSynfloodsDetectedTotal
+	pfInfo.LimitCounters.SynfloodsDetected.Rate = limitSynfloodsDetectedRate
+	pfInfo.LimitCounters.SyncookiesSent.Total = limitSyncookiesSentTotal
+	pfInfo.LimitCounters.SyncookiesSent.Rate = limitSyncookiesSentRate
+	pfInfo.LimitCounters.SyncookiesValidated.Total = limitSyncookiesValidatedTotal
+	pfInfo.LimitCounters.SyncookiesValidated.Rate = limitSyncookiesValidatedRate
+	pfInfo.AdaptiveSyncookiesWatermarks.Start = start
+	pfInfo.AdaptiveSyncookiesWatermarks.End = end
+
+	return pfInfo, nil
 }
