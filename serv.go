@@ -69,6 +69,8 @@ func main() {
 	http.HandleFunc("/pf-rule-states", pfRuleStatesHandler)
 	http.HandleFunc("/pf-info", pfInfoHandler)
 	http.HandleFunc("/pf-interfaces", pfInterfacesHandler)
+	http.HandleFunc("/uptime", uptimeHandler)
+	http.HandleFunc("/uname", unameHandler)
 
 	http.ListenAndServe(":8001", nil)
 }
