@@ -44,7 +44,9 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(ifaces)
+	for _, i := range ifaces {
+		fmt.Printf("%v\n", i)
+	}
 
 	http.HandleFunc("/states", func(w http.ResponseWriter, r *http.Request) {
 		states, err := pfStates()
