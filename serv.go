@@ -39,6 +39,13 @@ func main() {
 	}
 	fmt.Println(info)
 
+	ifaces, err := pfInterfaces()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(ifaces)
+
 	http.HandleFunc("/states", func(w http.ResponseWriter, r *http.Request) {
 		states, err := pfStates()
 		if err != nil {
@@ -88,6 +95,23 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jInfo)
+	})
+
+	http.HandleFunc("/pfinterfaces", func(w http.ResponseWriter, r *http.Request) {
+		ifaces, err := pfInterfaces()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		jIfaces, err := json.Marshal(ifaces)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jIfaces)
 	})
 
 	http.ListenAndServe(":8001", nil)
