@@ -17,20 +17,16 @@ type PfRuleState struct {
 	StateCreations int    `json:"stateCreations"`
 }
 
-func stringsToRuleState(lines []string) (*PfRuleState, error) {
-	pfRuleState := &PfRuleState{}
-
+func genPfRuleState(lines []string) (*PfRuleState, error) {
 	ruleFields := strings.SplitN(lines[0], " ", 2)
 	number, err := strconv.Atoi(ruleFields[0][1:])
 	if err != nil {
 		return nil, err
 	}
 
-	pfRuleState.Number = number
-	pfRuleState.Rule = ruleFields[1]
+	rule := ruleFields[1]
 
 	details := strings.Fields(lines[1])
-
 	evaluations, err := strconv.Atoi(details[2])
 	if err != nil {
 		return nil, err
@@ -52,19 +48,21 @@ func stringsToRuleState(lines []string) (*PfRuleState, error) {
 		return nil, err
 	}
 
-	pfRuleState.Evaluations = evaluations
-	pfRuleState.Packets = packets
-	pfRuleState.Bytes = bytes
-	pfRuleState.States = states
-
 	lastLine := strings.Fields(lines[2])
-
 	trimmedStateCreations := strings.TrimRight(lastLine[8], "]")
 	stateCreations, err := strconv.Atoi(trimmedStateCreations)
 	if err != nil {
 		return nil, err
 	}
 
+	pfRuleState := &PfRuleState{}
+
+	pfRuleState.Number = number
+	pfRuleState.Rule = rule
+	pfRuleState.Evaluations = evaluations
+	pfRuleState.Packets = packets
+	pfRuleState.Bytes = bytes
+	pfRuleState.States = states
 	pfRuleState.StateCreations = stateCreations
 
 	return pfRuleState, nil
@@ -84,7 +82,7 @@ func pfRuleStates() ([]*PfRuleState, error) {
 	groups := groupIndent(outLines)
 
 	for _, group := range groups {
-		rule, err := stringsToRuleState(group)
+		rule, err := genPfRuleState(group)
 		if err != nil {
 			fmt.Println(err)
 			continue
