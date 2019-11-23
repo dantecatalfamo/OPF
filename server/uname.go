@@ -6,14 +6,14 @@ import (
 )
 
 type Uname struct {
-	Hardware string
-	NodeName string
+	Hardware  string
+	NodeName  string
 	OSRelease string
-	OSName string
+	OSName    string
 	OSVersion string
 }
 
-func uname () (*Uname, error) {
+func uname() (*Uname, error) {
 	outBytes, err := exec.Command("uname", "-a").Output()
 	if err != nil {
 		return nil, err

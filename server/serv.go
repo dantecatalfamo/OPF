@@ -1,11 +1,10 @@
 package main
 
 import (
-	"os"
-	"net/http"
 	"fmt"
+	"net/http"
+	"os"
 )
-
 
 func main() {
 	states, err := pfStates()

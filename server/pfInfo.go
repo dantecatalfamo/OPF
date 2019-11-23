@@ -402,7 +402,7 @@ func pfInfo() (*PfInfo, error) {
 	pfInfo.Debug = debug
 	pfInfo.HostId = hostId
 	pfInfo.Checksum = checksum
- 	pfInfo.StateTable.CurrentEntries = stateCurrentEntriesTotal
+	pfInfo.StateTable.CurrentEntries = stateCurrentEntriesTotal
 	pfInfo.StateTable.HalfOpenTcp = stateHalfOpenTcpTotal
 	pfInfo.StateTable.Searches.Total = stateSearchesTotal
 	pfInfo.StateTable.Searches.Rate = stateSearchesRate

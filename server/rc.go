@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strings"
 	"os/exec"
+	"strings"
 )
 
 func rcAll() ([]string, error) {

@@ -3,23 +3,23 @@ package main
 import (
 	"fmt"
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type netstatInterface struct {
-	Name string `json:"name"`
-	Mtu int `json:"mtu"`
-	Network string `json:"network"`
-	Address string `json:"address"`
-	InPackets int `json:"inPackets"`
-	InFail int `json:"inFail"`
-	OutPackets int `json:"outPackets"`
-	OutFail int `json:"outFail"`
-	Colls int `json:"colls"`
+	Name       string `json:"name"`
+	Mtu        int    `json:"mtu"`
+	Network    string `json:"network"`
+	Address    string `json:"address"`
+	InPackets  int    `json:"inPackets"`
+	InFail     int    `json:"inFail"`
+	OutPackets int    `json:"outPackets"`
+	OutFail    int    `json:"outFail"`
+	Colls      int    `json:"colls"`
 }
 
-func genNetstatInterface (line string) (*netstatInterface, error) {
+func genNetstatInterface(line string) (*netstatInterface, error) {
 	fields := strings.Fields(line)
 	name := fields[0]
 	mtu, err := strconv.Atoi(fields[1])

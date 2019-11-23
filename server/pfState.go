@@ -1,10 +1,10 @@
 package main
 
 import (
-	"strings"
-	"strconv"
-	"os/exec"
 	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
 type PfState struct {
