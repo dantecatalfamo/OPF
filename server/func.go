@@ -39,6 +39,9 @@ func splitIp(ip string) (string, int, error) {
 		}
 		return ipSplit[0], port, nil
 	} else {
+		if !strings.Contains(ip, "[") {
+			return ip, 0, nil
+		}
 		ipSplit := strings.Split(ip, "[")
 		portStr := strings.Trim(ipSplit[1], "]")
 		port, err := strconv.Atoi(portStr)
