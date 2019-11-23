@@ -64,6 +64,15 @@ func main() {
 	}
 	fmt.Println(rcall)
 
+	nsifaces, err := netstatInterfaces()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	for _, iface := range nsifaces {
+		fmt.Printf("%v\n", iface)
+	}
+
 	http.HandleFunc("/pf-states", pfStatesHandler)
 	http.HandleFunc("/pf-rule-states", pfRuleStatesHandler)
 	http.HandleFunc("/pf-info", pfInfoHandler)
