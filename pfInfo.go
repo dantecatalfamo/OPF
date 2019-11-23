@@ -8,158 +8,158 @@ import (
 )
 
 type PfInfo struct {
-	Status     string
-	Since      string
-	Debug      string
-	HostId     string
-	Checksum   string
+	Status     string `json:"status"`
+	Since      string `json:"since"`
+	Debug      string `json:"debug"`
+	HostId     string `json:"hostId"`
+	Checksum   string `json:"checksum"`
 	StateTable struct {
-		CurrentEntries int
-		HalfOpenTcp    int
+		CurrentEntries int `json:"currentEntries"`
+		HalfOpenTcp    int `json:"halfOpenTcp"`
 		Searches       struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"searches"`
 		Inserts struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"inserts"`
 		Removals struct {
-			Total int
-			Rate  float64
-		}
-	}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"removals"`
+	} `json:"stateTable"`
 	SourceTrackingTable struct {
-		CurrentEntries int
+		CurrentEntries int `json:"currentEntries"`
 		Searches       struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"searches"`
 		Inserts struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"inserts"`
 		Removals struct {
-			Total int
-			Rate  float64
-		}
-	}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"removals"`
+	} `json:"sourceTrackingTable"`
 	Counters struct {
 		Match struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"match"`
 		BadOffsets struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"badOffsets"`
 		Fragments struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"fragments"`
 		Short struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"shorts"`
 		Normalize struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"normalize"`
 		Memory struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"memory"`
 		BadTimestamp struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"badTimestamp"`
 		Congestion struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"congestion"`
 		IpOption struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"ipOption"`
 		ProtoCksum struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"protoCksum"`
 		StateMismatch struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"stateMismatch"`
 		StateInsert struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"stateInsert"`
 		StateLimit struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"stateLimit"`
 		SrcLimit struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"srcLimit"`
 		Synproxy struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"synproxy"`
 		Translate struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"translate"`
 		NoRoute struct {
-			Total int
-			Rate  float64
-		}
-	}
+			Total int `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"noRoute"`
+	} `json:"counters"`
 	LimitCounters struct {
 		MaxStatesPerRule struct {
-			Total int
-			Rate  float64
-		}
+			Total int  `json:"total"`
+			Rate  float64 `json:"rate"`
+		} `json:"maxStatesPerRule"`
 		MaxSrcStates struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"maxSrcStates"`
 		MaxSrcNodes struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"maxSrcNodes"`
 		MaxSrcConn struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"maxSrcConn"`
 		MaxSrcConnRate struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"maxSrcConnRate"`
 		OverloadTableInsertion struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"overloadTableInsertion"`
 		OverloadFlushStates struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"overloadFlushStates"`
 		SynfloodsDetected struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"synFloodsDetected"`
 		SyncookiesSent struct {
-			Total int
-			Rate  float64
-		}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"syncookiesSent"`
 		SyncookiesValidated struct {
-			Total int
-			Rate  float64
-		}
-	}
+			Total int `json:"total"`
+			Rate  float64 `json:rate"`
+		} `json:"syncookiesValidated"`
+	} `json:"limitCounters"`
 	AdaptiveSyncookiesWatermarks struct {
-		Start int
-		End   int
-	}
+		Start int `json:"start"`
+		End   int `json:"end"`
+	} `json:"adaptiveSyncookiesWatermarks"`
 }
 
 func infoRow(row string) (int, float64, error) {
