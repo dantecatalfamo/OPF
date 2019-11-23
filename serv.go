@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"net/http"
-	"encoding/json"
 	"fmt"
 )
 
@@ -69,6 +68,9 @@ func main() {
 	http.HandleFunc("/pf-rule-states", pfRuleStatesHandler)
 	http.HandleFunc("/pf-info", pfInfoHandler)
 	http.HandleFunc("/pf-interfaces", pfInterfacesHandler)
+	http.HandleFunc("/rc-all", rcAllHandler)
+	http.HandleFunc("/rc-on", rcOnHandler)
+	http.HandleFunc("/rc-started", rcStartedHandler)
 	http.HandleFunc("/uptime", uptimeHandler)
 	http.HandleFunc("/uname", unameHandler)
 
