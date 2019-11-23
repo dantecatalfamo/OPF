@@ -1,50 +1,50 @@
 package main
 
 import (
-	"strings"
 	"fmt"
-	"strconv"
 	"os/exec"
+	"strconv"
+	"strings"
 )
 
 type pfInterface struct {
-	Interface string `json:"interface"`
-	Cleared string   `json:"cleared"`
+	Interface  string `json:"interface"`
+	Cleared    string `json:"cleared"`
 	References struct {
-		States int  `json:"states"`
-		Rules int `json:"rules"`
+		States int `json:"states"`
+		Rules  int `json:"rules"`
 	} `json:"references"`
 	In4Pass struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"in4pass"`
 	In4Block struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"in4block"`
 	Out4Pass struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"out4pass"`
 	Out4Block struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"out4block"`
 	In6Pass struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"in6pass"`
 	In6Block struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"in6block"`
 	Out6Pass struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"out6pass"`
 	Out6Block struct {
 		Packets int `json:"states"`
-		Bytes int `json:"rules"`
+		Bytes   int `json:"rules"`
 	} `json:"out6block"`
 }
 
