@@ -1,19 +1,19 @@
 package main
 
 import (
-	"strconv"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
 type Uptime struct {
-	Time string
-	Uptime string
-	Users int
-	LoadAvg []float64
+	Time    string    `json:"time"`
+	Uptime  string    `json:"uptime"`
+	Users   int       `json:"users"`
+	LoadAvg []float64 `json:"loadAvg"`
 }
 
-func uptime() (*Uptime, error){
+func uptime() (*Uptime, error) {
 	outBytes, err := exec.Command("uptime").Output()
 	if err != nil {
 		return nil, err
