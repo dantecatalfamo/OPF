@@ -18,6 +18,7 @@ func uptime() (*Uptime, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	out := string(outBytes)
 	fields := strings.Fields(out)
 	time := fields[0]
@@ -26,6 +27,7 @@ func uptime() (*Uptime, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var loadAvg []float64
 	for _, f := range fields[9:] {
 		f = strings.TrimRight(f, ",")

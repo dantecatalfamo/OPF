@@ -48,12 +48,20 @@ func main() {
 		fmt.Printf("%v\n", i)
 	}
 
-	uptime, err := uptime()
+	ut, err := uptime()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(uptime)
+	fmt.Println(ut)
+
+	un, err := uname()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(un)
+
 
 	http.HandleFunc("/pf-states", func(w http.ResponseWriter, r *http.Request) {
 		states, err := pfStates()
