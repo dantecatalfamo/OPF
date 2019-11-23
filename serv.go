@@ -48,7 +48,7 @@ func main() {
 		fmt.Printf("%v\n", i)
 	}
 
-	http.HandleFunc("/states", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pf-states", func(w http.ResponseWriter, r *http.Request) {
 		states, err := pfStates()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -65,7 +65,7 @@ func main() {
 		w.Write(jStates)
 	})
 
-	http.HandleFunc("/rulestates", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pf-rule-states", func(w http.ResponseWriter, r *http.Request) {
 		rules, err := pfRuleStates()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -82,7 +82,7 @@ func main() {
 		w.Write(jRules)
 	})
 
-	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pf-info", func(w http.ResponseWriter, r *http.Request) {
 		info, err := pfInfo()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -99,7 +99,7 @@ func main() {
 		w.Write(jInfo)
 	})
 
-	http.HandleFunc("/pfinterfaces", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pf-interfaces", func(w http.ResponseWriter, r *http.Request) {
 		ifaces, err := pfInterfaces()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
