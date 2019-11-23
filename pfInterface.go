@@ -117,31 +117,22 @@ func genPfInterface(lines []string) (*pfInterface, error) {
 
 	pfInterface.Interface = iface
 	pfInterface.Cleared = cleared
-
 	pfInterface.References.States = states
 	pfInterface.References.Rules = rules
-
 	pfInterface.In4Pass.Packets = i4pPkt
 	pfInterface.In4Pass.Bytes = i4pByte
-
 	pfInterface.In4Block.Packets = i4bPkt
 	pfInterface.In4Block.Bytes = i4bByte
-
 	pfInterface.Out4Pass.Packets = o4pPkt
 	pfInterface.Out4Pass.Bytes = o4pByte
-
 	pfInterface.Out4Block.Packets = o4bPkt
 	pfInterface.Out4Block.Bytes = o4bByte
-
 	pfInterface.In6Pass.Packets = i6pPkt
 	pfInterface.In6Pass.Bytes = i6pByte
-
 	pfInterface.In6Block.Packets = i6bPkt
 	pfInterface.In6Block.Bytes = i6bByte
-
 	pfInterface.Out6Pass.Packets = o6pPkt
 	pfInterface.Out6Pass.Bytes = o6pByte
-
 	pfInterface.Out6Block.Packets = o6bPkt
 	pfInterface.Out6Block.Bytes = o6bByte
 
