@@ -45,35 +45,37 @@ type PfState struct {
 	Direction       string `json:"direction"`
 }
 
-func stringsToState(pfStrings []string) (*PfState, error) {
+func genPfState(lines []string) (*PfState, error) {
 	pfState := &PfState{}
 	var src string
 	var dst string
+	var dirArrow string
 	var dir string
 	var gw string
 
-	summary := strings.Fields(pfStrings[0])
-	pfState.Proto = summary[1]
+	summaryLine := strings.Fields(lines[0])
+	proto := summaryLine[1]
+	state := summaryLine[len(summaryLine)-1]
 
-	if []rune(summary[3])[0] == '(' {
-		dir = summary[4]
-		gw = summary[3]
-		pfState.Gateway = gw[1 : len(gw)-2]
+	if []rune(summaryLine[3])[0] == '(' {
+		dirArrow = summaryLine[4]
+		gwStr := summaryLine[3]
+		gw = gwStr[1 : len(gw)-2]
 	} else {
-		dir = summary[3]
+		dirArrow = summaryLine[3]
 	}
 
-	if dir == "<-" {
-		pfState.Direction = "in"
-		dst = summary[2]
-		src = summary[4]
+	if dirArrow == "<-" {
+		dir = "in"
+		dst = summaryLine[2]
+		src = summaryLine[4]
 	} else {
-		pfState.Direction = "out"
-		src = summary[2]
+		dir = "out"
+		src = summaryLine[2]
 		if gw == "" {
-			dst = summary[4]
+			dst = summaryLine[4]
 		} else {
-			dst = summary[5]
+			dst = summaryLine[5]
 		}
 	}
 
@@ -87,73 +89,76 @@ func stringsToState(pfStrings []string) (*PfState, error) {
 		return nil, err
 	}
 
-	pfState.DestinationIP = dstIp
-	pfState.DestinationPort = dstPort
-	pfState.SourceIP = srcIp
-	pfState.SourcePort = srcPort
-	pfState.State = summary[len(summary)-1]
-
-	var detailString string
+	var detailLine string
 	var details []string
 
-	if pfState.Proto == "tcp" {
-		detailString = pfStrings[2]
+	if proto == "tcp" {
+		detailLine = lines[2]
 	} else {
-		detailString = pfStrings[1]
+		detailLine = lines[1]
 	}
 
-	for _, field := range strings.Fields(detailString) {
+	for _, field := range strings.Fields(detailLine) {
 		details = append(details, strings.Trim(field, " ,"))
 	}
 
-	pfState.Age = details[1]
-	pfState.Expires = details[4]
+	age := details[1]
+	expires := details[4]
 
 	packets := strings.Split(details[5], ":")
-
 	pktSent, err := strconv.Atoi(packets[0])
 	if err != nil {
 		return nil, err
 	}
-	pfState.PacketsSent = pktSent
 
 	pktRecv, err := strconv.Atoi(packets[1])
 	if err != nil {
 		return nil, err
 	}
-	pfState.PacketsReveived = pktRecv
 
 	bytes := strings.Split(details[7], ":")
-
 	bytesSent, err := strconv.Atoi(bytes[0])
 	if err != nil {
 		return nil, err
 	}
-	pfState.BytesSent = bytesSent
 
 	bytesRecv, err := strconv.Atoi(bytes[0])
 	if err != nil {
 		return nil, err
 	}
-	pfState.BytesReived = bytesRecv
 
 	rule, err := strconv.Atoi(details[10])
 	if err != nil {
 		return nil, err
 	}
-	pfState.Rule = rule
 
-	var ids string
+	var idLine string
 
-	if pfState.Proto == "tcp" {
-		ids = pfStrings[3]
+	if proto == "tcp" {
+		idLine = lines[3]
 	} else {
-		ids = pfStrings[2]
+		idLine = lines[2]
 	}
 
-	idFields := strings.Fields(ids)
+	idFields := strings.Fields(idLine)
+	id := idFields[1]
 
-	pfState.Id = idFields[1]
+	pfState.Proto = proto
+	pfState.Direction = dir
+	pfState.Gateway = gw
+	pfState.DestinationIP = dstIp
+	pfState.DestinationPort = dstPort
+	pfState.SourceIP = srcIp
+	pfState.SourcePort = srcPort
+	pfState.State = state
+	pfState.Age = age
+	pfState.Expires = expires
+	pfState.PacketsSent = pktSent
+	pfState.PacketsReveived = pktRecv
+	pfState.BytesSent = bytesSent
+	pfState.BytesReived = bytesRecv
+	pfState.Rule = rule
+	pfState.Id = id
 
 	return pfState, nil
 }
@@ -196,7 +201,7 @@ func pfStates() ([]*PfState, error) {
 	groups := groupIndent(outLines)
 
 	for _, group := range groups {
-		state, err := stringsToState(group)
+		state, err := genPfState(group)
 		if err != nil {
 			fmt.Println(err)
 			continue
