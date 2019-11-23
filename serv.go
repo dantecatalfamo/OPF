@@ -7,7 +7,6 @@ import (
 )
 
 
-// TODO: create PfRule struct
 func main() {
 	states, err := pfStates()
 	if err != nil {
