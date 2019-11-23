@@ -13,7 +13,7 @@ func rcAll() ([]string, error) {
 
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
-	return lines, nil
+	return lines[:len(lines)-1], nil
 }
 
 func rcOn() ([]string, error) {
@@ -24,7 +24,7 @@ func rcOn() ([]string, error) {
 
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
-	return lines, nil
+	return lines[:len(lines)-1], nil
 }
 
 func rcStarted() ([]string, error) {
@@ -35,5 +35,5 @@ func rcStarted() ([]string, error) {
 
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
-	return lines, nil
+	return lines[:len(lines)-1], nil
 }
