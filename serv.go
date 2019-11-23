@@ -65,65 +65,10 @@ func main() {
 	}
 	fmt.Println(rcall)
 
-	http.HandleFunc("/pf-states", func(w http.ResponseWriter, r *http.Request) {
-		states, err := pfStates()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		jStates, err := json.Marshal(states)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jStates)
-	})
-
-	http.HandleFunc("/pf-rule-states", func(w http.ResponseWriter, r *http.Request) {
-		rules, err := pfRuleStates()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		jRules, err := json.Marshal(rules)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jRules)
-	})
-
-	http.HandleFunc("/pf-info", func(w http.ResponseWriter, r *http.Request) {
-		info, err := pfInfo()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		jInfo, err := json.Marshal(info)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jInfo)
-	})
-
-	http.HandleFunc("/pf-interfaces", func(w http.ResponseWriter, r *http.Request) {
-		ifaces, err := pfInterfaces()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		jIfaces, err := json.Marshal(ifaces)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jIfaces)
-	})
+	http.HandleFunc("/pf-states", pfStatesHandler)
+	http.HandleFunc("/pf-rule-states", pfRuleStatesHandler)
+	http.HandleFunc("/pf-info", pfInfoHandler)
+	http.HandleFunc("/pf-interfaces", pfInterfacesHandler)
 
 	http.ListenAndServe(":8001", nil)
 }
