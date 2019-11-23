@@ -41,7 +41,7 @@ func genPfState(lines []string) (*PfState, error) {
 	if []rune(summaryLine[3])[0] == '(' {
 		dirArrow = summaryLine[4]
 		gwStr := summaryLine[3]
-		gw = gwStr[1 : len(gw)-2]
+		gw = gwStr[1 : len(gwStr)-2]
 	} else {
 		dirArrow = summaryLine[3]
 	}
