@@ -46,8 +46,8 @@ function PfStates() {
         <tbody>
           {states.map(iface => (
             <tr key={iface.interface}>
-              <td>{iface.interface}</td>
-              <td>{iface.cleared}</td>
+              <td className="left">{iface.interface}</td>
+              <td className="left">{iface.cleared}</td>
               <td>{`${iface.references.states}/${iface.references.rules}`}</td>
               <td>{`${iface.in4pass.packets}/${iface.in4pass.bytes}`}</td>
               <td>{`${iface.in4block.packets}/${iface.in4block.bytes}`}</td>

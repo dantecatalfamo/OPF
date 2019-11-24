@@ -2,3 +2,7 @@
   font-size: small;
   font-family: monospace;
 }
+
+.pfinterfaces .left {
+  text-align: left;
+}
