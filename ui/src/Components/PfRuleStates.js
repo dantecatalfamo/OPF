@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './PfRuleStates.css';
 
-const pfRuleStatesURL = "http://192.168.0.11:8001/api/pf-rule-states";
+const pfRuleStatesURL = `${serverURL}/api/pf-rule-states`;
 const updateTime = 2000;
 
 

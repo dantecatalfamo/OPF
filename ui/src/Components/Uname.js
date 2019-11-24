@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './Uname.css';
 
-const unameURL = "http://192.168.0.11:8001/api/uname";
+const unameURL = `${serverURL}/api/uname`;
 const newTitle = "OPF";
 
 function Uname() {

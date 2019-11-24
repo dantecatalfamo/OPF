@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './NetstatInterfaces.css';
 
-const nsInterfacesURL = "http://192.168.0.11:8001/api/netstat-interfaces";
+const nsInterfacesURL = `${serverURL}/api/netstat-interfaces`;
 const updateTime = 2000;
 
 function NetstatInterfaces() {

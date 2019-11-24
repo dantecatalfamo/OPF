@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './RC.css';
 
-const rcAllURL = "http://192.168.0.11:8001/api/rc-all";
-const rcOnURL = "http://192.168.0.11:8001/api/rc-on";
-const rcStartedURL = "http://192.168.0.11:8001/api/rc-started";
+const rcAllURL = `${serverURL}/api/rc-all`;
+const rcOnURL = `${serverURL}/api/rc-on`;
+const rcStartedURL = `${serverURL}/api/rc-started`;
 
 function RC() {
   const [rcAll, setRcAll] = useState([]);

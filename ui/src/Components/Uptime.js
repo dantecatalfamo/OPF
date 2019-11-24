@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './Uptime.css';
 
-const uptimeURL = "http://192.168.0.11:8001/api/uptime";
+const uptimeURL = `${serverURL}/api/uptime`;
 const updateTime = 5000;
 
 function Uptime() {

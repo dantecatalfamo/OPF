@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON } from '../helpers.js';
+import { serverURL } from '../config.js';
 import './PfStates.css';
 
-const pfStatesURL = "http://192.168.0.11:8001/api/pf-states";
+const pfStatesURL = `${serverURL}/api/pf-states`;
 const updateTime = 2000;
 
 function PfStates() {
