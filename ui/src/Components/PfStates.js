@@ -42,11 +42,17 @@ function PfStates() {
             let bg = "none";
             let fg = "black";
             let style = {};
+            let rule;
             if (state.proto.includes("tcp")) {
               bg = "#d5f3fd";
             }
             if (state.proto.includes("udp")) {
               bg = "#ffecec";
+            }
+            if (state.rule === -1) {
+              rule = "";
+            } else {
+              rule = state.rule;
             }
             style.backgroundColor = bg;
             style.color = fg;
@@ -61,7 +67,7 @@ function PfStates() {
               <td>{state.expires}</td>
               <td>{`${state.packetsSent}:${state.packetsReceived}`}</td>
               <td>{`${state.bytesSent}:${state.bytesReceived}`}</td>
-              <td>{state.rule}</td>
+              <td>{rule}</td>
               <td>{state.gateway}</td>
             </tr>
             );
