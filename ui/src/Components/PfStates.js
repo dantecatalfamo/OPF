@@ -38,13 +38,25 @@ function PfStates() {
           </tr>
         </thead>
         <tbody>
-          {states.map(state => (
-            <tr key={state.id}>
+          {states.map(state => {
+            let bg = "none";
+            let fg = "black";
+            let style = {};
+            if (state.proto.includes("tcp")) {
+              bg = "#d5f3fd";
+            }
+            if (state.proto.includes("udp")) {
+              bg = "#ffecec";
+            }
+            style.backgroundColor = bg;
+            style.color = fg;
+            return (
+              <tr style={style} key={state.id}>
               <td>{state.proto}</td>
               <td>{state.direction}</td>
               <td>{`${state.sourceIP}:${state.sourcePort}`}</td>
               <td>{`${state.destinationIP}:${state.destinationPort}`}</td>
-              <td>{state.state}</td>
+              <td>{`${state.sourceState}:${state.destinationState}`}</td>
               <td>{state.age}</td>
               <td>{state.expires}</td>
               <td>{`${state.packetsSent}:${state.packetsReceived}`}</td>
@@ -52,7 +64,8 @@ function PfStates() {
               <td>{state.rule}</td>
               <td>{state.gateway}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

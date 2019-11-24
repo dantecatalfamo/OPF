@@ -8,35 +8,38 @@ import (
 )
 
 type PfState struct {
-	Proto           string `json:"proto"`
-	Age             string `json:"age"`
-	Id              string `json:"id"`
-	Expires         string `json:"expires"`
-	State           string `json:"state"`
-	Gateway         string `json:"gateway"`
-	SourceIP        string `json:"sourceIP"`
-	DestinationIP   string `json:"destinationIP"`
-	SourcePort      int    `json:"sourcePort"`
-	DestinationPort int    `json:"destinationPort"`
-	PacketsSent     int    `json:"packetsSent"`
-	PacketsReceived int    `json:"packetsReceived"`
-	BytesSent       int    `json:"bytesSent"`
-	BytesReceived   int    `json:"bytesReceived"`
-	Rule            int    `json:"rule"`
-	Direction       string `json:"direction"`
+	Proto            string `json:"proto"`
+	Age              string `json:"age"`
+	Id               string `json:"id"`
+	Expires          string `json:"expires"`
+	SourceState      string `json:"sourceState"`
+	DestinationState string `json:"destinationState"`
+	Gateway          string `json:"gateway"`
+	SourceIP         string `json:"sourceIP"`
+	DestinationIP    string `json:"destinationIP"`
+	SourcePort       int    `json:"sourcePort"`
+	DestinationPort  int    `json:"destinationPort"`
+	PacketsSent      int    `json:"packetsSent"`
+	PacketsReceived  int    `json:"packetsReceived"`
+	BytesSent        int    `json:"bytesSent"`
+	BytesReceived    int    `json:"bytesReceived"`
+	Rule             int    `json:"rule"`
+	Direction        string `json:"direction"`
 }
 
 func genPfState(lines []string) (*PfState, error) {
 	pfState := &PfState{}
 	var src string
 	var dst string
+	var srcSt string
+	var dstSt string
 	var dirArrow string
 	var dir string
 	var gw string
 
 	summaryLine := strings.Fields(lines[0])
 	proto := summaryLine[1]
-	state := summaryLine[len(summaryLine)-1]
+	state := strings.Split(summaryLine[len(summaryLine)-1], ":")
 
 	if []rune(summaryLine[3])[0] == '(' {
 		dirArrow = summaryLine[4]
@@ -50,6 +53,8 @@ func genPfState(lines []string) (*PfState, error) {
 		dir = "in"
 		dst = summaryLine[2]
 		src = summaryLine[4]
+		srcSt = state[1]
+		dstSt = state[0]
 	} else {
 		dir = "out"
 		src = summaryLine[2]
@@ -58,6 +63,8 @@ func genPfState(lines []string) (*PfState, error) {
 		} else {
 			dst = summaryLine[5]
 		}
+		srcSt = state[0]
+		dstSt = state[1]
 	}
 
 	dstIp, dstPort, err := splitIp(dst)
@@ -131,7 +138,8 @@ func genPfState(lines []string) (*PfState, error) {
 	pfState.DestinationPort = dstPort
 	pfState.SourceIP = srcIp
 	pfState.SourcePort = srcPort
-	pfState.State = state
+	pfState.DestinationState = dstSt
+	pfState.SourceState = srcSt
 	pfState.Age = age
 	pfState.Expires = expires
 	pfState.PacketsSent = pktSent
