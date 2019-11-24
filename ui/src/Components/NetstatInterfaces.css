@@ -1,0 +1,9 @@
+.netstatinterfaces table {
+  font-size: small;
+  font-family: monospace;
+  text-align: left;
+}
+
+.netstatinterfaces th {
+  min-width: 90px;
+}

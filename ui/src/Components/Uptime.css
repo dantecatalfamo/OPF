@@ -1,0 +1,10 @@
+.uptime {
+  display: inline-block;
+  font-family: monospace;
+  font-size: small;
+}
+
+.uptime-avg {
+  display: inline-block;
+  margin: 0 2px;
+}
