@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './RC.css';
 
 const rcAllURL = "http://192.168.0.11:8001/api/rc-all";
 const rcOnURL = "http://192.168.0.11:8001/api/rc-on";
 const rcStartedURL = "http://192.168.0.11:8001/api/rc-started";
-
-async function getJSON(url) {
-  const response = await fetch(url);
-  return await response.json();
-}
 
 function RC() {
   const [rcAll, setRcAll] = useState([]);
@@ -27,7 +23,7 @@ function RC() {
         <thead>
           <tr>
             <th>Service</th>
-            <th>On</th>
+            <th>Enabled</th>
             <th>Started</th>
           </tr>
         </thead>
