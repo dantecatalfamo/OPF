@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './PfInterfaces.css';
 
-async function getStates() {
-  const url = "http://192.168.0.11:8001/api/pf-interfaces";
-  const response = await fetch(url);
-  return await response.json();
-}
+const pfInterfacesURL = "http://192.168.0.11:8001/api/pf-interfaces";
+const updateTime = 2000;
 
 function PfStates() {
-  const [states, setStates] = useState([]);
+  const [interfaces, setInterfaces] = useState([]);
 
   useEffect(() => {
-    getStates().then(res => {
-      setStates(res);
-    });
+    getJSON(pfInterfacesURL).then(res => setInterfaces(res));
     const interval = setInterval(() => {
-      getStates().then(res => {
-        setStates(res);
-      });
-    }, 2000);
+      getJSON(pfInterfacesURL).then(res => setInterfaces(res));
+    }, updateTime);
 
     return () => {
       clearInterval(interval);
@@ -44,7 +38,7 @@ function PfStates() {
           </tr>
         </thead>
         <tbody>
-          {states.map(iface => (
+          {interfaces.map(iface => (
             <tr key={iface.interface}>
               <td className="left">{iface.interface}</td>
               <td className="left">{iface.cleared}</td>

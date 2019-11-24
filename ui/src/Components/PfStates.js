@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './PfStates.css';
 
-async function getStates() {
-  const url = "http://192.168.0.11:8001/api/pf-states";
-  const response = await fetch(url);
-  return await response.json();
-}
+const pfStatesURL = "http://192.168.0.11:8001/api/pf-states";
+const updateTime = 2000;
 
 function PfStates() {
   const [states, setStates] = useState([]);
 
   useEffect(() => {
-    getStates().then(res => {
-      setStates(res);
-    });
+    getJSON(pfStatesURL).then(res => setStates(res));
     const interval = setInterval(() => {
-      getStates().then(res => {
-        setStates(res);
-      });
-    }, 2000);
+      getJSON(pfStatesURL).then(res => setStates(res));
+    }, updateTime);
 
     return () => {
       clearInterval(interval);

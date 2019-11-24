@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './NetstatInterfaces.css';
 
-async function getStates() {
-  const url = "http://192.168.0.11:8001/api/netstat-interfaces";
-  const response = await fetch(url);
-  return await response.json();
-}
+const nsInterfacesURL = "http://192.168.0.11:8001/api/netstat-interfaces";
+const updateTime = 2000;
 
 function NetstatInterfaces() {
-  const [states, setStates] = useState([]);
+  const [interfaces, setInterfaces] = useState([]);
 
   useEffect(() => {
-    getStates().then(res => {
-      setStates(res);
-    });
+    getJSON(nsInterfacesURL).then(res => setInterfaces(res));
     const interval = setInterval(() => {
-      getStates().then(res => {
-        setStates(res);
-      });
-    }, 2000);
+      getJSON(nsInterfacesURL).then(res => setInterfaces(res));
+    }, updateTime);
 
     return () => {
       clearInterval(interval);
@@ -42,7 +36,7 @@ function NetstatInterfaces() {
           </tr>
         </thead>
         <tbody>
-          {states.map((iface, idx) => (
+          {interfaces.map((iface, idx) => (
             <tr key={idx}>
               <td>{iface.name}</td>
               <td>{iface.mtu}</td>

@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './Uptime.css';
 
-async function getUptime() {
-  const url = "http://192.168.0.11:8001/api/uptime";
-  const response = await fetch(url);
-  return await response.json();
-}
+const uptimeURL = "http://192.168.0.11:8001/api/uptime";
+const updateTime = 5000;
 
 function Uptime() {
   const [uptime, setUptime] = useState({loadAvg: []});
 
   useEffect(() => {
-    getUptime().then(res => {
-      setUptime(res);
-    });
+    getJSON(uptimeURL).then(res => setUptime(res));
     const interval = setInterval(() => {
-      getUptime().then(res => {
-        setUptime(res);
-      });
-    }, 5000);
+      getJSON(uptimeURL).then(res => setUptime(res));
+    }, updateTime);
 
     return () => {
       clearInterval(interval);

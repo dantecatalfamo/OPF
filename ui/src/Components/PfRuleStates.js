@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { getJSON } from '../helpers.js';
 import './PfRuleStates.css';
 
-async function getRuleStates() {
-  const url = "http://192.168.0.11:8001/api/pf-rule-states";
-  const response = await fetch(url);
-  return await response.json();
+const pfRuleStatesURL = "http://192.168.0.11:8001/api/pf-rule-states";
+const updateTime = 2000;
 
-}
 
 function PfRuleStates() {
   const [rulestates, setRulestates] = useState([]);
 
   useEffect(() => {
-    getRuleStates().then(res => {
-      setRulestates(res);
-    });
+    getJSON(pfRuleStatesURL).then(res => setRulestates(res));
     const interval = setInterval(() => {
-      getRuleStates().then(res => {
-        setRulestates(res);
-      });
-    }, 2000);
+      getJSON(pfRuleStatesURL).then(res => setRulestates(res));
+    }, updateTime);
 
     return () => {
       clearInterval(interval);
