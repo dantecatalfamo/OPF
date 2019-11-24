@@ -103,7 +103,7 @@ func genPfState(lines []string) (*PfState, error) {
 		return nil, err
 	}
 
-	bytesRecv, err := strconv.Atoi(bytes[0])
+	bytesRecv, err := strconv.Atoi(bytes[1])
 	if err != nil {
 		return nil, err
 	}
