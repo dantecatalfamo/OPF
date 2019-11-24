@@ -115,9 +115,14 @@ func genPfState(lines []string) (*PfState, error) {
 		return nil, err
 	}
 
-	rule, err := strconv.Atoi(details[10])
-	if err != nil {
-		return nil, err
+	var rule int
+	if len(details) == 9 {
+		rule = -1
+	} else {
+		rule, err = strconv.Atoi(details[10])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var idLine string
