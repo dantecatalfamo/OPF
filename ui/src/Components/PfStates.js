@@ -50,7 +50,7 @@ function PfStates() {
               bg = "#ffecec";
             }
             if (state.rule === -1) {
-              rule = "";
+              rule = "*";
             } else {
               rule = state.rule;
             }
