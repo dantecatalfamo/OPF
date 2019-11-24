@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Switch, Link, Route } from 'react-router-dom';
 import PfStates from './PfStates';
 import PfRuleStates from './PfRuleStates';
+import PfInterfaces from './PfInterfaces';
 import './App.css';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Link to="/">Home</Link>
         <Link to="/states">States</Link>
         <Link to="/rules">Rules</Link>
+        <Link to="/interfaces">Interfaces</Link>
         <Link to=""/>
         <Switch>
           <Route path="/states">
@@ -18,6 +20,9 @@ function App() {
           </Route>
           <Route path="/rules">
             <PfRuleStates/>
+          </Route>
+          <Route path="/interfaces">
+            <PfInterfaces/>
           </Route>
           <Route path="/">
             <p>

@@ -16,7 +16,7 @@ func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
@@ -32,7 +32,7 @@ func pfRuleStatesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
@@ -63,6 +63,7 @@ func pfInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
