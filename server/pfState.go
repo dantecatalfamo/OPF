@@ -19,9 +19,9 @@ type PfState struct {
 	SourcePort      int    `json:"sourcePort"`
 	DestinationPort int    `json:"destinationPort"`
 	PacketsSent     int    `json:"packetsSent"`
-	PacketsReveived int    `json:"packetsReceived"`
+	PacketsReceived int    `json:"packetsReceived"`
 	BytesSent       int    `json:"bytesSent"`
-	BytesReived     int    `json:"butesReceived"`
+	BytesReceived   int    `json:"bytesReceived"`
 	Rule            int    `json:"rule"`
 	Direction       string `json:"direction"`
 }
@@ -135,9 +135,9 @@ func genPfState(lines []string) (*PfState, error) {
 	pfState.Age = age
 	pfState.Expires = expires
 	pfState.PacketsSent = pktSent
-	pfState.PacketsReveived = pktRecv
+	pfState.PacketsReceived = pktRecv
 	pfState.BytesSent = bytesSent
-	pfState.BytesReived = bytesRecv
+	pfState.BytesReceived = bytesRecv
 	pfState.Rule = rule
 	pfState.Id = id
 
