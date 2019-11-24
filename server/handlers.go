@@ -110,6 +110,7 @@ func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
@@ -125,6 +126,7 @@ func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
@@ -140,6 +142,7 @@ func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }

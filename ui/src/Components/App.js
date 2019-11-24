@@ -5,6 +5,7 @@ import PfRuleStates from './PfRuleStates';
 import PfInterfaces from './PfInterfaces';
 import NetstatInterfaces from './NetstatInterfaces';
 import Uptime from './Uptime';
+import RC from './RC';
 import './App.css';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <li><Link to="/pf-rules">Rules</Link></li>
           <li><Link to="/pf-interfaces">Interfaces</Link></li>
           <li><Link to="netstat-interfaces">Netstat Interfaces</Link></li>
+          <li><Link to="/rc">RC</Link></li>
         </ul>
         <Switch>
           <Route path="/pf-states">
@@ -31,6 +33,9 @@ function App() {
           </Route>
           <Route path="/netstat-interfaces">
             <NetstatInterfaces/>
+          </Route>
+          <Route path="/rc">
+            <RC/>
           </Route>
           <Route path="/">
             <p>
