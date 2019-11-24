@@ -22,8 +22,14 @@ func uptime() (*Uptime, error) {
 	out := string(outBytes)
 	fields := strings.Fields(out)
 	time := fields[0]
-	up := strings.TrimRight(strings.Join(fields[2:5], " "), ",")
-	users, err := strconv.Atoi(fields[5])
+	var upEdge int
+	if strings.Contains(out, "mins") {
+		upEdge = 6
+	} else {
+		upEdge = 5
+	}
+	up := strings.TrimRight(strings.Join(fields[2:upEdge], " "), ",")
+	users, err := strconv.Atoi(fields[upEdge])
 	if err != nil {
 		return nil, err
 	}
