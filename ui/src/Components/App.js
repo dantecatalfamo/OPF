@@ -5,6 +5,7 @@ import PfRuleStates from './PfRuleStates';
 import PfInterfaces from './PfInterfaces';
 import NetstatInterfaces from './NetstatInterfaces';
 import Uptime from './Uptime';
+import Uname from './Uname';
 import RC from './RC';
 import './App.css';
 
@@ -12,6 +13,7 @@ function App() {
   return (
     <Router>
       <div className="App">
+        <Uname/>
         <Uptime/>
         <ul className="App-links">
           <li><Link to="/">Home</Link></li>
