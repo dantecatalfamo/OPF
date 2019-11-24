@@ -1,4 +1,9 @@
 .uname {
-  font-size: small;
   font-family: monospace;
+  font-weight: bold;
+}
+
+.uname > div {
+  display: inline-block;
+  margin: 0 2px;
 }
