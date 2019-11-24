@@ -54,6 +54,9 @@ function PfStates() {
             } else {
               rule = state.rule;
             }
+            if ((state.sourceState + state.destinationState).includes("NO_TRAFFIC")) {
+              fg = "grey";
+            }
             style.backgroundColor = bg;
             style.color = fg;
             return (
