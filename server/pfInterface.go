@@ -15,36 +15,36 @@ type pfInterface struct {
 		Rules  int `json:"rules"`
 	} `json:"references"`
 	In4Pass struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"in4pass"`
 	In4Block struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"in4block"`
 	Out4Pass struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"out4pass"`
 	Out4Block struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"out4block"`
 	In6Pass struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"in6pass"`
 	In6Block struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"in6block"`
 	Out6Pass struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"out6pass"`
 	Out6Block struct {
-		Packets int `json:"states"`
-		Bytes   int `json:"rules"`
+		Packets int `json:"packets"`
+		Bytes   int `json:"bytes"`
 	} `json:"out6block"`
 }
 
