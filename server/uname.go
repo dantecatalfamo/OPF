@@ -6,11 +6,11 @@ import (
 )
 
 type Uname struct {
-	Hardware  string
-	NodeName  string
-	OSRelease string
-	OSName    string
-	OSVersion string
+	Hardware  string `json:"hardware"`
+	NodeName  string `json:"nodeName"`
+	OSRelease string `json:"osRelease"`
+	OSName    string `json:"osName"`
+	OSVersion string `json:"osVersion"`
 }
 
 func uname() (*Uname, error) {
