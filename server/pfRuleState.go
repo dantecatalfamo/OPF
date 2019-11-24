@@ -13,7 +13,7 @@ type PfRuleState struct {
 	Evaluations    int    `json:"evaluations"`
 	Packets        int    `json:"packets"`
 	Bytes          int    `json:"bytes"`
-	States         int    `json:"bytes"`
+	States         int    `json:"states"`
 	StateCreations int    `json:"stateCreations"`
 }
 
