@@ -7,8 +7,8 @@ import (
 )
 
 type vmstatDisk struct {
-	Name string `json:"name"`
-	Transfers int  `json:"transfers"`
+	Name      string `json:"name"`
+	Transfers int    `json:"transfers"`
 }
 
 type Vmstat struct {
@@ -51,8 +51,8 @@ func vmstat() (*Vmstat, error) {
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
 	fields := strings.Fields(lines[2])
-	nDisks := len(fields)-16
-	afterDisks := 10  + nDisks
+	nDisks := len(fields) - 16
+	afterDisks := 10 + nDisks
 
 	procsRunning, err := strconv.Atoi(fields[0])
 	if err != nil {
@@ -92,20 +92,20 @@ func vmstat() (*Vmstat, error) {
 	}
 
 	pageScanned, err := strconv.Atoi(fields[9])
-	if err != nil  {
+	if err != nil {
 		return nil, err
 	}
 
 	titleLine := lines[1]
 	diskNames := strings.Fields(titleLine)[10:afterDisks]
-	diskTransfers := fields[10:10+nDisks]
+	diskTransfers := fields[10 : 10+nDisks]
 	for i, name := range diskNames {
 		transfers, err := strconv.Atoi(diskTransfers[i])
 		if err != nil {
 			return nil, err
 		}
 		disk := vmstatDisk{
-			Name: name,
+			Name:      name,
 			Transfers: transfers,
 		}
 		disks = append(disks, disk)
