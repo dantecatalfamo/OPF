@@ -71,6 +71,13 @@ func main() {
 		fmt.Printf("%v\n", iface)
 	}
 
+	vmst, err := vmstat()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("%v\n", vmst)
+
 	http.HandleFunc("/api/pf-states", pfStatesHandler)
 	http.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
 	http.HandleFunc("/api/pf-info", pfInfoHandler)
