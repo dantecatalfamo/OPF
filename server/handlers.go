@@ -6,6 +6,7 @@ import (
 )
 
 func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	states, err := pfStates()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -16,12 +17,12 @@ func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func pfRuleStatesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	rules, err := pfRuleStates()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -32,12 +33,12 @@ func pfRuleStatesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func pfInfoHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	info, err := pfInfo()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -53,6 +54,7 @@ func pfInfoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func pfInterfacesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	ifaces, err := pfInterfaces()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,12 +65,12 @@ func pfInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func uptimeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	ut, err := uptime()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -79,12 +81,12 @@ func uptimeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func unameHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	un, err := uname()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -95,12 +97,12 @@ func unameHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func rcAllHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	all, err := rcAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -111,12 +113,12 @@ func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func rcOnHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	on, err := rcOn()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,12 +129,12 @@ func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	started, err := rcStarted()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -143,12 +145,12 @@ func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
 
 func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	ifaces, err := netstatInterfaces()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -159,7 +161,22 @@ func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(encoded)
+}
+
+func vmstatHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vmst, err := vmstat()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	encoded, err := json.Marshal(vmst)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
