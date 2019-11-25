@@ -35,7 +35,7 @@ func uptime() (*Uptime, error) {
 	}
 
 	var loadAvg []float64
-	for _, f := range fields[9:] {
+	for _, f := range fields[upEdge+4:] {
 		f = strings.TrimRight(f, ",")
 		load, err := strconv.ParseFloat(f, 64)
 		if err != nil {
