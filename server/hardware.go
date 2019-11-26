@@ -66,7 +66,7 @@ func getHardwareLine(lines []string, key string) hardwareLine {
 }
 
 func hardware() (*Hardware, error) {
-	outBytes, err := exec.Command("sysctl hw").Output()
+	outBytes, err := exec.Command("sysctl", "hw").Output()
 	if err != nil {
 		return nil, err
 	}
