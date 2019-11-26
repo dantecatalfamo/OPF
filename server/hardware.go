@@ -2,8 +2,8 @@ package main
 
 import (
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type HardwareDisk struct {
@@ -12,47 +12,47 @@ type HardwareDisk struct {
 }
 
 type HardwareSensor struct {
-	Path []string `json:"path"`
-	Value string `json:"value"`
+	Path  []string `json:"path"`
+	Value string   `json:"value"`
 }
 
 type hardwareLine struct {
-	Path []string
+	Path  []string
 	Value string
 }
 
 type Hardware struct {
-	Machine string `json:"machine"`
-	Model string `json:"model"`
-	NCPU int `json:"ncpu"`
-	ByteOrder string `json:"byteOrder"`
-	PageSize int `json:"pageSize"`
-	Disks []*HardwareDisk `json:"disks"`
-	DiskCount int `json:"diskCount"`
-	Sensors []*HardwareSensor `json:"sensors"`
-	CPUSpeed int `json:"cpuSpeed"`
-	Vendor string `json:"vendor"`
-	Product string `json:"product"`
-	Version string `json:"version"`
-	UUID string `json:"uuid"`
-	PhysicalMemory int `json:"physMem"`
-	UserMemory int `json:"userMem"`
-	NCPUFound int `json:"ncpuFound"`
-	AllowPowerDown int `json:"allowPowerDown"`
-	SMT int `json:"smt"`
-	NCPUOnline int `json:"ncpuOnline"`
+	Machine        string            `json:"machine"`
+	Model          string            `json:"model"`
+	NCPU           int               `json:"ncpu"`
+	ByteOrder      string            `json:"byteOrder"`
+	PageSize       int               `json:"pageSize"`
+	Disks          []*HardwareDisk   `json:"disks"`
+	DiskCount      int               `json:"diskCount"`
+	Sensors        []*HardwareSensor `json:"sensors"`
+	CPUSpeed       int               `json:"cpuSpeed"`
+	Vendor         string            `json:"vendor"`
+	Product        string            `json:"product"`
+	Version        string            `json:"version"`
+	UUID           string            `json:"uuid"`
+	PhysicalMemory int               `json:"physMem"`
+	UserMemory     int               `json:"userMem"`
+	NCPUFound      int               `json:"ncpuFound"`
+	AllowPowerDown int               `json:"allowPowerDown"`
+	SMT            int               `json:"smt"`
+	NCPUOnline     int               `json:"ncpuOnline"`
 }
 
-func getHardwareLines(lines []string, key string) ([]hardwareLine) {
+func getHardwareLines(lines []string, key string) []hardwareLine {
 	var out []hardwareLine
-	for  _, line := range lines {
-		lineSplit:= strings.SplitN(line, "=", 1)
+	for _, line := range lines {
+		lineSplit := strings.SplitN(line, "=", 1)
 		path := lineSplit[0]
 		value := lineSplit[1]
 		if strings.Contains(path, key) {
 			split := strings.Split(path, ".")
 			hwl := hardwareLine{
-				Path: split,
+				Path:  split,
 				Value: value,
 			}
 			out = append(out, hwl)
@@ -61,7 +61,7 @@ func getHardwareLines(lines []string, key string) ([]hardwareLine) {
 	return out
 }
 
-func getHardwareLine(lines []string, key string) (hardwareLine) {
+func getHardwareLine(lines []string, key string) hardwareLine {
 	return getHardwareLines(lines, key)[0]
 }
 
@@ -72,7 +72,7 @@ func hardware() (*Hardware, error) {
 	}
 
 	out := string(outBytes)
-	lines :=  strings.Split(out, "\n")
+	lines := strings.Split(out, "\n")
 
 	machine := getHardwareLine(lines, "hw.machine").Value
 	model := getHardwareLine(lines, "hw.model").Value
@@ -149,9 +149,9 @@ func hardware() (*Hardware, error) {
 		return nil, err
 	}
 
-	smtStr :=  getHardwareLine(lines, "hw.smt").Value
+	smtStr := getHardwareLine(lines, "hw.smt").Value
 	smt, err := strconv.Atoi(smtStr)
-	if  err != nil {
+	if err != nil {
 		return nil, err
 	}
 
