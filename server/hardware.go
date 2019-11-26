@@ -34,6 +34,7 @@ type Hardware struct {
 	Vendor         string            `json:"vendor"`
 	Product        string            `json:"product"`
 	Version        string            `json:"version"`
+	SerialNumber   string            `json:"serialNumber"`
 	UUID           string            `json:"uuid"`
 	PhysicalMemory int               `json:"physMem"`
 	UserMemory     int               `json:"userMem"`
@@ -62,7 +63,11 @@ func getHardwareLines(lines []string, key string) []hardwareLine {
 }
 
 func getHardwareLine(lines []string, key string) hardwareLine {
-	return getHardwareLines(lines, key)[0]
+	hwl := getHardwareLines(lines, key)
+	if len(hwl) < 1 {
+		return hardwareLine{}
+	}
+	return hwl[0]
 }
 
 func hardware() (*Hardware, error) {
@@ -125,6 +130,7 @@ func hardware() (*Hardware, error) {
 	vendor := getHardwareLine(lines, "hw.vendor").Value
 	product := getHardwareLine(lines, "hw.product").Value
 	version := getHardwareLine(lines, "hw.version").Value
+	serialNumber := getHardwareLine(lines, "hw.serialno").Value
 	uuid := getHardwareLine(lines, "hw.uuid").Value
 	physMemStr := getHardwareLine(lines, "hw.physmem").Value
 	physMem, err := strconv.Atoi(physMemStr)
@@ -176,6 +182,7 @@ func hardware() (*Hardware, error) {
 	hw.Vendor = vendor
 	hw.Product = product
 	hw.Version = version
+	hw.SerialNumber = serialNumber
 	hw.UUID = uuid
 	hw.PhysicalMemory = physMem
 	hw.UserMemory = userMem
