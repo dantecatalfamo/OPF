@@ -94,6 +94,12 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("%v\n", hw)
+	for _, disk := range hw.Disks {
+		fmt.Printf("%v\n", disk)
+	}
+	for _, sens := range hw.Sensors {
+		fmt.Printf("%v\n", sens)
+	}
 
 	http.HandleFunc("/api/pf-states", pfStatesHandler)
 	http.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
