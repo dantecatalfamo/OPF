@@ -46,7 +46,7 @@ type Hardware struct {
 func getHardwareLines(lines []string, key string) []hardwareLine {
 	var out []hardwareLine
 	for _, line := range lines {
-		lineSplit := strings.SplitN(line, "=", 1)
+		lineSplit := strings.SplitN(line, "=", 2)
 		path := lineSplit[0]
 		value := lineSplit[1]
 		if strings.Contains(path, key) {
@@ -73,6 +73,7 @@ func hardware() (*Hardware, error) {
 
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
+	lines = lines[:len(lines)-1]
 
 	machine := getHardwareLine(lines, "hw.machine").Value
 	model := getHardwareLine(lines, "hw.model").Value
