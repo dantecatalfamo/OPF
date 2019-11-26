@@ -28,7 +28,6 @@ type PfState struct {
 }
 
 func genPfState(lines []string) (*PfState, error) {
-	pfState := &PfState{}
 	var src string
 	var dst string
 	var srcSt string
@@ -135,6 +134,8 @@ func genPfState(lines []string) (*PfState, error) {
 
 	idFields := strings.Fields(idLine)
 	id := idFields[1]
+
+	pfState := &PfState{}
 
 	pfState.Proto = proto
 	pfState.Direction = dir
