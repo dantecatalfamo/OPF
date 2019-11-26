@@ -112,7 +112,7 @@ func main() {
 	http.HandleFunc("/api/uptime", uptimeHandler)
 	http.HandleFunc("/api/uname", unameHandler)
 	http.HandleFunc("/api/vmstat", vmstatHandler)
-	http.HandleFunc("/api/df", diskUsageHandler)
+	http.HandleFunc("/api/disk-usage", diskUsageHandler)
 	http.HandleFunc("/api/hardware", hardwareHandler)
 
 	http.ListenAndServe(":8001", nil)
