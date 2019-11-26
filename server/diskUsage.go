@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type dfFilesystem struct {
+type DiskUsageFilesystem struct {
 	Filesystem string `json:"filesystem`
 	Blocks int `json:"block"`
 	Used int `json:"used"`
@@ -15,12 +15,12 @@ type dfFilesystem struct {
 	MountPoint string `json:"mountPoint"`
 }
 
-type Df struct {
+type DiskUsage struct {
 	BlockSize int `json:"blockSize"`
-	Filesystems []*dfFilesystem `json:"filesystems"`
+	Filesystems []*DiskUsageFilesystem `json:"filesystems"`
 }
 
-func genDfLine(line string) (*dfFilesystem, error) {
+func genDiskUsageLine(line string) (*DiskUsageFilesystem, error) {
 	fields := strings.Fields(line)
 	filesystem := fields[0]
 	blocks, err := strconv.Atoi(fields[1])
@@ -46,7 +46,7 @@ func genDfLine(line string) (*dfFilesystem, error) {
 
 	mountPoint := fields[5]
 
-	fs := &dfFilesystem{}
+	fs := &DiskUsageFilesystem{}
 
 	fs.Filesystem = filesystem
 	fs.Blocks = blocks
@@ -58,7 +58,7 @@ func genDfLine(line string) (*dfFilesystem, error) {
 	return fs, nil
 }
 
-func df() (*Df, error) {
+func diskUsage() (*DiskUsage, error) {
 	outBytes, err := exec.Command("df", "-P").Output()
 	if err != nil {
 		return nil, err
@@ -73,20 +73,20 @@ func df() (*Df, error) {
 		return nil, err
 	}
 
-	var filesystems []*dfFilesystem
+	var filesystems []*DiskUsageFilesystem
 	fsLines := lines[1:len(lines)-1]
 	for _, line := range fsLines {
-		fs, err := genDfLine(line)
+		fs, err := genDiskUsageLine(line)
 		if err != nil {
 			return nil, err
 		}
 		filesystems = append(filesystems, fs)
 	}
 
-	dfs := &Df{}
+	df := &DiskUsage{}
 
-	dfs.BlockSize = blockSize
-	dfs.Filesystems = filesystems
+	df.BlockSize = blockSize
+	df.Filesystems = filesystems
 
-	return dfs, nil
+	return df, nil
 }

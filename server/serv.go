@@ -78,13 +78,13 @@ func main() {
 	}
 	fmt.Printf("%v\n", vmst)
 
-	dfs, err := df()
+	df, err := diskUsage()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Printf("%v\n", dfs)
-	for _, fs := range dfs.Filesystems {
+	fmt.Printf("%v\n", df)
+	for _, fs := range df.Filesystems {
 		fmt.Printf("%v\n", fs)
 	}
 
@@ -112,7 +112,7 @@ func main() {
 	http.HandleFunc("/api/uptime", uptimeHandler)
 	http.HandleFunc("/api/uname", unameHandler)
 	http.HandleFunc("/api/vmstat", vmstatHandler)
-	http.HandleFunc("/api/df", dfHandler)
+	http.HandleFunc("/api/df", diskUsageHandler)
 	http.HandleFunc("/api/hardware", hardwareHandler)
 
 	http.ListenAndServe(":8001", nil)

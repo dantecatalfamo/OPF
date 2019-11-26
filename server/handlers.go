@@ -181,9 +181,9 @@ func vmstatHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func dfHandler(w http.ResponseWriter, r *http.Request) {
+func diskUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	dfs, err := df()
+	dfs, err := diskUsage()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
