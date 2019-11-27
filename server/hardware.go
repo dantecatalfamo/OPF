@@ -25,7 +25,7 @@ type Hardware struct {
 	Machine        string            `json:"machine"`
 	Model          string            `json:"model"`
 	NCPU           int               `json:"ncpu"`
-	ByteOrder      string            `json:"byteOrder"`
+	ByteOrder      int            `json:"byteOrder"`
 	PageSize       int               `json:"pageSize"`
 	Disks          []*HardwareDisk   `json:"disks"`
 	DiskCount      int               `json:"diskCount"`
@@ -88,7 +88,12 @@ func hardware() (*Hardware, error) {
 		return nil, err
 	}
 
-	byteOrder := getHardwareLine(lines, "hw.byteorder").Value
+	byteOrderStr := getHardwareLine(lines, "hw.byteorder").Value
+	byteOrder, err := strconv.Atoi(byteOrderStr)
+	if err != nil {
+		return nil, err
+	}
+
 	pageSize, err := strconv.Atoi(getHardwareLine(lines, "hw.pagesize").Value)
 	if err != nil {
 		return nil, err
