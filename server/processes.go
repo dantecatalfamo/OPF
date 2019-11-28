@@ -21,7 +21,7 @@ type Process struct {
 	WaitChannel       string   `json:"waitChannel"`
 	Elapsed           struct {
 		Days int    `json:"days"`
-		Time string `json:"time"`
+		Time string `json:"hours"`
 	} `json:"elapsed"`
 	Started  string `json:"started"`
 	Time     string `json:"time"`
