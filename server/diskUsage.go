@@ -7,7 +7,7 @@ import (
 )
 
 type DiskUsageFilesystem struct {
-	Filesystem string `json:"filesystem`
+	Filesystem string `json:"filesystem"`
 	Blocks int `json:"block"`
 	Used int `json:"used"`
 	Available int `json:"available"`

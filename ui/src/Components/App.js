@@ -7,6 +7,7 @@ import NetstatInterfaces from './NetstatInterfaces';
 import Uptime from './Uptime';
 import Uname from './Uname';
 import Processes from './Processes';
+import DiskUsage from './DiskUsage';
 import RC from './RC';
 import './App.css';
 
@@ -24,6 +25,7 @@ function App() {
           <li><Link to="netstat-interfaces">Netstat Interfaces</Link></li>
           <li><Link to="/rc">RC</Link></li>
           <li><Link to="/processes">Processes</Link></li>
+          <li><Link to="/disk-usage">Disk Usage</Link></li>
         </ul>
         <Switch>
           <Route path="/pf-states">
@@ -43,6 +45,9 @@ function App() {
           </Route>
           <Route path="/processes">
             <Processes/>
+          </Route>
+          <Route path="/disk-usage">
+            <DiskUsage/>
           </Route>
           <Route path="/">
             <p>
