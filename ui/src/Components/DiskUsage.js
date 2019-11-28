@@ -4,7 +4,7 @@ import { serverURL } from '../config.js';
 import './DiskUsage.css';
 
 const diskUsageURL = `${serverURL}/api/disk-usage`;
-const updateTime = 5000;
+const updateTime = 3000;
 
 
 function DiskUsage (props) {
@@ -22,7 +22,6 @@ function DiskUsage (props) {
   }, []);
 
   let diskUsageRows;
-
 
   if (diskUsage) {
     diskUsageRows = diskUsage.filesystems.map((fs, idx) => (
