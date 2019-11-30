@@ -25,7 +25,7 @@ function Hardware() {
   }
 
   let sensors = hardware.sensors.map(sensor => (
-    <tr>
+    <tr key={sensor.path.toString()}>
       <th>Sensor &gt;</th>
       <td>{sensor.path.join(" > ") + ": " + sensor.value}</td>
     </tr>
@@ -33,7 +33,7 @@ function Hardware() {
 
 
   let disks = hardware.disks.map(disk => (
-    <tr>
+    <tr key={disk.name}>
       <th>Disk &gt;</th>
       <td>{disk.name} [{disk.duid}]</td>
     </tr>
