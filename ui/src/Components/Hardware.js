@@ -21,7 +21,7 @@ function Hardware() {
   }, []);
 
   if (!hardware) {
-    return "oof";
+    return "";
   }
 
   let sensors = hardware.sensors.map(sensor => (
