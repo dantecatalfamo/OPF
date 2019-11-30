@@ -7,17 +7,17 @@ import (
 )
 
 type SwapDevice struct {
-	Device string `json:"device"`
-	Blocks int `json:"blocks"`
-	Used int `json:"used"`
-	Available int `json:"available"`
-	Capacity int `json:"capacity"`
-	Priority int `json:"priority"`
+	Device    string `json:"device"`
+	Blocks    int    `json:"blocks"`
+	Used      int    `json:"used"`
+	Available int    `json:"available"`
+	Capacity  int    `json:"capacity"`
+	Priority  int    `json:"priority"`
 }
 
 type SwapUsage struct {
-	BlockSize int `json:"blockSize"`
-	Devices []*SwapDevice `json:"devices"`
+	BlockSize int           `json:"blockSize"`
+	Devices   []*SwapDevice `json:"devices"`
 }
 
 func genSwapDevice(line string) (*SwapDevice, error) {
