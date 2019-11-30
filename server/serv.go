@@ -110,6 +110,16 @@ func main() {
 		fmt.Printf("%v\n", proc)
 	}
 
+	swap, err := swapUsage()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("%v\n", swap)
+	for _, swapDev := range swap.Devices {
+		fmt.Printf("%v\n", swapDev)
+	}
+
 	http.HandleFunc("/api/pf-states", pfStatesHandler)
 	http.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
 	http.HandleFunc("/api/pf-info", pfInfoHandler)
@@ -124,6 +134,7 @@ func main() {
 	http.HandleFunc("/api/disk-usage", diskUsageHandler)
 	http.HandleFunc("/api/hardware", hardwareHandler)
 	http.HandleFunc("/api/processes", processesHandler)
+	http.HandleFunc("/api/swap", swapUsageHandler)
 
 	http.ListenAndServe(":8001", nil)
 }
