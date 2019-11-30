@@ -9,7 +9,7 @@ import Uname from './Uname';
 import Processes from './Processes';
 import DiskUsage from './DiskUsage';
 import Hardware from './Hardware';
-import SwapUsage from './Swap';
+import SwapUsage from './SwapUsage';
 import RC from './RC';
 import './App.css';
 

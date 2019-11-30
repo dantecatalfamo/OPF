@@ -134,7 +134,7 @@ func main() {
 	http.HandleFunc("/api/disk-usage", diskUsageHandler)
 	http.HandleFunc("/api/hardware", hardwareHandler)
 	http.HandleFunc("/api/processes", processesHandler)
-	http.HandleFunc("/api/swap", swapUsageHandler)
+	http.HandleFunc("/api/swap-usage", swapUsageHandler)
 
 	http.ListenAndServe(":8001", nil)
 }
