@@ -8,6 +8,7 @@ import Uptime from './Uptime';
 import Uname from './Uname';
 import Processes from './Processes';
 import DiskUsage from './DiskUsage';
+import Hardware from './Hardware';
 import RC from './RC';
 import './App.css';
 
@@ -26,6 +27,7 @@ function App() {
           <li><Link to="/rc">RC</Link></li>
           <li><Link to="/processes">Processes</Link></li>
           <li><Link to="/disk-usage">Disk Usage</Link></li>
+          <li><Link to="/hardware">Hardware</Link></li>
         </ul>
         <Switch>
           <Route path="/pf-states">
@@ -48,6 +50,9 @@ function App() {
           </Route>
           <Route path="/disk-usage">
             <DiskUsage/>
+          </Route>
+          <Route path="/hardware">
+            <Hardware/>
           </Route>
           <Route path="/">
             <p>

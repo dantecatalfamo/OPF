@@ -1,0 +1,12 @@
+.hardware {
+  font-family: monospace;
+  font-size: small;
+}
+
+.hardware th {
+  text-align: right;
+}
+
+.hardware td {
+  text-align: left;
+}
