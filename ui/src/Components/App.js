@@ -9,6 +9,7 @@ import Uname from './Uname';
 import Processes from './Processes';
 import DiskUsage from './DiskUsage';
 import Hardware from './Hardware';
+import SwapUsage from './Swap';
 import RC from './RC';
 import './App.css';
 
@@ -28,6 +29,7 @@ function App() {
           <li><Link to="/processes">Processes</Link></li>
           <li><Link to="/disk-usage">Disk Usage</Link></li>
           <li><Link to="/hardware">Hardware</Link></li>
+          <li><Link to="/swap-usage">Swap usage</Link></li>
         </ul>
         <Switch>
           <Route path="/pf-states">
@@ -53,6 +55,9 @@ function App() {
           </Route>
           <Route path="/hardware">
             <Hardware/>
+          </Route>
+          <Route path="/swap-usage">
+            <SwapUsage/>
           </Route>
           <Route path="/">
             <p>
