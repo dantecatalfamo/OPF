@@ -106,7 +106,7 @@ function Hardware() {
             <td>{hardware.allowPowerDown === 1 ? "Yes" : "No"}</td>
           </tr>
           <tr>
-            <th>SMT</th>
+            <th>Simultaneous multithreading</th>
             <td>{hardware.smt === 1 ? "Enabled" : "Disabled"}</td>
           </tr>
           <tr>
