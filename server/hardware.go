@@ -70,7 +70,7 @@ func getHardwareLine(lines []string, key string) hardwareLine {
 	return hwl[0]
 }
 
-func hardware() (*Hardware, error) {
+func GetHardware() (*Hardware, error) {
 	outBytes, err := exec.Command("sysctl", "hw").Output()
 	if err != nil {
 		return nil, err

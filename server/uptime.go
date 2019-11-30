@@ -13,7 +13,7 @@ type Uptime struct {
 	LoadAvg []float64 `json:"loadAvg"`
 }
 
-func uptime() (*Uptime, error) {
+func GetUptime() (*Uptime, error) {
 	outBytes, err := exec.Command("uptime").Output()
 	if err != nil {
 		return nil, err

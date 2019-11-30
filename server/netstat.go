@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type netstatInterface struct {
+type NetstatInterface struct {
 	Name       string `json:"name"`
 	Mtu        int    `json:"mtu"`
 	Network    string `json:"network"`
@@ -19,7 +19,7 @@ type netstatInterface struct {
 	Colls      int    `json:"colls"`
 }
 
-func genNetstatInterface(line string) (*netstatInterface, error) {
+func genNetstatInterface(line string) (*NetstatInterface, error) {
 	fields := strings.Fields(line)
 	name := fields[0]
 	mtu, err := strconv.Atoi(fields[1])
@@ -76,7 +76,7 @@ func genNetstatInterface(line string) (*netstatInterface, error) {
 		return nil, err
 	}
 
-	nif := &netstatInterface{}
+	nif := &NetstatInterface{}
 
 	nif.Name = name
 	nif.Mtu = mtu
@@ -91,7 +91,7 @@ func genNetstatInterface(line string) (*netstatInterface, error) {
 	return nif, nil
 }
 
-func netstatInterfaces() ([]*netstatInterface, error) {
+func GetNetstatInterfaces() ([]*NetstatInterface, error) {
 	outBytes, err := exec.Command("netstat", "-i", "-n").Output()
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func netstatInterfaces() ([]*netstatInterface, error) {
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
 
-	var interfaces []*netstatInterface
+	var interfaces []*NetstatInterface
 
 	for _, line := range lines[1:] {
 		if line == "" {

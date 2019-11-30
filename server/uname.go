@@ -13,7 +13,7 @@ type Uname struct {
 	OSVersion string `json:"osVersion"`
 }
 
-func uname() (*Uname, error) {
+func GetUname() (*Uname, error) {
 	outBytes, err := exec.Command("uname", "-a").Output()
 	if err != nil {
 		return nil, err

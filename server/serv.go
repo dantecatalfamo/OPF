@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	states, err := pfStates()
+	states, err := GetPfStates()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -16,7 +16,7 @@ func main() {
 		fmt.Printf("%v\n", s)
 	}
 
-	rules, err := pfRuleStates()
+	rules, err := GetPfRuleStates()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -25,14 +25,14 @@ func main() {
 		fmt.Printf("%v\n", r)
 	}
 
-	info, err := pfInfo()
+	info, err := GetPfInfo()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(info)
 
-	ifaces, err := pfInterfaces()
+	ifaces, err := GetPfInterfaces()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -41,28 +41,28 @@ func main() {
 		fmt.Printf("%v\n", i)
 	}
 
-	ut, err := uptime()
+	ut, err := GetUptime()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(ut)
 
-	un, err := uname()
+	un, err := GetUname()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(un)
 
-	rcall, err := rcAll()
+	rcall, err := GetRcAll()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(rcall)
 
-	nsifaces, err := netstatInterfaces()
+	nsifaces, err := GetNetstatInterfaces()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -71,14 +71,14 @@ func main() {
 		fmt.Printf("%v\n", iface)
 	}
 
-	vmst, err := vmstat()
+	vmst, err := GetVmstat()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	fmt.Printf("%v\n", vmst)
 
-	df, err := diskUsage()
+	df, err := GetDiskUsage()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -88,7 +88,7 @@ func main() {
 		fmt.Printf("%v\n", fs)
 	}
 
-	hw, err := hardware()
+	hw, err := GetHardware()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -101,7 +101,7 @@ func main() {
 		fmt.Printf("%v\n", sens)
 	}
 
-	procs, err := processes()
+	procs, err := GetProcesses()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -110,7 +110,7 @@ func main() {
 		fmt.Printf("%v\n", proc)
 	}
 
-	swap, err := swapUsage()
+	swap, err := GetSwapUsage()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

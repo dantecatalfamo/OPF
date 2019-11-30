@@ -68,7 +68,7 @@ func genPfRuleState(lines []string) (*PfRuleState, error) {
 	return pfRuleState, nil
 }
 
-func pfRuleStates() ([]*PfRuleState, error) {
+func GetPfRuleStates() ([]*PfRuleState, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "rules").Output()
 	if err != nil {
 		return nil, err

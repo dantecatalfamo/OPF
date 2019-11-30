@@ -65,7 +65,7 @@ func genSwapDevice(line string) (*SwapDevice, error) {
 	return swapdev, nil
 }
 
-func swapUsage() (*SwapUsage, error) {
+func GetSwapUsage() (*SwapUsage, error) {
 	outBytes, err := exec.Command("swapctl", "-l").Output()
 	if err != nil {
 		return nil, err

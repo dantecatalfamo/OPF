@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type pfInterface struct {
+type PfInterface struct {
 	Interface  string `json:"interface"`
 	Cleared    string `json:"cleared"`
 	References struct {
@@ -61,7 +61,7 @@ func pfInterfaceLine(line string) (int, int, error) {
 	return int1, int2, nil
 }
 
-func genPfInterface(lines []string) (*pfInterface, error) {
+func genPfInterface(lines []string) (*PfInterface, error) {
 	ifLine := lines[0]
 	iface := strings.TrimSpace(ifLine)
 
@@ -113,7 +113,7 @@ func genPfInterface(lines []string) (*pfInterface, error) {
 		return nil, err
 	}
 
-	pfInterface := &pfInterface{}
+	pfInterface := &PfInterface{}
 
 	pfInterface.Interface = iface
 	pfInterface.Cleared = cleared
@@ -139,13 +139,13 @@ func genPfInterface(lines []string) (*pfInterface, error) {
 	return pfInterface, nil
 }
 
-func pfInterfaces() ([]*pfInterface, error) {
+func GetPfInterfaces() ([]*PfInterface, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "Interface").Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var interfaces []*pfInterface
+	var interfaces []*PfInterface
 
 	outString := string(outBytes)
 	outLines := strings.Split(outString, "\n")

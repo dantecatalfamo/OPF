@@ -7,7 +7,7 @@ import (
 
 func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	states, err := pfStates()
+	states, err := GetPfStates()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -23,7 +23,7 @@ func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
 
 func pfRuleStatesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	rules, err := pfRuleStates()
+	rules, err := GetPfRuleStates()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -39,7 +39,7 @@ func pfRuleStatesHandler(w http.ResponseWriter, r *http.Request) {
 
 func pfInfoHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	info, err := pfInfo()
+	info, err := GetPfInfo()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -55,7 +55,7 @@ func pfInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 func pfInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ifaces, err := pfInterfaces()
+	ifaces, err := GetPfInterfaces()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -71,7 +71,7 @@ func pfInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 
 func uptimeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ut, err := uptime()
+	ut, err := GetUptime()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -87,7 +87,7 @@ func uptimeHandler(w http.ResponseWriter, r *http.Request) {
 
 func unameHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	un, err := uname()
+	un, err := GetUname()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -103,7 +103,7 @@ func unameHandler(w http.ResponseWriter, r *http.Request) {
 
 func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	all, err := rcAll()
+	all, err := GetRcAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,7 +119,7 @@ func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 
 func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	on, err := rcOn()
+	on, err := GetRcOn()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -135,7 +135,7 @@ func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 
 func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	started, err := rcStarted()
+	started, err := GetRcStarted()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -151,7 +151,7 @@ func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 
 func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ifaces, err := netstatInterfaces()
+	ifaces, err := GetNetstatInterfaces()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -167,7 +167,7 @@ func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 
 func vmstatHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	vmst, err := vmstat()
+	vmst, err := GetVmstat()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -183,7 +183,7 @@ func vmstatHandler(w http.ResponseWriter, r *http.Request) {
 
 func diskUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	dfs, err := diskUsage()
+	dfs, err := GetDiskUsage()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -199,7 +199,7 @@ func diskUsageHandler(w http.ResponseWriter, r *http.Request) {
 
 func hardwareHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	hw, err := hardware()
+	hw, err := GetHardware()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -215,7 +215,7 @@ func hardwareHandler(w http.ResponseWriter, r *http.Request) {
 
 func processesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	procs, err := processes()
+	procs, err := GetProcesses()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -231,7 +231,7 @@ func processesHandler(w http.ResponseWriter, r *http.Request) {
 
 func swapUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	swap, err := swapUsage()
+	swap, err := GetSwapUsage()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

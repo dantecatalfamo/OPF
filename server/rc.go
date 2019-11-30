@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func rcAll() ([]string, error) {
+func GetRcAll() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "all").Output()
 	if err != nil {
 		return nil, err
@@ -16,7 +16,7 @@ func rcAll() ([]string, error) {
 	return lines[:len(lines)-1], nil
 }
 
-func rcOn() ([]string, error) {
+func GetRcOn() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "on").Output()
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func rcOn() ([]string, error) {
 	return lines[:len(lines)-1], nil
 }
 
-func rcStarted() ([]string, error) {
+func GetRcStarted() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "started").Output()
 	if err != nil {
 		return nil, err

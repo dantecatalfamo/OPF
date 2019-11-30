@@ -58,7 +58,7 @@ func genDiskUsageLine(line string) (*DiskUsageFilesystem, error) {
 	return fs, nil
 }
 
-func diskUsage() (*DiskUsage, error) {
+func GetDiskUsage() (*DiskUsage, error) {
 	outBytes, err := exec.Command("df", "-P").Output()
 	if err != nil {
 		return nil, err

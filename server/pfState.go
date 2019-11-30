@@ -158,7 +158,7 @@ func genPfState(lines []string) (*PfState, error) {
 	return pfState, nil
 }
 
-func pfStates() ([]*PfState, error) {
+func GetPfStates() ([]*PfState, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "states").Output()
 	if err != nil {
 		return nil, err

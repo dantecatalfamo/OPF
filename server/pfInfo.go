@@ -177,7 +177,7 @@ func pfInfoLine(line string) (int, float64, error) {
 	return total, rate, nil
 }
 
-func pfInfo() (*PfInfo, error) {
+func GetPfInfo() (*PfInfo, error) {
 	outBytes, err := exec.Command("pfctl", "-v", "-s", "info").Output()
 	if err != nil {
 		return nil, err

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type vmstatDisk struct {
+type VmstatDisk struct {
 	Name      string `json:"name"`
 	Transfers int    `json:"transfers"`
 }
@@ -28,7 +28,7 @@ type Vmstat struct {
 		Freed    int `json:"freed"`
 		Scanned  int `json:"scanned"`
 	} `json:"page"`
-	Disks []vmstatDisk `json:"disks"`
+	Disks []VmstatDisk `json:"disks"`
 	Traps struct {
 		Interrupts    int `json:"interrupts"`
 		SystemCalls   int `json:"systemCalls"`
@@ -41,13 +41,13 @@ type Vmstat struct {
 	} `json:"cpu"`
 }
 
-func vmstat() (*Vmstat, error) {
+func GetVmstat() (*Vmstat, error) {
 	outBytes, err := exec.Command("vmstat").Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var disks []vmstatDisk
+	var disks []VmstatDisk
 	out := string(outBytes)
 	lines := strings.Split(out, "\n")
 	fields := strings.Fields(lines[2])
@@ -104,7 +104,7 @@ func vmstat() (*Vmstat, error) {
 		if err != nil {
 			return nil, err
 		}
-		disk := vmstatDisk{
+		disk := VmstatDisk{
 			Name:      name,
 			Transfers: transfers,
 		}
