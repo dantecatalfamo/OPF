@@ -2,21 +2,21 @@ package main
 
 import (
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type DiskUsageFilesystem struct {
 	Filesystem string `json:"filesystem"`
-	Blocks int `json:"blocks"`
-	Used int `json:"used"`
-	Available int `json:"available"`
-	Capacity int `json:"capacity"`
+	Blocks     int    `json:"blocks"`
+	Used       int    `json:"used"`
+	Available  int    `json:"available"`
+	Capacity   int    `json:"capacity"`
 	MountPoint string `json:"mountPoint"`
 }
 
 type DiskUsage struct {
-	BlockSize int `json:"blockSize"`
+	BlockSize   int                    `json:"blockSize"`
 	Filesystems []*DiskUsageFilesystem `json:"filesystems"`
 }
 
@@ -41,7 +41,7 @@ func genDiskUsageLine(line string) (*DiskUsageFilesystem, error) {
 	capStr := strings.TrimRight(fields[4], "%")
 	capacity, err := strconv.Atoi(capStr)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	mountPoint := fields[5]
@@ -74,7 +74,7 @@ func diskUsage() (*DiskUsage, error) {
 	}
 
 	var filesystems []*DiskUsageFilesystem
-	fsLines := lines[1:len(lines)-1]
+	fsLines := lines[1 : len(lines)-1]
 	for _, line := range fsLines {
 		fs, err := genDiskUsageLine(line)
 		if err != nil {
