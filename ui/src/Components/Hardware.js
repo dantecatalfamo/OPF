@@ -107,7 +107,7 @@ function Hardware() {
           </tr>
           <tr>
             <th>SMT</th>
-            <td>{hardware.smt === 1 ? "Yes" : "No"}</td>
+            <td>{hardware.smt === 1 ? "Enabled" : "Disabled"}</td>
           </tr>
           <tr>
             <th>Number CPU Found</th>
