@@ -62,7 +62,7 @@ function Processes() {
               <td>{proc.waitChannel}</td>
               <td>{proc.started}</td>
               <td>{proc.time}</td>
-              <rd>{proc.terminal}</rd>
+              <td>{proc.terminal}</td>
               <td>{proc.command}</td>
             </tr>
           );
