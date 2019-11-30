@@ -25,7 +25,7 @@ type Hardware struct {
 	Machine        string            `json:"machine"`
 	Model          string            `json:"model"`
 	NCPU           int               `json:"ncpu"`
-	ByteOrder      int            `json:"byteOrder"`
+	ByteOrder      int               `json:"byteOrder"`
 	PageSize       int               `json:"pageSize"`
 	Disks          []*HardwareDisk   `json:"disks"`
 	DiskCount      int               `json:"diskCount"`
