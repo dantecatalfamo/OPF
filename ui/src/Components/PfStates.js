@@ -110,6 +110,7 @@ function PfStates() {
         { text: "CLOSING", value: "CLOSING" },
       ],
       onFilter: (value, record) => record.sourceState === value,
+      render: state => (<Text code>{state}</Text>)
     },
     {
       title: "Destination State",
@@ -127,6 +128,7 @@ function PfStates() {
         { text: "CLOSING", value: "CLOSING" },
       ],
       onFilter: (value, record) => record.destinationState === value,
+      render: state => (<Text code>{state}</Text>)
     },
     {
       title: "Packets",
