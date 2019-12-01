@@ -145,7 +145,7 @@ function PfStates() {
     },
     {
       title: "Packets",
-      dataIndex: "packetsSent",
+      dataIndex: "packetsTotal",
       render: pkts => (<Text code>{pkts}</Text>)
     },
     {
@@ -177,6 +177,10 @@ function PfStates() {
                   {gateway}
                   <strong>  Expires</strong>
                   <Text code>{row.expires}</Text>
+                  <strong>  Packets Sent</strong>
+                  <Text code>{row.packetsSent}</Text>
+                  <strong>  Packets Received</strong>
+                  <Text code>{row.packetsReceived}</Text>
                   <strong>  Bytes Sent</strong>
                   <Text code>{row.bytesSent}</Text>
                   <strong>  Bytes Received</strong>
