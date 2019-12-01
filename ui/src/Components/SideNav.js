@@ -35,6 +35,12 @@ function SideNav(props) {
             </span>
           }
         >
+          <Menu.Item key="/firewall-info">
+            <Link to="/firewall-info">
+              <Icon type="info-circle"/>
+              <span>Info</span>
+            </Link>
+          </Menu.Item>
           <Menu.Item key="/firewall-states">
             <Link to="/firewall-states">
               <Icon type="swap"/>
