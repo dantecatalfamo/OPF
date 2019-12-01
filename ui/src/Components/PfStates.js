@@ -89,7 +89,10 @@ function PfStates() {
             pagination={false}
             size="small"
             rowKey="id"
-            expandedRowRender={row => <p style={{margin: 0}}>Gateway: {row.gateway}</p>}
+            expandedRowRender={row => {
+              const gateway = row.gateway ? (<span><strong>Gateway: </strong><Text code>{row.gateway}</Text></span>) : "";
+              return (<p style={{margin: 0}}>{gateway}</p>);
+            }}
             scroll={{y: "85vh"}}
           />);
 
