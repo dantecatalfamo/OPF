@@ -150,6 +150,7 @@ function PfStates() {
             pagination
             size="small"
             rowKey="id"
+            scroll={{x: true}}
             expandedRowRender={row => {
               const gateway = row.gateway
                     ? (<span><strong>Gateway: </strong><Text code>{row.gateway}</Text></span>)
