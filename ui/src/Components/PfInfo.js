@@ -29,7 +29,7 @@ function PfInfo(props) {
 
   return (
     <div>
-      <Descriptions column={4} bordered>
+      <Descriptions column={{xl: 4, lg: 2, md: 2, sm: 1, xs: 1}} bordered>
         <Item label="Status" span={2}>
           <Badge status={pfInfo.status === "Enabled" ? "green" : "red" }/>
           {pfInfo.status}
