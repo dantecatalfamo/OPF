@@ -11,6 +11,8 @@ const updateTime = 5000;
 
 function PfStates() {
   const [states, setStates] = useState([]);
+  const [filteredInfo, setFilteredInfo] = useState({});
+  const [sortedInfo, setSortedInfo] = useState({});
 
   useEffect(() => {
     getJSON(pfStatesURL).then(res => setStates(res));
@@ -23,11 +25,24 @@ function PfStates() {
     };
   }, []);
 
+  const handleChange = (pagination, filters, sorter) => {
+    console.log("parameters", pagination, filters, sorter);
+    setFilteredInfo(filters);
+    setSortedInfo(sorter);
+  };
+
   const columns = [
     {
       title: "Protocol",
       dataIndex: "proto",
-      width: "85px",
+      width: "95px",
+      filters: [
+        { text: "UDP", value: "udp" },
+        { text: "TCP", value: "tcp" },
+        { text: "ICMP", value: "icmp" },
+        { text: "IPV6-ICMP", value: "ipv6-icmp" },
+      ],
+      onFilter: (value, record) => record.proto === value,
       render: proto => {
         let color;
         if (proto === "tcp") { color = "blue"; }
@@ -46,13 +61,13 @@ function PfStates() {
     {
       title: "Source",
       dataIndex: "sourceIP",
-      width: "240px",
+      width: "250px",
       render: src => (<Text code>{src}</Text>)
     },
     {
       title: "Destination",
       dataIndex: "destinationIP",
-      width: "240px",
+      width: "250px",
       render: dst => (<Text code>{dst}</Text>)
     },
     {
@@ -94,6 +109,7 @@ function PfStates() {
               return (<p style={{margin: 0}}>{gateway}</p>);
             }}
             scroll={{y: "85vh"}}
+            filter
           />);
 
   return (
