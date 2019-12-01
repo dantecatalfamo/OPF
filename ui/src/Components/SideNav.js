@@ -10,7 +10,6 @@ function SideNav(props) {
   const collapse = value => setCollapsed(value);
 
   const location = useLocation();
-  console.log(location);
 
   return (
     <Sider collapsible collapsed={collapsed} onCollapse={collapse}>
