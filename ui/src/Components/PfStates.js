@@ -35,7 +35,7 @@ function PfStates() {
     {
       title: "Protocol",
       dataIndex: "proto",
-      width: "95px",
+      width: "7em",
       filters: [
         { text: "UDP", value: "udp" },
         { text: "TCP", value: "tcp" },
@@ -53,7 +53,7 @@ function PfStates() {
     {
       title: "Direction",
       dataIndex: "direction",
-      width: "100px",
+      width: "7em",
       filters: [
         { text: "IN", value: "in" },
         { text: "OUT", value: "out" }
@@ -67,14 +67,28 @@ function PfStates() {
     {
       title: "Source",
       dataIndex: "sourceIP",
-      width: "250px",
+      width: "23em",
+      align: "right",
       render: src => (<Text code>{src}</Text>)
+    },
+    {
+      title: "Port",
+      dataIndex: "sourcePort",
+      width: "5em",
+      render: prt => (<Text code>{prt}</Text>)
     },
     {
       title: "Destination",
       dataIndex: "destinationIP",
-      width: "250px",
+      align: "right",
+      width: "23em",
       render: dst => (<Text code>{dst}</Text>)
+    },
+    {
+      title: "Port",
+      dataIndex: "destinationPort",
+      width: "5em",
+      render: prt => (<Text code>{prt}</Text>)
     },
     {
       title: "Age",
