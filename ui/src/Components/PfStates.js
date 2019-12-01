@@ -53,7 +53,13 @@ function PfStates() {
     {
       title: "Direction",
       dataIndex: "direction",
-      width: "76px",
+      width: "100px",
+      filters: [
+        { text: "IN", value: "in" },
+        { text: "OUT", value: "out" }
+      ],
+      filterMultiple: false,
+      onFilter: (value, record) => record.direction === value,
       render: direction => {
         return (<span>{direction.toUpperCase()}</span>);
       }
@@ -107,7 +113,6 @@ function PfStates() {
               return (<p style={{margin: 0}}>{gateway} {expires}</p>);
             }}
             pagination={{pageSize: 18}}
-            filter
           />);
 
   return (
