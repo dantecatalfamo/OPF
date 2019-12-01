@@ -76,11 +76,6 @@ function PfStates() {
       render: age => (<Text code>{age}</Text>)
     },
     {
-      title: "Expires",
-      dataIndex: "expires",
-      render: expr => (<Text code>{expr}</Text>)
-    },
-    {
       title: "Source State",
       dataIndex: "sourceState",
     },
@@ -101,14 +96,17 @@ function PfStates() {
   return (<Table
             columns={columns}
             dataSource={states}
-            pagination={false}
+            pagination
             size="small"
             rowKey="id"
             expandedRowRender={row => {
-              const gateway = row.gateway ? (<span><strong>Gateway: </strong><Text code>{row.gateway}</Text></span>) : "";
-              return (<p style={{margin: 0}}>{gateway}</p>);
+              const gateway = row.gateway
+                    ? (<span><strong>Gateway: </strong><Text code>{row.gateway}</Text></span>)
+                    : "";
+              const expires = (<span><strong>Expires: </strong><Text code>{row.expires}</Text></span>);
+              return (<p style={{margin: 0}}>{gateway} {expires}</p>);
             }}
-            scroll={{y: "85vh"}}
+            pagination={{pageSize: 18}}
             filter
           />);
 
