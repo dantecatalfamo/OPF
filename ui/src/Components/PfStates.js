@@ -146,6 +146,7 @@ function PfStates() {
     {
       title: "Packets",
       dataIndex: "packetsTotal",
+      sorter: (a, b) => a.packetsTotal - b.packetsTotal,
       render: pkts => (<Text code>{pkts}</Text>)
     },
     {
