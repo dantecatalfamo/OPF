@@ -110,7 +110,13 @@ function PfStates() {
         { text: "CLOSING", value: "CLOSING" },
       ],
       onFilter: (value, record) => record.sourceState === value,
-      render: state => (<Text code>{state}</Text>)
+      render: state => {
+        let color;
+        if (state === "SINGLE") { color = "orange"; }
+        if (state === "MULTIPLE") { color = "red"; }
+        if (state === "ESTABLISHED") { color = "blue"; }
+        return (<Tag color={color}>{state}</Tag>);
+      }
     },
     {
       title: "Destination State",
@@ -128,11 +134,19 @@ function PfStates() {
         { text: "CLOSING", value: "CLOSING" },
       ],
       onFilter: (value, record) => record.destinationState === value,
-      render: state => (<Text code>{state}</Text>)
+      render: state => {
+        let color;
+        if (state === "SINGLE") { color = "orange"; }
+        if (state === "MULTIPLE") { color = "red"; }
+        if (state === "NO_TRAFFIC") { color = "grey"; }
+        if (state === "ESTABLISHED") { color = "blue"; }
+        return (<Tag color={color}>{state}</Tag>);
+      }
     },
     {
       title: "Packets",
       dataIndex: "packetsSent",
+      render: pkts => (<Text code>{pkts}</Text>)
     },
     {
       title: "Rule",
@@ -152,11 +166,24 @@ function PfStates() {
             rowKey="id"
             scroll={{x: true}}
             expandedRowRender={row => {
-              const gateway = row.gateway
-                    ? (<span><strong>Gateway: </strong><Text code>{row.gateway}</Text></span>)
-                    : "";
-              const expires = (<span><strong>Expires: </strong><Text code>{row.expires}</Text></span>);
-              return (<p style={{margin: 0}}>{gateway} {expires}</p>);
+              const gateway = row.gateway ? (
+                <span>
+                  <strong>Gateway</strong>
+                  <Text code>{row.gateway}</Text>
+                </span>
+              ) : "";
+              return (
+                <span>
+                  {gateway}
+                  <strong>  Expires</strong>
+                  <Text code>{row.expires}</Text>
+                  <strong>  Bytes Sent</strong>
+                  <Text code>{row.bytesSent}</Text>
+                  <strong>  Bytes Received</strong>
+                  <Text code>{row.bytesReceived}</Text>
+                </span>
+
+              );
             }}
             pagination={{pageSize: 18}}
           />);
