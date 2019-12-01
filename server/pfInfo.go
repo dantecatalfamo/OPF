@@ -120,7 +120,7 @@ type PfInfo struct {
 		} `json:"maxStatesPerRule"`
 		MaxSrcStates struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"maxSrcStates"`
 		MaxSrcNodes struct {
 			Total int     `json:"total"`
