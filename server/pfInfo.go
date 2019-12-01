@@ -124,35 +124,35 @@ type PfInfo struct {
 		} `json:"maxSrcStates"`
 		MaxSrcNodes struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"maxSrcNodes"`
 		MaxSrcConn struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"maxSrcConn"`
 		MaxSrcConnRate struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"maxSrcConnRate"`
 		OverloadTableInsertion struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"overloadTableInsertion"`
 		OverloadFlushStates struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"overloadFlushStates"`
 		SynfloodsDetected struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"synFloodsDetected"`
 		SyncookiesSent struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"syncookiesSent"`
 		SyncookiesValidated struct {
 			Total int     `json:"total"`
-			Rate  float64 `json:rate"`
+			Rate  float64 `json:"rate"`
 		} `json:"syncookiesValidated"`
 	} `json:"limitCounters"`
 	AdaptiveSyncookiesWatermarks struct {
