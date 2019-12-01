@@ -166,26 +166,36 @@ function PfStates() {
             rowKey="id"
             scroll={{x: true}}
             expandedRowRender={row => {
-              const gateway = row.gateway ? (
-                <span>
-                  <strong>Gateway</strong>
-                  <Text code>{row.gateway}</Text>
-                </span>
-              ) : "";
+              let gateway;
+              if (row.gateway) {
+                gateway = (
+                  <>
+                    <td><strong>Gateway</strong></td>
+                    <td><Text code>{row.gateway}</Text></td>
+                  </>
+                );}
               return (
-                <span>
-                  {gateway}
-                  <strong>  Expires</strong>
-                  <Text code>{row.expires}</Text>
-                  <strong>  Packets Sent</strong>
-                  <Text code>{row.packetsSent}</Text>
-                  <strong>  Packets Received</strong>
-                  <Text code>{row.packetsReceived}</Text>
-                  <strong>  Bytes Sent</strong>
-                  <Text code>{row.bytesSent}</Text>
-                  <strong>  Bytes Received</strong>
-                  <Text code>{row.bytesReceived}</Text>
-                </span>
+                <div>
+                  <table style={{width: "max-content", minWidth: "max-content"}}>
+                    <tbody>
+                      <tr>
+                        <td align="right"><strong>Packets Sent</strong></td>
+                        <td><Text code>{row.packetsSent}</Text></td>
+                        <td align="right"><strong>Packets Received</strong></td>
+                        <td><Text code>{row.packetsReceived}</Text></td>
+                        <td align="right"><strong>Expires</strong></td>
+                        <td><Text code>{row.expires}</Text></td>
+                      </tr>
+                      <tr>
+                        <td align="right"><strong>Bytes Sent</strong></td>
+                        <td><Text code>{row.bytesSent}</Text></td>
+                        <td align="right"><strong>Bytes Received</strong></td>
+                        <td><Text code>{row.bytesReceived}</Text></td>
+                        {gateway}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
               );
             }}
