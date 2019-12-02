@@ -44,7 +44,7 @@ type RcService struct {
 	Class   string `json:"class"`
 	Enabled bool   `json:"enabled"`
 	Flags   string `json:"flags"`
-	Rtable  int    `json: rtable"`
+	Rtable  int    `json:"rtable"`
 	Timeout int    `json:"timeout"`
 	User    string `json:"user"`
 }
