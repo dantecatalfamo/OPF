@@ -64,6 +64,17 @@ func GetRcService(service string) (*RcService, error) {
 	lines := strings.Split(out, "\n")
 	lines = lines[:len(lines)-1]
 
+	// special service
+	if len(lines) == 1 {
+		flags := strings.Split(lines[0], "=")[1]
+		enabled := exitCode == 0
+		srv := &RcService{}
+		srv.Name = service
+		srv.Enabled = enabled
+		srv.Flags = flags
+		return srv, nil
+	}
+
 	class := strings.Split(lines[0], "=")[1]
 	flags := strings.Split(lines[1], "=")[1]
 	enabled := exitCode == 0
