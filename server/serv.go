@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -120,21 +121,23 @@ func main() {
 		fmt.Printf("%v\n", swapDev)
 	}
 
-	http.HandleFunc("/api/pf-states", pfStatesHandler)
-	http.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
-	http.HandleFunc("/api/pf-info", pfInfoHandler)
-	http.HandleFunc("/api/pf-interfaces", pfInterfacesHandler)
-	http.HandleFunc("/api/rc-all", rcAllHandler)
-	http.HandleFunc("/api/rc-on", rcOnHandler)
-	http.HandleFunc("/api/rc-started", rcStartedHandler)
-	http.HandleFunc("/api/netstat-interfaces", netstatInterfacesHandler)
-	http.HandleFunc("/api/uptime", uptimeHandler)
-	http.HandleFunc("/api/uname", unameHandler)
-	http.HandleFunc("/api/vmstat", vmstatHandler)
-	http.HandleFunc("/api/disk-usage", diskUsageHandler)
-	http.HandleFunc("/api/hardware", hardwareHandler)
-	http.HandleFunc("/api/processes", processesHandler)
-	http.HandleFunc("/api/swap-usage", swapUsageHandler)
+	r := mux.NewRouter()
 
-	http.ListenAndServe(":8001", nil)
+	r.HandleFunc("/api/pf-states", pfStatesHandler)
+	r.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
+	r.HandleFunc("/api/pf-info", pfInfoHandler)
+	r.HandleFunc("/api/pf-interfaces", pfInterfacesHandler)
+	r.HandleFunc("/api/rc-all", rcAllHandler)
+	r.HandleFunc("/api/rc-on", rcOnHandler)
+	r.HandleFunc("/api/rc-started", rcStartedHandler)
+	r.HandleFunc("/api/netstat-interfaces", netstatInterfacesHandler)
+	r.HandleFunc("/api/uptime", uptimeHandler)
+	r.HandleFunc("/api/uname", unameHandler)
+	r.HandleFunc("/api/vmstat", vmstatHandler)
+	r.HandleFunc("/api/disk-usage", diskUsageHandler)
+	r.HandleFunc("/api/hardware", hardwareHandler)
+	r.HandleFunc("/api/processes", processesHandler)
+	r.HandleFunc("/api/swap-usage", swapUsageHandler)
+
+	http.ListenAndServe(":8001", r)
 }
