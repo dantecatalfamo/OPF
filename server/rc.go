@@ -40,6 +40,7 @@ func GetRcStarted() ([]string, error) {
 }
 
 type RcService struct {
+	Name    string `json:"name"`
 	Class   string `json:"class"`
 	Enabled bool   `json:"enabled"`
 	Flags   string `json:"flags"`
@@ -50,8 +51,13 @@ type RcService struct {
 
 func GetRcService(service string) (*RcService, error) {
 	outBytes, err := exec.Command("rcctl", "get", service).Output()
+	var exitCode int
 	if err != nil {
-		return nil, err
+		exiterr, ok := err.(*exec.ExitError)
+		exitCode = exiterr.ExitCode()
+		if !ok || exitCode != 1 {
+			return nil, err
+		}
 	}
 
 	out := string(outBytes)
@@ -60,7 +66,7 @@ func GetRcService(service string) (*RcService, error) {
 
 	class := strings.Split(lines[0], "=")[1]
 	flags := strings.Split(lines[1], "=")[1]
-	enabled := flags != "NO"
+	enabled := exitCode == 0
 	rtableStr := strings.Split(lines[2], "=")[1]
 	rtable, err := strconv.Atoi(rtableStr)
 	if err != nil {
@@ -77,6 +83,7 @@ func GetRcService(service string) (*RcService, error) {
 
 	srv := &RcService{}
 
+	srv.Name = service
 	srv.Class = class
 	srv.Enabled = enabled
 	srv.Flags = flags
