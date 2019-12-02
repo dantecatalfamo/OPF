@@ -40,12 +40,12 @@ func GetRcStarted() ([]string, error) {
 }
 
 type RcService struct {
-	Class string `json:"class"`
-	Enabled bool `json:"enabled"`
-	Flags string `json:"flags"`
-	Rtable int `json: rtable"`
-	Timeout int `json:"timeout"`
-	User string `json:"user"`
+	Class   string `json:"class"`
+	Enabled bool   `json:"enabled"`
+	Flags   string `json:"flags"`
+	Rtable  int    `json: rtable"`
+	Timeout int    `json:"timeout"`
+	User    string `json:"user"`
 }
 
 func GetRcService(service string) (*RcService, error) {
