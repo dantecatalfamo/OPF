@@ -61,7 +61,9 @@ function PfStates() {
       filterMultiple: false,
       onFilter: (value, record) => record.direction === value,
       render: direction => {
-        return (<span>{direction.toUpperCase()}</span>);
+        let color;
+        if (direction === "in")  { color = "SlateGray"; }
+        return (<Tag color={color}>{direction.toUpperCase()}</Tag>);
       }
     },
     {
