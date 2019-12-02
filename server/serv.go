@@ -63,6 +63,13 @@ func main() {
 	}
 	fmt.Println(rcall)
 
+	srv, err := GetRcService("sshd")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Printf("%v\n", srv)
+
 	nsifaces, err := GetNetstatInterfaces()
 	if err != nil {
 		fmt.Println(err)
@@ -130,6 +137,7 @@ func main() {
 	r.HandleFunc("/api/rc-all", rcAllHandler)
 	r.HandleFunc("/api/rc-on", rcOnHandler)
 	r.HandleFunc("/api/rc-started", rcStartedHandler)
+	r.HandleFunc("/api/rc/{service}", rcServiceHandler)
 	r.HandleFunc("/api/netstat-interfaces", netstatInterfacesHandler)
 	r.HandleFunc("/api/uptime", uptimeHandler)
 	r.HandleFunc("/api/uname", unameHandler)

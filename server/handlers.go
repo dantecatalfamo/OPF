@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"github.com/gorilla/mux"
 )
 
 func pfStatesHandler(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +137,24 @@ func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	started, err := GetRcStarted()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	encoded, err := json.Marshal(started)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(encoded)
+}
+
+func rcServiceHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vars := mux.Vars(r)
+	service := vars["service"]
+	started, err := GetRcService(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
