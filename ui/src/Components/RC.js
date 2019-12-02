@@ -50,6 +50,10 @@ function RC() {
           enabled = false;
         }
 
+        const flagsButton = (
+          <Button loading={!rcOn}>Flags</Button>
+        );
+
         const startButton = (
           <Button
             loading={started == null}
@@ -69,6 +73,7 @@ function RC() {
             actions={[
               special ? null : startButton,
               enableSwitch,
+              flagsButton,
             ]}>
             <List.Item.Meta
               title={<span><Badge status={badge} /> {item}</span>}
