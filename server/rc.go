@@ -104,3 +104,12 @@ func GetRcService(service string) (*RcService, error) {
 
 	return srv, nil
 }
+
+func GetRcServiceFlags(service string) (string, error) {
+	srv, err := GetRcService(service)
+	if err != nil {
+		return "", err
+	}
+
+	return srv.Flags, nil
+}
