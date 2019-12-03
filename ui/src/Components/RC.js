@@ -50,10 +50,6 @@ function RC() {
           enabled = false;
         }
 
-        const flagsButton = (
-          <Button loading={!rcOn}>Flags</Button>
-        );
-
         const startButton = (
           <Button
             loading={started == null}
@@ -66,6 +62,13 @@ function RC() {
             loading={enabled === null}
             checked={enabled}
           >{enabled ? "Disable" : "Enable"}</Switch>
+        );
+
+        const flagsButton = (
+          <Button
+            disabled={special || !enabled}
+            loading={!rcOn}
+          >Flags</Button>
         );
 
         return (
