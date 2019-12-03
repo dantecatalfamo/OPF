@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Popover, Button, Input, Form } from 'antd';
+import { Popover, Button, Input, Form, Spin } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 
@@ -11,6 +11,7 @@ function RcFlags (props) {
 
   const [flags, setFlags] = useState();
   const [visible, setVisible] = useState();
+  const [fetching, setFetching] = useState(true);
 
   const handleVisibleChange = visible => {
     setVisible(visible);
@@ -22,7 +23,11 @@ function RcFlags (props) {
 
   useEffect(() => {
     if (visible) {
-      getJSON(flagsURL).then(f => setFlags(f));
+      setFetching(true);
+      getJSON(flagsURL).then(f => {
+        setFlags(f);
+        setFetching(false);
+      });
     }
   }, [visible]);
 
@@ -38,17 +43,20 @@ function RcFlags (props) {
   }
 
   const content = (
+    <Spin spinning={fetching}>
       <Form layout="inline">
         <Form.Item>
           <Input
             value={flags}
+            disabled={fetching}
             onChange={handleFlagsChange}
           />
         </Form.Item>
         <Form.Item style={{marginRight: 0}}>
-          <Button>Save</Button>
+          <Button disabled={fetching}>Save</Button>
         </Form.Item>
       </Form>
+    </Spin>
   );
 
   return (
