@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { List, Button, Badge, Switch, Col } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
+import RcFlags from './RcFlags';
 import './RC.css';
 
 const rcAllURL = `${serverURL}/api/rc-all`;
@@ -71,10 +72,11 @@ function RC() {
           );
 
           const flagsButton = (
-            <Button
+            <RcFlags
               disabled={special || !enabled}
               loading={!rcOn}
-            >Flags</Button>
+              service={item}
+            />
           );
 
           return (
