@@ -127,3 +127,12 @@ func GetRcServiceStarted(service string) (bool, error) {
 
 	return false, err
 }
+
+func GetRcServiceEnabled(service string) (bool, error) {
+	srv, err := GetRcService(service)
+	if err != nil {
+		return false, nil
+	}
+
+	return srv.Enabled, nil
+}

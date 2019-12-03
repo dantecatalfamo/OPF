@@ -204,6 +204,24 @@ func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
+func rcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vars := mux.Vars(r)
+	service := vars["service"]
+	enabled, err := GetRcServiceEnabled(service)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	encoded, err := json.Marshal(enabled)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(encoded)
+}
+
 func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	ifaces, err := GetNetstatInterfaces()
