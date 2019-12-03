@@ -23,18 +23,9 @@ function RC() {
 
   return (
     <Col
-      xxl={{
-        span: 8,
-        offset: 8,
-      }}
-      xl={{
-        span: 10,
-        offset: 7,
-      }}
-      lg={{
-        span: 12,
-        offset: 6
-      }}
+      xxl={{ span: 8,  offset: 8 }}
+      xl={{  span: 10, offset: 7 }}
+      lg={{  span: 12, offset: 6 }}
     >
       <List
         itemLayout="horizontal"
@@ -100,40 +91,6 @@ function RC() {
           );}}
       />
     </Col>
-
-  );
-
-  return (
-    <div className="rc">
-      <table>
-        <thead>
-          <tr>
-            <th>Service</th>
-            <th>Enabled</th>
-            <th>Started</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rcAll.map(rc => {
-            let on = "...";
-            let started = "...";
-            if (rcOn) {
-              on = rcOn.includes(rc) ? "[X]" : "[ ]";
-            }
-            if (rcStarted) {
-              started = rcStarted.includes(rc) ? "[X]" : "[ ]";
-            }
-            return (
-              <tr key={rc}>
-                <td>{rc}</td>
-                <td>{on}</td>
-                <td>{started}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
