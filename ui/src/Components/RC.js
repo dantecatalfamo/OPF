@@ -9,7 +9,7 @@ const rcAllURL = `${serverURL}/api/rc-all`;
 const rcOnURL = `${serverURL}/api/rc-on`;
 const rcStartedURL = `${serverURL}/api/rc-started`;
 
-const rcSpecials = ['pf', 'check_quotas', 'ipsec', 'accounting'];
+const rcSpecials = ['pf', 'check_quotas', 'ipsec', 'accounting', 'library_aslr'];
 
 function RC() {
   const [rcAll, setRcAll] = useState([]);

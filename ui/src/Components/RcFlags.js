@@ -7,6 +7,8 @@ function RcFlags (props) {
   const disabled = props.disabled;
   const loading = props.loading;
   const service = props.service;
+  const flagsURL = `${serverURL}/api/rc/${service}/flags`;
+
   const [flags, setFlags] = useState();
   const [visible, setVisible] = useState();
 
@@ -14,10 +16,15 @@ function RcFlags (props) {
     setVisible(visible);
   };
 
-
   const handleFlagsChange = (event) => {
     setFlags(event.target.value);
   };
+
+  useEffect(() => {
+    if (visible) {
+      getJSON(flagsURL).then(f => setFlags(f));
+    }
+  }, [visible]);
 
   const flagsButton = (
     <Button
