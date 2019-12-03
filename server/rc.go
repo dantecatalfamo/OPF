@@ -113,3 +113,17 @@ func GetRcServiceFlags(service string) (string, error) {
 
 	return srv.Flags, nil
 }
+
+func GetRcServiceStarted(service string) (bool, error) {
+	err := exec.Command("rcctl", "check", service).Run()
+	if err == nil {
+		return true, nil
+	}
+
+	exiterr, ok := err.(*exec.ExitError)
+	if ok && exiterr.ExitCode() == 1  {
+		return false, nil
+	}
+
+	return false, err
+}
