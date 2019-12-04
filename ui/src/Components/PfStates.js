@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Table, Typography, Icon } from 'antd';
+import { Tag, Table, Typography, Icon, Card } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
@@ -161,49 +161,52 @@ function PfStates() {
     }
   ];
 
-  return (<Table
-            columns={columns}
-            dataSource={states}
-            pagination
-            size="small"
-            rowKey="id"
-            scroll={{x: true}}
-            expandedRowRender={row => {
-              let gateway;
-              if (row.gateway) {
-                gateway = (
-                  <>
-                    <td><strong>Gateway</strong></td>
-                    <td><Text code>{row.gateway}</Text></td>
-                  </>
-                );}
-              return (
-                <div>
-                  <table style={{width: "max-content", minWidth: "max-content"}}>
-                    <tbody>
-                      <tr>
-                        <td align="right"><strong>Packets Sent</strong></td>
-                        <td><Text code>{row.packetsSent}</Text></td>
-                        <td align="right"><strong>Packets Received</strong></td>
-                        <td><Text code>{row.packetsReceived}</Text></td>
-                        <td align="right"><strong>Expires</strong></td>
-                        <td><Text code>{row.expires}</Text></td>
-                      </tr>
-                      <tr>
-                        <td align="right"><strong>Bytes Sent</strong></td>
-                        <td><Text code>{row.bytesSent}</Text></td>
-                        <td align="right"><strong>Bytes Received</strong></td>
-                        <td><Text code>{row.bytesReceived}</Text></td>
-                        {gateway}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-              );
-            }}
-            pagination={{pageSize: 18}}
-          />);
+  return (
+    <Card>
+      <Table
+        columns={columns}
+        dataSource={states}
+        pagination
+        size="small"
+        rowKey="id"
+        scroll={{x: true}}
+        pagination={{pageSize: 18}}
+        expandedRowRender={row => {
+          let gateway;
+          if (row.gateway) {
+            gateway = (
+              <>
+                <td><strong>Gateway</strong></td>
+                <td><Text code>{row.gateway}</Text></td>
+              </>
+            );}
+          return (
+            <div>
+              <table style={{width: "max-content", minWidth: "max-content"}}>
+                <tbody>
+                  <tr>
+                    <td align="right"><strong>Packets Sent</strong></td>
+                    <td><Text code>{row.packetsSent}</Text></td>
+                    <td align="right"><strong>Packets Received</strong></td>
+                    <td><Text code>{row.packetsReceived}</Text></td>
+                    <td align="right"><strong>Expires</strong></td>
+                    <td><Text code>{row.expires}</Text></td>
+                  </tr>
+                  <tr>
+                    <td align="right"><strong>Bytes Sent</strong></td>
+                    <td><Text code>{row.bytesSent}</Text></td>
+                    <td align="right"><strong>Bytes Received</strong></td>
+                    <td><Text code>{row.bytesReceived}</Text></td>
+                    {gateway}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        }}
+      />
+    </Card>
+  );
 
   return (
     <div className="pfstates">
