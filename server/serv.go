@@ -42,6 +42,12 @@ func main() {
 		fmt.Printf("%v\n", i)
 	}
 
+	mem, err := GetPfMemory()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(mem)
+
 	ut, err := GetUptime()
 	if err != nil {
 		fmt.Println(err)
@@ -155,6 +161,7 @@ func main() {
 	r.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
 	r.HandleFunc("/api/pf-info", pfInfoHandler)
 	r.HandleFunc("/api/pf-interfaces", pfInterfacesHandler)
+	r.HandleFunc("/api/pf-memory", pfMemoryHandler)
 	r.HandleFunc("/api/rc-all", rcAllHandler)
 	r.HandleFunc("/api/rc-on", rcOnHandler)
 	r.HandleFunc("/api/rc-started", rcStartedHandler)

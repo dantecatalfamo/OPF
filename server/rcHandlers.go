@@ -3,17 +3,17 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	// "github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 )
 
-func uptimeHandler(w http.ResponseWriter, r *http.Request) {
+func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ut, err := GetUptime()
+	all, err := GetRcAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(ut)
+	encoded, err := json.Marshal(all)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -22,14 +22,14 @@ func uptimeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func unameHandler(w http.ResponseWriter, r *http.Request) {
+func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	un, err := GetUname()
+	on, err := GetRcOn()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(un)
+	encoded, err := json.Marshal(on)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -38,14 +38,14 @@ func unameHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
+func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ifaces, err := GetNetstatInterfaces()
+	started, err := GetRcStarted()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(ifaces)
+	encoded, err := json.Marshal(started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -54,14 +54,16 @@ func netstatInterfacesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func vmstatHandler(w http.ResponseWriter, r *http.Request) {
+func rcServiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	vmst, err := GetVmstat()
+	vars := mux.Vars(r)
+	service := vars["service"]
+	started, err := GetRcService(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(vmst)
+	encoded, err := json.Marshal(started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -70,14 +72,16 @@ func vmstatHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func diskUsageHandler(w http.ResponseWriter, r *http.Request) {
+func rcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	dfs, err := GetDiskUsage()
+	vars := mux.Vars(r)
+	service := vars["service"]
+	flags, err := GetRcServiceFlags(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(dfs)
+	encoded, err := json.Marshal(flags)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -86,14 +90,16 @@ func diskUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func hardwareHandler(w http.ResponseWriter, r *http.Request) {
+func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	hw, err := GetHardware()
+	vars := mux.Vars(r)
+	service := vars["service"]
+	started, err := GetRcServiceStarted(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(hw)
+	encoded, err := json.Marshal(started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -102,30 +108,16 @@ func hardwareHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func processesHandler(w http.ResponseWriter, r *http.Request) {
+func rcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	procs, err := GetProcesses()
+	vars := mux.Vars(r)
+	service := vars["service"]
+	enabled, err := GetRcServiceEnabled(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	encoded, err := json.Marshal(procs)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(encoded)
-}
-
-func swapUsageHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	swap, err := GetSwapUsage()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	encoded, err := json.Marshal(swap)
+	encoded, err := json.Marshal(enabled)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
