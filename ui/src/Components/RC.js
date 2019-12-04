@@ -23,12 +23,12 @@ function RC() {
   }, []);
 
   return (
-    <Card>
-      <Col
-        xxl={{ span: 8,  offset: 8 }}
-        xl={{  span: 10, offset: 7 }}
-        lg={{  span: 12, offset: 6 }}
-      >
+    <Col
+      xxl={{ span: 8,  offset: 8 }}
+      xl={{  span: 10, offset: 7 }}
+      lg={{  span: 12, offset: 6 }}
+    >
+      <Card>
         <List
           loading={!rcAll}
           itemLayout="horizontal"
@@ -94,8 +94,8 @@ function RC() {
               </List.Item>
             );}}
         />
-      </Col>
-    </Card>
+      </Card>
+    </Col>
   );
 }
 
