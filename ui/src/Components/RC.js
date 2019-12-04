@@ -12,7 +12,7 @@ const rcStartedURL = `${serverURL}/api/rc-started`;
 const rcSpecials = ['pf', 'check_quotas', 'ipsec', 'accounting', 'library_aslr'];
 
 function RC() {
-  const [rcAll, setRcAll] = useState([]);
+  const [rcAll, setRcAll] = useState();
   const [rcOn, setRcOn] = useState(null);
   const [rcStarted, setRcStarted] = useState(null);
 
@@ -30,6 +30,7 @@ function RC() {
         lg={{  span: 12, offset: 6 }}
       >
         <List
+          loading={!rcAll}
           itemLayout="horizontal"
           bordered
           dataSource={rcAll}
