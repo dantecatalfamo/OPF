@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Card, Statistic, Col, Row, Descriptions, Typography, Divider } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -19,6 +20,42 @@ function PfStates() {
       clearInterval(interval);
     };
   }, []);
+
+  return (
+    <div>
+      {interfaces.map(iface => (
+        <Card title={iface.interface} style={{margin: "30px"}}>
+          <Row>
+            <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
+            <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
+            <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
+          </Row>
+          <Divider />
+          <Row>
+            <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Packets)" value={iface.in4pass.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Bytes)" value={iface.in4pass.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Block IPv4 (Packets)" value={iface.in4block.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Block IPv4 (Bytes)" value={iface.in4block.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Packets)" value={iface.out4pass.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Bytes)" value={iface.out4pass.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Packets)" value={iface.out4block.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Bytes)" value={iface.out4block.bytes}/></Col>
+          </Row>
+          <Divider />
+          <Row>
+            <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Packets)" value={iface.in6pass.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Bytes)" value={iface.in6pass.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Block IPv6 (Packets)" value={iface.in6block.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="In Block IPv6 (Bytes)" value={iface.in6block.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Packets)" value={iface.out6pass.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Bytes)" value={iface.out6pass.bytes}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Packets)" value={iface.out6block.packets}/></Col>
+            <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Bytes)" value={iface.out6block.bytes}/></Col>
+          </Row>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <div className="pfinterfaces">
