@@ -24,9 +24,9 @@ function RC() {
 
   return (
     <Col
-      xxl={{ span: 8,  offset: 8 }}
-      xl={{  span: 10, offset: 7 }}
-      lg={{  span: 12, offset: 6 }}
+      xxl={{ span: 10,  offset: 7 }}
+      xl={{  span: 12, offset: 6 }}
+      lg={{  span: 14, offset: 5 }}
     >
       <Card>
         <List
