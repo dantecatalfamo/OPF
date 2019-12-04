@@ -24,7 +24,7 @@ function RC() {
 
   return (
     <Col
-      xxl={{ span: 10,  offset: 7 }}
+      xxl={{ span: 10, offset: 7 }}
       xl={{  span: 12, offset: 6 }}
       lg={{  span: 14, offset: 5 }}
     >
