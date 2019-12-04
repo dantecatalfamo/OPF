@@ -28,8 +28,8 @@ function PfInfo(props) {
   }
 
   return (
-    <Col xxl={{span: 16, offset: 4}} xl={{span: 20, offset: 2}} lg={{span: 24}}>
-      <Card>
+    <Card>
+      <Col xxl={{span: 16, offset: 4}} xl={{span: 20, offset: 2}} lg={{span: 24}}>
         <Descriptions column={{xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1}} bordered>
           <Item label="Status" span={2}>
             <Badge status={pfInfo.status === "Enabled" ? "green" : "red" }/>
@@ -119,8 +119,8 @@ function PfInfo(props) {
           <Item label="Start">{pfInfo.adaptiveSyncookiesWatermarks.start}</Item>
           <Item label="End">{pfInfo.adaptiveSyncookiesWatermarks.end}</Item>
         </Descriptions>
-      </Card>
-    </Col>
+      </Col>
+    </Card>
   );
 }
 
