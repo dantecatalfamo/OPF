@@ -10,7 +10,7 @@ const pfStatesURL = `${serverURL}/api/pf-states`;
 const updateTime = 5000;
 
 function PfStates() {
-  const [states, setStates] = useState([]);
+  const [states, setStates] = useState();
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
 
@@ -167,6 +167,7 @@ function PfStates() {
         columns={columns}
         dataSource={states}
         pagination
+        loading={!states}
         size="small"
         rowKey="id"
         scroll={{x: true}}
