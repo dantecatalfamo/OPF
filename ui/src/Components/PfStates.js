@@ -162,7 +162,7 @@ function PfStates() {
   ];
 
   return (
-    <Card>
+    <div style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
       <Table
         columns={columns}
         dataSource={states}
@@ -206,7 +206,7 @@ function PfStates() {
           );
         }}
       />
-    </Card>
+    </div>
   );
 
   return (
