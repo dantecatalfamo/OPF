@@ -29,7 +29,7 @@ function PfInfo(props) {
 
   return (
       <Col xxl={{span: 16, offset: 4}} xl={{span: 20, offset: 2}} lg={{span: 24}}>
-        <Card>
+        <Card style={{marginBottom: "12px", marginTop: "12px"}}>
           <Descriptions column={{xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1}} bordered>
             <Item label="Status" span={2}>
               <Badge status={pfInfo.status === "Enabled" ? "green" : "red" }/>
@@ -42,7 +42,7 @@ function PfInfo(props) {
           </Descriptions>
         </Card>
 
-        <Card title="State Table">
+        <Card title="State Table" style={{marginBottom: "12px"}}>
           <Row>
             <Col span={6}><Statistic title="Current Entries" value={pfInfo.stateTable.currentEntries} /></Col>
             <Col span={6}><Statistic title="Half-Open TCP" value={pfInfo.stateTable.halfOpenTcp} /></Col>
@@ -55,7 +55,7 @@ function PfInfo(props) {
           </Row>
         </Card>
 
-        <Card title="Source Tracking Table">
+        <Card title="Source Tracking Table" style={{marginBottom: "12px"}}>
           <Col span={12}><Statistic title="Current Entries" value={pfInfo.sourceTrackingTable.currentEntries} /></Col>
           <Col span={6}><Statistic title="Total Searches" value={pfInfo.sourceTrackingTable.searches.total} /></Col>
           <Col span={6}><Statistic title="Search Rate" value={pfInfo.sourceTrackingTable.searches.rate} suffix="/s" /></Col>
@@ -65,7 +65,7 @@ function PfInfo(props) {
           <Col span={6}><Statistic title="Removal Rate" value={pfInfo.sourceTrackingTable.removals.rate} suffix="/s" /></Col>
         </Card>
 
-        <Card title="Counters">
+        <Card title="Counters" style={{marginBottom: "12px"}}>
           <Col span={6}><Statistic title="Total Matches" value={pfInfo.counters.match.total} /></Col>
           <Col span={6}><Statistic title="Match Rate" value={pfInfo.counters.match.rate} suffix="/s" /></Col>
           <Col span={6}><Statistic title="Total Bad Offsets" value={pfInfo.counters.badOffsets.total} /></Col>
@@ -101,7 +101,7 @@ function PfInfo(props) {
           <Col span={6}><Statistic title="Total No Routes" value={pfInfo.counters.noRoute.total} /></Col>
           <Col span={6}><Statistic title="No Route Rate" span={3} value={pfInfo.counters.noRoute.rate} suffix="/s" /></Col>
         </Card>
-        <Card title="Limit Counters">
+        <Card title="Limit Counters" style={{marginBottom: "12px"}}>
           <Col span={6}><Statistic title="Total Max States Per Rule" value={pfInfo.limitCounters.maxStatesPerRule.total} /></Col>
           <Col span={6}><Statistic title="Max States Per Rule Rate" value={pfInfo.limitCounters.maxStatesPerRule.rate} suffix="/s" /></Col>
           <Col span={6}><Statistic title="Total Max Source States" value={pfInfo.limitCounters.maxSrcStates.total} /></Col>
@@ -121,7 +121,7 @@ function PfInfo(props) {
           <Col span={6}><Statistic title="Total SYN Cookies Validated" value={pfInfo.limitCounters.syncookiesValidated.total} /></Col>
           <Col span={6}><Statistic title="SYN Cookie Validation Rate" span={3} value={pfInfo.limitCounters.syncookiesValidated.rate} suffix="/s" /></Col>
         </Card>
-        <Card title="Adaptive SYN Cookies Watermarks">
+        <Card title="Adaptive SYN Cookies Watermarks" style={{marginBottom: "12px"}}>
           <Row>
             <Col span={6}><Statistic title="Start" value={pfInfo.adaptiveSyncookiesWatermarks.start} /></Col>
             <Col span={6}><Statistic title="End" value={pfInfo.adaptiveSyncookiesWatermarks.end} /></Col>
