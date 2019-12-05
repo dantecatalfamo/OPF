@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Descriptions, Badge, Typography, Col, Row, Card, Statistic } from 'antd';
+import { Descriptions, Badge, Typography, Col, Row, Card, Statistic, Spin } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 
@@ -24,7 +24,11 @@ function PfInfo(props) {
   }, []);
 
   if (!pfInfo) {
-    return "";
+    return (
+      <Spin>
+        <Card style={{margin: "30px"}}/>
+      </Spin>
+    );
   }
 
   return (
