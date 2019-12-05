@@ -29,7 +29,7 @@ function PfStates() {
   }
 
   return (
-    <div>
+    <div style={{marginBottom: "12px"}}>
       {interfaces.map(iface => {
         const ipv4 = [
           iface.in4pass.bytes, iface.in4block.bytes,
@@ -72,17 +72,22 @@ function PfStates() {
         );
 
         return (
-        <Card title={iface.interface} style={{margin: "30px"}}>
-          <Row>
-            <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
-            <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
-            <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
-          </Row>
-          <Divider />
-          {ipv4Stats}
-          <Divider />
-          {ipv6Stats}
-        </Card>);
+          <Col xxl={{span: 18, offset: 3}}
+               xl={{span: 20, offset: 2}}
+               lg={{span: 24}}>
+            <Card title={iface.interface} style={{marginTop: "12px"}}>
+              <Row>
+                <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
+                <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
+                <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
+              </Row>
+              <Divider />
+              {ipv4Stats}
+              <Divider />
+              {ipv6Stats}
+            </Card>
+          </Col>
+        );
       })}
     </div>
   );
