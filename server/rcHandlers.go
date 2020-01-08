@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"io/ioutil"
 	"github.com/gorilla/mux"
 )
 
@@ -94,6 +95,7 @@ func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
+
 	started, err := GetRcServiceStarted(service)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -106,6 +108,23 @@ func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
+}
+
+func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vars := mux.Vars(r)
+	service := vars["service"]
+	jsonData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	var started bool
+	json.Unmarshal(jsonData, started)
+	err = SetRcServiceStarted(service, started)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.Write([]byte("OK"))
 }
 
 func rcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {

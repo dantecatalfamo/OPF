@@ -136,3 +136,19 @@ func GetRcServiceEnabled(service string) (bool, error) {
 
 	return srv.Enabled, nil
 }
+
+func SetRcServiceStarted(service string, started bool) error {
+	if started == true {
+		err := exec.Command("rcctl", "-f", "start", service).Run()
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		err := exec.Command("rcctl", "stop", service).Run()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
