@@ -3,6 +3,8 @@ import { List, Button, Badge, Switch, Col, Card } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import RcFlags from './RcFlags';
+import RcEnabled from './RcEnabled';
+import RcStarted from './RcStarted';
 import './RC.css';
 
 const rcAllURL = `${serverURL}/api/rc-all`;
@@ -60,10 +62,10 @@ function RC() {
             }
 
             const startButton = (
-              <Button
+              <RcStarted
                 loading={started == null}
-                type={started === true ? "danger" : "primary"}
-              >{started ? "Stop" : "Start"}</Button>
+                started={started}
+              />
             );
 
             const enableSwitch = (
