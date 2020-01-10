@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"github.com/gorilla/mux"
+	"log"
 )
 
 func rcAllHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +120,8 @@ func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	var started bool
-	json.Unmarshal(jsonData, started)
+	json.Unmarshal(jsonData, &started)
+	log.Println("Setting", service, "to", started)
 	err = SetRcServiceStarted(service, started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
