@@ -32,6 +32,14 @@ function RC() {
     }
   };
 
+  const handleServiceEnabled = (service, enabled) => {
+    if (enabled && !rcOn.includes(service)) {
+      setRcOn([...rcOn, service]);
+    } else {
+      setRcOn(rcOn.filter(s => s !== service));
+    }
+  };
+
   return (
     <Col
       xxl={{ span: 10, offset: 7 }}
@@ -79,10 +87,12 @@ function RC() {
             );
 
             const enableSwitch = (
-              <Switch
+              <RcEnabled
                 loading={enabled === null}
-                checked={enabled}
-              >{enabled ? "Disable" : "Enable"}</Switch>
+                enabled={enabled}
+                service={item}
+                onEnabled={handleServiceEnabled}
+              >{enabled ? "Disable" : "Enable"}</RcEnabled>
             );
 
             const flagsButton = (
