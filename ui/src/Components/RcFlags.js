@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Popover, Button, Input, Form, Spin } from 'antd';
-import { getJSON } from '../helpers.js';
+import { Popover, Button, Input, Form, Spin, message } from 'antd';
+import { getJSON, postJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 
 function RcFlags (props) {
@@ -12,6 +12,7 @@ function RcFlags (props) {
   const [flags, setFlags] = useState();
   const [visible, setVisible] = useState();
   const [fetching, setFetching] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleVisibleChange = visible => {
     setVisible(visible);
@@ -30,6 +31,18 @@ function RcFlags (props) {
       });
     }
   }, [visible]);
+
+  const handleSave = () => {
+    setSubmitting(true);
+    postJSON(flagsURL, flags)
+      .then(res => {
+        message.success("Flags saves successfully.");
+        setSubmitting(false);
+      }).catch(res => {
+        message.error(`Failed to set ${service} flags.`);
+        setSubmitting(false);
+      });
+  };
 
   const flagsButton = (
     <Button
@@ -53,7 +66,11 @@ function RcFlags (props) {
           />
         </Form.Item>
         <Form.Item style={{marginRight: 0}}>
-          <Button disabled={fetching}>Save</Button>
+          <Button
+            disabled={fetching}
+            loading={submitting}
+            onClick={handleSave}
+          >Save</Button>
         </Form.Item>
       </Form>
     </Spin>
