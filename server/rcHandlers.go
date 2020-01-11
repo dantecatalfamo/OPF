@@ -118,6 +118,7 @@ func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	jsonData, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	var started bool
 	json.Unmarshal(jsonData, &started)
@@ -125,8 +126,9 @@ func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	err = SetRcServiceStarted(service, started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	w.Write([]byte("OK"))
+	w.Write(jsonData)
 }
 
 func rcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
