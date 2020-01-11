@@ -114,6 +114,14 @@ func GetRcServiceFlags(service string) (string, error) {
 	return srv.Flags, nil
 }
 
+func SetRcServiceFlags(service string, flags string) error {
+	err := exec.Command("rcctl", "set", service, "flags", flags).Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func GetRcServiceStarted(service string) (bool, error) {
 	err := exec.Command("rcctl", "check", service).Run()
 	if err == nil {
