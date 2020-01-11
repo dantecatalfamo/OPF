@@ -13,7 +13,6 @@ function RcEnabled(props) {
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
 
   const handleChange = () => {
-    console.log(`POST ${serviceURL} with ${!enabled}`);
     setLoadingSelf(true);
     postJSON(serviceURL, !enabled)
       .then(res => {
