@@ -9,7 +9,7 @@ function RcStarted(props) {
   const onStarted = props.onStarted;
   const service = props.service;
   const serviceURL = `${serverURL}/api/rc/${service}/started`;
-  let [loadingSelf, setLoadingSelf] = useState(null);
+  const [loadingSelf, setLoadingSelf] = useState(null);
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
 
   const handleClick = () => {
