@@ -22,7 +22,7 @@ function RcEnabled(props) {
       }).catch(res => {
         notification['error']({
           message: "Error",
-          description: `Failed to enable ${service}.`,
+          description: `Failed to ${!enabled ? "enable" : "disable"} ${service}.`,
         });
         setLoadingSelf(false);
       });

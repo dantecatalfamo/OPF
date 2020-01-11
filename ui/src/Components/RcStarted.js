@@ -21,7 +21,7 @@ function RcStarted(props) {
       }).catch(res => {
         notification['error']({
           message: "Error",
-          description: `Failed to start ${service}. Check logs for details.`,
+          description: `Failed to ${!started ? "start" : "stop"} ${service}. Check logs for details.`,
         });
         setLoadingSelf(false);
       });
