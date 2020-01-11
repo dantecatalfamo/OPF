@@ -5,21 +5,19 @@ import { serverURL } from '../config.js';
 
 function RcStarted(props) {
   const loadingInit = props.loading;
-  const startedInit = props.started;
+  const started = props.started;
+  const onStarted = props.onStarted;
   const service = props.service;
   const serviceURL = `${serverURL}/api/rc/${service}/started`;
   let [loadingSelf, setLoadingSelf] = useState(null);
-  let [startedSelf, setStartedSelf] = useState(null);
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
-  const started = startedSelf === null ? startedInit : startedSelf;
 
   const handleClick = () => {
     console.log(`POST ${serviceURL} with ${!started}`);
     setLoadingSelf(true);
     postJSON(serviceURL, !started)
       .then((res) => {
-        console.log(res);
-        setStartedSelf(!started);
+        onStarted(service, res);
         setLoadingSelf(false);
       }).catch((res) => {
         console.warn(res);
