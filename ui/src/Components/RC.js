@@ -24,6 +24,14 @@ function RC() {
     getJSON(rcStartedURL).then(res => setRcStarted(res));
   }, []);
 
+  const handleServiceStarted = (service, started) => {
+    if (started && !rcStarted.includes(service)) {
+      setRcStarted([...rcStarted, service]);
+    } else {
+      setRcStarted(rcStarted.filter(s => s !== service));
+    }
+  };
+
   return (
     <Col
       xxl={{ span: 10, offset: 7 }}
@@ -66,6 +74,7 @@ function RC() {
                 loading={started == null}
                 started={started}
                 service={item}
+                onStarted={handleServiceStarted}
               />
             );
 
