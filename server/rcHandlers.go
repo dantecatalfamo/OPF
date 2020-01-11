@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
-	"io/ioutil"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
+	"net/http"
 )
 
 func GetRcAllHandler(w http.ResponseWriter, r *http.Request) {
