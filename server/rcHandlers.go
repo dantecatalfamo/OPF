@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func rcAllHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcAllHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	all, err := GetRcAll()
 	if err != nil {
@@ -24,7 +24,7 @@ func rcAllHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcOnHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcOnHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	on, err := GetRcOn()
 	if err != nil {
@@ -40,7 +40,7 @@ func rcOnHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	started, err := GetRcStarted()
 	if err != nil {
@@ -56,7 +56,7 @@ func rcStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcServiceHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcServiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
@@ -74,7 +74,7 @@ func rcServiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
@@ -92,7 +92,7 @@ func rcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
@@ -111,18 +111,18 @@ func rcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
-func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
+func SetRcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
 	jsonData, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	var started bool
 	json.Unmarshal(jsonData, &started)
-	log.Println("Setting", service, "to", started)
+	log.Println("Setting", service, "started to", started)
 	err = SetRcServiceStarted(service, started)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func rcSetServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-func rcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
+func GetRcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
 	service := vars["service"]
