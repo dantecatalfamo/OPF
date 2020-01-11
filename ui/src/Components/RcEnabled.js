@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Switch, notification } from 'antd';
+import { Switch, message } from 'antd';
 import { postJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 
@@ -20,10 +20,7 @@ function RcEnabled(props) {
         onEnabled(service, res);
         setLoadingSelf(false);
       }).catch(res => {
-        notification['error']({
-          message: "Error",
-          description: `Failed to ${!enabled ? "enable" : "disable"} ${service}.`,
-        });
+        message.error(`Failed to ${!enabled ? "enable" : "disable"} ${service}.`);
         setLoadingSelf(false);
       });
   };

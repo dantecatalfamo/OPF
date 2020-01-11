@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, notification } from 'antd';
+import { Button, message } from 'antd';
 import { postJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 
@@ -19,10 +19,7 @@ function RcStarted(props) {
         onStarted(service, res);
         setLoadingSelf(false);
       }).catch(res => {
-        notification['error']({
-          message: "Error",
-          description: `Failed to ${!started ? "start" : "stop"} ${service}. Check logs for details.`,
-        });
+        message.error(`Failed to ${!started ? "start" : "stop"} ${service}. Check logs for details.`);
         setLoadingSelf(false);
       });
   };
