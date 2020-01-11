@@ -121,7 +121,7 @@ func GetRcServiceStarted(service string) (bool, error) {
 	}
 
 	exiterr, ok := err.(*exec.ExitError)
-	if ok && exiterr.ExitCode() == 1  {
+	if ok && exiterr.ExitCode() == 1 {
 		return false, nil
 	}
 
