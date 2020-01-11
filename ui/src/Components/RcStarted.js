@@ -13,13 +13,12 @@ function RcStarted(props) {
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
 
   const handleClick = () => {
-    console.log(`POST ${serviceURL} with ${!started}`);
     setLoadingSelf(true);
     postJSON(serviceURL, !started)
-      .then((res) => {
+      .then(res => {
         onStarted(service, res);
         setLoadingSelf(false);
-      }).catch((res) => {
+      }).catch(res => {
         notification['error']({
           message: "Error",
           description: `Failed to start ${service}. Check logs for details.`,
