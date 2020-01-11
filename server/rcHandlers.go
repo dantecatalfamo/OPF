@@ -148,3 +148,23 @@ func GetRcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
 }
+
+func SetRcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vars := mux.Vars(r)
+	service := vars["service"]
+	jsonData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var enabled bool
+	json.Unmarshal(jsonData, &enabled)
+	log.Println("Setting", service, "enabled to", enabled)
+	err = SetRcServiceEnabled(service, enabled)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonData)
+}
