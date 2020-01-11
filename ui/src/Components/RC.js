@@ -81,6 +81,7 @@ function RC() {
               <RcStarted
                 loading={started == null}
                 started={started}
+                enabled={enabled}
                 service={item}
                 onStarted={handleServiceStarted}
               />
