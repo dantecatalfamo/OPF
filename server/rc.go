@@ -152,3 +152,19 @@ func SetRcServiceStarted(service string, started bool) error {
 		return nil
 	}
 }
+
+func SetRcServiceEnabled(service string, enabled bool) error {
+	if enabled == true {
+		err := exec.Command("rcctl", "enable", service).Run()
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		err := exec.Command("rcctl", "disable", service).Run()
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
