@@ -144,7 +144,11 @@ func SetRcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var started bool
-	json.Unmarshal(jsonData, &started)
+	err = json.Unmarshal(jsonData, &started)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	log.Println("Setting", service, "started to", started)
 	err = SetRcServiceStarted(service, started)
 	if err != nil {
@@ -182,7 +186,11 @@ func SetRcServiceEnabledHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var enabled bool
-	json.Unmarshal(jsonData, &enabled)
+	err = json.Unmarshal(jsonData, &enabled)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	log.Println("Setting", service, "enabled to", enabled)
 	err = SetRcServiceEnabled(service, enabled)
 	if err != nil {
