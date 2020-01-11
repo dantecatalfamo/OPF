@@ -92,6 +92,29 @@ func GetRcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(encoded)
 }
 
+func SetRcServiceFlagsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
+	vars := mux.Vars(r)
+	service := vars["service"]
+	jsonData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	var flags string
+	err = json.Unmarshal(jsonData, &flags)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	log.Println("Setting", service, "flags to", flags)
+	err = SetRcServiceFlags(service, flags)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(jsonData)
+}
+
 func GetRcServiceStartedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	vars := mux.Vars(r)
