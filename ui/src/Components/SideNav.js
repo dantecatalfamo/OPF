@@ -16,12 +16,12 @@ function SideNav(props) {
       collapsible
       collapsed={collapsed}
       onCollapse={collapse}
-      style={{
-        overflow: 'auto',
-        height: '100vh',
-        position: 'fixed',
-        left: 0,
-      }}
+      /* style={{ */
+      /*   overflow: 'auto', */
+      /*   height: '100vh', */
+      /*   position: 'fixed', */
+      /*   left: 0, */
+      /* }} */
     >
       <div className="logo" />
       <Menu
