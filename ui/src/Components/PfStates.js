@@ -25,12 +25,6 @@ function PfStates() {
     };
   }, []);
 
-  const handleChange = (pagination, filters, sorter) => {
-    console.log("parameters", pagination, filters, sorter);
-    setFilteredInfo(filters);
-    setSortedInfo(sorter);
-  };
-
   const columns = [
     {
       title: "Protocol",
