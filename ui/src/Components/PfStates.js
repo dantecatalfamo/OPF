@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Table, Typography, Icon, Card } from 'antd';
+import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
@@ -24,6 +24,34 @@ function PfStates() {
       clearInterval(interval);
     };
   }, []);
+
+  const filterDialog = (placeholder) => {
+    return ({setSelectedKeys, selectedKeys, confirm, clearFilters}) => {
+        return (
+          <div style={{padding: 8}}>
+            <Input
+              placeholder={placeholder}
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+              onPressEnter={() => confirm()}
+              style={{width: 188, marginBottom: 8, display: 'block'}}
+            />
+            <Button
+              type="primary"
+              size="small"
+              icon="search"
+              onClick={confirm}
+              style={{width: 90, marginRight: 8}}
+            >Search</Button>
+            <Button
+              onClick={clearFilters}
+              size="small"
+              style={{width: 90}}
+            >Reset</Button>
+          </div>
+        );
+    };
+  };
 
   const columns = [
     {
@@ -65,30 +93,39 @@ function PfStates() {
       dataIndex: "sourceIP",
       width: "23em",
       align: "right",
-      render: src => (<Text code>{src}</Text>)
+      render: src => (<Text code>{src}</Text>),
+      onFilter: (value, record) => record.sourceIP.match(value),
+      filterDropdown: filterDialog("Source Address"),
     },
     {
       title: "Port",
       dataIndex: "sourcePort",
       width: "5em",
-      render: prt => (<Text code>{prt}</Text>)
+      render: prt => (<Text code>{prt}</Text>),
+      onFilter: (value, record) => record.sourcePort == value,
+      filterDropdown: filterDialog("Source Port")
     },
     {
       title: "Destination",
       dataIndex: "destinationIP",
       align: "right",
       width: "23em",
-      render: dst => (<Text code>{dst}</Text>)
+      render: dst => (<Text code>{dst}</Text>),
+      onFilter: (value, record) => record.destinationIP.match(value),
+      filterDropdown: filterDialog("Destination Address")
     },
     {
       title: "Port",
       dataIndex: "destinationPort",
       width: "5em",
-      render: prt => (<Text code>{prt}</Text>)
+      render: prt => (<Text code>{prt}</Text>),
+      onFilter: (value, record) => record.destinationPort == value,
+      filterDropdown: filterDialog("Destination Port")
     },
     {
       title: "Age",
       dataIndex: "age",
+      sorter: (a, b) => a.age > b.age,
       render: age => (<Text code>{age}</Text>)
     },
     {
