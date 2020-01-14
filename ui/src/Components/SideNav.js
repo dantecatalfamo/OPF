@@ -71,8 +71,14 @@ function SideNav(props) {
         </SubMenu>
         <Menu.Item key="/services">
           <Link to="/services">
-            <Icon type="tool"/>
+            <Icon type="tool" />
             <span>Services</span>
+          </Link>
+        </Menu.Item>
+        <Menu.Item key="/processes">
+          <Link to="/processes">
+            <Icon type="monitor" />
+            <span>Processes</span>
           </Link>
         </Menu.Item>
       </Menu>
