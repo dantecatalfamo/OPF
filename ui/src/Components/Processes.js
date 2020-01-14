@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Badge, Tooltip } from 'antd';
+import { Table, Badge, Tooltip, Typography } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './Process.css';
 
-
 const processURL = `${serverURL}/api/processes`;
 const updateTime = 3000;
+
+const { Text } = Typography;
 
 function Processes() {
   const [processes, setProcesses] = useState();
@@ -29,15 +30,15 @@ function Processes() {
     },
     {
       title: "Group",
-      dataIndex: "group"
+      dataIndex: "group",
     },
     {
       title: "PID",
-      dataIndex: "pid"
+      dataIndex: "pid",
     },
     {
       title: "PPID",
-      dataIndex: "parentPid"
+      dataIndex: "parentPid",
     },
     {
       title: "Stats",
@@ -139,7 +140,8 @@ function Processes() {
     },
     {
       title: "Command",
-      dataIndex: "command"
+      dataIndex: "command",
+      render: proc => (<Text code>{proc}</Text>)
     }
   ];
 
