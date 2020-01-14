@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Table, Badge, Tooltip } from 'antd';
 import { getJSON } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './Process.css';
@@ -8,7 +9,7 @@ const processURL = `${serverURL}/api/processes`;
 const updateTime = 3000;
 
 function Processes() {
-  const [processes, setProcesses] = useState([]);
+  const [processes, setProcesses] = useState();
 
   useEffect(() => {
     getJSON(processURL).then(res => setProcesses(res));
@@ -21,54 +22,138 @@ function Processes() {
     };
   }, []);
 
-  return (
-    <div className="processes">
-      <table>
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Group</th>
-            <th>PID</th>
-            <th>PPID</th>
-            <th>Stat</th>
-            <th>%CPU</th>
-            <th>%MEM</th>
-            <th>VSZ</th>
-            <th>RSS</th>
-            <th>Nice</th>
-            <th>Pri</th>
-            <th>WChan</th>
-            <th>Started</th>
-            <th>Time</th>
-            <th>Term</th>
-            <th>Command</th>
-          </tr>
-        </thead>
-        <tbody>
-        {processes.map(proc => {
+  const columns = [
+    {
+      title: "User",
+      dataIndex: "user",
+    },
+    {
+      title: "Group",
+      dataIndex: "group"
+    },
+    {
+      title: "PID",
+      dataIndex: "pid"
+    },
+    {
+      title: "PPID",
+      dataIndex: "parentPid"
+    },
+    {
+      title: "Stats",
+      dataIndex: "stat",
+      render: stats => (
+        stats.map(stat => {
+          const text = stat.replace("_", " ");
+          let color;
+          switch(stat) {
+          case "idle":
+            color = "geekblue";
+            break;
+          case "uninterruptible":
+            color = "purple";
+            break;
+          case "runnable":
+            color = "green";
+            break;
+          case "sleeping":
+            color = "cyan";
+            break;
+          case "stopped":
+            color = "red";
+            break;
+          case "zombie":
+            color = "black";
+            break;
+          case "raised_priority":
+            color = "yellow";
+            break;
+          case "reduced_priority":
+            color = "brown";
+            break;
+          case "pledged":
+            color = "orange";
+            break;
+          case "unveil_locked":
+            color = "purple";
+            break;
+          case "unveil_not_locked":
+            color = "lavender";
+            break;
+          case "session_leader":
+            color = "#ccc";
+            break;
+          case "foreground":
+            color = "grey";
+            break;
+          default:
+            color = "#333";
+          }
           return (
-            <tr key={proc.pid}>
-              <td>{proc.user}</td>
-              <td>{proc.group}</td>
-              <td>{proc.pid}</td>
-              <td>{proc.parentPid}</td>
-              <td>{proc.stat.join(", ")}</td>
-              <td>{proc.percentCPU}</td>
-              <td>{proc.percentMemory}</td>
-              <td>{proc.virtualMemorySize}</td>
-              <td>{proc.residentSetSize}</td>
-              <td>{proc.nice}</td>
-              <td>{proc.priority}</td>
-              <td>{proc.waitChannel}</td>
-              <td>{proc.started}</td>
-              <td>{proc.time}</td>
-              <td>{proc.terminal}</td>
-              <td>{proc.command}</td>
-            </tr>
+            <Tooltip title={text}>
+              <Badge color={color} />
+            </Tooltip>
           );
-        })}
-        </tbody>
-      </table>
+        })
+      )
+    },
+    {
+      title: "%CPU",
+      dataIndex: "percentCPU"
+    },
+    {
+      title: "%MEM",
+      dataIndex: "percentMemory"
+    },
+    {
+      title: "VSZ",
+      dataIndex: "virtualMemorySize"
+    },
+    {
+      title: "RSS",
+      dataIndex: "residentSetSize"
+    },
+    {
+      title: "Nice",
+      dataIndex: "nice"
+    },
+    {
+      title: "Pri",
+      dataIndex: "priority"
+    },
+    {
+      title: "WChan",
+      dataIndex: "waitChannel"
+    },
+    {
+      title: "Started",
+      dataIndex: "started"
+    },
+    {
+      title: "Time",
+      dataIndex: "time"
+    },
+    {
+      title: "Terminal",
+      dataIndex: "terminal"
+    },
+    {
+      title: "Command",
+      dataIndex: "command"
+    }
+  ];
+
+  return (
+    <div style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
+      <Table
+        dataSource={processes}
+        columns={columns}
+        rowKey="pid"
+        loading={!processes}
+        size="small"
+        scroll={{x: true}}
+        pagination={false}
+      />
     </div>
   );
 }
