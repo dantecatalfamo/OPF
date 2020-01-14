@@ -185,6 +185,8 @@ function PfStates() {
     {
       title: "Rule",
       dataIndex: "rule",
+      onFilter: (value, record) => record.rule == value,
+      filterDropdown: filterDialog("Rule"),
       render: rule => {
         const num = rule === -1 ? "*" : rule;
         return num;
