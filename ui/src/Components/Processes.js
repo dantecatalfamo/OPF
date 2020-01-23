@@ -128,7 +128,25 @@ function Processes() {
     },
     {
       title: "Started",
-      dataIndex: "started"
+      dataIndex: "started",
+      render: started => {
+        const startDate = new Date(started);
+        const now = new Date();
+        const timeBetween = now - startDate;
+        let days, hours, minutes, seconds;
+        seconds = Math.floor(timeBetween / 1000);
+        minutes = Math.floor(seconds / 60);
+        seconds = seconds % 60;
+        hours = Math.floor(minutes / 60);
+        minutes = minutes % 60;
+        days = Math.floor(hours / 24);
+        hours = hours % 24;
+        return (
+          <Tooltip title={started}>
+            <Text>{days ? days + ":" : null}{hours ? hours + ":" : null}{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</Text>
+          </Tooltip>
+        );
+      }
     },
     {
       title: "Time",
