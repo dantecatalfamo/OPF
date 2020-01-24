@@ -75,6 +75,39 @@ function filterDialog(placeholder) {
   };
 };
 
+function expandedRow(row) {
+  let gateway;
+  if (row.gateway) {
+    gateway = (
+      <>
+        <td><strong>Gateway</strong></td>
+        <td><Text code>{row.gateway}</Text></td>
+      </>
+    );}
+  return (
+    <div>
+      <table style={{width: "max-content", minWidth: "max-content"}}>
+        <tbody>
+          <tr>
+            <td align="right"><strong>Packets Sent</strong></td>
+            <td><Text code>{row.packetsSent}</Text></td>
+            <td align="right"><strong>Packets Received</strong></td>
+            <td><Text code>{row.packetsReceived}</Text></td>
+            <td align="right"><strong>Expires</strong></td>
+            <td><Text code>{row.expires}</Text></td>
+          </tr>
+          <tr>
+            <td align="right"><strong>Bytes Sent</strong></td>
+            <td><Text code>{row.bytesSent}</Text></td>
+            <td align="right"><strong>Bytes Received</strong></td>
+            <td><Text code>{row.bytesReceived}</Text></td>
+            {gateway}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function PfStates() {
   const [windowWidth, windowHeight] = useWindowSize();
@@ -259,39 +292,7 @@ function PfStates() {
         rowKey="id"
         scroll={{x: true}}
         pagination={{pageSize: tableRows}}
-        expandedRowRender={row => {
-          let gateway;
-          if (row.gateway) {
-            gateway = (
-              <>
-                <td><strong>Gateway</strong></td>
-                <td><Text code>{row.gateway}</Text></td>
-              </>
-            );}
-          return (
-            <div>
-              <table style={{width: "max-content", minWidth: "max-content"}}>
-                <tbody>
-                  <tr>
-                    <td align="right"><strong>Packets Sent</strong></td>
-                    <td><Text code>{row.packetsSent}</Text></td>
-                    <td align="right"><strong>Packets Received</strong></td>
-                    <td><Text code>{row.packetsReceived}</Text></td>
-                    <td align="right"><strong>Expires</strong></td>
-                    <td><Text code>{row.expires}</Text></td>
-                  </tr>
-                  <tr>
-                    <td align="right"><strong>Bytes Sent</strong></td>
-                    <td><Text code>{row.bytesSent}</Text></td>
-                    <td align="right"><strong>Bytes Received</strong></td>
-                    <td><Text code>{row.bytesReceived}</Text></td>
-                    {gateway}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          );
-        }}
+        expandedRowRender={row => expandedRow(row)}
       />
     </div>
   );
