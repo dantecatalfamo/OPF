@@ -9,6 +9,11 @@ const updateTime = 3000;
 
 const { Text } = Typography;
 
+function hmToSeconds(time) {
+  const [hours, minutes] = time.split(":");
+  return Number(hours) * 60 + Number(minutes);
+}
+
 function Processes() {
   const [processes, setProcesses] = useState();
   const [highlightedProc, setHighlightedProc] = useState();
@@ -110,11 +115,13 @@ function Processes() {
     },
     {
       title: "%CPU",
-      dataIndex: "percentCPU"
+      dataIndex: "percentCPU",
+      sorter: (a, b) => a.percentCPU - b.percentCPU,
     },
     {
       title: "%MEM",
-      dataIndex: "percentMemory"
+      dataIndex: "percentMemory",
+      sorter: (a, b) => a.percentMemory - b.percentMemory,
     },
     {
       title: "VSZ",
@@ -139,6 +146,7 @@ function Processes() {
     {
       title: "Started",
       dataIndex: "started",
+      sorter: (a, b) => new Date(a.started) - new Date(b.started),
       render: started => {
         const startDate = new Date(started);
         const now = new Date();
@@ -160,7 +168,10 @@ function Processes() {
     },
     {
       title: "Time",
-      dataIndex: "time"
+      dataIndex: "time",
+      sorter: (a, b) => {
+        return hmToSeconds(a.time) - hmToSeconds(b.time);
+      },
     },
     // {
     //   title: "Terminal",
