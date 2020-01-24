@@ -11,6 +11,7 @@ const { Text } = Typography;
 
 function Processes() {
   const [processes, setProcesses] = useState();
+  const [highlightedProc, setHighlightedProc] = useState();
 
   useEffect(() => {
     getJSON(processURL).then(res => setProcesses(res));
@@ -35,10 +36,19 @@ function Processes() {
     {
       title: "PID",
       dataIndex: "pid",
+      render: pid => {
+        const highlighted = highlightedProc === pid;
+        return (<span style={{padding: 3, backgroundColor: highlighted ? "orange" : null, borderRadius: 2}}>{pid}</span>);
+      }
     },
     {
       title: "PPID",
       dataIndex: "parentPid",
+      render: ppid => {
+        const handleMouseEnter = () => setHighlightedProc(ppid);
+        const handleMouseLeave = () => setHighlightedProc(null);
+        return (<span onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>{ppid}</span>);
+      }
     },
     {
       title: "Stats",
