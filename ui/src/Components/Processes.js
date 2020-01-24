@@ -162,10 +162,10 @@ function Processes() {
       title: "Time",
       dataIndex: "time"
     },
-    {
-      title: "Terminal",
-      dataIndex: "terminal"
-    },
+    // {
+    //   title: "Terminal",
+    //   dataIndex: "terminal"
+    // },
     {
       title: "Command",
       dataIndex: "command",
