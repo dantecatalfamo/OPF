@@ -43,7 +43,7 @@ function Processes() {
       dataIndex: "pid",
       render: pid => {
         const highlighted = highlightedProc === pid;
-        return (<span style={{padding: 3, backgroundColor: highlighted ? "orange" : null, borderRadius: 2}}>{pid}</span>);
+        return (<span style={{padding: 3, backgroundColor: highlighted ? "orange" : null, borderRadius: 3}}>{pid}</span>);
       }
     },
     {
