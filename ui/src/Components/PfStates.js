@@ -9,6 +9,73 @@ const { Text } = Typography;
 const pfStatesURL = `${serverURL}/api/pf-states`;
 const updateTime = 5000;
 
+function ipLookupButton(ip) {
+  const whatismyipButton = (
+    <Button
+      href={`https://www.whatismyip.com/${ip}/`}
+      target="_blank"
+      size="small"
+    >WhatIsMyIp.com</Button>
+  );
+  return (
+    <Popover
+      trigger="click"
+      placement="bottom"
+      content={whatismyipButton}
+    >
+      <Text code>{ip}</Text>
+    </Popover>
+  );
+}
+
+function portLookupButton(port) {
+  const speedguideButton = (
+    <Button
+      href={`https://www.speedguide.net/port.php?port=${port}`}
+      target="_blank"
+      size="small"
+    >speedguide.net</Button>
+  );
+  return (
+    <Popover
+      trigger="click"
+      placement="bottom"
+      content={speedguideButton}
+    >
+      <Text code>{port}</Text>
+    </Popover>
+  );
+}
+
+function filterDialog(placeholder) {
+  return ({setSelectedKeys, selectedKeys, confirm, clearFilters}) => {
+    return (
+      <div style={{padding: 8}}>
+        <Input
+          placeholder={placeholder}
+          value={selectedKeys[0]}
+          onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+          onPressEnter={() => confirm()}
+          style={{width: 188, marginBottom: 8, display: 'block'}}
+        />
+        <Button
+          type="primary"
+          size="small"
+          icon="search"
+          onClick={confirm}
+          style={{width: 90, marginRight: 8}}
+        >Search</Button>
+        <Button
+          onClick={clearFilters}
+          size="small"
+          style={{width: 90}}
+        >Reset</Button>
+      </div>
+    );
+  };
+};
+
+
 function PfStates() {
   const [windowWidth, windowHeight] = useWindowSize();
   const [states, setStates] = useState();
@@ -39,34 +106,6 @@ function PfStates() {
       clearInterval(interval);
     };
   }, []);
-
-  const filterDialog = (placeholder) => {
-    return ({setSelectedKeys, selectedKeys, confirm, clearFilters}) => {
-        return (
-          <div style={{padding: 8}}>
-            <Input
-              placeholder={placeholder}
-              value={selectedKeys[0]}
-              onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-              onPressEnter={() => confirm()}
-              style={{width: 188, marginBottom: 8, display: 'block'}}
-            />
-            <Button
-              type="primary"
-              size="small"
-              icon="search"
-              onClick={confirm}
-              style={{width: 90, marginRight: 8}}
-            >Search</Button>
-            <Button
-              onClick={clearFilters}
-              size="small"
-              style={{width: 90}}
-            >Reset</Button>
-          </div>
-        );
-    };
-  };
 
   const columns = [
     {
@@ -108,17 +147,17 @@ function PfStates() {
       dataIndex: "sourceIP",
       width: "23em",
       align: "right",
-      render: src => (<Text code>{src}</Text>),
       onFilter: (value, record) => record.sourceIP.match(value),
       filterDropdown: filterDialog("Source Address"),
+      render: src => ipLookupButton(src),
     },
     {
       title: "Port",
       dataIndex: "sourcePort",
       width: "5em",
-      render: prt => (<Text code>{prt}</Text>),
       onFilter: (value, record) => record.sourcePort == value,
-      filterDropdown: filterDialog("Source Port")
+      filterDropdown: filterDialog("Source Port"),
+      render: prt => portLookupButton(prt),
     },
     {
       title: "Destination",
@@ -127,24 +166,7 @@ function PfStates() {
       width: "23em",
       onFilter: (value, record) => record.destinationIP.match(value),
       filterDropdown: filterDialog("Destination Address"),
-      render: dst => {
-        const whatismyipButton = (
-          <Button
-            href={`https://www.whatismyip.com/${dst}/`}
-            target="_blank"
-            size="small"
-          >WhatIsMyIp.com</Button>
-        );
-        return (
-          <Popover
-            trigger="click"
-            placement="bottom"
-            content={whatismyipButton}
-          >
-            <Text code>{dst}</Text>
-          </Popover>
-        );
-      },
+      render: dst => ipLookupButton(dst),
     },
     {
       title: "Port",
@@ -152,24 +174,7 @@ function PfStates() {
       width: "5em",
       onFilter: (value, record) => record.destinationPort == value,
       filterDropdown: filterDialog("Destination Port"),
-      render: prt => {
-        const speedguideButton = (
-          <Button
-            href={`https://www.speedguide.net/port.php?port=${prt}`}
-            target="_blank"
-            size="small"
-          >speedguide.net</Button>
-        );
-        return (
-          <Popover
-            trigger="click"
-            placement="bottom"
-            content={speedguideButton}
-          >
-            <Text code>{prt}</Text>
-          </Popover>
-        );
-      },
+      render: prt => portLookupButton(prt),
     },
     {
       title: "Age",
