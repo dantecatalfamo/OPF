@@ -21,8 +21,9 @@ function PfStates() {
     const paddingTop = 24;
     const topBar = 64;
     const tableHeader = 38;
+    const horizontalScrollBar = 12; // rough guess
     const pagination = 16 + 24 + 16;
-    const usedSpace = paddingTop + topBar + tableHeader + pagination;
+    const usedSpace = paddingTop + topBar + tableHeader + horizontalScrollBar + pagination;
     const usableSpace = windowHeight - usedSpace;
     const rows = Math.floor(usableSpace / 40);
     setTableRows(rows);
