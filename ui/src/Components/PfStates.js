@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button } from 'antd';
-import { getJSON } from '../helpers.js';
+import { getJSON, useWindowSize } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
 
@@ -10,9 +10,23 @@ const pfStatesURL = `${serverURL}/api/pf-states`;
 const updateTime = 5000;
 
 function PfStates() {
+  const [windowWidth, windowHeight] = useWindowSize();
   const [states, setStates] = useState();
   const [filteredInfo, setFilteredInfo] = useState({});
   const [sortedInfo, setSortedInfo] = useState({});
+  const [tableRows, setTableRows] = useState(10);
+
+  useLayoutEffect(() => {
+    // total space - top bar - padding top
+    const paddingTop = 24;
+    const topBar = 64;
+    const tableHeader = 38;
+    const pagination = 16 + 24 + 16;
+    const usedSpace = paddingTop + topBar + tableHeader + pagination;
+    const usableSpace = windowHeight - usedSpace;
+    const rows = Math.floor(usableSpace / 40);
+    setTableRows(rows);
+  }, [windowHeight]);
 
   useEffect(() => {
     getJSON(pfStatesURL).then(res => setStates(res));
@@ -204,7 +218,7 @@ function PfStates() {
         size="small"
         rowKey="id"
         scroll={{x: true}}
-        pagination={{pageSize: 18}}
+        pagination={{pageSize: tableRows}}
         expandedRowRender={row => {
           let gateway;
           if (row.gateway) {
