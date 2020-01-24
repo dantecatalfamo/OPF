@@ -15,7 +15,7 @@ function ipLookupButton(ip) {
       href={`https://www.whatismyip.com/${ip}/`}
       target="_blank"
       size="small"
-    >WhatIsMyIp.com</Button>
+    >whatismyip.com</Button>
   );
   return (
     <Popover
