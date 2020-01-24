@@ -13,6 +13,7 @@ export async function postJSON(url, data) {
   return await response.json();
 }
 
+// https://stackoverflow.com/a/19014495
 export function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
   useLayoutEffect(() => {
