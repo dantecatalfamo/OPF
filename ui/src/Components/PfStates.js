@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button } from 'antd';
+import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button, Popover } from 'antd';
 import { getJSON, useWindowSize } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
@@ -125,17 +125,51 @@ function PfStates() {
       dataIndex: "destinationIP",
       align: "right",
       width: "23em",
-      render: dst => (<Text code>{dst}</Text>),
       onFilter: (value, record) => record.destinationIP.match(value),
-      filterDropdown: filterDialog("Destination Address")
+      filterDropdown: filterDialog("Destination Address"),
+      render: dst => {
+        const whatismyipButton = (
+          <Button
+            href={`https://www.whatismyip.com/${dst}/`}
+            target="_blank"
+            size="small"
+          >WhatIsMyIp.com</Button>
+        );
+        return (
+          <Popover
+            trigger="click"
+            placement="bottom"
+            content={whatismyipButton}
+          >
+            <Text code>{dst}</Text>
+          </Popover>
+        );
+      },
     },
     {
       title: "Port",
       dataIndex: "destinationPort",
       width: "5em",
-      render: prt => (<Text code>{prt}</Text>),
       onFilter: (value, record) => record.destinationPort == value,
-      filterDropdown: filterDialog("Destination Port")
+      filterDropdown: filterDialog("Destination Port"),
+      render: prt => {
+        const speedguideButton = (
+          <Button
+            href={`https://www.speedguide.net/port.php?port=${prt}`}
+            target="_blank"
+            size="small"
+          >speedguide.net</Button>
+        );
+        return (
+          <Popover
+            trigger="click"
+            placement="bottom"
+            content={speedguideButton}
+          >
+            <Text code>{prt}</Text>
+          </Popover>
+        );
+      },
     },
     {
       title: "Age",
