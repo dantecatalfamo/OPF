@@ -152,5 +152,11 @@ func tcpdropHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tcpdrop(param.LocalIP, param.LocalPort, param.RemoteIP, param.RemotePort)
+	err = tcpdrop(param.LocalIP, param.LocalPort, param.RemoteIP, param.RemotePort)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("OK"))
 }
