@@ -31,7 +31,7 @@ func main() {
 	r.HandleFunc("/api/hardware", hardwareHandler)
 	r.HandleFunc("/api/processes", processesHandler)
 	r.HandleFunc("/api/swap-usage", swapUsageHandler)
-	r.HandleFunc("/api/tcpdrop", tcpdropHandler)
+	r.HandleFunc("/api/tcpdrop", tcpdropHandler).Methods("POST")
 
 	http.ListenAndServe(":8001", r)
 }
