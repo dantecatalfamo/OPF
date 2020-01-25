@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Switch, Link, Route } from 'react-router-dom';
+import Dashboard from './Dashboard';
 import PfInfo from './PfInfo';
 import PfStates from './PfStates';
 import PfRuleStates from './PfRuleStates';
@@ -16,6 +17,9 @@ import RC from './RC';
 function MainContent(props) {
   return (
     <Switch>
+      <Route path="/dashboard">
+        <Dashboard/>
+      </Route>
       <Route path="/firewall-info">
         <PfInfo/>
       </Route>

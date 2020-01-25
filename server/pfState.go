@@ -29,6 +29,8 @@ type PfState struct {
 	Direction        string `json:"direction"`
 }
 
+// genPfState generates a PfState struct from a single row outputted
+// from the command pfctl -s states -vv
 func genPfState(lines []string) (*PfState, error) {
 	var src string
 	var dst string
@@ -162,6 +164,7 @@ func genPfState(lines []string) (*PfState, error) {
 	return pfState, nil
 }
 
+// GetPfStates generates an array of all current pf states
 func GetPfStates() ([]*PfState, error) {
 	outBytes, err := exec.Command("pfctl", "-vv", "-s", "states").Output()
 	if err != nil {
