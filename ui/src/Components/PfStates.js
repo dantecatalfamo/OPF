@@ -120,7 +120,7 @@ function PfStates() {
   const [tableRows, setTableRows] = useState(10);
 
   useLayoutEffect(() => {
-    // total space - top bar - padding top
+    const rowHeight = 41;
     const paddingTop = 24;
     const topBar = 64;
     const tableHeader = 38;
@@ -128,7 +128,7 @@ function PfStates() {
     const pagination = 16 + 24 + 16;
     const usedSpace = paddingTop + topBar + tableHeader + horizontalScrollBar + pagination;
     const usableSpace = windowHeight - usedSpace;
-    const rows = Math.floor(usableSpace / 40);
+    const rows = Math.floor(usableSpace / rowHeight);
     setTableRows(rows);
   }, [windowHeight]);
 
