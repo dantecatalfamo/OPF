@@ -86,6 +86,7 @@ function expandedRow(row) {
         <td><Text code>{row.gateway}</Text></td>
       </>
     );}
+
   return (
     <div>
       <table style={{width: "max-content", minWidth: "max-content"}}>
