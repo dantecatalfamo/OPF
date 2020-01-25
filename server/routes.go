@@ -32,6 +32,7 @@ func main() {
 	r.HandleFunc("/api/hardware", hardwareHandler)
 	r.HandleFunc("/api/processes", processesHandler)
 	r.HandleFunc("/api/swap-usage", swapUsageHandler)
+	r.HandleFunc("/api/hostname", GetHostnameHandler)
 
 	http.ListenAndServe(":8001", r)
 }
