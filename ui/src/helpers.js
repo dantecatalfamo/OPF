@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 
 export async function getJSON(url) {
   const response = await fetch(url);
@@ -11,6 +11,17 @@ export async function postJSON(url, data) {
     body: JSON.stringify(data),
   });
   return await response.json();
+}
+
+export function useJsonUpdates(url, setter, updateTime) {
+  useEffect(() => {
+    getJSON(url).then(res => setter(res));
+    const interval = setInterval(() => {
+      getJSON(url).then(res => setter(res));
+    }, updateTime);
+
+    return () => clearInterval(interval);
+  }, [url, setter, updateTime]);
 }
 
 // https://stackoverflow.com/a/19014495
