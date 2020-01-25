@@ -1,16 +1,17 @@
 package main
 
 import (
-	"net/http"
 	"github.com/gorilla/mux"
+	"net/http"
 )
 
 func main() {
 	smalltest()
 	r := mux.NewRouter()
-	r.HandleFunc("/api/pf-states", pfStatesHandler)
+	r.HandleFunc("/api/pf-states", pfStatesHandler).Methods("GET")
 	r.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
-	r.HandleFunc("/api/pf-info", pfInfoHandler)
+	r.HandleFunc("/api/pf-kill-id", pfKillIDHandler).Methods("POST")
+	r.HandleFunc("/api/pf-info", pfInfoHandler).Methods("GET")
 	r.HandleFunc("/api/pf-interfaces", pfInterfacesHandler)
 	r.HandleFunc("/api/pf-memory", pfMemoryHandler)
 	r.HandleFunc("/api/rc-all", GetRcAllHandler)

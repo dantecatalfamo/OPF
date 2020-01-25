@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button, Popover } from 'antd';
-import { getJSON, useWindowSize } from '../helpers.js';
+import PfKillID from './PfKillID';
+import { getJSON, postJSON, useWindowSize } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
 
 const { Text } = Typography;
 
 const pfStatesURL = `${serverURL}/api/pf-states`;
+const tcpDropURL = `${serverURL}/api/tcpdrop`;
 const updateTime = 5000;
 
 function ipLookupButton(ip) {
@@ -278,6 +280,11 @@ function PfStates() {
         const num = rule === -1 ? "*" : rule;
         return num;
       }
+    },
+    {
+      title: "",
+      dataIndex: "id",
+      render: id => (<PfKillID id={id}/>)
     }
   ];
 
