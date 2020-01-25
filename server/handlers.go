@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	// "io/ioutil"
 	"net/http"
 	// "github.com/gorilla/mux"
 )
@@ -133,30 +133,4 @@ func swapUsageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(encoded)
-}
-
-func tcpdropHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	jsonData, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-	var param struct {
-		LocalIP    string `json:"localIP"`
-		LocalPort  int    `json:"localPort"`
-		RemoteIP   string `json:"remoteIP"`
-		RemotePort int    `json:"remotePort"`
-	}
-	err = json.Unmarshal(jsonData, &param)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = tcpdrop(param.LocalIP, param.LocalPort, param.RemoteIP, param.RemotePort)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("OK"))
 }
