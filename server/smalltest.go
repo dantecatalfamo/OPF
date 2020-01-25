@@ -1,155 +1,143 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 func smalltest() {
+	fmt.Println("Debug Tests")
+
 	states, err := GetPfStates()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	for _, s := range states {
-		fmt.Printf("%v\n", s)
+		fmt.Println("PF State:", s)
 	}
 
 	rules, err := GetPfRuleStates()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	for _, r := range rules {
-		fmt.Printf("%v\n", r)
+		fmt.Println("PF Rule:", r)
 	}
 
 	info, err := GetPfInfo()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(info)
+	fmt.Println("PF Info:", info)
 
 	ifaces, err := GetPfInterfaces()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	for _, i := range ifaces {
-		fmt.Printf("%v\n", i)
+		fmt.Println("PF Interface:", i)
 	}
 
 	mem, err := GetPfMemory()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(mem)
+	fmt.Println("PF Memory:", mem)
 
 	ut, err := GetUptime()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(ut)
+	fmt.Println("Uptime:", ut)
 
 	un, err := GetUname()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(un)
+	fmt.Println("Uname:", un)
 
 	rcall, err := GetRcAll()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(rcall)
+	fmt.Println("RC All:", rcall)
 
 	srv, err := GetRcService("sshd")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", srv)
+	fmt.Println("SSHd Service:", srv)
 
 	flags, err := GetRcServiceFlags("sshd")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", flags)
+	fmt.Println("SSHd Flags:", flags)
 
 	started, err := GetRcServiceStarted("sshd")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(started)
+	fmt.Println("SSHd Started:", started)
 
 	enabled, err := GetRcServiceEnabled("sshd")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Println(enabled)
+	fmt.Println("SSHd Enabled:", enabled)
 
 	nsifaces, err := GetNetstatInterfaces()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	for _, iface := range nsifaces {
-		fmt.Printf("%v\n", iface)
+		fmt.Println("Netsat Interface:", iface)
 	}
 
 	vmst, err := GetVmstat()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", vmst)
+	fmt.Println("VmStat:", vmst)
 
 	df, err := GetDiskUsage()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", df)
+	fmt.Println("Disk Usage:", df)
 	for _, fs := range df.Filesystems {
-		fmt.Printf("%v\n", fs)
+		fmt.Println("Filesystem:", fs)
 	}
 
 	hw, err := GetHardware()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", hw)
+	fmt.Println("Hardware:", hw)
 	for _, disk := range hw.Disks {
-		fmt.Printf("%v\n", disk)
+		fmt.Println("Disk:", disk)
 	}
 	for _, sens := range hw.Sensors {
-		fmt.Printf("%v\n", sens)
+		fmt.Println("Sensor:", sens)
 	}
 
 	procs, err := GetProcesses()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	for _, proc := range procs {
-		fmt.Printf("%v\n", proc)
+		fmt.Println("Process:", proc)
 	}
 
 	swap, err := GetSwapUsage()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-	fmt.Printf("%v\n", swap)
+	fmt.Println("Swap Usage:", swap)
 	for _, swapDev := range swap.Devices {
-		fmt.Printf("%v\n", swapDev)
+		fmt.Println("Swap Device:", swapDev)
 	}
+
+	hostname, err := GetHostname()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Hostname:", hostname)
 }
