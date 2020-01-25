@@ -23,7 +23,7 @@ func GetUptime() (*Uptime, error) {
 	fields := strings.Fields(out)
 	time := fields[0]
 	var upEdge int
-	if strings.Contains(out, "mins") || strings.Contains(out, "hrs") {
+	if strings.Contains(out, "min") || strings.Contains(out, "hrs") {
 		upEdge = 6
 	} else {
 		upEdge = 5
