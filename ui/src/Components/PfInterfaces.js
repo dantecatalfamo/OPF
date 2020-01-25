@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
 
@@ -10,16 +10,7 @@ const updateTime = 2000;
 function PfStates() {
   const [interfaces, setInterfaces] = useState([]);
 
-  useEffect(() => {
-    getJSON(pfInterfacesURL).then(res => setInterfaces(res));
-    const interval = setInterval(() => {
-      getJSON(pfInterfacesURL).then(res => setInterfaces(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(pfInterfacesURL, setInterfaces, updateTime);
 
   if (interfaces.length == 0) {
     return (

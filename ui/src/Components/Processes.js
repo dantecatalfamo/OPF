@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Badge, Tooltip, Typography } from 'antd';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './Process.css';
 
@@ -18,16 +18,7 @@ function Processes() {
   const [processes, setProcesses] = useState();
   const [highlightedProc, setHighlightedProc] = useState();
 
-  useEffect(() => {
-    getJSON(processURL).then(res => setProcesses(res));
-    const interval = setInterval(() => {
-      getJSON(processURL).then(res => setProcesses(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(processURL, setProcesses, updateTime);
 
   const columns = [
     {

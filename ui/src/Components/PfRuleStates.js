@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfRuleStates.css';
 
@@ -10,16 +10,7 @@ const updateTime = 2000;
 function PfRuleStates() {
   const [rulestates, setRulestates] = useState([]);
 
-  useEffect(() => {
-    getJSON(pfRuleStatesURL).then(res => setRulestates(res));
-    const interval = setInterval(() => {
-      getJSON(pfRuleStatesURL).then(res => setRulestates(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(pfRuleStatesURL, setRulestates, updateTime);
 
   return (
     <div className="pfrulestates">

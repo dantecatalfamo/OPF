@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './SwapUsage.css';
 
@@ -9,16 +9,7 @@ const updateTime = 5000;
 function SwapUsage() {
   const [swapUsage, setSwapUsage] = useState();
 
-  useEffect(() => {
-    getJSON(swapUsageURL).then(res => setSwapUsage(res));
-    const interval = setInterval(() => {
-      getJSON(swapUsageURL).then(res => setSwapUsage(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(swapUsageURL, setSwapUsage, updateTime);
 
   if (!swapUsage) {
     return "";

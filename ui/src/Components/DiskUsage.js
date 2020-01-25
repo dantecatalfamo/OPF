@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './DiskUsage.css';
 
@@ -10,16 +10,7 @@ const updateTime = 3000;
 function DiskUsage (props) {
   const [diskUsage, setDiskUsage] = useState();
 
-  useEffect(() => {
-    getJSON(diskUsageURL).then(res => setDiskUsage(res));
-    const interval = setInterval(() => {
-      getJSON(diskUsageURL).then(res => setDiskUsage(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(diskUsageURL, setDiskUsage, updateTime);
 
   let diskUsageRows;
 

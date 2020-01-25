@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button, Popover } from 'antd';
 import PfKillID from './PfKillID';
-import { getJSON, postJSON, useWindowSize } from '../helpers.js';
+import { getJSON, postJSON, useWindowSize, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfStates.css';
 
@@ -132,16 +132,7 @@ function PfStates() {
     setTableRows(rows);
   }, [windowHeight]);
 
-  useEffect(() => {
-    getJSON(pfStatesURL).then(res => setStates(res));
-    const interval = setInterval(() => {
-      getJSON(pfStatesURL).then(res => setStates(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(pfStatesURL, setStates, updateTime);
 
   const columns = [
     {

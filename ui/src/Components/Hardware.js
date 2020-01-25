@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './Hardware.css';
 
@@ -9,16 +9,7 @@ const updateTime = 5000;
 function Hardware() {
   const [hardware, setHardware] = useState();
 
-  useEffect(() => {
-    getJSON(hardwareURL).then(res => setHardware(res));
-    const interval = setInterval(() => {
-      getJSON(hardwareURL).then(res => setHardware(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(hardwareURL, setHardware, updateTime);
 
   if (!hardware) {
     return "";

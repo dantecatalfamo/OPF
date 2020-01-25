@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Descriptions, Badge, Typography, Col, Row, Card, Statistic, Spin } from 'antd';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 
 const { Text } = Typography;
@@ -12,16 +12,7 @@ const updateTime = 3000;
 function PfInfo(props) {
   const [pfInfo, setPfInfo] = useState();
 
-  useEffect(() => {
-    getJSON(pfInfoURL).then(res => setPfInfo(res));
-    const interval = setInterval(() => {
-      getJSON(pfInfoURL).then(res => setPfInfo(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(pfInfoURL, setPfInfo, updateTime);
 
   if (!pfInfo) {
     return (

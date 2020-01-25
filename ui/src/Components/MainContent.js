@@ -6,8 +6,6 @@ import PfStates from './PfStates';
 import PfRuleStates from './PfRuleStates';
 import PfInterfaces from './PfInterfaces';
 import NetstatInterfaces from './NetstatInterfaces';
-import Uptime from './Uptime';
-import Uname from './Uname';
 import Processes from './Processes';
 import DiskUsage from './DiskUsage';
 import Hardware from './Hardware';

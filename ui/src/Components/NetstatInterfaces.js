@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJSON } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './NetstatInterfaces.css';
 
@@ -9,16 +9,7 @@ const updateTime = 2000;
 function NetstatInterfaces() {
   const [interfaces, setInterfaces] = useState([]);
 
-  useEffect(() => {
-    getJSON(nsInterfacesURL).then(res => setInterfaces(res));
-    const interval = setInterval(() => {
-      getJSON(nsInterfacesURL).then(res => setInterfaces(res));
-    }, updateTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  useJsonUpdates(nsInterfacesURL, setInterfaces, updateTime);
 
   return (
     <div className="netstatinterfaces">
