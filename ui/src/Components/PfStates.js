@@ -120,7 +120,7 @@ function PfStates() {
   const [tableRows, setTableRows] = useState(10);
 
   useLayoutEffect(() => {
-    const rowHeight = 41;
+    const rowHeight = 33;// 41; // Custom table CSS rule
     const paddingTop = 24;
     const topBar = 64;
     const tableHeader = 38;
@@ -281,7 +281,7 @@ function PfStates() {
   ];
 
   return (
-    <div style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
+    <div className="pfstates" style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
       <Table
         columns={columns}
         dataSource={states}

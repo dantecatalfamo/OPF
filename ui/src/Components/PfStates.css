@@ -1,12 +1,3 @@
-.pfstates table {
-  font-size: small;
-  font-family: monospace;
-}
-
-.pfstates .ip {
-  min-width: 320px;
-}
-
-.pfstates .proto {
-  min-width: 70px;
+.pfstates td {
+  padding: 4px !important;
 }
