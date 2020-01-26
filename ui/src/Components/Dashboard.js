@@ -7,6 +7,7 @@ const { Text, Title } = Typography;
 
 const unameURL = `${serverURL}/api/uname`;
 const uptimeURL = `${serverURL}/api/uptime`;
+const ramURL = `${serverURL}/api/ram`;
 const vmstatURL = `${serverURL}/api/vmstat`;
 const diskUsageURL = `${serverURL}/api/disk-usage`;
 const swapUsageURL = `${serverURL}/api/swap-usage`;
@@ -38,6 +39,29 @@ function Uptime(props) {
   );
 }
 
+function Ram(props) {
+  const [ram, setRam] = useState();
+  useJsonUpdates(ramURL, setRam, updateTime);
+
+  if (!ram) {
+    return (<Card/>);
+  }
+
+  const total = ram.total;
+  const active = ram.active;
+  const free = ram.free;
+  const other = ram.total - (ram.free + ram.active);
+
+  return (
+    <Card title="RAM">
+      Total: {total}<br/>
+      Active: {active}<br/>
+      Other: {other}<br/>
+      Free: {free}
+    </Card>
+  );
+}
+
 function VmStat(props) {
   const [vmstat, setVmstat] = useState();
   useJsonUpdates(vmstatURL, setVmstat, updateTime);
@@ -47,34 +71,6 @@ function VmStat(props) {
       <Card>
         <Text>Procs Running: {vmstat ? vmstat.procs.running : ""}</Text><br/>
         <Text>Procs Sleeping: {vmstat ? vmstat.procs.sleeping : ""}</Text><br/>
-        <Text>Memory Active: {vmstat ? vmstat.memory.active : ""}</Text><br/>
-        <Text>Memory Free: {vmstat ? vmstat.memory.free : ""}</Text>
-      </Card>
-      <Card>
-        <Text>Page Faults: {vmstat ? vmstat.page.faults : ""}</Text><br/>
-        <Text>Page Reclaims: {vmstat ? vmstat.page.reclaims : ""}</Text><br/>
-        <Text>Pages Paged In: {vmstat ? vmstat.page.pagedIn : ""}</Text><br/>
-        <Text>Pages Paged Out: {vmstat ? vmstat.page.pagedOut : ""}</Text><br/>
-        <Text>Pages Freed: {vmstat ? vmstat.page.freed : ""}</Text><br/>
-        <Text>Page Scanned: {vmstat ? vmstat.page.scanned : ""}</Text>
-      </Card>
-      <Card>
-        {vmstat ? vmstat.disks.map(disk => (
-          <>
-          <Text>Name: {disk.name}</Text><br/>
-            <Text>Pages /s: {disk.transfers}</Text><br/>
-          </>
-        )) : ""}
-      </Card>
-      <Card>
-        <Text>Interrupts: {vmstat ? vmstat.traps.interrupts : ""}</Text><br/>
-        <Text>System Calls: {vmstat ? vmstat.traps.systemCalls : ""}</Text><br/>
-        <Text>Context Switches: {vmstat ? vmstat.traps.contextSwitch : ""}</Text><br/>
-      </Card>
-      <Card title="CPU Usage">
-        <Text>User: {vmstat ? vmstat.cpu.user : ""}</Text><br/>
-        <Text>System: {vmstat ? vmstat.cpu.system : ""}</Text><br/>
-        <Text>Idle: {vmstat ? vmstat.cpu.idle : ""}</Text><br/>
       </Card>
      </>
   );
@@ -129,9 +125,12 @@ function Dashboard(props) {
           <Uname/>
         </Col>
       </Row>
-      <Row><Col span={8}>
+      <Row>
+        <Col span={8}>
           <Uptime/>
-        </Col></Row>
+        </Col>
+      </Row>
+      <Row><Ram/></Row>
       <Row><VmStat/></Row>
       <Row><DiskUsage/></Row>
       <Row><SwapUsage/></Row>
