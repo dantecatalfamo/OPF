@@ -56,7 +56,7 @@ function Ram(props) {
 
   return (
     <Card title="RAM">
-      <Tooltip title={`${active}M Active ${other}M Other / ${total}M Total`}>
+      <Tooltip title={`${active}M Active+${other}M Other / ${total}M Total`}>
         <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
       </Tooltip>
     </Card>
@@ -84,13 +84,14 @@ function DiskUsage(props) {
   return (
     <Card title="Disk Usage">
       {diskUsage ? diskUsage.filesystems.map(disk => {
-        const totalSize = diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024;
-        const printSize = totalSize.toFixed(2);
+        const used = (diskUsage.blockSize * disk.used / 1024 / 1024 / 1024).toFixed(2);
+        const totalSize = (diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2);
         return (
           <Card.Grid>
             <Text strong>{disk.mountPoint}</Text><br/>
-            <Text>Total Capacity: {printSize} GB</Text><br/>
-            <Progress percent={disk.capacity}/>
+            <Tooltip title={`${used} GB / ${totalSize} GB`}>
+              <Progress percent={disk.capacity}/>
+            </Tooltip>
           </Card.Grid>
         );
       }) : ""}
