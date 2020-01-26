@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Row, Col, Progress } from 'antd';
+import { Card, Typography, Row, Col, Progress, Tooltip } from 'antd';
 import { getJSON, useJsonUpdates } from '../helpers';
 import { serverURL } from '../config';
 
@@ -51,13 +51,14 @@ function Ram(props) {
   const active = ram.active;
   const free = ram.free;
   const other = ram.total - (ram.free + ram.active);
+  const percentUsed = ((total - free) / total * 100).toFixed(2);
+  const percentActive = (active / total * 100).toFixed(2);
 
   return (
     <Card title="RAM">
-      Total: {total}<br/>
-      Active: {active}<br/>
-      Other: {other}<br/>
-      Free: {free}
+      <Tooltip title={`${active}M Active ${other}M Other / ${total}M Total`}>
+        <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
+      </Tooltip>
     </Card>
   );
 }
