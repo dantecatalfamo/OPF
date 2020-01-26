@@ -140,4 +140,10 @@ func smalltest() {
 		panic(err)
 	}
 	fmt.Println("Hostname:", hostname)
+
+	ram, err := GetRAM()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("RAM:", ram)
 }
