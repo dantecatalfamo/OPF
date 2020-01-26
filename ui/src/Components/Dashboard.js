@@ -97,6 +97,26 @@ function DiskUsage(props) {
   );
 }
 
+function SwapUsage(props) {
+  const [swapUsage, setSwapUsage] = useState();
+  useJsonUpdates(swapUsageURL, setSwapUsage, updateTime);
+
+  return (
+    <>
+      {swapUsage ? swapUsage.devices.map(device => (
+        <Card style={{display: "inline-block", margin: 12}}>
+          <p>Device: {device.device}</p>
+          <p>Blocks: {device.blocks}</p>
+          <p>Used: {device.used}</p>
+          <p>Available: {device.available}</p>
+          <p>Capacity: {device.capacity}</p>
+          <p>Priority: {device.priority}</p>
+        </Card>
+      )) : ""}
+    </>
+  );
+}
+
 function Dashboard(props) {
   return (
     <div>
@@ -104,6 +124,7 @@ function Dashboard(props) {
       <Uptime/>
       <VmStat/>
       <DiskUsage/>
+      <SwapUsage/>
     </div>
   );
 }
