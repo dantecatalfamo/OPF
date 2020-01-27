@@ -102,20 +102,6 @@ function CpuUsage(props) {
   );
 };
 
-function VmStat(props) {
-  const [vmstat, setVmstat] = useState();
-  useJsonUpdates(vmstatURL, setVmstat, updateTime);
-
-  return (
-    <>
-      <Card>
-        <Text>Procs Running: {vmstat ? vmstat.procs.running : ""}</Text><br/>
-        <Text>Procs Sleeping: {vmstat ? vmstat.procs.sleeping : ""}</Text><br/>
-      </Card>
-    </>
-  );
-}
-
 function DiskUsage(props) {
   const [diskUsage, setDiskUsage] = useState();
   useJsonUpdates(diskUsageURL, setDiskUsage, updateTime);
@@ -173,7 +159,6 @@ function Dashboard(props) {
       </Row>
       <Row><Ram/></Row>
       <Row><CpuUsage/></Row>
-      <Row><VmStat/></Row>
       <Row><DiskUsage/></Row>
       <Row><SwapUsage/></Row>
     </div>
