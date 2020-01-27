@@ -21,7 +21,7 @@ export function useJsonUpdates(url, setter, updateTime) {
     }, updateTime);
 
     return () => clearInterval(interval);
-  }, [url, setter, updateTime]);
+  }, [url, updateTime]);
 }
 
 // https://stackoverflow.com/a/19014495
