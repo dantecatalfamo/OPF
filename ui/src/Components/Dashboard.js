@@ -41,12 +41,8 @@ function Uptime(props) {
 }
 
 function Ram(props) {
-  const [ram, setRam] = useState();
+  const [ram, setRam] = useState({});
   useJsonUpdates(ramURL, setRam, updateTime);
-
-  if (!ram) {
-    return (<Spin><Card><div style={{width: 120, height: 120}}/></Card></Spin>);
-  }
 
   const total = ram.total;
   const active = ram.active;
