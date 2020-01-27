@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Badge, Tooltip, Typography } from 'antd';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
-import './Process.css';
+import './Processes.css';
 
 const processURL = `${serverURL}/api/processes`;
 const updateTime = 3000;
@@ -176,7 +176,7 @@ function Processes() {
   ];
 
   return (
-    <div style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
+    <div className="processes" style={{padding: "24px 24px 0 24px", backgroundColor: "white"}}>
       <Table
         dataSource={processes}
         columns={columns}
