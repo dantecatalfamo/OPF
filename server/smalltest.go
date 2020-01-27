@@ -152,4 +152,16 @@ func smalltest() {
 		panic(err)
 	}
 	fmt.Println("CPU States:", cpuStates)
+
+	date, err := GetDate()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Date:", date)
+
+	bootTime, err := GetBootTime()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Boot Time:", bootTime)
 }
