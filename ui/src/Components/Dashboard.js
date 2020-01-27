@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { getJSON, useJsonUpdates } from '../helpers';
 import { serverURL } from '../config';
@@ -11,6 +11,7 @@ const ramURL = `${serverURL}/api/ram`;
 const vmstatURL = `${serverURL}/api/vmstat`;
 const diskUsageURL = `${serverURL}/api/disk-usage`;
 const swapUsageURL = `${serverURL}/api/swap-usage`;
+const cpuStatesURL = `${serverURL}/api/cpu-states`;
 const updateTime = 5000;
 
 function Uname(props) {
@@ -51,8 +52,8 @@ function Ram(props) {
   const active = ram.active;
   const free = ram.free;
   const other = ram.total - (ram.free + ram.active);
-  const percentUsed = ((total - free) / total * 100).toFixed(2);
-  const percentActive = (active / total * 100).toFixed(2);
+  const percentUsed = Number(((total - free) / total * 100).toFixed(2));
+  const percentActive = Number((active / total * 100).toFixed(2));
 
   return (
     <Card title="RAM">
@@ -62,6 +63,45 @@ function Ram(props) {
     </Card>
   );
 }
+
+function CpuUsage(props) {
+  const [cpuStates, setCpuStates] = useState({old: {}, new: {user: 0, nice: 0, sys: 0, spin: 0, interrupt: 0, idle: 0}});
+
+  const fakeHandle = newState => {
+    setCpuStates(state => ({
+      old: state.new,
+      new: newState
+    }));
+  };
+
+  useJsonUpdates(cpuStatesURL, fakeHandle, updateTime);
+
+  const stateDiff = {
+    user: cpuStates.new.user - cpuStates.old.user,
+    nice: cpuStates.new.nice - cpuStates.old.nice,
+    sys: cpuStates.new.sys - cpuStates.old.sys,
+    spin: cpuStates.new.spin - cpuStates.old.spin,
+    interrupt: cpuStates.new.interrupt - cpuStates.old.interrupt,
+    idle: cpuStates.new.idle - cpuStates.old.idle,
+  };
+  console.log(stateDiff);
+  const user = stateDiff.user + stateDiff.nice;
+  const system = stateDiff.sys + stateDiff.spin + stateDiff.interrupt;
+  const idle = stateDiff.idle;
+  const total = user + system + stateDiff.idle;
+  const cpuUsage = {
+    user: Number((user / total * 100).toFixed(2)),
+    system: Number((system / total * 100).toFixed(2)),
+    idle: Number((idle / total * 100).toFixed(2)),
+  };
+
+  return (
+    <Card>
+      User: {cpuUsage ? cpuUsage.user : "Waiting"}<br/>
+      System: {cpuUsage ? cpuUsage.system : "Waiting"}
+    </Card>
+  );
+};
 
 function VmStat(props) {
   const [vmstat, setVmstat] = useState();
@@ -73,7 +113,7 @@ function VmStat(props) {
         <Text>Procs Running: {vmstat ? vmstat.procs.running : ""}</Text><br/>
         <Text>Procs Sleeping: {vmstat ? vmstat.procs.sleeping : ""}</Text><br/>
       </Card>
-     </>
+    </>
   );
 }
 
@@ -84,10 +124,10 @@ function DiskUsage(props) {
   return (
     <Card title="Disk Usage">
       {diskUsage ? diskUsage.filesystems.map(disk => {
-        const used = (diskUsage.blockSize * disk.used / 1024 / 1024 / 1024).toFixed(2);
-        const totalSize = (diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2);
+        const used = Number((diskUsage.blockSize * disk.used / 1024 / 1024 / 1024).toFixed(2));
+        const totalSize = Number((diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2));
         return (
-          <Card.Grid>
+          <Card.Grid key={disk.mountPoint}>
             <Text strong>{disk.mountPoint}</Text><br/>
             <Tooltip title={`${used} GB / ${totalSize} GB`}>
               <Progress percent={disk.capacity}/>
@@ -106,7 +146,7 @@ function SwapUsage(props) {
   return (
     <>
       {swapUsage ? swapUsage.devices.map(device => (
-        <Card>
+        <Card key={device.device}>
           <Text>Device: {device.device}</Text><br/>
           <Text>Blocks: {device.blocks}</Text><br/>
           <Text>Used: {device.used}</Text><br/>
@@ -133,6 +173,7 @@ function Dashboard(props) {
         </Col>
       </Row>
       <Row><Ram/></Row>
+      <Row><CpuUsage/></Row>
       <Row><VmStat/></Row>
       <Row><DiskUsage/></Row>
       <Row><SwapUsage/></Row>
