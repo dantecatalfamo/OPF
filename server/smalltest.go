@@ -146,4 +146,10 @@ func smalltest() {
 		panic(err)
 	}
 	fmt.Println("RAM:", ram)
+
+	cpuStates, err := GetCpuStates()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("CPU States:", cpuStates)
 }
