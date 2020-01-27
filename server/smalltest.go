@@ -164,4 +164,10 @@ func smalltest() {
 		panic(err)
 	}
 	fmt.Println("Boot Time:", bootTime)
+
+	loadavg, err := GetLoadAvg()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Load Average:", loadavg)
 }
