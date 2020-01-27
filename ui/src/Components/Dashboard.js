@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Row, Col, Progress, Tooltip } from 'antd';
+import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { getJSON, useJsonUpdates } from '../helpers';
 import { serverURL } from '../config';
 
@@ -44,7 +44,7 @@ function Ram(props) {
   useJsonUpdates(ramURL, setRam, updateTime);
 
   if (!ram) {
-    return (<Card/>);
+    return (<Spin><Card><div style={{width: 120, height: 120}}/></Card></Spin>);
   }
 
   const total = ram.total;
