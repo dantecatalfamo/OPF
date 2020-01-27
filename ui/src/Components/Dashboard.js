@@ -88,16 +88,16 @@ function CpuUsage(props) {
   const system = stateDiff.sys + stateDiff.spin + stateDiff.interrupt;
   const idle = stateDiff.idle;
   const total = user + system + stateDiff.idle;
-  const cpuUsage = {
-    user: Number((user / total * 100).toFixed(2)),
-    system: Number((system / total * 100).toFixed(2)),
-    idle: Number((idle / total * 100).toFixed(2)),
-  };
+  const userPercent = Number((user / total * 100).toFixed(2));
+  const systemPercent = Number((system / total * 100).toFixed(2));
+  const usagePercent = Number((userPercent + systemPercent).toFixed(2));
+  const idlePercent = Number((idle / total * 100).toFixed(2));
 
   return (
-    <Card>
-      User: {cpuUsage ? cpuUsage.user : "Waiting"}<br/>
-      System: {cpuUsage ? cpuUsage.system : "Waiting"}
+    <Card title="CPU">
+      <Tooltip title={<div>User: {userPercent}% <br/> System: {systemPercent}%</div>}>
+        <Progress percent={usagePercent} successPercent={userPercent} type="dashboard" />
+      </Tooltip>
     </Card>
   );
 };
