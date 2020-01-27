@@ -7,12 +7,12 @@ import (
 )
 
 type CpuStates struct {
-	User      int
-	Nice      int
-	Sys       int
-	Spin      int
-	Interrupt int
-	Idle      int
+	User      int `json:"user"`
+	Nice      int `json:"nice"`
+	Sys       int `json:"sys"`
+	Spin      int `json:"spin"`
+	Interrupt int `json:"interrupt"`
+	Idle      int `json:"idle"`
 }
 
 const (
@@ -44,7 +44,7 @@ func GetCpuStates() (*CpuStates, error) {
 	if err != nil {
 		return nil, err
 	}
-	spin, err := strconv.Atoi(states[CP_SYS])
+	spin, err := strconv.Atoi(states[CP_SPIN])
 	if err != nil {
 		return nil, err
 	}
