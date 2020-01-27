@@ -67,14 +67,14 @@ function Ram(props) {
 function CpuUsage(props) {
   const [cpuStates, setCpuStates] = useState({old: {}, new: {user: 0, nice: 0, sys: 0, spin: 0, interrupt: 0, idle: 0}});
 
-  const fakeHandle = newState => {
+  const handleCpuStateChange = newState => {
     setCpuStates(state => ({
       old: state.new,
       new: newState
     }));
   };
 
-  useJsonUpdates(cpuStatesURL, fakeHandle, updateTime);
+  useJsonUpdates(cpuStatesURL, handleCpuStateChange, updateTime);
 
   const stateDiff = {
     user: cpuStates.new.user - cpuStates.old.user,
@@ -84,7 +84,6 @@ function CpuUsage(props) {
     interrupt: cpuStates.new.interrupt - cpuStates.old.interrupt,
     idle: cpuStates.new.idle - cpuStates.old.idle,
   };
-  console.log(stateDiff);
   const user = stateDiff.user + stateDiff.nice;
   const system = stateDiff.sys + stateDiff.spin + stateDiff.interrupt;
   const idle = stateDiff.idle;
