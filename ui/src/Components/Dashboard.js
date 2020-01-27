@@ -57,9 +57,11 @@ function Ram(props) {
 
   return (
     <Card title="RAM">
-      <Tooltip title={<div style={{textAlign: "center"}}>{active} MB Active + {other} MB Other <br/> / {total}M Total</div>}>
-        <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
-      </Tooltip>
+      <div style={{textAlign: "center"}}>
+        <Tooltip title={<div style={{textAlign: "center"}}>{active} MB Active + {other} MB Other <br/> / {total}M Total</div>}>
+          <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
+        </Tooltip>
+      </div>
     </Card>
   );
 }
@@ -95,9 +97,11 @@ function CpuUsage(props) {
 
   return (
     <Card title="CPU">
-      <Tooltip title={<div>User: {userPercent}% <br/> System: {systemPercent}%</div>}>
-        <Progress percent={usagePercent} successPercent={userPercent} type="dashboard" />
-      </Tooltip>
+      <div style={{textAlign: "center"}}>
+        <Tooltip title={<div>User: {userPercent}% <br/> System: {systemPercent}%</div>}>
+          <Progress percent={usagePercent} successPercent={userPercent} type="dashboard" />
+        </Tooltip>
+      </div>
     </Card>
   );
 };
@@ -146,22 +150,20 @@ function SwapUsage(props) {
 
 function Dashboard(props) {
   return (
-    <div>
+    <Col
+      xxl={{ span: 10, offset: 7 }}
+      xl={{  span: 12, offset: 6 }}
+      lg={{  span: 14, offset: 5 }}
+    >
+    <Uname/>
+    <Uptime/>
       <Row>
-        <Col span={8}>
-          <Uname/>
-        </Col>
+        <Col span={12}><Ram/></Col>
+        <Col span={12}><CpuUsage/></Col>
       </Row>
-      <Row>
-        <Col span={8}>
-          <Uptime/>
-        </Col>
-      </Row>
-      <Row><Ram/></Row>
-      <Row><CpuUsage/></Row>
       <Row><DiskUsage/></Row>
       <Row><SwapUsage/></Row>
-    </div>
+    </Col>
   );
 }
 
