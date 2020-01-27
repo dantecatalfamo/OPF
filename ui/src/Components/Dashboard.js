@@ -113,7 +113,9 @@ function DiskUsage(props) {
         const totalSize = Number((diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2));
         return (
           <Card.Grid key={disk.mountPoint}>
-            <Text strong>{disk.mountPoint}</Text><br/>
+            <Tooltip title={<span>{disk.filesystem}</span>}>
+              <Text strong>{disk.mountPoint}</Text>
+            </Tooltip>
             <Tooltip title={`${used} GB / ${totalSize} GB`}>
               <Progress percent={disk.capacity}/>
             </Tooltip>
