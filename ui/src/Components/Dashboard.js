@@ -129,18 +129,22 @@ function SwapUsage(props) {
   useJsonUpdates(swapUsageURL, setSwapUsage, updateTime);
 
   return (
-    <>
-      {swapUsage ? swapUsage.devices.map(device => (
-        <Card key={device.device}>
-          <Text>Device: {device.device}</Text><br/>
-          <Text>Blocks: {device.blocks}</Text><br/>
-          <Text>Used: {device.used}</Text><br/>
-          <Text>Available: {device.available}</Text><br/>
-          <Text>Capacity: {device.capacity}</Text><br/>
-          <Text>Priority: {device.priority}</Text><br/>
-        </Card>
-      )) : ""}
-    </>
+    <Card title="Swap Usage">
+      {swapUsage ? swapUsage.devices.map(device => {
+        const used = Number((swapUsage.blockSize * device.used / 1024 / 1024 / 1024).toFixed(2));
+        const totalSize = Number((swapUsage.blockSize * device.blocks / 1024 / 1024 / 1024).toFixed(2));
+        return (
+          <Card.Grid key={device.device}>
+            <Tooltip title={<span>Priority: {device.priority}</span>}>
+              <Text strong>{device.device}</Text>
+            </Tooltip>
+            <Tooltip title={<span>{used} GB / {totalSize} GB</span>}>
+              <Progress percent={device.capacity}/>
+            </Tooltip>
+          </Card.Grid>
+        );
+      }) : ""}
+    </Card>
   );
 }
 
