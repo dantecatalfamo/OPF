@@ -58,7 +58,7 @@ function Ram(props) {
   return (
     <Card title="RAM">
       <div style={{textAlign: "center"}}>
-        <Tooltip title={<div style={{textAlign: "center"}}>{active} MB Active + {other} MB Other <br/> / {total}M Total</div>}>
+        <Tooltip title={<div>{active} MB Active <br/>{other} MB Other<br/>{total} MB Total</div>}>
           <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
         </Tooltip>
       </div>
