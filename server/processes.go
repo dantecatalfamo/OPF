@@ -49,24 +49,42 @@ func genProcess(line string, tz string) (*Process, error) {
 	statStr := fields[4]
 	for _, c := range statStr {
 		switch c {
-		case 'D': stat = append(stat, "uninterruptible")
-		case 'I': stat = append(stat, "idle")
-		case 'R': stat = append(stat, "runnable")
-		case 'S': stat = append(stat, "sleeping")
-		case 'T': stat = append(stat, "stopped")
-		case 'Z': stat = append(stat, "zombie")
-		case '+': stat = append(stat, "foreground")
-		case '<': stat = append(stat, "raised_priority")
-		case '>': stat = append(stat, "memory_limit_exceeded")
-		case 'E': stat = append(stat, "exiting")
-		case 'K': stat = append(stat, "kernel")
-		case 'N': stat = append(stat, "reduced_priority")
-		case 'p': stat = append(stat, "pledged")
-		case 's': stat = append(stat, "session_leader")
-		case 'U': stat = append(stat, "unveil_locked")
-		case 'u': stat = append(stat, "unveil_not_locked")
-		case 'V': stat = append(stat, "suspended_vfork")
-		case 'X': stat = append(stat, "debugging")
+		case 'D':
+			stat = append(stat, "uninterruptible")
+		case 'I':
+			stat = append(stat, "idle")
+		case 'R':
+			stat = append(stat, "runnable")
+		case 'S':
+			stat = append(stat, "sleeping")
+		case 'T':
+			stat = append(stat, "stopped")
+		case 'Z':
+			stat = append(stat, "zombie")
+		case '+':
+			stat = append(stat, "foreground")
+		case '<':
+			stat = append(stat, "raised_priority")
+		case '>':
+			stat = append(stat, "memory_limit_exceeded")
+		case 'E':
+			stat = append(stat, "exiting")
+		case 'K':
+			stat = append(stat, "kernel")
+		case 'N':
+			stat = append(stat, "reduced_priority")
+		case 'p':
+			stat = append(stat, "pledged")
+		case 's':
+			stat = append(stat, "session_leader")
+		case 'U':
+			stat = append(stat, "unveil_locked")
+		case 'u':
+			stat = append(stat, "unveil_not_locked")
+		case 'V':
+			stat = append(stat, "suspended_vfork")
+		case 'X':
+			stat = append(stat, "debugging")
 		}
 	}
 
@@ -162,16 +180,14 @@ func GetProcesses() ([]*Process, error) {
 	lines := strings.Split(out, "\n")
 	lines = lines[:len(lines)-1]
 
-	tzBytes, err := exec.Command("date", "+%z").Output()
+	timeZone, err := GetTimezone()
 	if err != nil {
 		return nil, err
 	}
 
-	tz := string(tzBytes)
-	tz = strings.TrimRight(tz, "\n")
 	var procs []*Process
 	for _, line := range lines[1:] {
-		proc, err := genProcess(line, tz)
+		proc, err := genProcess(line, timeZone)
 		if err != nil {
 			return nil, err
 		}
