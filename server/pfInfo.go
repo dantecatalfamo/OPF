@@ -195,7 +195,10 @@ func GetPfInfo() (*PfInfo, error) {
 	checksum := strings.Fields(outLines[3])[1]
 
 	groups := groupIndent(outLines)
-	statesTable := groups[4]
+	numberGroups := len(groups)
+	extraGroups := numberGroups - 8
+
+	statesTable := groups[extraGroups+3]
 	currentEntries := strings.Fields(statesTable[1])
 	stateCurrentEntriesTotal, err := strconv.Atoi(currentEntries[2])
 	if err != nil {
@@ -223,7 +226,7 @@ func GetPfInfo() (*PfInfo, error) {
 		return nil, err
 	}
 
-	sourceTable := groups[5]
+	sourceTable := groups[extraGroups+4]
 	sourceCurrent := strings.Fields(sourceTable[1])
 	sourceCurrentTotal, err := strconv.Atoi(sourceCurrent[2])
 	if err != nil {
@@ -245,7 +248,7 @@ func GetPfInfo() (*PfInfo, error) {
 		return nil, err
 	}
 
-	counterTable := groups[6]
+	counterTable := groups[extraGroups+5]
 	counterMatchTotal, counterMatchRate, err := pfInfoLine(counterTable[1])
 	if err != nil {
 		return nil, err
@@ -331,7 +334,7 @@ func GetPfInfo() (*PfInfo, error) {
 		return nil, err
 	}
 
-	limitTable := groups[7]
+	limitTable := groups[extraGroups+6]
 	limitMaxStatesPerRuleTotal, limitMaxStatesPerRuleRate, err := pfInfoLine(limitTable[1])
 	if err != nil {
 		return nil, err
@@ -382,7 +385,7 @@ func GetPfInfo() (*PfInfo, error) {
 		return nil, err
 	}
 
-	adaptiveTable := groups[8]
+	adaptiveTable := groups[extraGroups+7]
 	startFields := strings.Fields(adaptiveTable[1])
 	start, err := strconv.Atoi(startFields[1])
 	if err != nil {
