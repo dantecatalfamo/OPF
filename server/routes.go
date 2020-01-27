@@ -35,6 +35,7 @@ func main() {
 	r.HandleFunc("/api/hostname", GetHostnameHandler)
 	r.HandleFunc("/api/ram", GetRamHandler)
 	r.HandleFunc("/api/cpu-states", GetCpuStatesHandler)
+	r.HandleFunc("/api/date", GetDateHandler)
 
 	http.ListenAndServe(":8001", r)
 }
