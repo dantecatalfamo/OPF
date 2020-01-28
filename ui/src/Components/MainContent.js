@@ -8,7 +8,6 @@ import PfInterfaces from './PfInterfaces';
 import NetstatInterfaces from './NetstatInterfaces';
 import Processes from './Processes';
 import Hardware from './Hardware';
-import SwapUsage from './SwapUsage';
 import RC from './RC';
 
 function MainContent(props) {
@@ -40,9 +39,6 @@ function MainContent(props) {
       </Route>
       <Route path="/hardware">
         <Hardware/>
-      </Route>
-      <Route path="/swap-usage">
-        <SwapUsage/>
       </Route>
       <Route path="/">
         <p>
