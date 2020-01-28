@@ -16,7 +16,7 @@ const updateTime = 5000;
 
 function Uname(props) {
   const [uname, setUname] = useState();
-  useJsonUpdates(unameURL, setUname, updateTime);
+  getJSON(unameURL).then(res => setUname(res));
 
   return (
     <Card>
