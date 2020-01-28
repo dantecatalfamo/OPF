@@ -41,12 +41,6 @@ func smalltest() {
 	}
 	fmt.Println("PF Memory:", mem)
 
-	ut, err := GetUptime()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Uptime:", ut)
-
 	un, err := GetUname()
 	if err != nil {
 		panic(err)

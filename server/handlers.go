@@ -7,22 +7,6 @@ import (
 	// "github.com/gorilla/mux"
 )
 
-func uptimeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
-	ut, err := GetUptime()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	encoded, err := json.Marshal(ut)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(encoded)
-}
-
 func unameHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*") // DEV
 	un, err := GetUname()

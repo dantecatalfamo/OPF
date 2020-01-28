@@ -25,7 +25,6 @@ func main() {
 	r.HandleFunc("/api/rc/{service}/enabled", GetRcServiceEnabledHandler).Methods("GET")
 	r.HandleFunc("/api/rc/{service}/enabled", SetRcServiceEnabledHandler).Methods("POST")
 	r.HandleFunc("/api/netstat-interfaces", netstatInterfacesHandler)
-	r.HandleFunc("/api/uptime", uptimeHandler)
 	r.HandleFunc("/api/uname", unameHandler)
 	r.HandleFunc("/api/vmstat", vmstatHandler)
 	r.HandleFunc("/api/disk-usage", diskUsageHandler)
