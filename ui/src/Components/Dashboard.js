@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { getJSON, useJsonUpdates } from '../helpers';
 import { serverURL } from '../config';
@@ -19,7 +19,9 @@ const updateTime = 5000;
 
 function Uname(props) {
   const [uname, setUname] = useState();
-  getJSON(unameURL).then(res => setUname(res));
+  useEffect(() => {
+    getJSON(unameURL).then(res => setUname(res));
+  }, []);
 
   return (
     <Card>
