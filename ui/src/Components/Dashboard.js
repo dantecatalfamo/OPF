@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
-import { getJSON, useJsonUpdates } from '../helpers';
+import { getJSON, useJSON, useJsonUpdates } from '../helpers';
 import { serverURL } from '../config';
 
 const { Text, Title } = Typography;
 
 const unameURL = `${serverURL}/api/uname`;
 const loadavgURL = `${serverURL}/api/loadavg`;
+const hardwareURL = `${serverURL}/api/hardware`;
 const bootTimeURL = `${serverURL}/api/boot-time`;
 const dateURL = `${serverURL}/api/date`;
 const uptimeURL = `${serverURL}/api/uptime`;
@@ -19,14 +20,51 @@ const updateTime = 5000;
 
 function Uname(props) {
   const [uname, setUname] = useState();
-  useEffect(() => {
-    getJSON(unameURL).then(res => setUname(res));
-  }, []);
+  useJSON(unameURL, setUname);
 
   return (
     <Card>
       <Title>{uname ? uname.nodeName : ""}</Title>
       <Text>{uname ? `${uname.osName} ${uname.osRelease} (${uname.hardware})` : ""}</Text>
+    </Card>
+  );
+}
+
+function loadAvgWarn(loadAvg, ncpu) {
+  const low = 0.7;
+  const medium = 1;
+  const ratio = loadAvg / ncpu;
+  if (ratio < low) {
+    return "";
+  } else if (ratio < medium) {
+    return "warning";
+  } else {
+    return "danger";
+  }
+}
+
+function LoadAvg(props) {
+  const [loadAvg, setLoadAvg] = useState({});
+  const [hardware, setHardware] = useState({});
+  useJsonUpdates(loadavgURL, setLoadAvg, updateTime);
+  useJSON(hardwareURL, setHardware);
+
+  const colProps = {
+    span: 8,
+    style: {textAlign: "center"},
+  };
+
+  const warn1 = loadAvgWarn(loadAvg[0], hardware.ncpuOnline);
+  const warn5 = loadAvgWarn(loadAvg[1], hardware.ncpuOnline);
+  const warn15 = loadAvgWarn(loadAvg[2], hardware.ncpuOnline);
+
+  return (
+    <Card title="Load Average">
+      <Row>
+        <Col {...colProps}><Text type={warn1} strong>{loadAvg ? loadAvg[0] : "0.00"}</Text></Col>
+        <Col {...colProps}><Text type={warn5} strong>{loadAvg ? loadAvg[1] : "0.00"}</Text></Col>
+        <Col {...colProps}><Text type={warn15} strong>{loadAvg ? loadAvg[2] : "0.00"}</Text></Col>
+      </Row>
     </Card>
   );
 }
@@ -162,7 +200,10 @@ function Dashboard(props) {
       xl={{  span: 12, offset: 6 }}
       lg={{  span: 14, offset: 5 }}
     >
-    <Uname/>
+      <Uname/>
+      <Row>
+        <Col span={12}><LoadAvg/></Col>
+      </Row>
     <Uptime/>
       <Row>
         <Col span={12}><Ram/></Col>
