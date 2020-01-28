@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Badge, Tooltip, Typography } from 'antd';
-import { getJSON, useJsonUpdates } from '../helpers.js';
+import { getJSON, useJsonUpdates, timeSince } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './Processes.css';
 
@@ -139,20 +139,13 @@ function Processes() {
       dataIndex: "started",
       sorter: (a, b) => new Date(a.started) - new Date(b.started),
       render: started => {
-        const startDate = new Date(started);
-        const now = new Date();
-        const timeBetween = now - startDate;
-        let days, hours, minutes, seconds;
-        seconds = Math.floor(timeBetween / 1000);
-        minutes = Math.floor(seconds / 60);
-        seconds = seconds % 60;
-        hours = Math.floor(minutes / 60);
-        minutes = minutes % 60;
-        days = Math.floor(hours / 24);
-        hours = hours % 24;
+        const time = timeSince(started);
         return (
           <Tooltip title={started}>
-            <Text>{days ? days + ":" : null}{hours ? hours + ":" : null}{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}</Text>
+            <Text>
+              {time.days ? time.days + ":" : null}
+              {time.hours ? time.hours + ":" : null}
+              {String(time.minutes).padStart(2, '0')}:{String(time.seconds).padStart(2, '0')}</Text>
           </Tooltip>
         );
       }

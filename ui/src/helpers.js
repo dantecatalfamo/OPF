@@ -30,6 +30,26 @@ export function useJsonUpdates(url, setter, updateTime) {
   }, [url, updateTime]);
 }
 
+export function timeSince(time) {
+  const startTime = new Date(time);
+  const now = new Date();
+  const timeBetween = now - startTime;
+  let days, hours, minutes, seconds;
+  seconds = Math.floor(timeBetween / 1000);
+  minutes = Math.floor(seconds / 60);
+  seconds = seconds % 60;
+  hours = Math.floor(minutes / 60);
+  minutes = minutes % 60;
+  days = Math.floor(hours / 24);
+  hours = hours % 24;
+  return {
+    days,
+    hours,
+    minutes,
+    seconds,
+  };
+}
+
 // https://stackoverflow.com/a/19014495
 export function useWindowSize() {
   const [size, setSize] = useState([0, 0]);
