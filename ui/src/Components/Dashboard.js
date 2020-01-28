@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
-import { getJSON, useJSON, useJsonUpdates } from '../helpers';
+import { getJSON, useJSON, useJsonUpdates, timeSince } from '../helpers';
 import { serverURL } from '../config';
 
 const { Text, Title } = Typography;
@@ -26,6 +26,31 @@ function Uname(props) {
     <Card>
       <Title>{uname ? uname.nodeName : ""}</Title>
       <Text>{uname ? `${uname.osName} ${uname.osRelease} (${uname.hardware})` : ""}</Text>
+    </Card>
+  );
+}
+
+function Uptime(props) {
+  const [bootTime, setBootTime] = useState();
+  const [, setTick] = useState(0);
+  useJSON(bootTimeURL, setBootTime);
+
+  const time = timeSince(new Date(bootTime));
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <Card title="Uptime">
+      <Tooltip title={bootTime}>
+        <Text>
+          {time.days ? `${time.days} Days ` : ""}
+          {time.hours ? `${time.hours} Hours ` : ""}
+          {time.minutes ? `${time.minutes} Minutes ` : ""}
+          {time.seconds} Seconds
+        </Text>
+      </Tooltip>
     </Card>
   );
 }
@@ -77,20 +102,6 @@ function LoadAvg(props) {
           </Tooltip>
         </Col>
       </Row>
-    </Card>
-  );
-}
-
-function Uptime(props) {
-  const [uptime, setUptime] = useState();
-  useJsonUpdates(uptimeURL, setUptime, updateTime);
-
-  return (
-    <Card>
-      <Text>Time: {uptime ? uptime.time : ""}</Text><br/>
-      <Text>Uptime: {uptime ? uptime.uptime : ""}</Text><br/>
-      <Text>Users: {uptime ? uptime.users : ""}</Text><br/>
-      <Text>Load Avg.: {uptime ? uptime.loadAvg.join(", ") : ""}</Text>
     </Card>
   );
 }
@@ -214,9 +225,9 @@ function Dashboard(props) {
     >
       <Uname/>
       <Row>
+        <Col span={12}><Uptime/></Col>
         <Col span={12}><LoadAvg/></Col>
       </Row>
-    <Uptime/>
       <Row>
         <Col span={12}><Ram/></Col>
         <Col span={12}><CpuUsage/></Col>
