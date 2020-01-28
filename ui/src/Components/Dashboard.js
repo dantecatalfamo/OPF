@@ -37,7 +37,7 @@ function Uptime(props) {
 
   const time = timeSince(new Date(bootTime));
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    const interval = setInterval(() => setTick(t => t + 1), updateTime);
     return () => clearInterval(interval);
   }, []);
 
