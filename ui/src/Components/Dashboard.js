@@ -62,7 +62,7 @@ function Uptime(props) {
 }
 
 function loadAvgWarn(loadAvg, ncpu) {
-  const low = 0.7;
+  const low = 0.75;
   const medium = 1;
   const ratio = loadAvg / ncpu;
   if (ratio < low) {
