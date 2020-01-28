@@ -24,12 +24,21 @@ const cardStyle = {
 
 function Uname(props) {
   const [uname, setUname] = useState();
+  const [date, setDate] = useState();
   useJSON(unameURL, setUname);
+  useJsonUpdates(dateURL, setDate, updateTime);
 
   return (
     <Card {...cardStyle}>
       <Title>{uname ? uname.nodeName : ""}</Title>
-      <Text>{uname ? `${uname.osName} ${uname.osRelease} (${uname.hardware})` : ""}</Text>
+      <Row>
+        <Col span={12}>
+          <Text>{uname ? `${uname.osName} ${uname.osRelease} (${uname.hardware})` : ""}</Text>
+        </Col>
+        <Col span={12} style={{textAlign: "right"}}>
+          <Text>{date ? date : ""}</Text>
+        </Col>
+      </Row>
     </Card>
   );
 }
