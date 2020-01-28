@@ -7,7 +7,6 @@ import PfRuleStates from './PfRuleStates';
 import PfInterfaces from './PfInterfaces';
 import NetstatInterfaces from './NetstatInterfaces';
 import Processes from './Processes';
-import DiskUsage from './DiskUsage';
 import Hardware from './Hardware';
 import SwapUsage from './SwapUsage';
 import RC from './RC';
@@ -38,9 +37,6 @@ function MainContent(props) {
       </Route>
       <Route path="/processes">
         <Processes/>
-      </Route>
-      <Route path="/disk-usage">
-        <DiskUsage/>
       </Route>
       <Route path="/hardware">
         <Hardware/>
