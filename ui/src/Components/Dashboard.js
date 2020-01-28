@@ -6,6 +6,9 @@ import { serverURL } from '../config';
 const { Text, Title } = Typography;
 
 const unameURL = `${serverURL}/api/uname`;
+const loadavgURL = `${serverURL}/api/loadavg`;
+const bootTimeURL = `${serverURL}/api/boot-time`;
+const dateURL = `${serverURL}/api/date`;
 const uptimeURL = `${serverURL}/api/uptime`;
 const ramURL = `${serverURL}/api/ram`;
 const vmstatURL = `${serverURL}/api/vmstat`;
