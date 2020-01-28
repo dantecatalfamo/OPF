@@ -13,6 +13,12 @@ export async function postJSON(url, data) {
   return await response.json();
 }
 
+export function useJSON(url, setter) {
+  useEffect(() => {
+    getJSON(url).then(res => setter(res));
+  }, [url]);
+}
+
 export function useJsonUpdates(url, setter, updateTime) {
   useEffect(() => {
     getJSON(url).then(res => setter(res));
