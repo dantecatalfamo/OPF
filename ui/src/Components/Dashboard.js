@@ -44,8 +44,8 @@ function loadAvgWarn(loadAvg, ncpu) {
 }
 
 function LoadAvg(props) {
-  const [loadAvg, setLoadAvg] = useState({});
-  const [hardware, setHardware] = useState({});
+  const [loadAvg, setLoadAvg] = useState();
+  const [hardware, setHardware] = useState();
   useJsonUpdates(loadavgURL, setLoadAvg, updateTime);
   useJSON(hardwareURL, setHardware);
 
@@ -54,16 +54,28 @@ function LoadAvg(props) {
     style: {textAlign: "center"},
   };
 
-  const warn1 = loadAvgWarn(loadAvg[0], hardware.ncpuOnline);
-  const warn5 = loadAvgWarn(loadAvg[1], hardware.ncpuOnline);
-  const warn15 = loadAvgWarn(loadAvg[2], hardware.ncpuOnline);
+  const warn1 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[0], hardware.ncpuOnline) : "";
+  const warn5 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[1], hardware.ncpuOnline) : "";
+  const warn15 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[2], hardware.ncpuOnline) : "";
 
   return (
     <Card title="Load Average">
       <Row>
-        <Col {...colProps}><Text type={warn1} strong>{loadAvg ? loadAvg[0] : "0.00"}</Text></Col>
-        <Col {...colProps}><Text type={warn5} strong>{loadAvg ? loadAvg[1] : "0.00"}</Text></Col>
-        <Col {...colProps}><Text type={warn15} strong>{loadAvg ? loadAvg[2] : "0.00"}</Text></Col>
+        <Col {...colProps}>
+          <Tooltip title="1 Minute">
+            <Text type={warn1} strong>{loadAvg ? loadAvg[0] : "0.00"}</Text>
+          </Tooltip>
+        </Col>
+        <Col {...colProps}>
+          <Tooltip title="5 Minutes">
+            <Text type={warn5} strong>{loadAvg ? loadAvg[1] : "0.00"}</Text>
+          </Tooltip>
+        </Col>
+        <Col {...colProps}>
+          <Tooltip title="15 Minutes">
+            <Text type={warn15} strong>{loadAvg ? loadAvg[2] : "0.00"}</Text>
+          </Tooltip>
+        </Col>
       </Row>
     </Card>
   );
