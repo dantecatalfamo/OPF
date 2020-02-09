@@ -4,9 +4,10 @@ import { ResponsiveLine, ResponsiveLineCanvas } from '@nivo/line';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
+import { formatTimeStr } from 'antd/lib/statistic/utils';
 
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
-const updateTime = 2000;
+const updateTime = 3000;
 const diffTime = updateTime / 1000;
 
 function PfInterfaces(props) {
@@ -35,7 +36,7 @@ function PfInterfaces(props) {
       const diff4In = (new4In - old4In) / diffTime / 1024 / 1024;
       const diff4Out = -(new4Out - old4Out) / diffTime / 1024 / 1024;
       const date = new Date();
-      const time = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+      const time = date; //`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
       const point4In = { x: time, y: diff4In };
       const point4Out = { x: time, y: diff4Out };
 
@@ -48,8 +49,6 @@ function PfInterfaces(props) {
       ifaces[name].history.ipv4 = {};
       ifaces[name].history.ipv4.in = [...oldHistory4In, point4In];
       ifaces[name].history.ipv4.out = [...oldHistory4Out, point4Out];     // TODO: Maximum history length, grows without limit
-      console.log("Out: ", diff4Out);
-      console.log("In: ", diff4In);
     });
     return ifaces;
   }, {});
@@ -147,7 +146,7 @@ function PfInterfaces(props) {
                   enableArea={true}
                   margin={{
                     top: 10,
-                    bottom: 74,
+                    bottom: 65,
                     right: 10,
                     left: 70,
                   }}
@@ -164,11 +163,16 @@ function PfInterfaces(props) {
                     enable: true,
                     tickSize: 4,
                     tickPadding: 5,
-                    tickRotation: -60,
+                    tickRotation: -35,
                     legend: "time",
-                    legendOffset: 60,
-                    legendPosition: "middle"
+                    legendOffset: 55,
+                    legendPosition: "middle",
+                    format: "%H:%M:%S",
                   }}
+                  xScale={{
+                    type: "time"
+                  }}
+                  xFormat={date => `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`}
                 />
               </div>
             </Card>
