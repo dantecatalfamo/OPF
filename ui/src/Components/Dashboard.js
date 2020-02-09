@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { getJSON, useJSON, useJsonUpdates, timeSince } from '../helpers';
 import { serverURL } from '../config';
@@ -144,16 +144,12 @@ function Ram(props) {
 }
 
 function CpuUsage(props) {
-  const [cpuStates, setCpuStates] = useState({old: {}, new: {user: 0, nice: 0, sys: 0, spin: 0, interrupt: 0, idle: 0}});
+  const [cpuStates, updateCpuStates] = useReducer((state, newState) => ({
+    old: state.new,
+    new: newState,
+  }), {old: {}, new: {user: 0, nice: 0, sys: 0, spin: 0, interrupt: 0, idle: 0}});
 
-  const handleCpuStateChange = newState => {
-    setCpuStates(state => ({
-      old: state.new,
-      new: newState
-    }));
-  };
-
-  useJsonUpdates(cpuStatesURL, handleCpuStateChange, updateTime);
+  useJsonUpdates(cpuStatesURL, updateCpuStates, updateTime);
 
   const stateDiff = {
     user: cpuStates.new.user - cpuStates.old.user,
