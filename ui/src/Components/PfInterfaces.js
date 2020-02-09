@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
-import { ResponsiveLine } from '@nivo/line';
+import { ResponsiveLine, ResponsiveLineCanvas } from '@nivo/line';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
 
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 2000;
+const diffTime = updateTime / 1000;
 
 function PfInterfaces(props) {
   const [interfaces, updateInterfaces] = useReducer((state, update) => {
@@ -31,15 +32,24 @@ function PfInterfaces(props) {
         oldHistory4In = state[name].history.ipv4.in;
         oldHistory4Out = state[name].history.ipv4.out;
       }
-      const diff4In = new4In - old4In;
-      const diff4Out = new4Out - old4Out;
+      const diff4In = (new4In - old4In) / diffTime / 1024 / 1024;
+      const diff4Out = -(new4Out - old4Out) / diffTime / 1024 / 1024;
       const date = new Date();
-      const point4In = { x: date, y: diff4In };
-      const point4Out = { x: date, y: diff4Out };
+      const time = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+      const point4In = { x: time, y: diff4In };
+      const point4Out = { x: time, y: diff4Out };
+
+      if (oldHistory4In.length > 60) {
+        oldHistory4In.shift();
+        oldHistory4Out.shift();
+      }
+
       ifaces[name].history = {};
       ifaces[name].history.ipv4 = {};
       ifaces[name].history.ipv4.in = [...oldHistory4In, point4In];
       ifaces[name].history.ipv4.out = [...oldHistory4Out, point4Out];     // TODO: Maximum history length, grows without limit
+      console.log("Out: ", diff4Out);
+      console.log("In: ", diff4In);
     });
     return ifaces;
   }, {});
@@ -98,9 +108,12 @@ function PfInterfaces(props) {
         );
 
         return (
-          <Col xxl={{span: 18, offset: 3}}
-               xl={{span: 20, offset: 2}}
-               lg={{span: 24}}>
+          <Col
+            key={name}
+            xxl={{span: 18, offset: 3}}
+            xl={{span: 20, offset: 2}}
+            lg={{span: 24}}
+          >
             <Card title={iface.interface} style={{marginTop: "12px"}}>
               <Row>
                 <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
@@ -111,6 +124,53 @@ function PfInterfaces(props) {
               {ipv4Stats}
               <Divider />
               {ipv6Stats}
+              <Divider />
+              <div style={{width: 1000, height: 240}}>
+                <ResponsiveLineCanvas
+                  data={[
+                    {
+                      id: "out",
+                      data: iface.history.ipv4.out
+                    },
+                    {
+                      id: "in",
+                      data: iface.history.ipv4.in
+                    }]}
+                  yScale={{
+                    type: "linear",
+                    stacked: false,
+                    min: "auto",
+                    max: "auto"
+                  }}
+                  animate
+                  enablePoints={false}
+                  enableArea={true}
+                  margin={{
+                    top: 10,
+                    bottom: 74,
+                    right: 160,
+                    left: 70,
+                  }}
+                  axisLeft={{
+                    enable: true,
+                    tickSize: 2,
+                    tickPadding: 4,
+                    tickRotation: 0,
+                    legend: "speed (MB/s)",
+                    legendOffset: -60,
+                    legendPosition: "middle"
+                  }}
+                  axisBottom={{
+                    enable: true,
+                    tickSize: 4,
+                    tickPadding: 5,
+                    tickRotation: -60,
+                    legend: "time",
+                    legendOffset: 60,
+                    legendPosition: "middle"
+                  }}
+                />
+              </div>
             </Card>
           </Col>
         );
