@@ -7,7 +7,7 @@ import './PfInterfaces.css';
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 2000;
 
-function PfStates() {
+function PfInterfaces() {
   const [interfaces, setInterfaces] = useState([]);
 
   useJsonUpdates(pfInterfacesURL, setInterfaces, updateTime);
@@ -84,4 +84,4 @@ function PfStates() {
   );
 }
 
-export default PfStates;
+export default PfInterfaces;
