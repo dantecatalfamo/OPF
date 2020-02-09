@@ -106,6 +106,76 @@ function PfInterfaces(props) {
           <Typography>No IPv6 traffic</Typography>
         );
 
+        const graph = ipv4 ? (
+          <div style={{width: "100%", height: 240}}>
+            <ResponsiveLineCanvas
+              data={[
+                {
+                  id: "out",
+                  data: iface.history.ipv4.out
+                },
+                {
+                  id: "in",
+                  data: iface.history.ipv4.in
+                }]}
+              yScale={{
+                type: "linear",
+                stacked: false,
+                min: "auto",
+                max: "auto"
+              }}
+              animate
+              enablePoints={false}
+              enableArea={true}
+              margin={{
+                top: 10,
+                bottom: 65,
+                right: 10,
+                left: 70,
+              }}
+              axisLeft={{
+                enable: true,
+                tickSize: 2,
+                tickPadding: 4,
+                tickRotation: 0,
+                legend: "speed (MB/s)",
+                legendOffset: -60,
+                legendPosition: "middle"
+              }}
+              axisBottom={{
+                enable: true,
+                tickSize: 4,
+                tickPadding: 5,
+                tickRotation: -35,
+                legend: "time",
+                legendOffset: 55,
+                legendPosition: "middle",
+                format: "%H:%M:%S",
+              }}
+              xScale={{
+                type: "time"
+              }}
+              xFormat={date => `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`}
+              yFormat={speed => {
+                const posSpeed = Math.abs(speed);
+                let units;
+                let unitSpeed;
+                if (posSpeed < 1) {
+                  units = "KB/s";
+                  unitSpeed = posSpeed * 1024;
+                } else if (1024 < posSpeed) {
+                  units = "GB/s";
+                  unitSpeed = posSpeed / 1024;
+                } else {
+                  units = "MB/s";
+                  unitSpeed = posSpeed;
+                }
+                return `${unitSpeed.toFixed(2)} ${units}`;
+              }}
+            />
+          </div>
+        ) : "";
+
         return (
           <Col
             key={name}
@@ -124,57 +194,7 @@ function PfInterfaces(props) {
               <Divider />
               {ipv6Stats}
               <Divider />
-              <div style={{width: "100%", height: 240}}>
-                <ResponsiveLineCanvas
-                  data={[
-                    {
-                      id: "out",
-                      data: iface.history.ipv4.out
-                    },
-                    {
-                      id: "in",
-                      data: iface.history.ipv4.in
-                    }]}
-                  yScale={{
-                    type: "linear",
-                    stacked: false,
-                    min: "auto",
-                    max: "auto"
-                  }}
-                  animate
-                  enablePoints={false}
-                  enableArea={true}
-                  margin={{
-                    top: 10,
-                    bottom: 65,
-                    right: 10,
-                    left: 70,
-                  }}
-                  axisLeft={{
-                    enable: true,
-                    tickSize: 2,
-                    tickPadding: 4,
-                    tickRotation: 0,
-                    legend: "speed (MB/s)",
-                    legendOffset: -60,
-                    legendPosition: "middle"
-                  }}
-                  axisBottom={{
-                    enable: true,
-                    tickSize: 4,
-                    tickPadding: 5,
-                    tickRotation: -35,
-                    legend: "time",
-                    legendOffset: 55,
-                    legendPosition: "middle",
-                    format: "%H:%M:%S",
-                  }}
-                  xScale={{
-                    type: "time"
-                  }}
-                  xFormat={date => `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`}
-                />
-              </div>
+              {graph}
             </Card>
           </Col>
         );
