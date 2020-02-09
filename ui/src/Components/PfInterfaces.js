@@ -125,7 +125,7 @@ function PfInterfaces(props) {
               <Divider />
               {ipv6Stats}
               <Divider />
-              <div style={{width: 1000, height: 240}}>
+              <div style={{width: "100%", height: 240}}>
                 <ResponsiveLineCanvas
                   data={[
                     {
@@ -148,7 +148,7 @@ function PfInterfaces(props) {
                   margin={{
                     top: 10,
                     bottom: 74,
-                    right: 160,
+                    right: 10,
                     left: 70,
                   }}
                   axisLeft={{
