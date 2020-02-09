@@ -108,14 +108,14 @@ function PfInterfaces(props) {
 
         const graph = ipv4 ? (
           <div style={{width: "100%", height: 240}}>
-            <ResponsiveLineCanvas
+            <ResponsiveLine
               data={[
                 {
-                  id: "out",
+                  id: "out4",
                   data: iface.history.ipv4.out
                 },
                 {
-                  id: "in",
+                  id: "in4",
                   data: iface.history.ipv4.in
                 }]}
               yScale={{
@@ -124,9 +124,11 @@ function PfInterfaces(props) {
                 min: "auto",
                 max: "auto"
               }}
-              animate
+              animate={false}
+              enableSlices="x"
               enablePoints={false}
               enableArea={true}
+              enableGridX={false}
               margin={{
                 top: 10,
                 bottom: 65,
@@ -151,6 +153,7 @@ function PfInterfaces(props) {
                 legendOffset: 55,
                 legendPosition: "middle",
                 format: "%H:%M:%S",
+                tickValues: "every 15 seconds",
               }}
               xScale={{
                 type: "time"
