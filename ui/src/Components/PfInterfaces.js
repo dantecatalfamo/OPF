@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
+import { ResponsiveLine } from '@nivo/line';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -7,12 +8,45 @@ import './PfInterfaces.css';
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 2000;
 
-function PfInterfaces() {
-  const [interfaces, setInterfaces] = useState([]);
+function PfInterfaces(props) {
+  const [interfaces, updateInterfaces] = useReducer((state, update) => {
+    let ifaces = {};
+    update.forEach(iface => {
+      const name = iface.interface;
+      ifaces[name] = iface;
+      const new4In = iface.in4pass.bytes;
+      const new4Out = iface.out4pass.bytes;
+      let old4In;
+      let old4Out;
+      let oldHistory4In;
+      let oldHistory4Out;
+      if (!state || state === {} || !state[name]) {
+        old4In = new4In;
+        old4Out = new4Out;
+        oldHistory4In = [];
+        oldHistory4Out = [];
+      } else {
+        old4In = state[name].in4pass.bytes;
+        old4Out = state[name].out4pass.bytes;
+        oldHistory4In = state[name].history.ipv4.in;
+        oldHistory4Out = state[name].history.ipv4.out;
+      }
+      const diff4In = new4In - old4In;
+      const diff4Out = new4Out - old4Out;
+      const date = new Date();
+      const point4In = { x: date, y: diff4In };
+      const point4Out = { x: date, y: diff4Out };
+      ifaces[name].history = {};
+      ifaces[name].history.ipv4 = {};
+      ifaces[name].history.ipv4.in = [...oldHistory4In, point4In];
+      ifaces[name].history.ipv4.out = [...oldHistory4Out, point4Out];     // TODO: Maximum history length, grows without limit
+    });
+    return ifaces;
+  }, {});
 
-  useJsonUpdates(pfInterfacesURL, setInterfaces, updateTime);
+  useJsonUpdates(pfInterfacesURL, updateInterfaces, updateTime);
 
-  if (interfaces.length == 0) {
+  if (Object.keys(interfaces).length == 0) {
     return (
       <Spin>
         <Card style={{margin: "30px"}}></Card>
@@ -21,7 +55,8 @@ function PfInterfaces() {
 
   return (
     <div style={{marginBottom: "12px"}}>
-      {interfaces.map(iface => {
+      {Object.keys(interfaces).map(name => {
+        const iface = interfaces[name];
         const ipv4 = [
           iface.in4pass.bytes, iface.in4block.bytes,
           iface.out4pass.bytes, iface.out4block.bytes,
