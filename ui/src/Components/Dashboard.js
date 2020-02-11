@@ -17,6 +17,7 @@ const diskUsageURL = `${serverURL}/api/disk-usage`;
 const swapUsageURL = `${serverURL}/api/swap-usage`;
 const cpuStatesURL = `${serverURL}/api/cpu-states`;
 const updateTime = 5000;
+const longUpdateTime = 20_000;
 
 const cardStyle = {
   style: {margin: 2}
@@ -46,7 +47,7 @@ function Uname(props) {
 function Uptime(props) {
   const [bootTime, setBootTime] = useState();
   const [, setTick] = useState(0);
-  useJSON(bootTimeURL, setBootTime);
+  useJsonUpdates(bootTimeURL, setBootTime, longUpdateTime);
 
   const time = timeSince(new Date(bootTime));
   useEffect(() => {
