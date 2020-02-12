@@ -264,8 +264,12 @@ function PfInterfaces(props) {
   }
 
   const ifaceSort = Object.values(interfaces).sort((a, b) => {
-    // Sort by most total traffic
-    return (a.in4pass + a.in6pass + a.out4apss + a.out6pass < b.in4pass + b.in6pass + b.out4pass + b.out6pass) ? -1 : 1;
+    const aTraffic = a.in4pass + a.in6pass + a.out4apss + a.out6pass;
+    const bTraffic = b.in4pass + b.in6pass + b.out4pass + b.out6pass;
+    if (aTraffic > bTraffic) {
+      return -1;
+    }
+    return 1;
   });
 
   return (
