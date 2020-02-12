@@ -147,6 +147,7 @@ function PfInterface(props) {
         <XAxis
           dataKey="time"
           minTickGap={50}
+          interval="preserveStartEnd"
         />
         <YAxis />
       </ComposedChart>
