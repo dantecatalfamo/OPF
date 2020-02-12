@@ -10,8 +10,8 @@ const { Panel } = Collapse;
 
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 2000;
-const diffTime = updateTime / 1000;
 const historyLength = 90;
+const mbits = true;
 
 function PfInterface(props) {
   const iface = props.iface;
@@ -58,7 +58,7 @@ function PfInterface(props) {
 
   const graph = (
     <ResponsiveContainer height={250}>
-      <ComposedChart data={iface.history}>
+      <ComposedChart data={iface.history} onClick={console.log}>
         <Area
           dataKey="pass4in"
           name="IPv4 Pass In"
@@ -180,8 +180,10 @@ function PfInterfaces(props) {
   const [interfaces, updateInterfaces] = useReducer((state, update) => {
     let ifaces = {};
     update.forEach(iface => {
+      const newDate = new Date();
       const name = iface.interface;
       ifaces[name] = iface;
+      ifaces[name].date = newDate;
       const newPass4In = iface.in4pass.bytes;
       const newPass4Out = iface.out4pass.bytes;
       const newPass6In = iface.in6pass.bytes;
@@ -190,6 +192,7 @@ function PfInterfaces(props) {
       const newBlock4Out = iface.out4block.bytes;
       const newBlock6In = iface.in6block.bytes;
       const newBlock6Out = iface.out6block.bytes;
+      let oldDate;
       let oldPass4In;
       let oldPass4Out;
       let oldPass6In;
@@ -200,6 +203,7 @@ function PfInterfaces(props) {
       let oldBlock6Out;
       let oldHistory;
       if (!state || state === {} || !state[name]) {
+        oldDate = 0;
         oldPass4In = newPass4In;
         oldPass4Out = newPass4Out;
         oldPass6In = newPass6In;
@@ -210,6 +214,7 @@ function PfInterfaces(props) {
         oldBlock6Out = newBlock6Out;
         oldHistory = [];
       } else {
+        oldDate = state[name].date;
         oldPass4In = state[name].in4pass.bytes;
         oldPass4Out = state[name].out4pass.bytes;
         oldPass6In = state[name].in6pass.bytes;
@@ -220,6 +225,12 @@ function PfInterfaces(props) {
         oldBlock6Out = state[name].out6block.bytes;
         oldHistory = state[name].history;
       }
+      const date = new Date();
+      const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
+      const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+      const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
+      const time = `${hours}:${minutes}:${seconds}`;
+      const diffTime = (newDate - oldDate) / 1000;
       const diffPass4In = (newPass4In - oldPass4In) / diffTime / 1024 / 1024;
       const diffPass4Out = -(newPass4Out - oldPass4Out) / diffTime / 1024 / 1024;
       const diffPass6In = (newPass6In - oldPass6In) / diffTime / 1024 / 1024;
@@ -228,12 +239,8 @@ function PfInterfaces(props) {
       const diffBlock4Out = (newBlock4Out - oldBlock4Out) / diffTime / 1024 / 1024;
       const diffBlock6In = (newBlock6In - oldBlock6In) / diffTime / 1024 / 1024;
       const diffBlock6Out = (newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024;
-      const date = new Date();
-      const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
-      const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-      const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
-      const time = `${hours}:${minutes}:${seconds}`;
       const point = {
+        date: date,
         time: time,
         pass4in: diffPass4In,
         pass4out: diffPass4Out,
