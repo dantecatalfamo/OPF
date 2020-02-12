@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
-import { ResponsiveLine, ResponsiveLineCanvas } from '@nivo/line';
-import { ResponsiveContainer, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -19,37 +18,45 @@ function PfInterfaces(props) {
       ifaces[name] = iface;
       const new4In = iface.in4pass.bytes;
       const new4Out = iface.out4pass.bytes;
+      const new6In = iface.in6pass.bytes;
+      const new6Out = iface.out6pass.bytes;
       let old4In;
       let old4Out;
-      let oldHistory4In;
-      let oldHistory4Out;
+      let old6In;
+      let old6Out;
+      let oldHistory;
       if (!state || state === {} || !state[name]) {
         old4In = new4In;
         old4Out = new4Out;
-        oldHistory4In = [];
-        oldHistory4Out = [];
+        old6In = new6In;
+        old6Out = new6Out;
+        oldHistory = [];
       } else {
         old4In = state[name].in4pass.bytes;
         old4Out = state[name].out4pass.bytes;
-        oldHistory4In = state[name].history.ipv4.in;
-        oldHistory4Out = state[name].history.ipv4.out;
+        old6In = state[name].in6pass.bytes;
+        old6Out = state[name].out6pass.bytes;
+        oldHistory = state[name].history;
       }
-      const diff4In = (new4In - old4In) / diffTime / 1024 / 1024;
-      const diff4Out = -(new4Out - old4Out) / diffTime / 1024 / 1024;
+      const diff4In = Number(((new4In - old4In) / diffTime / 1024 / 1024).toFixed(2));
+      const diff4Out = Number((-(new4Out - old4Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diff6In = Number(((new6In - old6In) / diffTime / 1024 / 1024).toFixed(2));
+      const diff6Out = Number((-(new6Out - old6Out) / diffTime / 1024 / 1024).toFixed(2));
       const date = new Date();
       const time = date; // `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`; // date;
-      const point4In = { x: time, y: diff4In };
-      const point4Out = { x: time, y: diff4Out };
+      const point = {
+        time: time,
+        in4: diff4In,
+        out4: diff4Out,
+        in6: diff6In,
+        out6: diff6Out,
+      };
 
-      if (oldHistory4In.length > 60) {
-        oldHistory4In.shift();
-        oldHistory4Out.shift();
+      if (oldHistory.length > 60) {
+        oldHistory.shift();
       }
 
-      ifaces[name].history = {};
-      ifaces[name].history.ipv4 = {};
-      ifaces[name].history.ipv4.in = [...oldHistory4In, point4In];
-      ifaces[name].history.ipv4.out = [...oldHistory4Out, point4Out];     // TODO: Maximum history length, grows without limit
+      ifaces[name].history = [...oldHistory, point];
     });
     return ifaces;
   }, {});
@@ -107,79 +114,6 @@ function PfInterfaces(props) {
           <Typography>No IPv6 traffic</Typography>
         );
 
-        const graph = ipv4 ? (
-          <div style={{width: "100%", height: 240}}>
-            <ResponsiveLine
-              data={[
-                {
-                  id: "out4",
-                  data: iface.history.ipv4.out
-                },
-                {
-                  id: "in4",
-                  data: iface.history.ipv4.in
-                }]}
-              xScale={{
-                type: "time"
-              }}
-              yScale={{
-                type: "linear",
-                stacked: false,
-                min: "auto",
-                max: "auto"
-              }}
-              animate={false}
-              enableSlices="x"
-              enablePoints={false}
-              enableArea={true}
-              /* enableGridX={false} */
-              margin={{
-                top: 10,
-                bottom: 65,
-                right: 10,
-                left: 70,
-              }}
-              axisLeft={{
-                enable: true,
-                tickSize: 2,
-                tickPadding: 4,
-                tickRotation: 0,
-                legend: "speed (MB/s)",
-                legendOffset: -60,
-                legendPosition: "middle"
-              }}
-              axisBottom={{
-                enable: true,
-                tickSize: 4,
-                tickPadding: 5,
-                tickRotation: -35,
-                legend: "time",
-                legendOffset: 55,
-                legendPosition: "middle",
-                format: "%H:%M:%S",
-                tickValues: "every 15 seconds",
-              }}
-              xFormat={date => `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`}
-              yFormat={speed => {
-                const posSpeed = Math.abs(speed);
-                let units;
-                let unitSpeed;
-                if (posSpeed < 1) {
-                  units = "KB/s";
-                  unitSpeed = posSpeed * 1024;
-                } else if (1024 < posSpeed) {
-                  units = "GB/s";
-                  unitSpeed = posSpeed / 1024;
-                } else {
-                  units = "MB/s";
-                  unitSpeed = posSpeed;
-                }
-                return `${unitSpeed.toFixed(2)} ${units}`;
-              }}
-            />
-          </div>
-        ) : "";
-
         const testData = [{x: 1, y: 1}, {x: 2, y: 3}];
 
         return (
@@ -203,9 +137,51 @@ function PfInterfaces(props) {
               {/* {graph} */}
               <Divider />
               <ResponsiveContainer height={250}>
-              <AreaChart data={iface.history.ipv4.out}>
-                  <Area dataKey="y" />
-                  <XAxis dataKey="x" />
+                <AreaChart data={iface.history}>
+                  <Area
+                    dataKey="in4"
+                    name="IPv4 In"
+                    isAnimationActive={false}
+                    stroke="green"
+                    fill="green"
+                    stackId="in"
+                  />
+                  <Area
+                    dataKey="in6"
+                    name="IPv6 In"
+                    isAnimationActive={false}
+                    stroke="lightgreen"
+                    fill="lightgreen"
+                    stackId="in"
+                  />
+                  <Area
+                    dataKey="out4"
+                    name="IPv4 Out"
+                    isAnimationActive={false}
+                    stroke="red"
+                    fill="red"
+                    stackId="out"
+                  />
+                  <Area
+                    dataKey="out6"
+                    name="IPv6 Out"
+                    isAnimationActive={false}
+                    stroke="pink"
+                    fill="pink"
+                    stackId="out"
+                  />
+                  <Tooltip
+                    formatter={(value, name, props) => {
+                      const abs = Math.abs(value);
+                      if (value < 1024) {
+                        return `${abs} MB/s`;
+                      } else {
+                        return `${abs/1024} GB/s`;
+                      }
+                    }}
+                  />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
                   <YAxis />
                 </AreaChart>
               </ResponsiveContainer>
