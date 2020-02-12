@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
 import { ResponsiveLine, ResponsiveLineCanvas } from '@nivo/line';
+import { ResponsiveContainer, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -36,7 +37,7 @@ function PfInterfaces(props) {
       const diff4In = (new4In - old4In) / diffTime / 1024 / 1024;
       const diff4Out = -(new4Out - old4Out) / diffTime / 1024 / 1024;
       const date = new Date();
-      const time = date; //`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+      const time = date; // `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`; // date;
       const point4In = { x: time, y: diff4In };
       const point4Out = { x: time, y: diff4Out };
 
@@ -118,6 +119,9 @@ function PfInterfaces(props) {
                   id: "in4",
                   data: iface.history.ipv4.in
                 }]}
+              xScale={{
+                type: "time"
+              }}
               yScale={{
                 type: "linear",
                 stacked: false,
@@ -128,7 +132,7 @@ function PfInterfaces(props) {
               enableSlices="x"
               enablePoints={false}
               enableArea={true}
-              enableGridX={false}
+              /* enableGridX={false} */
               margin={{
                 top: 10,
                 bottom: 65,
@@ -155,9 +159,6 @@ function PfInterfaces(props) {
                 format: "%H:%M:%S",
                 tickValues: "every 15 seconds",
               }}
-              xScale={{
-                type: "time"
-              }}
               xFormat={date => `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`}
               yFormat={speed => {
                 const posSpeed = Math.abs(speed);
@@ -179,6 +180,8 @@ function PfInterfaces(props) {
           </div>
         ) : "";
 
+        const testData = [{x: 1, y: 1}, {x: 2, y: 3}];
+
         return (
           <Col
             key={name}
@@ -197,7 +200,15 @@ function PfInterfaces(props) {
               <Divider />
               {ipv6Stats}
               <Divider />
-              {graph}
+              {/* {graph} */}
+              <Divider />
+              <ResponsiveContainer height={250}>
+              <AreaChart data={iface.history.ipv4.out}>
+                  <Area dataKey="y" />
+                  <XAxis dataKey="x" />
+                  <YAxis />
+                </AreaChart>
+              </ResponsiveContainer>
             </Card>
           </Col>
         );
