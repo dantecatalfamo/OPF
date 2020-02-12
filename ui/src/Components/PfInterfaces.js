@@ -123,6 +123,7 @@ function PfInterface(props) {
           stackId="blockOut"
         />
         <Tooltip
+          isAnimationActive={false}
           formatter={(value, name, props) => {
             const abs = Math.abs(value);
             if (value < 1024) {
