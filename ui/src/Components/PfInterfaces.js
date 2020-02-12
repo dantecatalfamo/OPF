@@ -9,8 +9,9 @@ import { formatTimeStr } from 'antd/lib/statistic/utils';
 const { Panel } = Collapse;
 
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
-const updateTime = 3000;
+const updateTime = 2000;
 const diffTime = updateTime / 1000;
+const historyLength = 90;
 
 function PfInterface(props) {
   const iface = props.iface;
@@ -126,10 +127,14 @@ function PfInterface(props) {
           isAnimationActive={false}
           formatter={(value, name, props) => {
             const abs = Math.abs(value);
-            if (value < 1024) {
-              return `${abs} MB/s`;
+            if (abs < 0.001) {
+              return `${(abs*1024*1024).toFixed(2)} B/s`;
+            } else if (abs < 1) {
+              return `${(abs*1024).toFixed(2)} KB/s`;
+            } else if (abs < 1024) {
+              return `${abs.toFixed(2)} MB/s`;
             } else {
-              return `${abs/1024} GB/s`;
+              return `${(abs/1024).toFixed(2)} GB/s`;
             }
           }}
         />
@@ -215,18 +220,19 @@ function PfInterfaces(props) {
         oldBlock6Out = state[name].out6block.bytes;
         oldHistory = state[name].history;
       }
-      const diffPass4In = Number(((newPass4In - oldPass4In) / diffTime / 1024 / 1024).toFixed(2));
-      const diffPass4Out = Number((-(newPass4Out - oldPass4Out) / diffTime / 1024 / 1024).toFixed(2));
-      const diffPass6In = Number(((newPass6In - oldPass6In) / diffTime / 1024 / 1024).toFixed(2));
-      const diffPass6Out = Number((-(newPass6Out - oldPass6Out) / diffTime / 1024 / 1024).toFixed(2));
-      const diffBlock4In = Number(((newBlock4In - oldBlock4In) / diffTime / 1024 / 1024).toFixed(2));
-      const diffBlock4Out = Number(((newBlock4Out - oldBlock4Out) / diffTime / 1024 / 1024).toFixed(2));
-      const diffBlock6In = Number(((newBlock6In - oldBlock6In) / diffTime / 1024 / 1024).toFixed(2));
-      const diffBlock6Out = Number(((newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diffPass4In = (newPass4In - oldPass4In) / diffTime / 1024 / 1024;
+      const diffPass4Out = -(newPass4Out - oldPass4Out) / diffTime / 1024 / 1024;
+      const diffPass6In = (newPass6In - oldPass6In) / diffTime / 1024 / 1024;
+      const diffPass6Out = -(newPass6Out - oldPass6Out) / diffTime / 1024 / 1024;
+      const diffBlock4In = (newBlock4In - oldBlock4In) / diffTime / 1024 / 1024;
+      const diffBlock4Out = (newBlock4Out - oldBlock4Out) / diffTime / 1024 / 1024;
+      const diffBlock6In = (newBlock6In - oldBlock6In) / diffTime / 1024 / 1024;
+      const diffBlock6Out = (newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024;
       const date = new Date();
+      const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
       const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
       const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
-      const time = `${date.getHours()}:${minutes}:${seconds}`; // date;
+      const time = `${hours}:${minutes}:${seconds}`;
       const point = {
         time: time,
         pass4in: diffPass4In,
@@ -239,7 +245,7 @@ function PfInterfaces(props) {
         block6out: diffBlock6Out,
       };
 
-      if (oldHistory.length > 60) {
+      if (oldHistory.length > historyLength) {
         oldHistory.shift();
       }
 
