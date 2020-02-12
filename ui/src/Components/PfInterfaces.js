@@ -114,7 +114,57 @@ function PfInterfaces(props) {
           <Typography>No IPv6 traffic</Typography>
         );
 
-        const testData = [{x: 1, y: 1}, {x: 2, y: 3}];
+        const graph = (
+          <ResponsiveContainer height={250}>
+            <AreaChart data={iface.history}>
+              <Area
+                dataKey="in4"
+                name="IPv4 In"
+                isAnimationActive={false}
+                stroke="green"
+                fill="green"
+                stackId="in"
+              />
+              <Area
+                dataKey="in6"
+                name="IPv6 In"
+                isAnimationActive={false}
+                stroke="lightgreen"
+                fill="lightgreen"
+                stackId="in"
+              />
+              <Area
+                dataKey="out4"
+                name="IPv4 Out"
+                isAnimationActive={false}
+                stroke="red"
+                fill="red"
+                stackId="out"
+              />
+              <Area
+                dataKey="out6"
+                name="IPv6 Out"
+                isAnimationActive={false}
+                stroke="pink"
+                fill="pink"
+                stackId="out"
+              />
+              <Tooltip
+                formatter={(value, name, props) => {
+                  const abs = Math.abs(value);
+                  if (value < 1024) {
+                    return `${abs} MB/s`;
+                  } else {
+                    return `${abs/1024} GB/s`;
+                  }
+                }}
+              />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="time" />
+              <YAxis />
+            </AreaChart>
+          </ResponsiveContainer>
+        );
 
         return (
           <Col
@@ -134,57 +184,7 @@ function PfInterfaces(props) {
               <Divider />
               {ipv6Stats}
               <Divider />
-              {/* {graph} */}
-              <Divider />
-              <ResponsiveContainer height={250}>
-                <AreaChart data={iface.history}>
-                  <Area
-                    dataKey="in4"
-                    name="IPv4 In"
-                    isAnimationActive={false}
-                    stroke="green"
-                    fill="green"
-                    stackId="in"
-                  />
-                  <Area
-                    dataKey="in6"
-                    name="IPv6 In"
-                    isAnimationActive={false}
-                    stroke="lightgreen"
-                    fill="lightgreen"
-                    stackId="in"
-                  />
-                  <Area
-                    dataKey="out4"
-                    name="IPv4 Out"
-                    isAnimationActive={false}
-                    stroke="red"
-                    fill="red"
-                    stackId="out"
-                  />
-                  <Area
-                    dataKey="out6"
-                    name="IPv6 Out"
-                    isAnimationActive={false}
-                    stroke="pink"
-                    fill="pink"
-                    stackId="out"
-                  />
-                  <Tooltip
-                    formatter={(value, name, props) => {
-                      const abs = Math.abs(value);
-                      if (value < 1024) {
-                        return `${abs} MB/s`;
-                      } else {
-                        return `${abs/1024} GB/s`;
-                      }
-                    }}
-                  />
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                </AreaChart>
-              </ResponsiveContainer>
+              {(ipv4 || ipv6) ? graph : ""}
             </Card>
           </Col>
         );
