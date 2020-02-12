@@ -251,11 +251,16 @@ function PfInterfaces(props) {
       </Spin>);
   }
 
+  const ifaceSort = Object.values(interfaces).sort((a, b) => {
+    // Sort by most total traffic
+    return (a.in4pass + a.in6pass + a.out4apss + a.out6pass < b.in4pass + b.in6pass + b.out4pass + b.out6pass) ? -1 : 1;
+  });
+
   return (
     <div style={{marginBottom: "12px"}}>
-      {Object.keys(interfaces).map(name => {
-        const iface = interfaces[name];
-        return (<PfInterface iface={iface} />);
+      {ifaceSort.map(iface => {
+        const name = iface.interface;
+        return (<PfInterface iface={iface} key={name} />);
       })}
     </div>
   );
