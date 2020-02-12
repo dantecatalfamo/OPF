@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
-import { ResponsiveContainer, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -16,40 +16,64 @@ function PfInterfaces(props) {
     update.forEach(iface => {
       const name = iface.interface;
       ifaces[name] = iface;
-      const new4In = iface.in4pass.bytes;
-      const new4Out = iface.out4pass.bytes;
-      const new6In = iface.in6pass.bytes;
-      const new6Out = iface.out6pass.bytes;
-      let old4In;
-      let old4Out;
-      let old6In;
-      let old6Out;
+      const newPass4In = iface.in4pass.bytes;
+      const newPass4Out = iface.out4pass.bytes;
+      const newPass6In = iface.in6pass.bytes;
+      const newPass6Out = iface.out6pass.bytes;
+      const newBlock4In = iface.in4block.bytes;
+      const newBlock4Out = iface.out4block.bytes;
+      const newBlock6In = iface.in6block.bytes;
+      const newBlock6Out = iface.out6block.bytes;
+      let oldPass4In;
+      let oldPass4Out;
+      let oldPass6In;
+      let oldPass6Out;
+      let oldBlock4In;
+      let oldBlock4Out;
+      let oldBlock6In;
+      let oldBlock6Out;
       let oldHistory;
       if (!state || state === {} || !state[name]) {
-        old4In = new4In;
-        old4Out = new4Out;
-        old6In = new6In;
-        old6Out = new6Out;
+        oldPass4In = newPass4In;
+        oldPass4Out = newPass4Out;
+        oldPass6In = newPass6In;
+        oldPass6Out = newPass6Out;
+        oldBlock4In = newBlock4In;
+        oldBlock4Out = newBlock4Out;
+        oldBlock6In = newBlock6In;
+        oldBlock6Out = newBlock6Out;
         oldHistory = [];
       } else {
-        old4In = state[name].in4pass.bytes;
-        old4Out = state[name].out4pass.bytes;
-        old6In = state[name].in6pass.bytes;
-        old6Out = state[name].out6pass.bytes;
+        oldPass4In = state[name].in4pass.bytes;
+        oldPass4Out = state[name].out4pass.bytes;
+        oldPass6In = state[name].in6pass.bytes;
+        oldPass6Out = state[name].out6pass.bytes;
+        oldBlock4In = state[name].in4block.bytes;
+        oldBlock4Out = state[name].out4block.bytes;
+        oldBlock6In = state[name].in6block.bytes;
+        oldBlock6Out = state[name].out6block.bytes;
         oldHistory = state[name].history;
       }
-      const diff4In = Number(((new4In - old4In) / diffTime / 1024 / 1024).toFixed(2));
-      const diff4Out = Number((-(new4Out - old4Out) / diffTime / 1024 / 1024).toFixed(2));
-      const diff6In = Number(((new6In - old6In) / diffTime / 1024 / 1024).toFixed(2));
-      const diff6Out = Number((-(new6Out - old6Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diffPass4In = Number(((newPass4In - oldPass4In) / diffTime / 1024 / 1024).toFixed(2));
+      const diffPass4Out = Number((-(newPass4Out - oldPass4Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diffPass6In = Number(((newPass6In - oldPass6In) / diffTime / 1024 / 1024).toFixed(2));
+      const diffPass6Out = Number((-(newPass6Out - oldPass6Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diffBlock4In = Number(((newBlock4In - oldBlock4In) / diffTime / 1024 / 1024).toFixed(2));
+      const diffBlock4Out = Number(((newBlock4Out - oldBlock4Out) / diffTime / 1024 / 1024).toFixed(2));
+      const diffBlock6In = Number(((newBlock6In - oldBlock6In) / diffTime / 1024 / 1024).toFixed(2));
+      const diffBlock6Out = Number(((newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024).toFixed(2));
       const date = new Date();
       const time = date; // `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`; // date;
       const point = {
         time: time,
-        in4: diff4In,
-        out4: diff4Out,
-        in6: diff6In,
-        out6: diff6Out,
+        pass4in: diffPass4In,
+        pass4out: diffPass4Out,
+        pass6in: diffPass6In,
+        pass6out: diffPass6Out,
+        block4in: diffBlock4In,
+        block4out: diffBlock4Out,
+        block6in: diffBlock6In,
+        block6out: diffBlock6Out,
       };
 
       if (oldHistory.length > 60) {
@@ -116,38 +140,70 @@ function PfInterfaces(props) {
 
         const graph = (
           <ResponsiveContainer height={250}>
-            <AreaChart data={iface.history}>
+            <ComposedChart data={iface.history}>
               <Area
-                dataKey="in4"
-                name="IPv4 In"
+                dataKey="pass4in"
+                name="IPv4 Pass In"
                 isAnimationActive={false}
                 stroke="green"
                 fill="green"
-                stackId="in"
+                stackId="passIn"
               />
               <Area
-                dataKey="in6"
-                name="IPv6 In"
+                dataKey="pass6in"
+                name="IPv6 Pass In"
                 isAnimationActive={false}
                 stroke="lightgreen"
                 fill="lightgreen"
-                stackId="in"
+                stackId="passIn"
               />
               <Area
-                dataKey="out4"
-                name="IPv4 Out"
+                dataKey="pass4out"
+                name="IPv4 Pass Out"
                 isAnimationActive={false}
                 stroke="red"
                 fill="red"
-                stackId="out"
+                stackId="passOut"
               />
               <Area
-                dataKey="out6"
-                name="IPv6 Out"
+                dataKey="pass6out"
+                name="IPv6 Pass Out"
                 isAnimationActive={false}
                 stroke="pink"
                 fill="pink"
-                stackId="out"
+                stackId="passOut"
+              />
+              <Bar
+                dataKey="block4in"
+                barSize={10}
+                isAnimationActive={false}
+                name="IPv4 Block In"
+                fill="#667C26"
+                stackId="blockIn"
+              />
+              <Bar
+                dataKey="block6in"
+                barSize={10}
+                isAnimationActive={false}
+                name="IPv6 Block In"
+                fill="#848B79"
+                stackId="blockIn"
+              />
+              <Bar
+                dataKey="block4out"
+                barSize={10}
+                isAnimationActive={false}
+                name="IPv4 Block Out"
+                fill="#9F000F"
+                stackId="blockOut"
+              />
+              <Bar
+                dataKey="block6out"
+                barSize={10}
+                isAnimationActive={false}
+                name="IPv6 Block Out"
+                fill="#C24641"
+                stackId="blockOut"
               />
               <Tooltip
                 formatter={(value, name, props) => {
@@ -159,10 +215,11 @@ function PfInterfaces(props) {
                   }
                 }}
               />
+              <Legend />
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="time" />
               <YAxis />
-            </AreaChart>
+            </ComposedChart>
           </ResponsiveContainer>
         );
 
