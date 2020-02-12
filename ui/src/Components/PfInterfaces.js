@@ -271,12 +271,9 @@ function PfInterfaces(props) {
   }
 
   const ifaceSort = Object.values(interfaces).sort((a, b) => {
-    const aTraffic = a.in4pass + a.in6pass + a.out4apss + a.out6pass;
-    const bTraffic = b.in4pass + b.in6pass + b.out4pass + b.out6pass;
-    if (aTraffic > bTraffic) {
-      return -1;
-    }
-    return 1;
+    const aTraffic = a.in4pass.bytes + a.in6pass.bytes + a.out4pass.bytes + a.out6pass.bytes;
+    const bTraffic = b.in4pass.bytes + b.in6pass.bytes + b.out4pass.bytes + b.out6pass.bytes;
+    return bTraffic - aTraffic;
   });
 
   return (
