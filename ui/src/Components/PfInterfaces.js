@@ -66,6 +66,7 @@ function PfInterface(props) {
           stroke="green"
           fill="green"
           stackId="passIn"
+          type="monotoneX"
         />
         <Area
           dataKey="pass6in"
@@ -74,6 +75,7 @@ function PfInterface(props) {
           stroke="lightgreen"
           fill="lightgreen"
           stackId="passIn"
+          type="monotoneX"
         />
         <Area
           dataKey="pass4out"
@@ -82,6 +84,7 @@ function PfInterface(props) {
           stroke="red"
           fill="red"
           stackId="passOut"
+          type="monotoneX"
         />
         <Area
           dataKey="pass6out"
@@ -90,6 +93,7 @@ function PfInterface(props) {
           stroke="pink"
           fill="pink"
           stackId="passOut"
+          type="monotoneX"
         />
         <Bar
           dataKey="block4in"
