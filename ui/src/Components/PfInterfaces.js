@@ -135,7 +135,10 @@ function PfInterface(props) {
         />
         <Legend />
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" />
+        <XAxis
+          dataKey="time"
+          minTickGap={50}
+        />
         <YAxis />
       </ComposedChart>
     </ResponsiveContainer>
@@ -221,7 +224,9 @@ function PfInterfaces(props) {
       const diffBlock6In = Number(((newBlock6In - oldBlock6In) / diffTime / 1024 / 1024).toFixed(2));
       const diffBlock6Out = Number(((newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024).toFixed(2));
       const date = new Date();
-      const time = date; // `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`; // date;
+      const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+      const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
+      const time = `${date.getHours()}:${minutes}:${seconds}`; // date;
       const point = {
         time: time,
         pass4in: diffPass4In,
