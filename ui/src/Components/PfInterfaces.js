@@ -98,155 +98,161 @@ function PfInterfaces(props) {
     <div style={{marginBottom: "12px"}}>
       {Object.keys(interfaces).map(name => {
         const iface = interfaces[name];
-        const ipv4 = [
-          iface.in4pass.bytes, iface.in4block.bytes,
-          iface.out4pass.bytes, iface.out4block.bytes,
-        ].some(el => el > 0);
-
-        const ipv6 = [
-          iface.in6pass.bytes, iface.in6block.bytes,
-          iface.out6pass.bytes, iface.out6block.bytes,
-        ].some(el => el > 0);
-
-        const ipv4Stats = ipv4 ? (
-          <Row>
-            <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Packets)" value={iface.in4pass.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Bytes)" value={iface.in4pass.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Block IPv4 (Packets)" value={iface.in4block.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Block IPv4 (Bytes)" value={iface.in4block.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Packets)" value={iface.out4pass.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Bytes)" value={iface.out4pass.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Packets)" value={iface.out4block.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Bytes)" value={iface.out4block.bytes}/></Col>
-          </Row>
-        ) : (
-          <Typography>No IPv4 traffic</Typography>
-        );
-
-        const ipv6Stats = ipv6 ? (
-          <Row>
-            <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Packets)" value={iface.in6pass.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Bytes)" value={iface.in6pass.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Block IPv6 (Packets)" value={iface.in6block.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="In Block IPv6 (Bytes)" value={iface.in6block.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Packets)" value={iface.out6pass.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Bytes)" value={iface.out6pass.bytes}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Packets)" value={iface.out6block.packets}/></Col>
-            <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Bytes)" value={iface.out6block.bytes}/></Col>
-          </Row>
-        ) : (
-          <Typography>No IPv6 traffic</Typography>
-        );
-
-        const graph = (
-          <ResponsiveContainer height={250}>
-            <ComposedChart data={iface.history}>
-              <Area
-                dataKey="pass4in"
-                name="IPv4 Pass In"
-                isAnimationActive={false}
-                stroke="green"
-                fill="green"
-                stackId="passIn"
-              />
-              <Area
-                dataKey="pass6in"
-                name="IPv6 Pass In"
-                isAnimationActive={false}
-                stroke="lightgreen"
-                fill="lightgreen"
-                stackId="passIn"
-              />
-              <Area
-                dataKey="pass4out"
-                name="IPv4 Pass Out"
-                isAnimationActive={false}
-                stroke="red"
-                fill="red"
-                stackId="passOut"
-              />
-              <Area
-                dataKey="pass6out"
-                name="IPv6 Pass Out"
-                isAnimationActive={false}
-                stroke="pink"
-                fill="pink"
-                stackId="passOut"
-              />
-              <Bar
-                dataKey="block4in"
-                barSize={10}
-                isAnimationActive={false}
-                name="IPv4 Block In"
-                fill="#667C26"
-                stackId="blockIn"
-              />
-              <Bar
-                dataKey="block6in"
-                barSize={10}
-                isAnimationActive={false}
-                name="IPv6 Block In"
-                fill="#848B79"
-                stackId="blockIn"
-              />
-              <Bar
-                dataKey="block4out"
-                barSize={10}
-                isAnimationActive={false}
-                name="IPv4 Block Out"
-                fill="#9F000F"
-                stackId="blockOut"
-              />
-              <Bar
-                dataKey="block6out"
-                barSize={10}
-                isAnimationActive={false}
-                name="IPv6 Block Out"
-                fill="#C24641"
-                stackId="blockOut"
-              />
-              <Tooltip
-                formatter={(value, name, props) => {
-                  const abs = Math.abs(value);
-                  if (value < 1024) {
-                    return `${abs} MB/s`;
-                  } else {
-                    return `${abs/1024} GB/s`;
-                  }
-                }}
-              />
-              <Legend />
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-            </ComposedChart>
-          </ResponsiveContainer>
-        );
-
-        return (
-          <Col
-            key={name}
-            xxl={{span: 18, offset: 3}}
-            xl={{span: 20, offset: 2}}
-            lg={{span: 24}}
-          >
-            <Card title={iface.interface} style={{marginTop: "12px"}}>
-              <Row>
-                <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
-                <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
-                <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
-              </Row>
-              <Divider />
-              {ipv4Stats}
-              <Divider />
-              {ipv6Stats}
-              <Divider />
-              {(ipv4 || ipv6) ? graph : ""}
-            </Card>
-          </Col>
-        );
+        return (<PfInterface iface={iface} />);
       })}
     </div>
+  );
+}
+
+function PfInterface(props) {
+  const iface = props.iface;
+
+  const ipv4 = [
+    iface.in4pass.bytes, iface.in4block.bytes,
+    iface.out4pass.bytes, iface.out4block.bytes,
+  ].some(el => el > 0);
+
+  const ipv6 = [
+    iface.in6pass.bytes, iface.in6block.bytes,
+    iface.out6pass.bytes, iface.out6block.bytes,
+  ].some(el => el > 0);
+
+  const ipv4Stats = ipv4 ? (
+    <Row>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Packets)" value={iface.in4pass.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Bytes)" value={iface.in4pass.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Packets)" value={iface.in4block.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Bytes)" value={iface.in4block.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Packets)" value={iface.out4pass.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Bytes)" value={iface.out4pass.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Packets)" value={iface.out4block.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Bytes)" value={iface.out4block.bytes}/></Col>
+    </Row>
+  ) : (
+    <Typography>No IPv4 traffic</Typography>
+  );
+
+  const ipv6Stats = ipv6 ? (
+    <Row>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Packets)" value={iface.in6pass.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Bytes)" value={iface.in6pass.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Packets)" value={iface.in6block.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Bytes)" value={iface.in6block.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Packets)" value={iface.out6pass.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Bytes)" value={iface.out6pass.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Packets)" value={iface.out6block.packets}/></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Bytes)" value={iface.out6block.bytes}/></Col>
+    </Row>
+  ) : (
+    <Typography>No IPv6 traffic</Typography>
+  );
+
+  const graph = (
+    <ResponsiveContainer height={250}>
+      <ComposedChart data={iface.history}>
+        <Area
+          dataKey="pass4in"
+          name="IPv4 Pass In"
+          isAnimationActive={false}
+          stroke="green"
+          fill="green"
+          stackId="passIn"
+        />
+        <Area
+          dataKey="pass6in"
+          name="IPv6 Pass In"
+          isAnimationActive={false}
+          stroke="lightgreen"
+          fill="lightgreen"
+          stackId="passIn"
+        />
+        <Area
+          dataKey="pass4out"
+          name="IPv4 Pass Out"
+          isAnimationActive={false}
+          stroke="red"
+          fill="red"
+          stackId="passOut"
+        />
+        <Area
+          dataKey="pass6out"
+          name="IPv6 Pass Out"
+          isAnimationActive={false}
+          stroke="pink"
+          fill="pink"
+          stackId="passOut"
+        />
+        <Bar
+          dataKey="block4in"
+          barSize={10}
+          isAnimationActive={false}
+          name="IPv4 Block In"
+          fill="#667C26"
+          stackId="blockIn"
+        />
+        <Bar
+          dataKey="block6in"
+          barSize={10}
+          isAnimationActive={false}
+          name="IPv6 Block In"
+          fill="#848B79"
+          stackId="blockIn"
+        />
+        <Bar
+          dataKey="block4out"
+          barSize={10}
+          isAnimationActive={false}
+          name="IPv4 Block Out"
+          fill="#9F000F"
+          stackId="blockOut"
+        />
+        <Bar
+          dataKey="block6out"
+          barSize={10}
+          isAnimationActive={false}
+          name="IPv6 Block Out"
+          fill="#C24641"
+          stackId="blockOut"
+        />
+        <Tooltip
+          formatter={(value, name, props) => {
+            const abs = Math.abs(value);
+            if (value < 1024) {
+              return `${abs} MB/s`;
+            } else {
+              return `${abs/1024} GB/s`;
+            }
+          }}
+        />
+        <Legend />
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="time" />
+        <YAxis />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+
+  return (
+    <Col
+      key={iface.interface}
+      xxl={{span: 18, offset: 3}}
+      xl={{span: 20, offset: 2}}
+      lg={{span: 24}}
+    >
+      <Card title={iface.interface} style={{marginTop: "12px"}}>
+        <Row>
+          <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
+          <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
+          <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
+        </Row>
+        <Divider />
+        {ipv4Stats}
+        <Divider />
+        {ipv6Stats}
+        <Divider />
+        {(ipv4 || ipv6) ? graph : ""}
+      </Card>
+    </Col>
   );
 }
 
