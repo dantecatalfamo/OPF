@@ -17,7 +17,7 @@ const diskUsageURL = `${serverURL}/api/disk-usage`;
 const swapUsageURL = `${serverURL}/api/swap-usage`;
 const cpuStatesURL = `${serverURL}/api/cpu-states`;
 const updateTime = 5000;
-const longUpdateTime = 20_000;
+const longUpdateTime = 20000;
 
 const cardStyle = {
   style: {margin: 2}
