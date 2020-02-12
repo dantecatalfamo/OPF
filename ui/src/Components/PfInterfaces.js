@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin } from 'antd';
-import { ResponsiveContainer, ComposedChart, Bar, AreaChart, Area, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse } from 'antd';
+import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
 import { formatTimeStr } from 'antd/lib/statistic/utils';
+
+const { Panel } = Collapse;
 
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 3000;
@@ -146,17 +148,20 @@ function PfInterface(props) {
       lg={{span: 24}}
     >
       <Card title={iface.interface} style={{marginTop: "12px"}}>
-        <Row>
-          <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
-          <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
-          <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
-        </Row>
-        <Divider />
-        {ipv4Stats}
-        <Divider />
-        {ipv6Stats}
-        <Divider />
         {(ipv4 || ipv6) ? graph : ""}
+        <Collapse>
+          <Panel header="Statistics">
+            <Row>
+              <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
+              <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
+              <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
+            </Row>
+            <Divider />
+            {ipv4Stats}
+            <Divider />
+            {ipv6Stats}
+          </Panel>
+        </Collapse>
       </Card>
     </Col>
   );
