@@ -77,13 +77,14 @@ function PfInterface(props) {
   const graph = (
     <ResponsiveContainer height={250}>
       <ComposedChart data={iface.history} onClick={(point, event) => {
+        const name = iface.interface;
         const time = point.activeLabel;
         console.log(point);
         const values = point.activePayload.map(pl => ({
           name: pl.name,
           value: formatSpeed(pl.value),
         }));
-        let text=time;
+        let text= name + "\n" + time;
         values.forEach(v => {
           text += `\n${v.name}: ${v.value}`;
         });
