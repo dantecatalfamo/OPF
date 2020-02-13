@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse } from 'antd';
-import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine } from 'recharts';
+import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse, message } from 'antd';
+import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine, Text } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -13,6 +13,23 @@ const updateTime = 2000;
 const historyLength = 90;
 const lagThreshold = 10;
 const mbits = true;
+
+function formatSpeed(value) {
+  const abs = Math.abs(value);
+  if (abs < 0.001) {
+    const unit = mbits ? "bps" : "B/s";
+    return `${(abs*1024*1024).toFixed(2)} ${unit}`;
+  } else if (abs < 1) {
+    const unit = mbits ? "kbps" : "KB/s";
+    return `${(abs*1024).toFixed(2)} ${unit}`;
+  } else if (abs < 1024) {
+    const unit = mbits ? "mbps" : "MB/s";
+    return `${abs.toFixed(2)} ${unit}`;
+  } else {
+    const unit = mbits ? "gbps" : "GB/s";
+    return `${(abs/1024).toFixed(2)} ${unit}`;
+  }
+}
 
 function PfInterface(props) {
   const iface = props.iface;
@@ -59,7 +76,23 @@ function PfInterface(props) {
 
   const graph = (
     <ResponsiveContainer height={250}>
-      <ComposedChart data={iface.history} onClick={console.log}>
+      <ComposedChart data={iface.history} onClick={(point, event) => {
+        const time = point.activeLabel;
+        console.log(point);
+        const values = point.activePayload.map(pl => ({
+          name: pl.name,
+          value: formatSpeed(pl.value),
+        }));
+        let text=time;
+        values.forEach(v => {
+          text += `\n${v.name}: ${v.value}`;
+        });
+        navigator.clipboard.writeText(text).then(() => {
+          message.success("Copied");
+        }, () => {
+          message.error("Failed to copy");
+        });
+      }}>
         {iface.gaps.map(gap => gap.component)}
         <Area
           dataKey="pass4in"
@@ -132,20 +165,7 @@ function PfInterface(props) {
         <Tooltip
           isAnimationActive={false}
           formatter={(value, name, props) => {
-            const abs = Math.abs(value);
-            if (abs < 0.001) {
-              const unit = mbits ? "bps" : "B/s";
-              return `${(abs*1024*1024).toFixed(2)} ${unit}`;
-            } else if (abs < 1) {
-              const unit = mbits ? "kbps" : "KB/s";
-              return `${(abs*1024).toFixed(2)} ${unit}`;
-            } else if (abs < 1024) {
-              const unit = mbits ? "mbps" : "MB/s";
-              return `${abs.toFixed(2)} ${unit}`;
-            } else {
-              const unit = mbits ? "gbps" : "GB/s";
-              return `${(abs/1024).toFixed(2)} ${unit}`;
-            }
+            return formatSpeed(value);
           }}
         />
         <Legend />
