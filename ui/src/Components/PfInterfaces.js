@@ -51,6 +51,129 @@ function chartClipboard(point, name) {
   });
 }
 
+function interfaceSort(interfaces) {
+  return Object.values(interfaces).sort((a, b) => {
+    const aTraffic = a.in4pass.bytes + a.in6pass.bytes + a.out4pass.bytes + a.out6pass.bytes;
+    const bTraffic = b.in4pass.bytes + b.in6pass.bytes + b.out4pass.bytes + b.out6pass.bytes;
+    return bTraffic - aTraffic;
+  });
+}
+
+function interfaceReducer(state, update) {
+  let ifaces = {};
+  update.forEach(iface => {
+    const newDate = new Date();
+    const name = iface.interface;
+    ifaces[name] = iface;
+    ifaces[name].date = newDate;
+    const newPass4In = iface.in4pass.bytes;
+    const newPass4Out = iface.out4pass.bytes;
+    const newPass6In = iface.in6pass.bytes;
+    const newPass6Out = iface.out6pass.bytes;
+    const newBlock4In = iface.in4block.bytes;
+    const newBlock4Out = iface.out4block.bytes;
+    const newBlock6In = iface.in6block.bytes;
+    const newBlock6Out = iface.out6block.bytes;
+    let oldDate;
+    let oldPass4In;
+    let oldPass4Out;
+    let oldPass6In;
+    let oldPass6Out;
+    let oldBlock4In;
+    let oldBlock4Out;
+    let oldBlock6In;
+    let oldBlock6Out;
+    let oldHistory;
+    let oldGaps;
+    if (!state || state === {} || !state[name]) {
+      oldDate = 0;
+      oldPass4In = newPass4In;
+      oldPass4Out = newPass4Out;
+      oldPass6In = newPass6In;
+      oldPass6Out = newPass6Out;
+      oldBlock4In = newBlock4In;
+      oldBlock4Out = newBlock4Out;
+      oldBlock6In = newBlock6In;
+      oldBlock6Out = newBlock6Out;
+      oldHistory = [];
+      oldGaps = [];
+    } else {
+      oldDate = state[name].date;
+      oldPass4In = state[name].in4pass.bytes;
+      oldPass4Out = state[name].out4pass.bytes;
+      oldPass6In = state[name].in6pass.bytes;
+      oldPass6Out = state[name].out6pass.bytes;
+      oldBlock4In = state[name].in4block.bytes;
+      oldBlock4Out = state[name].out4block.bytes;
+      oldBlock6In = state[name].in6block.bytes;
+      oldBlock6Out = state[name].out6block.bytes;
+      oldHistory = state[name].history;
+      oldGaps = state[name].gaps;
+    }
+    const date = new Date();
+    const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
+    const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+    const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
+    const time = `${hours}:${minutes}:${seconds}`;
+    const diffTime = (newDate - oldDate) / 1000;
+    const multiplier = mbits ? 8 : 1;
+    const divisor = diffTime * 1024 * 1024;
+    const diffPass4In = (newPass4In - oldPass4In) * multiplier / divisor;
+    const diffPass4Out = -(newPass4Out - oldPass4Out) * multiplier / divisor;
+    const diffPass6In = (newPass6In - oldPass6In) * multiplier / divisor;
+    const diffPass6Out = -(newPass6Out - oldPass6Out) * multiplier / divisor;
+    const diffBlock4In = (newBlock4In - oldBlock4In) * multiplier / divisor;
+    const diffBlock4Out = (newBlock4Out - oldBlock4Out) * multiplier / divisor;
+    const diffBlock6In = (newBlock6In - oldBlock6In) * multiplier / divisor;
+    const diffBlock6Out = (newBlock6Out - oldBlock6Out) * multiplier / divisor;
+    const point = {
+      date: date,
+      time: time,
+      pass4in: diffPass4In,
+      pass4out: diffPass4Out,
+      pass6in: diffPass6In,
+      pass6out: diffPass6Out,
+      block4in: diffBlock4In,
+      block4out: diffBlock4Out,
+      block6in: diffBlock6In,
+      block6out: diffBlock6Out,
+    };
+
+    oldGaps = oldGaps.filter(gap => {
+      if (oldHistory.length > 0) {
+        return gap.date > oldHistory[0].date;
+      }
+      return true;
+    });
+
+    if ((diffTime > lagThreshold) && (oldHistory.length != 0)) {
+      let lagTime;
+      if (diffTime < 60) {
+        lagTime = `${diffTime.toFixed(2)} sec`;
+      } else if (diffTime < (60 * 60)) {
+        lagTime = `${(diffTime/60).toFixed(2)} min`;
+      } else {
+        lagTime = `${(diffTime/60/60).toFixed(2)} hr`;
+      }
+
+      const gap = ({
+        date: new Date(),
+        component: <ReferenceLine x={time} label={`${lagTime} gap`} stroke="black" key={time} />,
+      });
+      ifaces[name].gaps = [...oldGaps, gap];
+    } else {
+      ifaces[name].gaps = [...oldGaps];
+    }
+
+    if (oldHistory.length > historyLength) {
+      oldHistory.shift();
+    }
+
+    ifaces[name].history = [...oldHistory, point];
+  });
+  return ifaces;
+}
+
 function PfInterface(props) {
   const iface = props.iface;
 
@@ -215,120 +338,7 @@ function PfInterface(props) {
 }
 
 function PfInterfaces(props) {
-  const [interfaces, updateInterfaces] = useReducer((state, update) => {
-    let ifaces = {};
-    update.forEach(iface => {
-      const newDate = new Date();
-      const name = iface.interface;
-      ifaces[name] = iface;
-      ifaces[name].date = newDate;
-      const newPass4In = iface.in4pass.bytes;
-      const newPass4Out = iface.out4pass.bytes;
-      const newPass6In = iface.in6pass.bytes;
-      const newPass6Out = iface.out6pass.bytes;
-      const newBlock4In = iface.in4block.bytes;
-      const newBlock4Out = iface.out4block.bytes;
-      const newBlock6In = iface.in6block.bytes;
-      const newBlock6Out = iface.out6block.bytes;
-      let oldDate;
-      let oldPass4In;
-      let oldPass4Out;
-      let oldPass6In;
-      let oldPass6Out;
-      let oldBlock4In;
-      let oldBlock4Out;
-      let oldBlock6In;
-      let oldBlock6Out;
-      let oldHistory;
-      let oldGaps;
-      if (!state || state === {} || !state[name]) {
-        oldDate = 0;
-        oldPass4In = newPass4In;
-        oldPass4Out = newPass4Out;
-        oldPass6In = newPass6In;
-        oldPass6Out = newPass6Out;
-        oldBlock4In = newBlock4In;
-        oldBlock4Out = newBlock4Out;
-        oldBlock6In = newBlock6In;
-        oldBlock6Out = newBlock6Out;
-        oldHistory = [];
-        oldGaps = [];
-      } else {
-        oldDate = state[name].date;
-        oldPass4In = state[name].in4pass.bytes;
-        oldPass4Out = state[name].out4pass.bytes;
-        oldPass6In = state[name].in6pass.bytes;
-        oldPass6Out = state[name].out6pass.bytes;
-        oldBlock4In = state[name].in4block.bytes;
-        oldBlock4Out = state[name].out4block.bytes;
-        oldBlock6In = state[name].in6block.bytes;
-        oldBlock6Out = state[name].out6block.bytes;
-        oldHistory = state[name].history;
-        oldGaps = state[name].gaps;
-      }
-      const date = new Date();
-      const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
-      const minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
-      const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
-      const time = `${hours}:${minutes}:${seconds}`;
-      const diffTime = (newDate - oldDate) / 1000;
-      const multiplier = mbits ? 8 : 1;
-      const divisor = diffTime * 1024 * 1024;
-      const diffPass4In = (newPass4In - oldPass4In) * multiplier / divisor;
-      const diffPass4Out = -(newPass4Out - oldPass4Out) * multiplier / divisor;
-      const diffPass6In = (newPass6In - oldPass6In) * multiplier / divisor;
-      const diffPass6Out = -(newPass6Out - oldPass6Out) * multiplier / divisor;
-      const diffBlock4In = (newBlock4In - oldBlock4In) * multiplier / divisor;
-      const diffBlock4Out = (newBlock4Out - oldBlock4Out) * multiplier / divisor;
-      const diffBlock6In = (newBlock6In - oldBlock6In) * multiplier / divisor;
-      const diffBlock6Out = (newBlock6Out - oldBlock6Out) * multiplier / divisor;
-      const point = {
-        date: date,
-        time: time,
-        pass4in: diffPass4In,
-        pass4out: diffPass4Out,
-        pass6in: diffPass6In,
-        pass6out: diffPass6Out,
-        block4in: diffBlock4In,
-        block4out: diffBlock4Out,
-        block6in: diffBlock6In,
-        block6out: diffBlock6Out,
-      };
-
-      oldGaps = oldGaps.filter(gap => {
-        if (oldHistory.length > 0) {
-          return gap.date > oldHistory[0].date;
-        }
-        return true;
-      });
-
-      if ((diffTime > lagThreshold) && (oldHistory.length != 0)) {
-        let lagTime;
-        if (diffTime < 60) {
-          lagTime = `${diffTime.toFixed(2)} sec`;
-        } else if (diffTime < (60 * 60)) {
-          lagTime = `${(diffTime/60).toFixed(2)} min`;
-        } else {
-          lagTime = `${(diffTime/60/60).toFixed(2)} hr`;
-        }
-
-        const gap = ({
-          date: new Date(),
-          component: <ReferenceLine x={time} label={`${lagTime} gap`} stroke="black" key={time} />,
-        });
-        ifaces[name].gaps = [...oldGaps, gap];
-      } else {
-        ifaces[name].gaps = [...oldGaps];
-      }
-
-      if (oldHistory.length > historyLength) {
-        oldHistory.shift();
-      }
-
-      ifaces[name].history = [...oldHistory, point];
-    });
-    return ifaces;
-  }, {});
+  const [interfaces, updateInterfaces] = useReducer(interfaceReducer, {});
 
   useJsonUpdates(pfInterfacesURL, updateInterfaces, updateTime);
 
@@ -339,11 +349,7 @@ function PfInterfaces(props) {
       </Spin>);
   }
 
-  const ifaceSort = Object.values(interfaces).sort((a, b) => {
-    const aTraffic = a.in4pass.bytes + a.in6pass.bytes + a.out4pass.bytes + a.out6pass.bytes;
-    const bTraffic = b.in4pass.bytes + b.in6pass.bytes + b.out4pass.bytes + b.out6pass.bytes;
-    return bTraffic - aTraffic;
-  });
+  const ifaceSort = interfaceSort(interfaces);
 
   return (
     <div style={{marginBottom: "12px"}}>
