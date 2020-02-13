@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse } from 'antd';
-import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
 import './PfInterfaces.css';
@@ -11,6 +11,7 @@ const { Panel } = Collapse;
 const pfInterfacesURL = `${serverURL}/api/pf-interfaces`;
 const updateTime = 2000;
 const historyLength = 90;
+const lagThreshold = 10;
 const mbits = true;
 
 function PfInterface(props) {
@@ -59,6 +60,7 @@ function PfInterface(props) {
   const graph = (
     <ResponsiveContainer height={250}>
       <ComposedChart data={iface.history} onClick={console.log}>
+        {iface.gaps.map(gap => gap.component)}
         <Area
           dataKey="pass4in"
           name="IPv4 Pass In"
@@ -207,6 +209,7 @@ function PfInterfaces(props) {
       let oldBlock6In;
       let oldBlock6Out;
       let oldHistory;
+      let oldGaps;
       if (!state || state === {} || !state[name]) {
         oldDate = 0;
         oldPass4In = newPass4In;
@@ -218,6 +221,7 @@ function PfInterfaces(props) {
         oldBlock6In = newBlock6In;
         oldBlock6Out = newBlock6Out;
         oldHistory = [];
+        oldGaps = [];
       } else {
         oldDate = state[name].date;
         oldPass4In = state[name].in4pass.bytes;
@@ -229,6 +233,7 @@ function PfInterfaces(props) {
         oldBlock6In = state[name].in6block.bytes;
         oldBlock6Out = state[name].out6block.bytes;
         oldHistory = state[name].history;
+        oldGaps = state[name].gaps;
       }
       const date = new Date();
       const hours = (date.getHours() < 10 ? '0' : '') + date.getHours();
@@ -256,6 +261,32 @@ function PfInterfaces(props) {
         block6in: diffBlock6In,
         block6out: diffBlock6Out,
       };
+
+      oldGaps = oldGaps.filter(gap => {
+        if (oldHistory.length > 0) {
+          return gap.date > oldHistory[0].date;
+        }
+        return true;
+      });
+
+      if ((diffTime > lagThreshold) && (oldHistory.length != 0)) {
+        let lagTime;
+        if (diffTime < 60) {
+          lagTime = `${diffTime.toFixed(2)} sec`;
+        } else if (diffTime < (60 * 60)) {
+          lagTime = `${(diffTime/60).toFixed(2)} min`;
+        } else {
+          lagTime = `${(diffTime/60/60).toFixed(2)} hr`;
+        }
+
+        const gap = ({
+          date: new Date(),
+          component: <ReferenceLine x={time} label={`${lagTime} gap`} stroke="black" key={time} />,
+        });
+        ifaces[name].gaps = [...oldGaps, gap];
+      } else {
+        ifaces[name].gaps = [...oldGaps];
+      }
 
       if (oldHistory.length > historyLength) {
         oldHistory.shift();
