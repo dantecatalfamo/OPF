@@ -134,13 +134,17 @@ function PfInterface(props) {
           formatter={(value, name, props) => {
             const abs = Math.abs(value);
             if (abs < 0.001) {
-              return `${(abs*1024*1024).toFixed(2)} B/s`;
+              const unit = mbits ? "bps" : "B/s";
+              return `${(abs*1024*1024).toFixed(2)} ${unit}`;
             } else if (abs < 1) {
-              return `${(abs*1024).toFixed(2)} KB/s`;
+              const unit = mbits ? "kbps" : "KB/s";
+              return `${(abs*1024).toFixed(2)} ${unit}`;
             } else if (abs < 1024) {
-              return `${abs.toFixed(2)} MB/s`;
+              const unit = mbits ? "mbps" : "MB/s";
+              return `${abs.toFixed(2)} ${unit}`;
             } else {
-              return `${(abs/1024).toFixed(2)} GB/s`;
+              const unit = mbits ? "gbps" : "GB/s";
+              return `${(abs/1024).toFixed(2)} ${unit}`;
             }
           }}
         />
@@ -241,14 +245,16 @@ function PfInterfaces(props) {
       const seconds = (date.getSeconds() < 10 ? '0' : '') + date.getSeconds();
       const time = `${hours}:${minutes}:${seconds}`;
       const diffTime = (newDate - oldDate) / 1000;
-      const diffPass4In = (newPass4In - oldPass4In) / diffTime / 1024 / 1024;
-      const diffPass4Out = -(newPass4Out - oldPass4Out) / diffTime / 1024 / 1024;
-      const diffPass6In = (newPass6In - oldPass6In) / diffTime / 1024 / 1024;
-      const diffPass6Out = -(newPass6Out - oldPass6Out) / diffTime / 1024 / 1024;
-      const diffBlock4In = (newBlock4In - oldBlock4In) / diffTime / 1024 / 1024;
-      const diffBlock4Out = (newBlock4Out - oldBlock4Out) / diffTime / 1024 / 1024;
-      const diffBlock6In = (newBlock6In - oldBlock6In) / diffTime / 1024 / 1024;
-      const diffBlock6Out = (newBlock6Out - oldBlock6Out) / diffTime / 1024 / 1024;
+      const multiplier = mbits ? 8 : 1;
+      const divisor = diffTime * 1024 * 1024;
+      const diffPass4In = (newPass4In - oldPass4In) * multiplier / divisor;
+      const diffPass4Out = -(newPass4Out - oldPass4Out) * multiplier / divisor;
+      const diffPass6In = (newPass6In - oldPass6In) * multiplier / divisor;
+      const diffPass6Out = -(newPass6Out - oldPass6Out) * multiplier / divisor;
+      const diffBlock4In = (newBlock4In - oldBlock4In) * multiplier / divisor;
+      const diffBlock4Out = (newBlock4Out - oldBlock4Out) * multiplier / divisor;
+      const diffBlock6In = (newBlock6In - oldBlock6In) * multiplier / divisor;
+      const diffBlock6Out = (newBlock6Out - oldBlock6Out) * multiplier / divisor;
       const point = {
         date: date,
         time: time,
