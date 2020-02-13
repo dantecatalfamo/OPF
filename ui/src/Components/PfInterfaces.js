@@ -31,6 +31,26 @@ function formatSpeed(value) {
   }
 }
 
+function chartClipboard(point, name) {
+  const time = point.activeLabel;
+  console.log(point);
+  const values = point.activePayload.map(pl => ({
+    name: pl.name,
+    value: formatSpeed(pl.value),
+  }));
+
+  let text= name + "\n" + time;
+  values.forEach(v => {
+    text += `\n${v.name}: ${v.value}`;
+  });
+
+  navigator.clipboard.writeText(text).then(() => {
+    message.success("Copied");
+  }, () => {
+    message.error("Failed to copy");
+  });
+}
+
 function PfInterface(props) {
   const iface = props.iface;
 
@@ -78,21 +98,7 @@ function PfInterface(props) {
     <ResponsiveContainer height={250}>
       <ComposedChart data={iface.history} onClick={(point, event) => {
         const name = iface.interface;
-        const time = point.activeLabel;
-        console.log(point);
-        const values = point.activePayload.map(pl => ({
-          name: pl.name,
-          value: formatSpeed(pl.value),
-        }));
-        let text= name + "\n" + time;
-        values.forEach(v => {
-          text += `\n${v.name}: ${v.value}`;
-        });
-        navigator.clipboard.writeText(text).then(() => {
-          message.success("Copied");
-        }, () => {
-          message.error("Failed to copy");
-        });
+        chartClipboard(point, name);
       }}>
         {iface.gaps.map(gap => gap.component)}
         <Area
