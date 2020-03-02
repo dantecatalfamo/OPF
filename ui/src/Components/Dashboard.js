@@ -56,15 +56,22 @@ function Uptime(props) {
     return () => clearInterval(interval);
   }, []);
 
-  const days = time.days ? (
-    <span>{time.days} <span className="dashboard-days"> Days </span></span>
-  ) : "";
-  const hours = time.hours ? (
-    <span>{time.hours} <span className="dashboard-days"> Hours </span></span>
-  ) : "";
-  const minutes = time.minutes ? (
-    <span>{time.hours} <span className="dashboard-days"> Minutes </span></span>
-  ) : "";
+  let days = "";
+  let hours = "";
+  let minutes = "";
+
+  if (time.days) {
+    days = <span>{time.days} <span className="dashboard-days"> Days </span></span>;
+  }
+
+  if (time.hours) {
+    hours = <span>{time.hours} <span className="dashboard-days"> Hours </span></span>;
+  }
+
+  if (time.minutes) {
+    minutes = <span>{time.minutes} <span className="dashboard-days"> Minutes </span></span>;
+  }
+
   const seconds = <span>{time.seconds} <span className="dashboard-days"> Seconds </span></span>;
 
   return (
