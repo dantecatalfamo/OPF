@@ -32,6 +32,9 @@ function formatSpeed(value) {
 }
 
 function chartClipboard(point, name) {
+  if (!point) {
+    return;
+  }
   const time = point.activeLabel;
   console.log(point);
   const values = point.activePayload.map(pl => ({
