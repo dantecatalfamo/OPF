@@ -2,6 +2,7 @@ import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { getJSON, useJSON, useJsonUpdates, timeSince } from '../helpers';
 import { serverURL } from '../config';
+import './Dashboard.css';
 
 const { Text, Title } = Typography;
 
@@ -55,15 +56,26 @@ function Uptime(props) {
     return () => clearInterval(interval);
   }, []);
 
+  const days = time.days ? (
+    <span>{time.days} <span className="dashboard-days"> Days </span></span>
+  ) : "";
+  const hours = time.hours ? (
+    <span>{time.hours} <span className="dashboard-days"> Hours </span></span>
+  ) : "";
+  const minutes = time.minutes ? (
+    <span>{time.hours} <span className="dashboard-days"> Minutes </span></span>
+  ) : "";
+  const seconds = <span>{time.seconds} <span className="dashboard-days"> Seconds </span></span>;
+
   return (
     <Card title="Uptime" {...cardStyle}>
       <div style={{textAlign: "center"}}>
         <Tooltip title={bootTime}>
           <Text>
-            {time.days ? `${time.days} Days ` : ""}
-            {time.hours ? `${time.hours} Hours ` : ""}
-            {time.minutes ? `${time.minutes} Minutes ` : ""}
-            {time.seconds} Seconds
+            {days}
+            {hours}
+            {minutes}
+            {seconds}
           </Text>
         </Tooltip>
       </div>
