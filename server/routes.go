@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
 	r.HandleFunc("/api/boot-time", GetBootTimeHandler)
 	r.HandleFunc("/api/loadavg", GetLoadAvgHandler)
 	r.HandleFunc("/api/wireguard-interfaces", GetWireguardInterfacesHandler)
+	r.Handle("/metrics", promhttp.Handler())
 
 	panic(http.ListenAndServe(":8001", r))
 }

@@ -1,16 +1,16 @@
 package main
 
 import (
+	"os/exec"
 	"strconv"
 	"strings"
-	"os/exec"
 )
 
 type PfMemory struct {
-	States int `json:"states"`
-	SrcNodes int `json:"srcNodes"`
-	Frags int `json:"frags"`
-	Tables int `json:"tables"`
+	States       int `json:"states"`
+	SrcNodes     int `json:"srcNodes"`
+	Frags        int `json:"frags"`
+	Tables       int `json:"tables"`
 	TableEntries int `json:"tableEntries"`
 	PktDelayPkts int `json:"pktDelayPkts"`
 }
