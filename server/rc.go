@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -9,7 +10,7 @@ import (
 func GetRcAll() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "all").Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to list all services: %w", err)
 	}
 
 	out := string(outBytes)
@@ -20,7 +21,7 @@ func GetRcAll() ([]string, error) {
 func GetRcOn() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "on").Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to list enabled services: %w", err)
 	}
 
 	out := string(outBytes)
@@ -31,7 +32,7 @@ func GetRcOn() ([]string, error) {
 func GetRcStarted() ([]string, error) {
 	outBytes, err := exec.Command("rcctl", "ls", "started").Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to list running services: %w", err)
 	}
 
 	out := string(outBytes)
@@ -44,6 +45,7 @@ type RcService struct {
 	Class   string `json:"class"`
 	Enabled bool   `json:"enabled"`
 	Flags   string `json:"flags"`
+	Logger  string `json:"logger"`
 	Rtable  int    `json:"rtable"`
 	Timeout int    `json:"timeout"`
 	User    string `json:"user"`
@@ -56,7 +58,7 @@ func GetRcService(service string) (*RcService, error) {
 		exiterr, ok := err.(*exec.ExitError)
 		exitCode = exiterr.ExitCode()
 		if !ok || exitCode != 1 {
-			return nil, err
+			return nil, fmt.Errorf("rcctl get %s error: %w", service, err)
 		}
 	}
 
@@ -75,22 +77,30 @@ func GetRcService(service string) (*RcService, error) {
 		return srv, nil
 	}
 
-	class := strings.Split(lines[0], "=")[1]
-	flags := strings.Split(lines[1], "=")[1]
+	values := make(map[string]string)
+	for _, line := range lines {
+		kv := strings.SplitN(line, "_", 2)[1]
+		key_value := strings.SplitN(kv, "=", 2)
+		key := key_value[0]
+		value := key_value[1]
+		values[key] = value
+	}
+
+	class := values["class"]
+	flags := values["flags"]
+	logger := values["logger"]
 	enabled := exitCode == 0
-	rtableStr := strings.Split(lines[2], "=")[1]
-	rtable, err := strconv.Atoi(rtableStr)
+	rtable, err := strconv.Atoi(values["rtable"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invalid rc rtable value: %w", err)
 	}
 
-	timeoutStr := strings.Split(lines[3], "=")[1]
-	timeout, err := strconv.Atoi(timeoutStr)
+	timeout, err := strconv.Atoi(values["timeout"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invalid rc timeout: %w", err)
 	}
 
-	user := strings.Split(lines[4], "=")[1]
+	user := values["user"]
 
 	srv := &RcService{}
 
@@ -98,6 +108,7 @@ func GetRcService(service string) (*RcService, error) {
 	srv.Class = class
 	srv.Enabled = enabled
 	srv.Flags = flags
+	srv.Logger = logger
 	srv.Rtable = rtable
 	srv.Timeout = timeout
 	srv.User = user
@@ -117,7 +128,7 @@ func GetRcServiceFlags(service string) (string, error) {
 func SetRcServiceFlags(service string, flags string) error {
 	err := exec.Command("rcctl", "set", service, "flags", flags).Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to set service %s flag %s: %w", service, flags, err)
 	}
 	return nil
 }
@@ -149,13 +160,13 @@ func SetRcServiceStarted(service string, started bool) error {
 	if started == true {
 		err := exec.Command("rcctl", "-f", "start", service).Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("Unable to start service %s: %w", service, err)
 		}
 		return nil
 	} else {
 		err := exec.Command("rcctl", "stop", service).Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("Unable to stop service %s: %w", service, err)
 		}
 		return nil
 	}
@@ -165,13 +176,13 @@ func SetRcServiceEnabled(service string, enabled bool) error {
 	if enabled == true {
 		err := exec.Command("rcctl", "enable", service).Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("Unable to enable service %s: %w", service, err)
 		}
 		return nil
 	} else {
 		err := exec.Command("rcctl", "disable", service).Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("Unable to disable service %s: %w", service, err)
 		}
 		return nil
 	}
