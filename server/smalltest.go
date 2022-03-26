@@ -164,4 +164,19 @@ func smalltest() {
 		panic(err)
 	}
 	fmt.Println("Load Average:", loadavg)
+
+	wireguardInterfaces, err := GetWireguardInterfaces()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Wireguard Interfaces:")
+	for _, iface := range wireguardInterfaces {
+		fmt.Println(iface)
+		for _, addr := range iface.Addresses {
+			fmt.Println(iface.Name, "address", addr)
+		}
+		for _, peer := range iface.Peers {
+			fmt.Println(iface.Name, "peer", peer)
+		}
+	}
 }

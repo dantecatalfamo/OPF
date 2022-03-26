@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 	r.HandleFunc("/api/date", GetDateHandler)
 	r.HandleFunc("/api/boot-time", GetBootTimeHandler)
 	r.HandleFunc("/api/loadavg", GetLoadAvgHandler)
+	r.HandleFunc("/api/wireguard-interfaces", GetWireguardInterfacesHandler)
 
-	http.ListenAndServe(":8001", r)
+	panic(http.ListenAndServe(":8001", r))
 }
