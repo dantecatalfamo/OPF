@@ -46,8 +46,8 @@ func genPfState(lines []string) (*PfState, error) {
 
 	if []rune(summaryLine[3])[0] == '(' {
 		dirArrow = summaryLine[4]
-		gwStr := summaryLine[3]
-		gw = gwStr[1 : len(gwStr)-2]
+		srcStr := summaryLine[3]
+		src = srcStr[1 : len(srcStr)-2]
 	} else {
 		dirArrow = summaryLine[3]
 	}
@@ -59,12 +59,14 @@ func genPfState(lines []string) (*PfState, error) {
 		srcSt = state[1]
 		dstSt = state[0]
 	} else {
-		dir = "out"
-		src = summaryLine[2]
-		if gw == "" {
-			dst = summaryLine[4]
-		} else {
+		if src != "" { // We have a gateway
+			dir = "nat"
+			gw = summaryLine[2]
 			dst = summaryLine[5]
+		} else {
+			dir = "out"
+			dst = summaryLine[4]
+			src = summaryLine[2]
 		}
 		srcSt = state[0]
 		dstSt = state[1]
@@ -97,23 +99,42 @@ func genPfState(lines []string) (*PfState, error) {
 	expires := details[4]
 
 	packets := strings.Split(details[5], ":")
-	pktSent, err := strconv.Atoi(packets[0])
+	var inPkt string
+	var outPkt string
+	if dir == "out" {
+		outPkt = packets[0]
+		inPkt = packets[1]
+	} else {
+		outPkt = packets[1]
+		inPkt = packets[0]
+	}
+
+	pktSent, err := strconv.Atoi(outPkt)
 	if err != nil {
 		return nil, err
 	}
 
-	pktRecv, err := strconv.Atoi(packets[1])
+	pktRecv, err := strconv.Atoi(inPkt)
 	if err != nil {
 		return nil, err
 	}
 
 	bytes := strings.Split(details[7], ":")
-	bytesSent, err := strconv.Atoi(bytes[0])
+	var inBytes string
+	var outBytes string
+	if dir == "out" {
+		outBytes = bytes[0]
+		inBytes = bytes[1]
+	} else {
+		outBytes = bytes[1]
+		inBytes = bytes[0]
+	}
+	bytesSent, err := strconv.Atoi(outBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	bytesRecv, err := strconv.Atoi(bytes[1])
+	bytesRecv, err := strconv.Atoi(inBytes)
 	if err != nil {
 		return nil, err
 	}

@@ -159,13 +159,15 @@ function PfStates() {
       width: "7em",
       filters: [
         { text: "IN", value: "in" },
-        { text: "OUT", value: "out" }
+        { text: "OUT", value: "out" },
+        { text: "NAT", value: "nat" }
       ],
       filterMultiple: false,
       onFilter: (value, record) => record.direction === value,
       render: direction => {
         let color;
-        if (direction === "in")  { color = "SlateGray"; }
+        if (direction === "out")  { color = "SlateGray"; }
+        if (direction === "nat") { color = "#6495ED"; }
         return (<Tag color={color}>{direction.toUpperCase()}</Tag>);
       }
     },
