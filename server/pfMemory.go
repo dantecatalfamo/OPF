@@ -18,13 +18,17 @@ type PfMemory struct {
 	PktDelayPkts int `json:"pktDelayPkts"`
 }
 
+func init() {
+	prometheus.MustRegister(PfMemoryCollector{})
+}
+
 var (
-	pfMemoryStatesDesc = prometheus.NewDesc("opf_pf_memory_states", "PF states limit", nil, nil)
-	pfMemorySrcNodesDesc = prometheus.NewDesc("opf_pf_memory_src_nodes", "PF source nodes limit", nil, nil)
-	pfMemoryFragsDesc = prometheus.NewDesc("opf_pf_memory_frags", "PF frags limit", nil, nil)
-	pfMemoryTablesDesc = prometheus.NewDesc("opf_pf_memory_tables", "PF tables limit", nil, nil)
-	pfMemoryTableEntriesDesc = prometheus.NewDesc("opf_pf_table_entries", "PF table entries limit", nil, nil)
-	pfMemoryPktDelayPktsDesc = prometheus.NewDesc("opf_pf_pkt_delay_pkts", "PF pkt delay pkts limit", nil, nil)
+	pfMemoryStatesDesc = prometheus.NewDesc("opf_pf_states_limit", "PF states limit", nil, nil)
+	pfMemorySrcNodesDesc = prometheus.NewDesc("opf_pf_src_nodes_limit", "PF source nodes limit", nil, nil)
+	pfMemoryFragsDesc = prometheus.NewDesc("opf_pf_frags_limit", "PF frags limit", nil, nil)
+	pfMemoryTablesDesc = prometheus.NewDesc("opf_pf_tables_limit", "PF tables limit", nil, nil)
+	pfMemoryTableEntriesDesc = prometheus.NewDesc("opf_pf_table_entries_limit", "PF table entries limit", nil, nil)
+	pfMemoryPktDelayPktsDesc = prometheus.NewDesc("opf_pf_pkt_delay_pkts_limit", "PF pkt delay pkts limit", nil, nil)
 )
 
 type PfMemoryCollector struct{}

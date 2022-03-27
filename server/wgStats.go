@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type InterfaceAddress struct {
@@ -33,6 +35,39 @@ type WireguardInterface struct {
 	MTU       int                 `json:"mtu"`
 	Groups    []string            `json:"groups"`
 	Peers     []*WireguardPeer    `json:"peers"`
+}
+
+func init() {
+	prometheus.MustRegister(WireguardPeerCollector{})
+}
+
+var (
+	wireguardPeerTxDesc = prometheus.NewDesc("opf_wireguard_peer_tx_bytes", "Bytes transmitted by a wireguard peer", []string{"interface", "publickey"}, nil)
+	wireguardPeerRxDesc = prometheus.NewDesc("opf_wireguard_peer_rx_bytes", "Bytes received by a wireguard peer", []string{"interface", "pubkey"}, nil)
+)
+
+type WireguardPeerCollector struct{}
+
+func (wpc WireguardPeerCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- wireguardPeerTxDesc
+	ch <- wireguardPeerRxDesc
+}
+
+func (wpc WireguardPeerCollector) Collect(ch chan<- prometheus.Metric) {
+	wgs, err := GetWireguardInterfaces()
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, wg := range wgs {
+		ifName := wg.Name
+		for _, peer := range wg.Peers {
+			key := peer.PublicKey
+			tx := peer.Transmitted
+			rx := peer.Received
+			ch <- prometheus.MustNewConstMetric(wireguardPeerTxDesc, prometheus.CounterValue, float64(tx), ifName, key)
+			ch <- prometheus.MustNewConstMetric(wireguardPeerRxDesc, prometheus.CounterValue, float64(rx), ifName, key)
+		}
+	}
 }
 
 func genWireguardPeer(lines []string) (*WireguardPeer, error) {
