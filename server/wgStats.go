@@ -42,8 +42,8 @@ func init() {
 }
 
 var (
-	wireguardPeerTxDesc = prometheus.NewDesc("opf_wireguard_peer_tx_bytes", "Bytes transmitted by a wireguard peer", []string{"interface", "publickey"}, nil)
-	wireguardPeerRxDesc = prometheus.NewDesc("opf_wireguard_peer_rx_bytes", "Bytes received by a wireguard peer", []string{"interface", "pubkey"}, nil)
+	wireguardPeerTxDesc = prometheus.NewDesc("opf_wireguard_peer_tx_bytes_total", "Bytes transmitted by a wireguard peer", []string{"interface", "publickey"}, nil)
+	wireguardPeerRxDesc = prometheus.NewDesc("opf_wireguard_peer_rx_bytes_total", "Bytes received by a wireguard peer", []string{"interface", "pubkey"}, nil)
 )
 
 type WireguardPeerCollector struct{}

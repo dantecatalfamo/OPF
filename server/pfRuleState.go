@@ -26,11 +26,11 @@ func init() {
 }
 
 var (
-	pfRuleStateEvalDesc = prometheus.NewDesc("opf_pf_rule_evaluations", "Number of PF rule evaluations", []string{"number", "rule"}, nil)
-	pfRuleStatePacketsDesc = prometheus.NewDesc("opf_pf_rule_packets", "Number of packets passed through a PF rule", []string{"number", "rule"}, nil)
-	pfRuleStateBytesDesc = prometheus.NewDesc("opf_pf_rule_bytes", "Number of bytes passed through a PF rule", []string{"number", "rule"}, nil)
+	pfRuleStateEvalDesc = prometheus.NewDesc("opf_pf_rule_evaluations_total", "Number of PF rule evaluations", []string{"number", "rule"}, nil)
+	pfRuleStatePacketsDesc = prometheus.NewDesc("opf_pf_rule_packets_total", "Number of packets passed through a PF rule", []string{"number", "rule"}, nil)
+	pfRuleStateBytesDesc = prometheus.NewDesc("opf_pf_rule_bytes_total", "Number of bytes passed through a PF rule", []string{"number", "rule"}, nil)
 	pfRuleStateStatesDesc = prometheus.NewDesc("opf_pf_rule_states", "Number of active states for a PF rule", []string{"number", "rule"}, nil)
-	pfRuleStateStateCreations = prometheus.NewDesc("opf_pf_rule_state_creations", "Number of states created by a PF rule", []string{"number", "rule"}, nil)
+	pfRuleStateStateCreations = prometheus.NewDesc("opf_pf_rule_state_creations_total", "Number of states created by a PF rule", []string{"number", "rule"}, nil)
 )
 
 type PfRuleStateCollector struct{}
