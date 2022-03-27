@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type PfMemory struct {
@@ -13,6 +16,33 @@ type PfMemory struct {
 	Tables       int `json:"tables"`
 	TableEntries int `json:"tableEntries"`
 	PktDelayPkts int `json:"pktDelayPkts"`
+}
+
+var (
+	pfMemoryStatesDesc = prometheus.NewDesc("opf_pf_memory_states", "PF memory states", nil, nil)
+	pfMemorySrcNodesDesc = prometheus.NewDesc("opf_pf_memory_src_nodes", "PF memory source nodes", nil, nil)
+	pfMemoryFragsDesc = prometheus.NewDesc("opf_pf_memory_frags", "PF memory frags", nil, nil)
+	pfMemoryTablesDesc = prometheus.NewDesc("opf_pf_memory_tables", "PF memory tables", nil, nil)
+	pfMemoryTableEntriesDesc = prometheus.NewDesc("opf_pf_table_entries", "PF memory table entries", nil, nil)
+	pfMemoryPktDelayPktsDesc = prometheus.NewDesc("opf_pf_pkt_delay_pkts", "PF memory pkt delay pkts", nil, nil)
+)
+
+type PfMemoryCollector struct{}
+
+func (pfmc PfMemoryCollector) Describe(ch chan<- *prometheus.Desc) {
+	prometheus.DescribeByCollect(pfmc, ch)
+}
+
+func (pfmc PfMemoryCollector) Collect(ch chan<- prometheus.Metric) {
+	pfMem, err := GetPfMemory()
+	if err != nil {
+		fmt.Println(err)
+	}
+	ch <- prometheus.MustNewConstMetric(pfMemoryStatesDesc, prometheus.GaugeValue, float64(pfMem.States))
+}
+
+func NewPfMemoryCollector() prometheus.Collector {
+	return PfMemoryCollector{}
 }
 
 func genPfMemoryLine(line string) (int, error) {
