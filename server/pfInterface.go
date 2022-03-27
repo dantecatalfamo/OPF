@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type PfInterface struct {
@@ -46,6 +48,70 @@ type PfInterface struct {
 		Packets int `json:"packets"`
 		Bytes   int `json:"bytes"`
 	} `json:"out6block"`
+}
+
+func init() {
+	prometheus.MustRegister(PfInterfaceCollector{})
+}
+
+var (
+	pfInterfaceStates = prometheus.NewDesc("opf_pf_interface_states", "Number of states currently referencing a PF interface", []string{"interface"}, nil)
+	pfInterfaceRules = prometheus.NewDesc("opf_pf_interface_rules", "Number of rules currently referencing a PF interface", []string{"interface"}, nil)
+	pfInterfaceInPassPackets = prometheus.NewDesc("opf_pf_interface_in_pass_packets_total", "Number of inbound packets passed by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceInPassBytes = prometheus.NewDesc("opf_pf_interface_in_pass_bytes_total", "Number of inbound bytes passed by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceInBlockPackets = prometheus.NewDesc("opf_pf_interface_in_block_packets_total", "Number of inbound packets blocked by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceInBlockBytes = prometheus.NewDesc("opf_pf_interface_in_block_bytes_total", "Number of inbound bytes blocked by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceOutPassPackets = prometheus.NewDesc("opf_pf_interface_out_pass_packets_total", "Number of outbound packets passed by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceOutPassBytes = prometheus.NewDesc("opf_pf_interface_out_pass_bytes_total", "Number of outbound bytes passed by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceOutBlockPackets = prometheus.NewDesc("opf_pf_interface_out_block_packets_total", "Number of outbound packets blocked by a PF interface", []string{"interface", "family"}, nil)
+	pfInterfaceOutBlockBytes = prometheus.NewDesc("opf_pf_interface_out_block_bytes_total", "Number of outbout bytes blocked by a PF interface", []string{"interface", "family"}, nil)
+)
+
+type PfInterfaceCollector struct {}
+
+func (pic PfInterfaceCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- pfInterfaceStates
+	ch <- pfInterfaceRules
+	ch <- pfInterfaceInPassPackets
+	ch <- pfInterfaceInPassBytes
+	ch <- pfInterfaceInBlockPackets
+	ch <- pfInterfaceInBlockBytes
+	ch <- pfInterfaceOutPassPackets
+	ch <- pfInterfaceOutPassBytes
+	ch <- pfInterfaceOutBlockPackets
+	ch <- pfInterfaceOutBlockBytes
+}
+
+func (pic PfInterfaceCollector) Collect(ch chan<- prometheus.Metric) {
+	const inet4 = "inet4"
+	const inet6 = "inet6"
+
+	ifaces, err := GetPfInterfaces()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, iface := range ifaces {
+		ch <- prometheus.MustNewConstMetric(pfInterfaceStates, prometheus.GaugeValue, float64(iface.References.States), iface.Interface)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceRules, prometheus.GaugeValue, float64(iface.References.Rules), iface.Interface)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInPassPackets, prometheus.CounterValue, float64(iface.In4Pass.Packets), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInPassPackets, prometheus.CounterValue, float64(iface.In6Pass.Packets), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInPassBytes, prometheus.CounterValue, float64(iface.In4Pass.Bytes), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInPassBytes, prometheus.CounterValue, float64(iface.In6Pass.Bytes), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInBlockPackets, prometheus.CounterValue, float64(iface.In4Block.Packets), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInBlockPackets, prometheus.CounterValue, float64(iface.In6Block.Packets), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInBlockBytes, prometheus.CounterValue, float64(iface.In4Block.Bytes), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceInBlockBytes, prometheus.CounterValue, float64(iface.In6Block.Bytes), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutPassPackets, prometheus.CounterValue, float64(iface.Out4Pass.Packets), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutPassPackets, prometheus.CounterValue, float64(iface.Out6Pass.Packets), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutPassBytes, prometheus.CounterValue, float64(iface.Out4Pass.Bytes), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutPassBytes, prometheus.CounterValue, float64(iface.Out6Pass.Bytes), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutBlockPackets, prometheus.CounterValue, float64(iface.Out4Block.Packets), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutBlockPackets, prometheus.CounterValue, float64(iface.Out6Block.Packets), iface.Interface, inet6)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutBlockBytes, prometheus.CounterValue, float64(iface.Out4Block.Bytes), iface.Interface, inet4)
+		ch <- prometheus.MustNewConstMetric(pfInterfaceOutBlockBytes, prometheus.CounterValue, float64(iface.Out6Block.Bytes), iface.Interface, inet6)
+	}
+
 }
 
 func pfInterfaceLine(fields []string) (int, int, error) {
