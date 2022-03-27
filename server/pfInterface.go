@@ -128,7 +128,7 @@ func pfInterfaceLine(fields []string) (int, int, error) {
 
 func genPfInterface(lines []string) (*PfInterface, error) {
 	ifLine := lines[0]
-	iface := strings.TrimSpace(ifLine)
+	iface := strings.TrimSpace(strings.Fields(ifLine)[0])
 
 	lineValues := make(map[string][]string)
 
