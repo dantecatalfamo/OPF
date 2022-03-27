@@ -19,12 +19,12 @@ type PfMemory struct {
 }
 
 var (
-	pfMemoryStatesDesc = prometheus.NewDesc("opf_pf_memory_states", "PF memory states", nil, nil)
-	pfMemorySrcNodesDesc = prometheus.NewDesc("opf_pf_memory_src_nodes", "PF memory source nodes", nil, nil)
-	pfMemoryFragsDesc = prometheus.NewDesc("opf_pf_memory_frags", "PF memory frags", nil, nil)
-	pfMemoryTablesDesc = prometheus.NewDesc("opf_pf_memory_tables", "PF memory tables", nil, nil)
-	pfMemoryTableEntriesDesc = prometheus.NewDesc("opf_pf_table_entries", "PF memory table entries", nil, nil)
-	pfMemoryPktDelayPktsDesc = prometheus.NewDesc("opf_pf_pkt_delay_pkts", "PF memory pkt delay pkts", nil, nil)
+	pfMemoryStatesDesc = prometheus.NewDesc("opf_pf_memory_states", "PF states limit", nil, nil)
+	pfMemorySrcNodesDesc = prometheus.NewDesc("opf_pf_memory_src_nodes", "PF source nodes limit", nil, nil)
+	pfMemoryFragsDesc = prometheus.NewDesc("opf_pf_memory_frags", "PF frags limit", nil, nil)
+	pfMemoryTablesDesc = prometheus.NewDesc("opf_pf_memory_tables", "PF tables limit", nil, nil)
+	pfMemoryTableEntriesDesc = prometheus.NewDesc("opf_pf_table_entries", "PF table entries limit", nil, nil)
+	pfMemoryPktDelayPktsDesc = prometheus.NewDesc("opf_pf_pkt_delay_pkts", "PF pkt delay pkts limit", nil, nil)
 )
 
 type PfMemoryCollector struct{}
@@ -39,6 +39,11 @@ func (pfmc PfMemoryCollector) Collect(ch chan<- prometheus.Metric) {
 		fmt.Println(err)
 	}
 	ch <- prometheus.MustNewConstMetric(pfMemoryStatesDesc, prometheus.GaugeValue, float64(pfMem.States))
+	ch <- prometheus.MustNewConstMetric(pfMemorySrcNodesDesc, prometheus.GaugeValue, float64(pfMem.SrcNodes))
+	ch <- prometheus.MustNewConstMetric(pfMemoryFragsDesc, prometheus.GaugeValue, float64(pfMem.Frags))
+	ch <- prometheus.MustNewConstMetric(pfMemoryTablesDesc, prometheus.GaugeValue, float64(pfMem.Tables))
+	ch <- prometheus.MustNewConstMetric(pfMemoryTableEntriesDesc, prometheus.GaugeValue, float64(pfMem.TableEntries))
+	ch <- prometheus.MustNewConstMetric(pfMemoryPktDelayPktsDesc, prometheus.GaugeValue, float64(pfMem.PktDelayPkts))
 }
 
 func NewPfMemoryCollector() prometheus.Collector {
