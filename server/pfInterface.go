@@ -48,13 +48,12 @@ type PfInterface struct {
 	} `json:"out6block"`
 }
 
-func pfInterfaceLine(line string) (int, int, error) {
-	fields := strings.Fields(line)
-	int1, err := strconv.Atoi(fields[3])
+func pfInterfaceLine(fields []string) (int, int, error) {
+	int1, err := strconv.Atoi(fields[2])
 	if err != nil {
 		return 0, 0, err
 	}
-	int2, err := strconv.Atoi(strings.TrimRight(fields[5], "]"))
+	int2, err := strconv.Atoi(strings.TrimRight(fields[4], "]"))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -65,52 +64,59 @@ func genPfInterface(lines []string) (*PfInterface, error) {
 	ifLine := lines[0]
 	iface := strings.TrimSpace(ifLine)
 
-	clearLine := strings.Fields(lines[1])
-	cleared := strings.Join(clearLine[1:], " ")
+	lineValues := make(map[string][]string)
 
-	states, rules, err := pfInterfaceLine(lines[2])
-	if err != nil {
-		return nil, err
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		lineName := strings.Trim(fields[0], ":")
+		lineValues[lineName] = fields[1:]
 	}
 
-	i4pPkt, i4pByte, err := pfInterfaceLine(lines[3])
+	cleared := strings.Join(lineValues["Cleared"], " ")
+
+	states, rules, err := pfInterfaceLine(lineValues["References"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse references for pf interface %s: %w", iface, err)
 	}
 
-	i4bPkt, i4bByte, err := pfInterfaceLine(lines[4])
+	i4pPkt, i4pByte, err := pfInterfaceLine(lineValues["In4/Pass"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse in4/pass for pf interface %s: %w" , iface, err)
 	}
 
-	o4pPkt, o4pByte, err := pfInterfaceLine(lines[5])
+	i4bPkt, i4bByte, err := pfInterfaceLine(lineValues["In4/Block"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse in4/block for pf interface %s: %w", iface, err)
 	}
 
-	o4bPkt, o4bByte, err := pfInterfaceLine(lines[6])
+	o4pPkt, o4pByte, err := pfInterfaceLine(lineValues["Out4/Pass"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse out4/pass for pf interface %s: %w", iface, err)
 	}
 
-	i6pPkt, i6pByte, err := pfInterfaceLine(lines[7])
+	o4bPkt, o4bByte, err := pfInterfaceLine(lineValues["Out4/Block"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse out4/block for pf interface %s: %w", iface, err)
 	}
 
-	i6bPkt, i6bByte, err := pfInterfaceLine(lines[8])
+	i6pPkt, i6pByte, err := pfInterfaceLine(lineValues["In6/Pass"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse in6/pass for pf interface %s: %w", iface, err)
 	}
 
-	o6pPkt, o6pByte, err := pfInterfaceLine(lines[9])
+	i6bPkt, i6bByte, err := pfInterfaceLine(lineValues["In6/Block"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse in6/block for pf interface %s: %w", iface, err)
 	}
 
-	o6bPkt, o6bByte, err := pfInterfaceLine(lines[10])
+	o6pPkt, o6pByte, err := pfInterfaceLine(lineValues["Out6/Pass"])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse out6/pass for pf interface %s: %w", iface, err)
+	}
+
+	o6bPkt, o6bByte, err := pfInterfaceLine(lineValues["Out6/Block"])
+	if err != nil {
+		return nil, fmt.Errorf("Could not parse out6/block for pf interface %s: %w", iface, err)
 	}
 
 	pfInterface := &PfInterface{}
