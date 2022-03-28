@@ -10,6 +10,7 @@ import (
 func main() {
 	smalltest()
 	r := mux.NewRouter()
+	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/api/pf-states", pfStatesHandler).Methods("GET")
 	r.HandleFunc("/api/pf-rule-states", pfRuleStatesHandler)
 	r.HandleFunc("/api/pf-kill-id", pfKillIDHandler).Methods("POST")
@@ -40,7 +41,6 @@ func main() {
 	r.HandleFunc("/api/boot-time", GetBootTimeHandler)
 	r.HandleFunc("/api/loadavg", GetLoadAvgHandler)
 	r.HandleFunc("/api/wireguard-interfaces", GetWireguardInterfacesHandler)
-	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/api/logs/dmesg", GetDmesgHandler)
 	r.HandleFunc("/api/logs/messages", GetLogMessagesHandler)
 	r.HandleFunc("/api/logs/daemon", GetLogDaemonHandler)
