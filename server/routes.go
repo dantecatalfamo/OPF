@@ -41,6 +41,10 @@ func main() {
 	r.HandleFunc("/api/loadavg", GetLoadAvgHandler)
 	r.HandleFunc("/api/wireguard-interfaces", GetWireguardInterfacesHandler)
 	r.Handle("/metrics", promhttp.Handler())
+	r.HandleFunc("/api/logs/dmesg", GetDmesgHandler)
+	r.HandleFunc("/api/logs/messages", GetLogMessagesHandler)
+	r.HandleFunc("/api/logs/daemon", GetLogDaemonHandler)
+	r.HandleFunc("/api/logs/authlog", GetLogAuthlogHandler)
 
 
 	panic(http.ListenAndServe(":8001", r))
