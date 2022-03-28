@@ -167,7 +167,7 @@ func genWireguardInterface(lines []string) (*WireguardInterface, error) {
 }
 
 func GetWireguardInterfaces() ([]*WireguardInterface, error) {
-	outBytes, err := exec.Command("ifconfig", "wg").Output()
+	outBytes, err := exec.Command("doas", "ifconfig", "wg").Output()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get wireguard interfaces: %w", err)
 	}

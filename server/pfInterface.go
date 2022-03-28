@@ -212,7 +212,7 @@ func genPfInterface(lines []string) (*PfInterface, error) {
 }
 
 func GetPfInterfaces() ([]*PfInterface, error) {
-	outBytes, err := exec.Command("pfctl", "-vv", "-s", "Interface").Output()
+	outBytes, err := exec.Command("doas", "pfctl", "-vv", "-s", "Interface").Output()
 	if err != nil {
 		return nil, err
 	}

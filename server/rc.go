@@ -8,7 +8,7 @@ import (
 )
 
 func GetRcAll() ([]string, error) {
-	outBytes, err := exec.Command("rcctl", "ls", "all").Output()
+	outBytes, err := exec.Command("doas", "rcctl", "ls", "all").Output()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to list all services: %w", err)
 	}
@@ -19,7 +19,7 @@ func GetRcAll() ([]string, error) {
 }
 
 func GetRcOn() ([]string, error) {
-	outBytes, err := exec.Command("rcctl", "ls", "on").Output()
+	outBytes, err := exec.Command("doas", "rcctl", "ls", "on").Output()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to list enabled services: %w", err)
 	}
@@ -30,7 +30,7 @@ func GetRcOn() ([]string, error) {
 }
 
 func GetRcStarted() ([]string, error) {
-	outBytes, err := exec.Command("rcctl", "ls", "started").Output()
+	outBytes, err := exec.Command("doas", "rcctl", "ls", "started").Output()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to list running services: %w", err)
 	}
@@ -52,7 +52,7 @@ type RcService struct {
 }
 
 func GetRcService(service string) (*RcService, error) {
-	outBytes, err := exec.Command("rcctl", "get", service).Output()
+	outBytes, err := exec.Command("doas", "rcctl", "get", service).Output()
 	var exitCode int
 	if err != nil {
 		exiterr, ok := err.(*exec.ExitError)
@@ -126,7 +126,7 @@ func GetRcServiceFlags(service string) (string, error) {
 }
 
 func SetRcServiceFlags(service string, flags string) error {
-	err := exec.Command("rcctl", "set", service, "flags", flags).Run()
+	err := exec.Command("doas", "rcctl", "set", service, "flags", flags).Run()
 	if err != nil {
 		return fmt.Errorf("Unable to set service %s flag %s: %w", service, flags, err)
 	}
@@ -134,7 +134,7 @@ func SetRcServiceFlags(service string, flags string) error {
 }
 
 func GetRcServiceStarted(service string) (bool, error) {
-	err := exec.Command("rcctl", "check", service).Run()
+	err := exec.Command("doas", "rcctl", "check", service).Run()
 	if err == nil {
 		return true, nil
 	}
@@ -158,13 +158,13 @@ func GetRcServiceEnabled(service string) (bool, error) {
 
 func SetRcServiceStarted(service string, started bool) error {
 	if started == true {
-		err := exec.Command("rcctl", "-f", "start", service).Run()
+		err := exec.Command("doas", "rcctl", "-f", "start", service).Run()
 		if err != nil {
 			return fmt.Errorf("Unable to start service %s: %w", service, err)
 		}
 		return nil
 	} else {
-		err := exec.Command("rcctl", "stop", service).Run()
+		err := exec.Command("doas", "rcctl", "stop", service).Run()
 		if err != nil {
 			return fmt.Errorf("Unable to stop service %s: %w", service, err)
 		}
@@ -174,13 +174,13 @@ func SetRcServiceStarted(service string, started bool) error {
 
 func SetRcServiceEnabled(service string, enabled bool) error {
 	if enabled == true {
-		err := exec.Command("rcctl", "enable", service).Run()
+		err := exec.Command("doas", "rcctl", "enable", service).Run()
 		if err != nil {
 			return fmt.Errorf("Unable to enable service %s: %w", service, err)
 		}
 		return nil
 	} else {
-		err := exec.Command("rcctl", "disable", service).Run()
+		err := exec.Command("doas", "rcctl", "disable", service).Run()
 		if err != nil {
 			return fmt.Errorf("Unable to disable service %s: %w", service, err)
 		}

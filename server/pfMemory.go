@@ -61,7 +61,7 @@ func genPfMemoryLine(line string) (int, error) {
 }
 
 func GetPfMemory() (*PfMemory, error) {
-	outBytes, err := exec.Command("pfctl", "-s", "memory").Output()
+	outBytes, err := exec.Command("doas", "pfctl", "-s", "memory").Output()
 	if err != nil {
 		return nil, err
 	}

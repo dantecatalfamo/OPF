@@ -187,7 +187,7 @@ func genPfState(lines []string) (*PfState, error) {
 
 // GetPfStates generates an array of all current pf states
 func GetPfStates() ([]*PfState, error) {
-	outBytes, err := exec.Command("pfctl", "-vv", "-s", "states").Output()
+	outBytes, err := exec.Command("doas", "pfctl", "-vv", "-s", "states").Output()
 	if err != nil {
 		return nil, err
 	}

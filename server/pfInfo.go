@@ -178,7 +178,7 @@ func pfInfoLine(line string) (int, float64, error) {
 }
 
 func GetPfInfo() (*PfInfo, error) {
-	outBytes, err := exec.Command("pfctl", "-v", "-s", "info").Output()
+	outBytes, err := exec.Command("doas", "pfctl", "-v", "-s", "info").Output()
 	if err != nil {
 		return nil, err
 	}

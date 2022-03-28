@@ -171,7 +171,7 @@ func genProcess(line string, tz string) (*Process, error) {
 }
 
 func GetProcesses() ([]*Process, error) {
-	outBytes, err := exec.Command("ps", "Aww", "-o", "ruser,rgroup,pid,ppid,state,pcpu,pmem,vsz,rss,nice,pri,wchan,etime,lstart,time,tt,command").Output()
+	outBytes, err := exec.Command("doas", "ps", "Aww", "-o", "ruser,rgroup,pid,ppid,state,pcpu,pmem,vsz,rss,nice,pri,wchan,etime,lstart,time,tt,command").Output()
 	if err != nil {
 		return nil, err
 	}

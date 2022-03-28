@@ -123,7 +123,7 @@ func genPfRuleState(lines []string) (*PfRuleState, error) {
 }
 
 func GetPfRuleStates() ([]*PfRuleState, error) {
-	outBytes, err := exec.Command("pfctl", "-vv", "-s", "rules").Output()
+	outBytes, err := exec.Command("doas", "pfctl", "-vv", "-s", "rules").Output()
 	if err != nil {
 		return nil, err
 	}
