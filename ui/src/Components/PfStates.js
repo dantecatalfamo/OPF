@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { Tag, Table, Typography, Icon, Card, Input, InputNumber, Button, Popover } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { Tag, Table, Typography, Card, Input, InputNumber, Button, Popover } from 'antd';
 import PfKillID from './PfKillID';
 import { getJSON, postJSON, useWindowSize, useJsonUpdates } from '../helpers.js';
 import { serverURL } from '../config.js';
@@ -63,7 +64,7 @@ function filterDialog(placeholder) {
         <Button
           type="primary"
           size="small"
-          icon="search"
+          icon={<SearchOutlined />}
           onClick={confirm}
           style={{width: 90, marginRight: 8}}
         >Search</Button>
@@ -75,7 +76,7 @@ function filterDialog(placeholder) {
       </div>
     );
   };
-};
+}
 
 function expandedRow(row) {
   let gateway;

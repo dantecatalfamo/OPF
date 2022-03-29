@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Switch, Link, Route } from 'react-router-dom';
-import { Layout, Menu, Icon } from 'antd';
+import { BrowserRouter as Router, Link, Route } from 'react-router-dom';
+import { Layout, Menu } from 'antd';
 import SideNav from './SideNav';
 import MainContent from './MainContent';
 import './App.css';

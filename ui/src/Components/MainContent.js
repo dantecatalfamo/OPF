@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Switch, Link, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Link, Route } from 'react-router-dom';
 import Dashboard from './Dashboard';
 import PfInfo from './PfInfo';
 import PfStates from './PfStates';
@@ -12,40 +12,18 @@ import RC from './RC';
 
 function MainContent(props) {
   return (
-    <Switch>
-      <Route path="/dashboard">
-        <Dashboard/>
-      </Route>
-      <Route path="/firewall-info">
-        <PfInfo/>
-      </Route>
-      <Route path="/firewall-states">
-        <PfStates/>
-      </Route>
-      <Route path="/firewall-rules">
-        <PfRuleStates/>
-      </Route>
-      <Route path="/firewall-interfaces">
-        <PfInterfaces/>
-      </Route>
-      <Route path="/netstat-interfaces">
-        <NetstatInterfaces/>
-      </Route>
-      <Route path="/services">
-        <RC/>
-      </Route>
-      <Route path="/processes">
-        <Processes/>
-      </Route>
-      <Route path="/hardware">
-        <Hardware/>
-      </Route>
-      <Route path="/">
-        <p>
-          Hello!
-        </p>
-      </Route>
-    </Switch>
+    <Routes>
+      <Route path="/dashboard" element={<Dashboard/>} />
+      <Route path="/firewall-info" element={<PfInfo/>} />
+      <Route path="/firewall-states" element={<PfStates/>} />
+      <Route path="/firewall-rules" element={<PfRuleStates/>} />
+      <Route path="/firewall-interfaces" element={<PfInterfaces/>} />
+      <Route path="/netstat-interfaces" element={<NetstatInterfaces/>} />
+      <Route path="/services" element={<RC/>} />
+      <Route path="/processes" element={<Processes/>} />
+      <Route path="/hardware" element={<Hardware/>} />
+      <Route path="/" render={"E"} />
+    </Routes>
   );
 }
 

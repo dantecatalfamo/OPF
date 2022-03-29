@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Layout, Menu, Icon } from 'antd';
+
+import {
+  ApartmentOutlined,
+  DashboardOutlined,
+  FireOutlined,
+  InfoCircleOutlined,
+  LockOutlined,
+  MonitorOutlined,
+  SwapOutlined,
+  ToolOutlined,
+} from '@ant-design/icons';
+
+import { Layout, Menu } from 'antd';
 
 const { Header, Content, Footer, Sider } = Layout;
 const { SubMenu } = Menu;
@@ -31,7 +43,7 @@ function SideNav(props) {
       >
         <Menu.Item key="/dashboard">
           <Link to="/dashboard">
-            <Icon type="dashboard" />
+            <DashboardOutlined />
             <span>Dashboard</span>
           </Link>
         </Menu.Item>
@@ -39,45 +51,45 @@ function SideNav(props) {
           key="firewall"
           title={
             <span>
-              <Icon type="fire" />
+              <FireOutlined />
               <span>Firewall</span>
             </span>
           }
         >
           <Menu.Item key="/firewall-info">
             <Link to="/firewall-info">
-              <Icon type="info-circle"/>
+              <InfoCircleOutlined />
               <span>Info</span>
             </Link>
           </Menu.Item>
           <Menu.Item key="/firewall-states">
             <Link to="/firewall-states">
-              <Icon type="swap"/>
+              <SwapOutlined />
               <span>States</span>
             </Link>
           </Menu.Item>
           <Menu.Item key="/firewall-rules">
             <Link to="/firewall-rules">
-              <Icon type="lock"/>
+              <LockOutlined />
               <span>Rules</span>
             </Link>
           </Menu.Item>
           <Menu.Item key="/firewall-interfaces">
             <Link to="/firewall-interfaces">
-              <Icon type="apartment" />
+              <ApartmentOutlined />
               <span>Interfaces</span>
             </Link>
           </Menu.Item>
         </SubMenu>
         <Menu.Item key="/services">
           <Link to="/services">
-            <Icon type="tool" />
+            <ToolOutlined />
             <span>Services</span>
           </Link>
         </Menu.Item>
         <Menu.Item key="/processes">
           <Link to="/processes">
-            <Icon type="monitor" />
+            <MonitorOutlined />
             <span>Processes</span>
           </Link>
         </Menu.Item>
