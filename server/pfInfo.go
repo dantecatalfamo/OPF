@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -165,13 +166,13 @@ func pfInfoLine(line string) (int, float64, error) {
 	lineFields := strings.Fields(line)
 	total, err := strconv.Atoi(lineFields[len(lineFields)-2])
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("Failed to parse pf info stat total (%s): %w", strings.Join(lineFields[:len(lineFields)-3], " "), err)
 	}
 
 	rateStr := strings.TrimRight(lineFields[len(lineFields)-1], "/s")
 	rate, err := strconv.ParseFloat(rateStr, 64)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("Failed to parse pf info stat rate (%s): %w", strings.Join(lineFields[:len(lineFields)-3], " "), err)
 	}
 
 	return total, rate, nil
