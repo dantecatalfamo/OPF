@@ -10,6 +10,7 @@ import {
   MonitorOutlined,
   SwapOutlined,
   ToolOutlined,
+  ExceptionOutlined,
 } from '@ant-design/icons';
 
 import { Layout, Menu } from 'antd';
@@ -28,12 +29,12 @@ function SideNav(props) {
       collapsible
       collapsed={collapsed}
       onCollapse={collapse}
-      /* style={{ */
-      /*   overflow: 'auto', */
-      /*   height: '100vh', */
-      /*   position: 'fixed', */
-      /*   left: 0, */
-      /* }} */
+    /* style={{ */
+    /*   overflow: 'auto', */
+    /*   height: '100vh', */
+    /*   position: 'fixed', */
+    /*   left: 0, */
+    /* }} */
     >
       <div className="logo" />
       <Menu
@@ -93,6 +94,36 @@ function SideNav(props) {
             <span>Processes</span>
           </Link>
         </Menu.Item>
+        <SubMenu
+          key="logs"
+          title={
+            <span>
+              <ExceptionOutlined />
+              <span>Logs</span>
+            </span>
+          }
+        >
+          <Menu.Item key="/log/daemon">
+            <Link to="/log/daemon">
+              <span>Daemon</span>
+            </Link>
+          </Menu.Item>
+          <Menu.Item key="/log/dmesg">
+            <Link to="/log/dmesg">
+              <span>Dmesg</span>
+            </Link>
+          </Menu.Item>
+          <Menu.Item key="/log/messages">
+            <Link to="/log/messages">
+              <span>Messages</span>
+            </Link>
+          </Menu.Item>
+          <Menu.Item key="/log/authlog">
+            <Link to="/log/authlog">
+              <span>Authlog</span>
+            </Link>
+          </Menu.Item>
+        </SubMenu>
       </Menu>
     </Sider>
   );

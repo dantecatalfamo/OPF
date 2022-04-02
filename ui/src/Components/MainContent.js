@@ -9,6 +9,7 @@ import NetstatInterfaces from './NetstatInterfaces';
 import Processes from './Processes';
 import Hardware from './Hardware';
 import RC from './RC';
+import LogView from './LogView';
 
 function MainContent(props) {
   return (
@@ -22,7 +23,11 @@ function MainContent(props) {
       <Route path="/services" element={<RC/>} />
       <Route path="/processes" element={<Processes/>} />
       <Route path="/hardware" element={<Hardware/>} />
-      <Route path="/" render={"E"} />
+      <Route path="/log/daemon" element={<LogView log="daemon" />} />
+      <Route path="/log/dmesg" element={<LogView log="dmesg" />} />
+      <Route path="/log/messages" element={<LogView log="messages" />} />
+      <Route path="/log/authlog" element={<LogView log="authlog" />} />
+      <Route path="/" element={<p>Hello!</p>} />
     </Routes>
   );
 }

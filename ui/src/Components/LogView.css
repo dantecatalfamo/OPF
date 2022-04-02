@@ -1,0 +1,6 @@
+.logview {
+  white-space: pre-wrap;
+  padding: 10px;
+  display: block;
+  overflow-x: scroll;
+}
