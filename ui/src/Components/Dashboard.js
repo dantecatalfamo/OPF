@@ -263,8 +263,12 @@ function Dashboard(props) {
         <Col span={12}><Ram/></Col>
         <Col span={12}><CpuUsage/></Col>
       </Row>
-      <Row><DiskUsage/></Row>
-      <Row><SwapUsage/></Row>
+      <Row>
+        <Col span={24}><DiskUsage/></Col>
+      </Row>
+      <Row>
+        <Col span={24}><SwapUsage/></Col>
+      </Row>
     </Col>
   );
 }
