@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip } from 'recharts';
 import { getJSON, useJSON, useJsonUpdates, timeSince } from '../helpers';
-import { serverURL } from '../config';
+import { serverURL, prometheusURL } from '../config';
 import './Dashboard.css';
 
 const { Text, Title } = Typography;
@@ -247,6 +248,59 @@ function SwapUsage(props) {
   );
 }
 
+function InterfaceGraph(props) {
+  const [chartData, setChartData] = useState({});
+  const [chartKeys, setChartKeys] = useState([]);
+
+  const endTime = new Date().getTime() / 1000;
+  const range = 24 * 60 * 60;
+  const startTime = endTime - range;
+  const promQuery = prometheusURL + "query_range?" + new URLSearchParams({
+    query: 'rate(node_network_receive_bytes_total[30s])',
+    end: endTime,
+    start: startTime,
+    step: 120,
+  });
+
+  useEffect(() => {
+    fetch(promQuery).then(res => res.json()).then(json => {
+      const datas = {};
+      json.data.result.forEach(iface => {
+        const name = iface.metric.device;
+        const values = iface.values;
+        values.forEach(value => {
+          datas[value[0]] ||= {};
+          datas[value[0]][name] = value[1] / 1024;
+        });
+      });
+      const dataArray = [];
+      const newChartData = Object.entries(datas).map(entry => {
+        const [key, val] = entry;
+        val['time'] = new Date(Number(key) * 1000).toLocaleTimeString();
+        return val;
+      });
+      window.newChartData = newChartData;
+      const keys = Object.keys(newChartData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+      setChartData(newChartData);
+      setChartKeys(keys);
+    });
+  }, []);
+
+  return (
+    <Card title="Network Usage">
+      <ResponsiveContainer height={250}>
+        <LineChart data={chartData}>
+          <XAxis dataKey="time" />
+          <YAxis/>
+          <ChartTooltip/>
+          <Legend/>
+          {chartKeys.map(key => (<Line dataKey={key} type="monotoneX" dot={false} />))}
+        </LineChart>
+      </ResponsiveContainer>
+    </Card>
+  );
+}
+
 function Dashboard(props) {
   return (
     <Col
@@ -262,6 +316,9 @@ function Dashboard(props) {
       <Row>
         <Col span={12}><Ram/></Col>
         <Col span={12}><CpuUsage/></Col>
+      </Row>
+      <Row>
+        <Col span={24}><InterfaceGraph/></Col>
       </Row>
       <Row>
         <Col span={24}><DiskUsage/></Col>
