@@ -21,10 +21,6 @@ const cpuStatesURL = `${serverURL}/api/cpu-states`;
 const updateTime = 5000;
 const longUpdateTime = 20000;
 
-const cardStyle = {
-  style: {margin: 2}
-};
-
 function Uname(props) {
   const [uname, setUname] = useState();
   const [date, setDate] = useState();
@@ -32,7 +28,7 @@ function Uname(props) {
   useJsonUpdates(dateURL, setDate, updateTime);
 
   return (
-    <Card {...cardStyle}>
+    <Card>
       <Title>{uname ? uname.nodeName : ""}</Title>
       <Row>
         <Col span={12}>
@@ -76,7 +72,7 @@ function Uptime(props) {
   const seconds = <span>{time.seconds} <span className="dashboard-days"> Seconds </span></span>;
 
   return (
-    <Card title="Uptime" {...cardStyle}>
+    <Card title="Uptime">
       <div style={{textAlign: "center"}}>
         <Tooltip title={bootTime}>
           <Text>
@@ -120,7 +116,7 @@ function LoadAvg(props) {
   const warn15 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[2], hardware.ncpuOnline) : "";
 
   return (
-    <Card title="Load Average" {...cardStyle}>
+    <Card title="Load Average">
       <Row>
         <Col {...colProps}>
           <Tooltip title="1 Minute">
@@ -154,7 +150,7 @@ function Ram(props) {
   const percentActive = Number((active / total * 100).toFixed(2));
 
   return (
-    <Card title="RAM" {...cardStyle}>
+    <Card title="RAM">
       <div style={{textAlign: "center"}}>
         <Tooltip title={<div>{active} MB Active <br/>{other} MB Other<br/>{total} MB Total</div>}>
           <Progress percent={percentUsed} success={{percent: percentActive}} type="dashboard"/>
@@ -190,7 +186,7 @@ function CpuUsage(props) {
   const idlePercent = Number((idle / total * 100).toFixed(2));
 
   return (
-    <Card title="CPU" {...cardStyle}>
+    <Card title="CPU">
       <div style={{textAlign: "center"}}>
         <Tooltip title={<div>User: {userPercent}% <br/> System: {systemPercent}%</div>}>
           <Progress percent={usagePercent} success={{percent: userPercent}} type="dashboard" />
@@ -205,7 +201,7 @@ function DiskUsage(props) {
   useJsonUpdates(diskUsageURL, setDiskUsage, updateTime);
 
   return (
-    <Card title="Disk Usage" {...cardStyle}>
+    <Card title="Disk Usage">
       {diskUsage ? diskUsage.filesystems.map(disk => {
         const used = Number((diskUsage.blockSize * disk.used / 1024 / 1024 / 1024).toFixed(2));
         const totalSize = Number((diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2));
@@ -229,7 +225,7 @@ function SwapUsage(props) {
   useJsonUpdates(swapUsageURL, setSwapUsage, updateTime);
 
   return (
-    <Card title="Swap Usage" {...cardStyle}>
+    <Card title="Swap Usage">
       {swapUsage ? swapUsage.devices.map(device => {
         const used = Number((swapUsage.blockSize * device.used / 1024 / 1024 / 1024).toFixed(2));
         const totalSize = Number((swapUsage.blockSize * device.blocks / 1024 / 1024 / 1024).toFixed(2));
@@ -311,7 +307,7 @@ function InterfaceGraph(props) {
   }, [keys]);
 
   return (
-    <Card title="Network Usage (KB/s)" {...cardStyle}>
+    <Card title="Network Usage (KB/s)">
       <ResponsiveContainer height={250}>
         <LineChart data={data}>
           <XAxis dataKey="time" minTickGap={30} />
@@ -333,24 +329,19 @@ function Dashboard(props) {
       xl={{  span: 12, offset: 6 }}
       lg={{  span: 14, offset: 5 }}
     >
-      <Row>
+      <Row gutter={[4, 4]}>
         <Col span={24}><Uname/></Col>
-      </Row>
-      <Row>
+
         <Col span={12}><Uptime/></Col>
         <Col span={12}><LoadAvg/></Col>
-      </Row>
-      <Row>
+
         <Col span={12}><Ram/></Col>
         <Col span={12}><CpuUsage/></Col>
-      </Row>
-      <Row>
+
         <Col span={24}><InterfaceGraph/></Col>
-      </Row>
-      <Row>
+
         <Col span={24}><DiskUsage/></Col>
-      </Row>
-      <Row>
+
         <Col span={24}><SwapUsage/></Col>
       </Row>
     </Col>
