@@ -285,15 +285,16 @@ function InterfaceGraph(props) {
   const [keys, setKeys] = useState([]);
   const [data, setData] = useState([]);
 
-  useEffect(async () => {
-    const ifdata = await getInterfaceGraphData();
-    setData(ifdata);
-    const ifKeys = Object.keys(data[0]).filter(key => key != 'time' && !key.startsWith('lo'));
-    setKeys(ifKeys);
+  useEffect(() => {
+    getInterfaceGraphData().then(ifData => {
+      setData(ifData);
+      const ifKeys = Object.keys(ifData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+      setKeys(ifKeys);
+    });
     const interval = setInterval(async () => {
-      const data = await getInterfaceGraphData();
-      const filteredKeys = Object.keys(data[0]).filter(key => key != 'time' && !key.startsWith('lo'));
-      setData(data);
+      const ifData = await getInterfaceGraphData();
+      const filteredKeys = Object.keys(ifData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+      setData(ifData);
       setKeys(filteredKeys);
     }, 30 * 1000);
 
