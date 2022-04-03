@@ -272,7 +272,7 @@ async function getInterfaceGraphData(query, label) {
     const [key, val] = entry;
     val['time'] = new Date(Number(key) * 1000).toLocaleTimeString();
     return val;
-  });
+  }).sort((a, b) => -(a - b));
   return newChartData;
 }
 
@@ -282,17 +282,14 @@ function InterfaceGraph(props) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    getInterfaceGraphData('rate(node_network_receive_bytes_total[5m])', 'device').then(ifData => {
-      setData(ifData);
-      const ifKeys = Object.keys(ifData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+    async function runJob() {
+      const rxData = await getInterfaceGraphData('rate(node_network_receive_bytes_total[5m])', 'device');
+      setData(rxData);
+      const ifKeys = Object.keys(rxData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
       setKeys(ifKeys);
-    });
-    const interval = setInterval(async () => {
-      const ifData = await getInterfaceGraphData();
-      const filteredKeys = Object.keys(ifData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
-      setData(ifData);
-      setKeys(filteredKeys);
-    }, 30 * 1000);
+    }
+    runJob();
+    const interval = setInterval(runJob, 30 * 1000);
 
     return () => clearInterval(interval);
   }, []);
