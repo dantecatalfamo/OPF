@@ -314,7 +314,7 @@ function InterfaceGraph(props) {
     <Card title="Network Usage (KB/s)" {...cardStyle}>
       <ResponsiveContainer height={250}>
         <LineChart data={data}>
-          <XAxis dataKey="time" minTickGap={40} />
+          <XAxis dataKey="time" minTickGap={30} />
           <YAxis/>
           <CartesianGrid strokeDasharray="3 4"/>
           <ChartTooltip/>
