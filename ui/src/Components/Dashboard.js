@@ -319,7 +319,7 @@ function InterfaceGraph(props) {
           <CartesianGrid strokeDasharray="3 4"/>
           <ChartTooltip/>
           <Legend/>
-          {keys.map(key => (<Line dataKey={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
+          {keys.map(key => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
       </ResponsiveContainer>
     </Card>
