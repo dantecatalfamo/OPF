@@ -276,7 +276,7 @@ async function getInterfaceGraphData(query, label) {
   return newChartData;
 }
 
-function InterfaceGraph(props) {
+function InterfaceRx(props) {
   const [chartLineColors, setChartLineColors] = useState({});
   const [keys, setKeys] = useState([]);
   const [data, setData] = useState([]);
@@ -304,13 +304,56 @@ function InterfaceGraph(props) {
   }, [keys]);
 
   return (
-    <Card title="Network Usage (KB/s)">
+    <Card title="Network Received (KB/s)">
       <ResponsiveContainer height={250}>
         <LineChart data={data}>
           <XAxis dataKey="time" minTickGap={30} />
           <YAxis/>
           <CartesianGrid strokeDasharray="3 4"/>
-          <ChartTooltip/>
+          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))}/>
+          <Legend/>
+          {keys.map(key => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
+        </LineChart>
+      </ResponsiveContainer>
+    </Card>
+  );
+}
+
+function InterfaceTx(props) {
+  const [chartLineColors, setChartLineColors] = useState({});
+  const [keys, setKeys] = useState([]);
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    async function runJob() {
+      const txData = await getInterfaceGraphData('rate(node_network_transmit_bytes_total[5m])', 'device');
+      setData(txData);
+      const ifKeys = Object.keys(txData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+      setKeys(ifKeys);
+    }
+    runJob();
+    const interval = setInterval(runJob, 30 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(async () => {
+    const colorMap = {};
+    for await (const key of keys) {
+      const color = await stringToColor(key);
+      colorMap[key] = color;
+    }
+    setChartLineColors(colorMap);
+  }, [keys]);
+
+  return (
+    <Card title="Network Transmitted (KB/s)">
+      <ResponsiveContainer height={250}>
+        <LineChart data={data}>
+          <XAxis dataKey="time" minTickGap={30} />
+          <YAxis/>
+          <CartesianGrid strokeDasharray="3 4"/>
+          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))}/>
           <Legend/>
           {keys.map(key => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
@@ -335,7 +378,8 @@ function Dashboard(props) {
         <Col span={12}><Ram/></Col>
         <Col span={12}><CpuUsage/></Col>
 
-        <Col span={24}><InterfaceGraph/></Col>
+        <Col span={24}><InterfaceRx/></Col>
+        <Col span={24}><InterfaceTx/></Col>
 
         <Col span={24}><DiskUsage/></Col>
 
