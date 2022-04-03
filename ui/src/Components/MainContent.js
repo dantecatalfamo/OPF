@@ -10,6 +10,7 @@ import Processes from './Processes';
 import Hardware from './Hardware';
 import RC from './RC';
 import LogView from './LogView';
+import Wireguard from './Wireguard';
 
 function MainContent(props) {
   return (
@@ -27,6 +28,7 @@ function MainContent(props) {
       <Route path="/log/dmesg" element={<LogView log="dmesg" />} />
       <Route path="/log/messages" element={<LogView log="messages" />} />
       <Route path="/log/authlog" element={<LogView log="authlog" />} />
+      <Route path="/wireguard" element={<Wireguard />}/>
       <Route path="/" element={<p>Hello!</p>} />
     </Routes>
   );

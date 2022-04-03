@@ -11,6 +11,7 @@ import {
   SwapOutlined,
   ToolOutlined,
   ExceptionOutlined,
+  DeploymentUnitOutlined,
 } from '@ant-design/icons';
 
 import { Layout, Menu } from 'antd';
@@ -124,6 +125,12 @@ function SideNav(props) {
             </Link>
           </Menu.Item>
         </SubMenu>
+        <Menu.Item key="/wireguard">
+          <Link to="/wireguard">
+            <DeploymentUnitOutlined />
+            <span>Wireguard</span>
+          </Link>
+        </Menu.Item>
       </Menu>
     </Sider>
   );
