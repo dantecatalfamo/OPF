@@ -278,6 +278,7 @@ async function getInterfaceGraphData(query, label) {
 }
 
 function InterfaceRx(props) {
+  const { height } = props;
   const [chartLineColors, setChartLineColors] = useState({});
   const [keys, setKeys] = useState([]);
   const [data, setData] = useState([]);
@@ -306,7 +307,7 @@ function InterfaceRx(props) {
 
   return (
     <Card title="Interface Received (KB/s)">
-      <ResponsiveContainer height={250}>
+      <ResponsiveContainer height={height}>
         <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
           <YAxis/>
@@ -321,6 +322,7 @@ function InterfaceRx(props) {
 }
 
 function InterfaceTx(props) {
+  const { height } = props;
   const [chartLineColors, setChartLineColors] = useState({});
   const [keys, setKeys] = useState([]);
   const [data, setData] = useState([]);
@@ -349,10 +351,10 @@ function InterfaceTx(props) {
 
   return (
     <Card title="Interface Transmitted (KB/s)">
-      <ResponsiveContainer height={250}>
+      <ResponsiveContainer height={height}>
         <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
-          <YAxis/>
+          <YAxis/>n
           <CartesianGrid strokeDasharray="3 4"/>
           <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))} offset={50}/>
           <Legend/>
@@ -371,8 +373,8 @@ function Dashboard(props) {
   const graphs = (
     <Col span={24}  xxl={{span: 12}}>
       <Row gutter={[4, 4]}>
-        <Col span={24}><InterfaceRx/></Col>
-        <Col span={24}><InterfaceTx/></Col>
+    <Col span={24}><InterfaceRx height={wideLayout ? 315 : 200}/></Col>
+        <Col span={24}><InterfaceTx height={wideLayout ? 315 : 200}/></Col>
       </Row>
     </Col>
   );
@@ -404,7 +406,7 @@ function Dashboard(props) {
 
         {graphs}
 
-    {wideLayout ? null : diskUsage}
+        {wideLayout ? null : diskUsage}
 
       </Row>
     </Col>
