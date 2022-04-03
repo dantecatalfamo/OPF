@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip } from 'recharts';
-import { getJSON, useJSON, useJsonUpdates, timeSince } from '../helpers';
+import { getJSON, useJSON, useJsonUpdates, timeSince, digestMessage, stringToColor } from '../helpers';
 import { serverURL, prometheusURL } from '../config';
 import './Dashboard.css';
 
@@ -251,12 +251,13 @@ function SwapUsage(props) {
 function InterfaceGraph(props) {
   const [chartData, setChartData] = useState({});
   const [chartKeys, setChartKeys] = useState([]);
+  const [chartLineColors, setChartLineColors] = useState({});
 
   const endTime = new Date().getTime() / 1000;
-  const range = 24 * 60 * 60;
+  const range = 12 * 60 * 60;
   const startTime = endTime - range;
   const promQuery = prometheusURL + "query_range?" + new URLSearchParams({
-    query: 'rate(node_network_receive_bytes_total[30s])',
+    query: 'rate(node_network_receive_bytes_total[2m])',
     end: endTime,
     start: startTime,
     step: 120,
@@ -279,12 +280,20 @@ function InterfaceGraph(props) {
         val['time'] = new Date(Number(key) * 1000).toLocaleTimeString();
         return val;
       });
-      window.newChartData = newChartData;
       const keys = Object.keys(newChartData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
       setChartData(newChartData);
       setChartKeys(keys);
     });
   }, []);
+
+  useEffect(async () => {
+    const colorMap = {};
+    for await (const key of chartKeys) {
+      const color = await stringToColor(key);
+      colorMap[key] = color;
+    }
+    setChartLineColors(colorMap);
+  }, [chartKeys]);
 
   return (
     <Card title="Network Usage">
@@ -294,7 +303,7 @@ function InterfaceGraph(props) {
           <YAxis/>
           <ChartTooltip/>
           <Legend/>
-          {chartKeys.map(key => (<Line dataKey={key} type="monotoneX" dot={false} />))}
+          {chartKeys.map(key => (<Line dataKey={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
       </ResponsiveContainer>
     </Card>
