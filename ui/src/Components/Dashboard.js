@@ -248,11 +248,7 @@ function SwapUsage(props) {
   );
 }
 
-function InterfaceGraph(props) {
-  const [chartData, setChartData] = useState({});
-  const [chartKeys, setChartKeys] = useState([]);
-  const [chartLineColors, setChartLineColors] = useState({});
-
+async function getInterfaceGraphData() {
   const endTime = new Date().getTime() / 1000;
   const range = 12 * 60 * 60;
   const startTime = endTime - range;
@@ -263,47 +259,65 @@ function InterfaceGraph(props) {
     step: 120,
   });
 
-  useEffect(() => {
-    fetch(promQuery).then(res => res.json()).then(json => {
-      const datas = {};
-      json.data.result.forEach(iface => {
-        const name = iface.metric.device;
-        const values = iface.values;
-        values.forEach(value => {
-          datas[value[0]] ||= {};
-          datas[value[0]][name] = value[1] / 1024;
-        });
-      });
-      const dataArray = [];
-      const newChartData = Object.entries(datas).map(entry => {
-        const [key, val] = entry;
-        val['time'] = new Date(Number(key) * 1000).toLocaleTimeString();
-        return val;
-      });
-      const keys = Object.keys(newChartData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
-      setChartData(newChartData);
-      setChartKeys(keys);
+  const res = await fetch(promQuery);
+  const json = await res.json();
+
+  const datas = {};
+  json.data.result.forEach(iface => {
+    const name = iface.metric.device;
+    const values = iface.values;
+    values.forEach(value => {
+      datas[value[0]] ||= {};
+      datas[value[0]][name] = value[1] / 1024;
     });
+  });
+  const dataArray = [];
+  const newChartData = Object.entries(datas).map(entry => {
+    const [key, val] = entry;
+    val['time'] = new Date(Number(key) * 1000).toLocaleTimeString();
+    return val;
+  });
+  return newChartData;
+}
+
+function InterfaceGraph(props) {
+  const [chartLineColors, setChartLineColors] = useState({});
+  const [keys, setKeys] = useState([]);
+  const [data, setData] = useState([]);
+
+  useEffect(async () => {
+    const ifdata = await getInterfaceGraphData();
+    setData(ifdata);
+    const ifKeys = Object.keys(data[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+    setKeys(ifKeys);
+    const interval = setInterval(async () => {
+      const data = await getInterfaceGraphData();
+      const filteredKeys = Object.keys(data[0]).filter(key => key != 'time' && !key.startsWith('lo'));
+      setData(data);
+      setKeys(filteredKeys);
+    }, 30 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(async () => {
     const colorMap = {};
-    for await (const key of chartKeys) {
+    for await (const key of keys) {
       const color = await stringToColor(key);
       colorMap[key] = color;
     }
     setChartLineColors(colorMap);
-  }, [chartKeys]);
+  }, [keys]);
 
   return (
-    <Card title="Network Usage">
+    <Card title="Network Usage (KB/s)" {...cardStyle}>
       <ResponsiveContainer height={250}>
-        <LineChart data={chartData}>
+        <LineChart data={data}>
           <XAxis dataKey="time" />
           <YAxis/>
           <ChartTooltip/>
           <Legend/>
-          {chartKeys.map(key => (<Line dataKey={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
+          {keys.map(key => (<Line dataKey={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
       </ResponsiveContainer>
     </Card>
@@ -317,7 +331,9 @@ function Dashboard(props) {
       xl={{  span: 12, offset: 6 }}
       lg={{  span: 14, offset: 5 }}
     >
-      <Uname/>
+      <Row>
+        <Col span={24}><Uname/></Col>
+      </Row>
       <Row>
         <Col span={12}><Uptime/></Col>
         <Col span={12}><LoadAvg/></Col>
