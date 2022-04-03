@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip, CartesianGrid } from 'recharts';
 import { getJSON, useJSON, useJsonUpdates, timeSince, digestMessage, stringToColor } from '../helpers';
 import { serverURL, prometheusURL } from '../config';
 import './Dashboard.css';
@@ -314,8 +314,9 @@ function InterfaceGraph(props) {
     <Card title="Network Usage (KB/s)" {...cardStyle}>
       <ResponsiveContainer height={250}>
         <LineChart data={data}>
-          <XAxis dataKey="time" />
+          <XAxis dataKey="time" minTickGap={40} />
           <YAxis/>
+          <CartesianGrid strokeDasharray="3 4"/>
           <ChartTooltip/>
           <Legend/>
           {keys.map(key => (<Line dataKey={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
