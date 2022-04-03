@@ -244,12 +244,12 @@ function SwapUsage(props) {
   );
 }
 
-async function getInterfaceGraphData() {
+async function getInterfaceGraphData(query, label) {
   const endTime = new Date().getTime() / 1000;
   const range = 12 * 60 * 60;
   const startTime = endTime - range;
   const promQuery = prometheusURL + "query_range?" + new URLSearchParams({
-    query: 'rate(node_network_receive_bytes_total[2m])',
+    query: query,
     end: endTime,
     start: startTime,
     step: 120,
@@ -259,9 +259,9 @@ async function getInterfaceGraphData() {
   const json = await res.json();
 
   const datas = {};
-  json.data.result.forEach(iface => {
-    const name = iface.metric.device;
-    const values = iface.values;
+  json.data.result.forEach(series => {
+    const name = series.metric[label];
+    const values = series.values;
     values.forEach(value => {
       datas[value[0]] ||= {};
       datas[value[0]][name] = value[1] / 1024;
@@ -282,7 +282,7 @@ function InterfaceGraph(props) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    getInterfaceGraphData().then(ifData => {
+    getInterfaceGraphData('rate(node_network_receive_bytes_total[5m])', 'device').then(ifData => {
       setData(ifData);
       const ifKeys = Object.keys(ifData[0]).filter(key => key != 'time' && !key.startsWith('lo'));
       setKeys(ifKeys);
