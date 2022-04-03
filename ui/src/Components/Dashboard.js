@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Card, Typography, Row, Col, Progress, Tooltip, Spin } from 'antd';
+import { Card, Typography, Row, Col, Progress, Tooltip, Spin, Grid } from 'antd';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip, CartesianGrid } from 'recharts';
 import { getJSON, useJSON, useJsonUpdates, timeSince, digestMessage, stringToColor } from '../helpers';
 import { serverURL, prometheusURL } from '../config';
 import './Dashboard.css';
 
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
 
 const unameURL = `${serverURL}/api/uname`;
 const loadavgURL = `${serverURL}/api/loadavg`;
@@ -363,27 +364,48 @@ function InterfaceTx(props) {
 }
 
 function Dashboard(props) {
+
+  const breakpoint = useBreakpoint();
+  const wideLayout = breakpoint.xxl;
+
+  const graphs = (
+    <Col span={24}  xxl={{span: 12}}>
+      <Row gutter={[4, 4]}>
+        <Col span={24}><InterfaceRx/></Col>
+        <Col span={24}><InterfaceTx/></Col>
+      </Row>
+    </Col>
+  );
+
+  const diskUsage = (
+    <>
+      <Col span={24}><DiskUsage/></Col>
+      <Col span={24}><SwapUsage/></Col>
+    </>
+  );
+
   return (
     <Col
-      xxl={{ span: 10, offset: 7 }}
-      xl={{  span: 12, offset: 6 }}
+      xxl={{ span: 18, offset: 3 }}
       lg={{  span: 14, offset: 5 }}
     >
       <Row gutter={[4, 4]}>
         <Col span={24}><Uname/></Col>
 
-        <Col span={12}><Uptime/></Col>
-        <Col span={12}><LoadAvg/></Col>
+        <Col span={24} xxl={{span: 12}}>
+          <Row gutter={[4, 4]}>
+            <Col span={12}><Uptime/></Col>
+            <Col span={12}><LoadAvg/></Col>
+            <Col span={12}><Ram/></Col>
+            <Col span={12}><CpuUsage/></Col>
+            {wideLayout ? diskUsage : null}
+          </Row>
+        </Col>
 
-        <Col span={12}><Ram/></Col>
-        <Col span={12}><CpuUsage/></Col>
+        {graphs}
 
-        <Col span={24}><InterfaceRx/></Col>
-        <Col span={24}><InterfaceTx/></Col>
+    {wideLayout ? null : diskUsage}
 
-        <Col span={24}><DiskUsage/></Col>
-
-        <Col span={24}><SwapUsage/></Col>
       </Row>
     </Col>
   );
