@@ -157,7 +157,7 @@ function Ram(props) {
     <Card title="RAM" {...cardStyle}>
       <div style={{textAlign: "center"}}>
         <Tooltip title={<div>{active} MB Active <br/>{other} MB Other<br/>{total} MB Total</div>}>
-          <Progress percent={percentUsed} successPercent={percentActive} type="dashboard"/>
+          <Progress percent={percentUsed} success={{percent: percentActive}} type="dashboard"/>
         </Tooltip>
       </div>
     </Card>
@@ -193,7 +193,7 @@ function CpuUsage(props) {
     <Card title="CPU" {...cardStyle}>
       <div style={{textAlign: "center"}}>
         <Tooltip title={<div>User: {userPercent}% <br/> System: {systemPercent}%</div>}>
-          <Progress percent={usagePercent} successPercent={userPercent} type="dashboard" />
+          <Progress percent={usagePercent} success={{percent: userPercent}} type="dashboard" />
         </Tooltip>
       </div>
     </Card>
