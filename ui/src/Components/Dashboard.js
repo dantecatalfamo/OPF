@@ -304,7 +304,7 @@ function InterfaceRx(props) {
   }, [keys]);
 
   return (
-    <Card title="Network Received (KB/s)">
+    <Card title="Interface Received (KB/s)">
       <ResponsiveContainer height={250}>
         <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
@@ -347,7 +347,7 @@ function InterfaceTx(props) {
   }, [keys]);
 
   return (
-    <Card title="Network Transmitted (KB/s)">
+    <Card title="Interface Transmitted (KB/s)">
       <ResponsiveContainer height={250}>
         <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
