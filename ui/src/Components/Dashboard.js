@@ -306,11 +306,11 @@ function InterfaceRx(props) {
   return (
     <Card title="Network Received (KB/s)">
       <ResponsiveContainer height={250}>
-        <LineChart data={data}>
+        <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
           <YAxis/>
           <CartesianGrid strokeDasharray="3 4"/>
-          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))}/>
+          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))} offset={50}/>
           <Legend/>
           {keys.map(key => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
@@ -349,11 +349,11 @@ function InterfaceTx(props) {
   return (
     <Card title="Network Transmitted (KB/s)">
       <ResponsiveContainer height={250}>
-        <LineChart data={data}>
+        <LineChart data={data} syncId="networkInterface">
           <XAxis dataKey="time" minTickGap={30} />
           <YAxis/>
           <CartesianGrid strokeDasharray="3 4"/>
-          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))}/>
+          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))} offset={50}/>
           <Legend/>
           {keys.map(key => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
