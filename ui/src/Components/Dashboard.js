@@ -296,13 +296,16 @@ function InterfaceRx(props) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(async () => {
-    const colorMap = {};
-    for await (const key of keys) {
-      const color = await stringToColor(key);
-      colorMap[key] = color;
+  useEffect(() => {
+    async function runJob() {
+      const colorMap = {};
+      for await (const key of keys) {
+        const color = await stringToColor(key);
+        colorMap[key] = color;
+      }
+      setChartLineColors(colorMap);
     }
-    setChartLineColors(colorMap);
+    runJob();
   }, [keys]);
 
   return (
@@ -340,13 +343,16 @@ function InterfaceTx(props) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(async () => {
-    const colorMap = {};
-    for await (const key of keys) {
-      const color = await stringToColor(key);
-      colorMap[key] = color;
+  useEffect(() => {
+    async function runJob() {
+      const colorMap = {};
+      for await (const key of keys) {
+        const color = await stringToColor(key);
+        colorMap[key] = color;
+      }
+      setChartLineColors(colorMap);
     }
-    setChartLineColors(colorMap);
+    runJob();
   }, [keys]);
 
   return (
@@ -373,7 +379,7 @@ function Dashboard(props) {
   const graphs = (
     <Col span={24}  xxl={{span: 12}}>
       <Row gutter={[4, 4]}>
-    <Col span={24}><InterfaceRx height={wideLayout ? 315 : 200}/></Col>
+        <Col span={24}><InterfaceRx height={wideLayout ? 315 : 200}/></Col>
         <Col span={24}><InterfaceTx height={wideLayout ? 315 : 200}/></Col>
       </Row>
     </Col>
