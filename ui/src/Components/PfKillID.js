@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button, message } from 'antd';
 import { postJSON } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 
 const pfKillIdURL = `${serverURL}/api/pf-kill-id`;
 

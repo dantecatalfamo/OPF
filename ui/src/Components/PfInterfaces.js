@@ -2,7 +2,7 @@ import React, { useState, useEffect, useReducer } from 'react';
 import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse, message } from 'antd';
 import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine, Text } from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './PfInterfaces.css';
 import { formatTimeStr } from 'antd/lib/statistic/utils';
 

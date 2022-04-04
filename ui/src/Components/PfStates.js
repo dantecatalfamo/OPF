@@ -3,7 +3,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { Tag, Table, Typography, Card, Input, InputNumber, Button, Popover } from 'antd';
 import PfKillID from './PfKillID';
 import { getJSON, postJSON, useWindowSize, useJsonUpdates } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './PfStates.css';
 
 const { Text } = Typography;

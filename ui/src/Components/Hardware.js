@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON, useJsonUpdates } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './Hardware.css';
 
 const hardwareURL = `${serverURL}/api/hardware`;

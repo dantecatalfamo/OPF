@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON, useJsonUpdates } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './NetstatInterfaces.css';
 
 const nsInterfacesURL = `${serverURL}/api/netstat-interfaces`;

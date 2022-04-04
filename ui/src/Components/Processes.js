@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Badge, Tooltip, Typography } from 'antd';
 import { getJSON, useJsonUpdates, timeSince } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './Processes.css';
 
 const processURL = `${serverURL}/api/processes`;

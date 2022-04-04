@@ -3,7 +3,7 @@ import { Form } from '@ant-design/compatible';
 import '@ant-design/compatible/assets/index.css';
 import { Popover, Button, Input, Spin, message } from 'antd';
 import { getJSON, postJSON } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 
 function RcFlags (props) {
   const disabled = props.disabled;

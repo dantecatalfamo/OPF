@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { List, Button, Badge, Switch, Col, Card } from 'antd';
 import { getJSON } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import RcFlags from './RcFlags';
 import RcEnabled from './RcEnabled';
 import RcStarted from './RcStarted';

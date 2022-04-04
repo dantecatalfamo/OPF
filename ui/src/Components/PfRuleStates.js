@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getJSON, useJsonUpdates } from '../helpers.js';
-import { serverURL } from '../config.js';
+import { serverURL } from '../config.ts';
 import './PfRuleStates.css';
 
 const pfRuleStatesURL = `${serverURL}/api/pf-rule-states`;
