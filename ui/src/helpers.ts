@@ -19,7 +19,7 @@ export function useJSON(url: string, setter: (data: object) => void) {
   }, [url]);
 }
 
-export function useJsonUpdates(url: string, setter: (data: object) => void, updateTime: number) {
+export function useJsonUpdates(url: string, setter: (data: any) => void, updateTime: number) {
   useEffect(() => {
     getJSON(url).then((res) => setter(res));
     const interval = setInterval(() => {
