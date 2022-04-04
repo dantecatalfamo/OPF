@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Switch, message } from 'antd';
-import { postJSON } from '../helpers.js';
+import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcEnabled(props) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { Tag, Table, Typography, Card, Input, InputNumber, Button, Popover } from 'antd';
 import PfKillID from './PfKillID';
-import { getJSON, postJSON, useWindowSize, useJsonUpdates } from '../helpers.js';
+import { getJSON, postJSON, useWindowSize, useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './PfStates.css';
 

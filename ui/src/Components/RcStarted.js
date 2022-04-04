@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, message, Popconfirm} from 'antd';
-import { postJSON } from '../helpers.js';
+import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcStarted(props) {

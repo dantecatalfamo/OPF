@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Form } from '@ant-design/compatible';
 import '@ant-design/compatible/assets/index.css';
 import { Popover, Button, Input, Spin, message } from 'antd';
-import { getJSON, postJSON } from '../helpers.js';
+import { getJSON, postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcFlags (props) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Descriptions, Badge, Typography, Col, Row, Card, Statistic, Spin } from 'antd';
-import { getJSON, useJsonUpdates } from '../helpers.js';
+import { getJSON, useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 const { Text } = Typography;
