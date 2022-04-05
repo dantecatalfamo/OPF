@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useReducer } from 'react';
+import React, { useReducer } from 'react';
 import {
-  Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse, message,
+  Card, Statistic, Col, Row, Typography, Divider, Spin, Collapse, message,
 } from 'antd';
 import {
-  ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine, Text,
+  ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid,
+  XAxis, YAxis, Tooltip, Legend, ReferenceLine,
 } from 'recharts';
-import { getJSON, useJsonUpdates } from '../helpers.ts';
+import { useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './PfInterfaces.css';
-import { formatTimeStr } from 'antd/lib/statistic/utils';
 
 const { Panel } = Collapse;
 
@@ -39,7 +39,6 @@ function chartClipboard(point, name) {
     return;
   }
   const time = point.activeLabel;
-  console.log(point);
   const values = point.activePayload.map((pl) => ({
     name: pl.name,
     value: formatSpeed(pl.value),

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useReducer } from 'react';
 import {
-  Card, Typography, Row, Col, Progress, Tooltip, Spin, Grid,
+  Card, Typography, Row, Col, Progress, Tooltip, Grid,
 } from 'antd';
 import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as ChartTooltip, CartesianGrid,
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  Legend, Tooltip as ChartTooltip, CartesianGrid,
 } from 'recharts';
 import {
-  getJSON, useJSON, useJsonUpdates, timeSince, digestMessage, stringToColor,
+  useJSON, useJsonUpdates, timeSince, stringToColor,
 } from '../helpers';
 import { serverURL, prometheusURL } from '../config';
 import './Dashboard.css';
@@ -19,16 +20,16 @@ const loadavgURL = `${serverURL}/api/loadavg`;
 const hardwareURL = `${serverURL}/api/hardware`;
 const bootTimeURL = `${serverURL}/api/boot-time`;
 const dateURL = `${serverURL}/api/date`;
-const uptimeURL = `${serverURL}/api/uptime`;
+// const uptimeURL = `${serverURL}/api/uptime`;
 const ramURL = `${serverURL}/api/ram`;
-const vmstatURL = `${serverURL}/api/vmstat`;
+// const vmstatURL = `${serverURL}/api/vmstat`;
 const diskUsageURL = `${serverURL}/api/disk-usage`;
 const swapUsageURL = `${serverURL}/api/swap-usage`;
 const cpuStatesURL = `${serverURL}/api/cpu-states`;
 const updateTime = 5000;
 const longUpdateTime = 20000;
 
-function Uname(props) {
+function Uname() {
   const [uname, setUname] = useState();
   const [date, setDate] = useState();
   useJSON(unameURL, setUname);
@@ -49,7 +50,7 @@ function Uname(props) {
   );
 }
 
-function Uptime(props) {
+function Uptime() {
   const [bootTime, setBootTime] = useState();
   const [, setTick] = useState(0);
   useJsonUpdates(bootTimeURL, setBootTime, longUpdateTime);
@@ -130,16 +131,11 @@ function loadAvgWarn(loadAvg, ncpu) {
   return 'danger';
 }
 
-function LoadAvg(props) {
+function LoadAvg() {
   const [loadAvg, setLoadAvg] = useState();
   const [hardware, setHardware] = useState();
   useJsonUpdates(loadavgURL, setLoadAvg, updateTime);
   useJSON(hardwareURL, setHardware);
-
-  const colProps = {
-    span: 8,
-    style: { textAlign: 'center' },
-  };
 
   const warn1 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[0], hardware.ncpuOnline) : '';
   const warn5 = (loadAvg && hardware) ? loadAvgWarn(loadAvg[1], hardware.ncpuOnline) : '';
@@ -148,17 +144,17 @@ function LoadAvg(props) {
   return (
     <Card title="Load Average">
       <Row>
-        <Col {...colProps}>
+        <Col span={8} style={{ textAlign: 'center' }}>
           <Tooltip title="1 Minute">
             <Text type={warn1} strong>{loadAvg ? loadAvg[0] : '0.00'}</Text>
           </Tooltip>
         </Col>
-        <Col {...colProps}>
+        <Col span={8} style={{ textAlign: 'center' }}>
           <Tooltip title="5 Minutes">
             <Text type={warn5} strong>{loadAvg ? loadAvg[1] : '0.00'}</Text>
           </Tooltip>
         </Col>
-        <Col {...colProps}>
+        <Col span={8} style={{ textAlign: 'center' }}>
           <Tooltip title="15 Minutes">
             <Text type={warn15} strong>{loadAvg ? loadAvg[2] : '0.00'}</Text>
           </Tooltip>
@@ -168,7 +164,7 @@ function LoadAvg(props) {
   );
 }
 
-function Ram(props) {
+function Ram() {
   const [ram, setRam] = useState({});
   useJsonUpdates(ramURL, setRam, updateTime);
 
@@ -176,8 +172,8 @@ function Ram(props) {
   const { active } = ram;
   const { free } = ram;
   const other = ram.total - (ram.free + ram.active);
-  const percentUsed = Number(((total - free) / total * 100).toFixed(2));
-  const percentActive = Number((active / total * 100).toFixed(2));
+  const percentUsed = Number((((total - free) / total) * 100).toFixed(2));
+  const percentActive = Number(((active / total) * 100).toFixed(2));
 
   return (
     <Card title="RAM">
@@ -197,7 +193,7 @@ function Ram(props) {
             {' '}
             MB Total
           </div>
-)}
+        )}
         >
           <Progress percent={percentUsed} success={{ percent: percentActive }} type="dashboard" />
         </Tooltip>
@@ -206,7 +202,7 @@ function Ram(props) {
   );
 }
 
-function CpuUsage(props) {
+function CpuUsage() {
   const [cpuStates, updateCpuStates] = useReducer((state, newState) => ({
     old: state.new,
     new: newState,
@@ -229,12 +225,12 @@ function CpuUsage(props) {
   };
   const user = stateDiff.user + stateDiff.nice;
   const system = stateDiff.sys + stateDiff.spin + stateDiff.interrupt;
-  const { idle } = stateDiff;
+  // const { idle } = stateDiff;
   const total = user + system + stateDiff.idle;
-  const userPercent = Number((user / total * 100).toFixed(2));
-  const systemPercent = Number((system / total * 100).toFixed(2));
+  const userPercent = Number(((user / total) * 100).toFixed(2));
+  const systemPercent = Number(((system / total) * 100).toFixed(2));
   const usagePercent = Number((userPercent + systemPercent).toFixed(2));
-  const idlePercent = Number((idle / total * 100).toFixed(2));
+  // const idlePercent = Number(((idle / total) * 100).toFixed(2));
 
   return (
     <Card title="CPU">
@@ -250,7 +246,7 @@ function CpuUsage(props) {
             {systemPercent}
             %
           </div>
-)}
+        )}
         >
           <Progress percent={usagePercent} success={{ percent: userPercent }} type="dashboard" />
         </Tooltip>
@@ -259,15 +255,16 @@ function CpuUsage(props) {
   );
 }
 
-function DiskUsage(props) {
+function DiskUsage() {
   const [diskUsage, setDiskUsage] = useState();
   useJsonUpdates(diskUsageURL, setDiskUsage, updateTime);
 
   return (
     <Card title="Disk Usage">
       {diskUsage ? diskUsage.filesystems.map((disk) => {
-        const used = Number((diskUsage.blockSize * disk.used / 1024 / 1024 / 1024).toFixed(2));
-        const totalSize = Number((diskUsage.blockSize * disk.blocks / 1024 / 1024 / 1024).toFixed(2));
+        const used = Number(((diskUsage.blockSize * disk.used) / 1024 / 1024 / 1024).toFixed(2));
+        // eslint-disable-next-line max-len
+        const totalSize = Number(((diskUsage.blockSize * disk.blocks) / 1024 / 1024 / 1024).toFixed(2));
         return (
           <Card.Grid key={disk.mountPoint}>
             <Tooltip title={<span>{disk.filesystem}</span>}>
@@ -283,15 +280,16 @@ function DiskUsage(props) {
   );
 }
 
-function SwapUsage(props) {
+function SwapUsage() {
   const [swapUsage, setSwapUsage] = useState();
   useJsonUpdates(swapUsageURL, setSwapUsage, updateTime);
 
   return (
     <Card title="Swap Usage">
       {swapUsage ? swapUsage.devices.map((device) => {
-        const used = Number((swapUsage.blockSize * device.used / 1024 / 1024 / 1024).toFixed(2));
-        const totalSize = Number((swapUsage.blockSize * device.blocks / 1024 / 1024 / 1024).toFixed(2));
+        const used = Number(((swapUsage.blockSize * device.used) / 1024 / 1024 / 1024).toFixed(2));
+        // eslint-disable-next-line max-len
+        const totalSize = Number(((swapUsage.blockSize * device.blocks) / 1024 / 1024 / 1024).toFixed(2));
         return (
           <Card.Grid key={device.device}>
             <Tooltip title={(
@@ -299,7 +297,7 @@ function SwapUsage(props) {
                 Priority:
                 {device.priority}
               </span>
-)}
+            )}
             >
               <Text strong>{device.device}</Text>
             </Tooltip>
@@ -313,7 +311,7 @@ function SwapUsage(props) {
                 {' '}
                 GB
               </span>
-)}
+            )}
             >
               <Progress percent={device.capacity} />
             </Tooltip>
@@ -347,7 +345,6 @@ async function getInterfaceGraphData(query, label) {
       datas[value[0]][name] = value[1] / 1024;
     });
   });
-  const dataArray = [];
   const newChartData = Object.entries(datas).map((entry) => {
     const [key, val] = entry;
     val.time = new Date(Number(key) * 1000).toLocaleTimeString();
@@ -357,6 +354,7 @@ async function getInterfaceGraphData(query, label) {
 }
 
 function InterfaceRx(props) {
+  // eslint-disable-next-line react/prop-types
   const { height } = props;
   const [chartLineColors, setChartLineColors] = useState({});
   const [keys, setKeys] = useState([]);
@@ -366,7 +364,7 @@ function InterfaceRx(props) {
     async function runJob() {
       const rxData = await getInterfaceGraphData('rate(node_network_receive_bytes_total[5m])', 'device');
       setData(rxData);
-      const ifKeys = Object.keys(rxData[0]).filter((key) => key != 'time' && !key.startsWith('lo'));
+      const ifKeys = Object.keys(rxData[0]).filter((key) => key !== 'time' && !key.startsWith('lo'));
       setKeys(ifKeys);
     }
     runJob();
@@ -377,12 +375,14 @@ function InterfaceRx(props) {
 
   useEffect(() => {
     async function runJob() {
-      const colorMap = {};
-      for await (const key of keys) {
+      const colors = await keys.reduce(async (colorMap, key) => {
+        await colorMap;
         const color = await stringToColor(key);
+        // eslint-disable-next-line no-param-reassign
         colorMap[key] = color;
-      }
-      setChartLineColors(colorMap);
+        return colorMap;
+      }, {});
+      setChartLineColors(colors);
     }
     runJob();
   }, [keys]);
@@ -394,7 +394,7 @@ function InterfaceRx(props) {
           <XAxis dataKey="time" minTickGap={30} />
           <YAxis />
           <CartesianGrid strokeDasharray="3 4" />
-          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))} offset={50} />
+          <ChartTooltip formatter={(val) => (val.toFixed(4))} offset={50} />
           <Legend />
           {keys.map((key) => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
@@ -404,6 +404,7 @@ function InterfaceRx(props) {
 }
 
 function InterfaceTx(props) {
+  // eslint-disable-next-line react/prop-types
   const { height } = props;
   const [chartLineColors, setChartLineColors] = useState({});
   const [keys, setKeys] = useState([]);
@@ -413,7 +414,7 @@ function InterfaceTx(props) {
     async function runJob() {
       const txData = await getInterfaceGraphData('rate(node_network_transmit_bytes_total[5m])', 'device');
       setData(txData);
-      const ifKeys = Object.keys(txData[0]).filter((key) => key != 'time' && !key.startsWith('lo'));
+      const ifKeys = Object.keys(txData[0]).filter((key) => key !== 'time' && !key.startsWith('lo'));
       setKeys(ifKeys);
     }
     runJob();
@@ -424,12 +425,14 @@ function InterfaceTx(props) {
 
   useEffect(() => {
     async function runJob() {
-      const colorMap = {};
-      for await (const key of keys) {
+      const colors = await keys.reduce(async (colorMap, key) => {
+        await colorMap;
         const color = await stringToColor(key);
+        // eslint-disable-next-line no-param-reassign
         colorMap[key] = color;
-      }
-      setChartLineColors(colorMap);
+        return colorMap;
+      }, {});
+      setChartLineColors(colors);
     }
     runJob();
   }, [keys]);
@@ -442,7 +445,7 @@ function InterfaceTx(props) {
           <YAxis />
           n
           <CartesianGrid strokeDasharray="3 4" />
-          <ChartTooltip formatter={(val, name, props) => (val.toFixed(4))} offset={50} />
+          <ChartTooltip formatter={(val) => (val.toFixed(4))} offset={50} />
           <Legend />
           {keys.map((key) => (<Line dataKey={key} key={key} stroke={chartLineColors[key]} type="monotoneX" dot={false} />))}
         </LineChart>
@@ -451,7 +454,7 @@ function InterfaceTx(props) {
   );
 }
 
-function Dashboard(props) {
+function Dashboard() {
   const breakpoint = useBreakpoint();
   const wideLayout = breakpoint.xxl;
 
