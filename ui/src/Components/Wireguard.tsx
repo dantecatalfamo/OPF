@@ -8,6 +8,11 @@ import { useJsonUpdates } from '../helpers';
 const { useBreakpoint } = Grid;
 const wireguardURL = `${serverURL}/api/wireguard-interfaces`;
 
+function netmaskToCIDR(netmask: string) {
+  const num = Number(netmask);
+  return num.toString(2).match(/1/g)?.length;
+}
+
 export default function Wireguard() {
   const breakpoint = useBreakpoint();
   const [wgInterfaces, setWgInterfaces] = useState<any[]>([]);
@@ -15,7 +20,7 @@ export default function Wireguard() {
   const ifaces = wgInterfaces.map((iface) => {
     const flags = iface.flags.replace(/(.*<)|>/g, '').split(',');
     const isUp = flags.includes('UP');
-    const addrs = iface.addresses.map((addr: any) => `${addr.address}/${addr.netmask}`).join(', ');
+    const addrs = iface.addresses.map((addr: any) => `${addr.address}/${netmaskToCIDR(addr.netmask)}`).join(', ');
     const peers = iface.peers.map((peer: any) => (
       <Card.Grid style={{ width: breakpoint.lg ? '50%' : '100%' }}>
         <Descriptions title={peer.publicKey} size="small" column={4}>
