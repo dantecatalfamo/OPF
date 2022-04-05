@@ -459,8 +459,8 @@ function Dashboard() {
   const graphs = (
     <Col span={24} xxl={{ span: 12 }}>
       <Row gutter={[4, 4]}>
-        <Col span={24}><InterfaceRx height={wideLayout ? 315 : 200} /></Col>
-        <Col span={24}><InterfaceTx height={wideLayout ? 315 : 200} /></Col>
+        <Col span={24}><InterfaceRx height={wideLayout ? 318 : 200} /></Col>
+        <Col span={24}><InterfaceTx height={wideLayout ? 318 : 200} /></Col>
       </Row>
     </Col>
   );
