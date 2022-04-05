@@ -12,21 +12,26 @@ function Hardware() {
   useJsonUpdates(hardwareURL, setHardware, updateTime);
 
   if (!hardware) {
-    return "";
+    return '';
   }
 
-  let sensors = hardware.sensors.map(sensor => (
+  const sensors = hardware.sensors.map((sensor) => (
     <tr key={sensor.path.toString()}>
       <th>Sensor &gt;</th>
-      <td>{sensor.path.join(" > ") + ": " + sensor.value}</td>
+      <td>{`${sensor.path.join(' > ')}: ${sensor.value}`}</td>
     </tr>
   ));
 
-
-  let disks = hardware.disks.map(disk => (
+  const disks = hardware.disks.map((disk) => (
     <tr key={disk.name}>
       <th>Disk &gt;</th>
-      <td>{disk.name} [{disk.duid}]</td>
+      <td>
+        {disk.name}
+        {' '}
+        [
+        {disk.duid}
+        ]
+      </td>
     </tr>
   ));
 
@@ -94,11 +99,11 @@ function Hardware() {
           </tr>
           <tr>
             <th>Allow Power Down</th>
-            <td>{hardware.allowPowerDown === 1 ? "Yes" : "No"}</td>
+            <td>{hardware.allowPowerDown === 1 ? 'Yes' : 'No'}</td>
           </tr>
           <tr>
             <th>SMT</th>
-            <td>{hardware.smt === 1 ? "Enabled" : "Disabled"}</td>
+            <td>{hardware.smt === 1 ? 'Enabled' : 'Disabled'}</td>
           </tr>
           <tr>
             <th>Number CPU Found</th>
@@ -112,7 +117,6 @@ function Hardware() {
       </table>
     </div>
   );
-
 }
 
 export default Hardware;

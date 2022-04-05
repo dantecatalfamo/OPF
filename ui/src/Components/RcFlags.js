@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Form } from '@ant-design/compatible';
 import '@ant-design/compatible/assets/index.css';
-import { Popover, Button, Input, Spin, message } from 'antd';
+import {
+  Popover, Button, Input, Spin, message,
+} from 'antd';
 import { getJSON, postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
-function RcFlags (props) {
-  const disabled = props.disabled;
-  const loading = props.loading;
-  const service = props.service;
+function RcFlags(props) {
+  const { disabled } = props;
+  const { loading } = props;
+  const { service } = props;
   const flagsURL = `${serverURL}/api/rc/${service}/flags`;
 
   const [flags, setFlags] = useState();
@@ -16,7 +18,7 @@ function RcFlags (props) {
   const [fetching, setFetching] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleVisibleChange = visible => {
+  const handleVisibleChange = (visible) => {
     setVisible(visible);
   };
 
@@ -27,7 +29,7 @@ function RcFlags (props) {
   useEffect(() => {
     if (visible) {
       setFetching(true);
-      getJSON(flagsURL).then(f => {
+      getJSON(flagsURL).then((f) => {
         setFlags(f);
         setFetching(false);
       });
@@ -37,10 +39,10 @@ function RcFlags (props) {
   const handleSave = () => {
     setSubmitting(true);
     postJSON(flagsURL, flags)
-      .then(res => {
-        message.success("Flags saves successfully.");
+      .then((res) => {
+        message.success('Flags saves successfully.');
         setSubmitting(false);
-      }).catch(res => {
+      }).catch((res) => {
         message.error(`Failed to set ${service} flags.`);
         setSubmitting(false);
       });
@@ -50,7 +52,9 @@ function RcFlags (props) {
     <Button
       disabled={disabled}
       loading={loading}
-    >Flags</Button>
+    >
+      Flags
+    </Button>
   );
 
   if (disabled) {
@@ -67,12 +71,14 @@ function RcFlags (props) {
             onChange={handleFlagsChange}
           />
         </Form.Item>
-        <Form.Item style={{marginRight: 0}}>
+        <Form.Item style={{ marginRight: 0 }}>
           <Button
             disabled={fetching}
             loading={submitting}
             onClick={handleSave}
-          >Save</Button>
+          >
+            Save
+          </Button>
         </Form.Item>
       </Form>
     </Spin>

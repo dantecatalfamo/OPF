@@ -5,11 +5,12 @@ import SideNav from './SideNav';
 import MainContent from './MainContent';
 import './App.css';
 
-const { Header, Content, Footer, Sider } = Layout;
+const {
+  Header, Content, Footer, Sider,
+} = Layout;
 const { SubMenu } = Menu;
 
 function App() {
-
   return (
     <div className="App">
       <Router>
@@ -45,8 +46,7 @@ function App1() {
         </ul>
       </div>
     </Router>
-      );
+  );
 }
-
 
 export default App;

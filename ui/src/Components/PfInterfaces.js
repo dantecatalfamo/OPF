@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse, message } from 'antd';
-import { ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine, Text } from 'recharts';
+import {
+  Card, Statistic, Col, Row, Descriptions, Typography, Divider, Spin, Collapse, message,
+} from 'antd';
+import {
+  ResponsiveContainer, ComposedChart, Bar, Area, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ReferenceLine, Text,
+} from 'recharts';
 import { getJSON, useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './PfInterfaces.css';
@@ -17,18 +21,17 @@ const mbits = true;
 function formatSpeed(value) {
   const abs = Math.abs(value);
   if (abs < 0.001) {
-    const unit = mbits ? "bps" : "B/s";
-    return `${(abs*1024*1024).toFixed(2)} ${unit}`;
-  } else if (abs < 1) {
-    const unit = mbits ? "kbps" : "KB/s";
-    return `${(abs*1024).toFixed(2)} ${unit}`;
-  } else if (abs < 1024) {
-    const unit = mbits ? "mbps" : "MB/s";
+    const unit = mbits ? 'bps' : 'B/s';
+    return `${(abs * 1024 * 1024).toFixed(2)} ${unit}`;
+  } if (abs < 1) {
+    const unit = mbits ? 'kbps' : 'KB/s';
+    return `${(abs * 1024).toFixed(2)} ${unit}`;
+  } if (abs < 1024) {
+    const unit = mbits ? 'mbps' : 'MB/s';
     return `${abs.toFixed(2)} ${unit}`;
-  } else {
-    const unit = mbits ? "gbps" : "GB/s";
-    return `${(abs/1024).toFixed(2)} ${unit}`;
   }
+  const unit = mbits ? 'gbps' : 'GB/s';
+  return `${(abs / 1024).toFixed(2)} ${unit}`;
 }
 
 function chartClipboard(point, name) {
@@ -37,20 +40,20 @@ function chartClipboard(point, name) {
   }
   const time = point.activeLabel;
   console.log(point);
-  const values = point.activePayload.map(pl => ({
+  const values = point.activePayload.map((pl) => ({
     name: pl.name,
     value: formatSpeed(pl.value),
   }));
 
-  let text= name + "\n" + time;
-  values.forEach(v => {
+  let text = `${name}\n${time}`;
+  values.forEach((v) => {
     text += `\n${v.name}: ${v.value}`;
   });
 
   navigator.clipboard.writeText(text).then(() => {
-    message.success("Copied");
+    message.success('Copied');
   }, () => {
-    message.error("Failed to copy");
+    message.error('Failed to copy');
   });
 }
 
@@ -63,8 +66,8 @@ function interfaceSort(interfaces) {
 }
 
 function interfaceReducer(state, update) {
-  let ifaces = {};
-  update.forEach(iface => {
+  const ifaces = {};
+  update.forEach((iface) => {
     const newDate = new Date();
     const name = iface.interface;
     ifaces[name] = iface;
@@ -130,8 +133,8 @@ function interfaceReducer(state, update) {
     const diffBlock6In = (newBlock6In - oldBlock6In) * multiplier / divisor;
     const diffBlock6Out = (newBlock6Out - oldBlock6Out) * multiplier / divisor;
     const point = {
-      date: date,
-      time: time,
+      date,
+      time,
       pass4in: diffPass4In,
       pass4out: diffPass4Out,
       pass6in: diffPass6In,
@@ -142,7 +145,7 @@ function interfaceReducer(state, update) {
       block6out: diffBlock6Out,
     };
 
-    oldGaps = oldGaps.filter(gap => {
+    oldGaps = oldGaps.filter((gap) => {
       if (oldHistory.length > 0) {
         return gap.date > oldHistory[0].date;
       }
@@ -154,9 +157,9 @@ function interfaceReducer(state, update) {
       if (diffTime < 60) {
         lagTime = `${diffTime.toFixed(2)} sec`;
       } else if (diffTime < (60 * 60)) {
-        lagTime = `${(diffTime/60).toFixed(2)} min`;
+        lagTime = `${(diffTime / 60).toFixed(2)} min`;
       } else {
-        lagTime = `${(diffTime/60/60).toFixed(2)} hr`;
+        lagTime = `${(diffTime / 60 / 60).toFixed(2)} hr`;
       }
 
       const gap = ({
@@ -178,28 +181,28 @@ function interfaceReducer(state, update) {
 }
 
 function PfInterface(props) {
-  const iface = props.iface;
+  const { iface } = props;
 
   const ipv4 = [
     iface.in4pass.bytes, iface.in4block.bytes,
     iface.out4pass.bytes, iface.out4block.bytes,
-  ].some(el => el > 0);
+  ].some((el) => el > 0);
 
   const ipv6 = [
     iface.in6pass.bytes, iface.in6block.bytes,
     iface.out6pass.bytes, iface.out6block.bytes,
-  ].some(el => el > 0);
+  ].some((el) => el > 0);
 
   const ipv4Stats = ipv4 ? (
     <Row>
-      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Packets)" value={iface.in4pass.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Bytes)" value={iface.in4pass.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Packets)" value={iface.in4block.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Bytes)" value={iface.in4block.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Packets)" value={iface.out4pass.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Bytes)" value={iface.out4pass.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Packets)" value={iface.out4block.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Bytes)" value={iface.out4block.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Packets)" value={iface.in4pass.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv4 (Bytes)" value={iface.in4pass.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Packets)" value={iface.in4block.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv4 (Bytes)" value={iface.in4block.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Packets)" value={iface.out4pass.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv4 (Bytes)" value={iface.out4pass.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Packets)" value={iface.out4block.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv4 (Bytes)" value={iface.out4block.bytes} /></Col>
     </Row>
   ) : (
     <Typography>No IPv4 traffic</Typography>
@@ -207,14 +210,14 @@ function PfInterface(props) {
 
   const ipv6Stats = ipv6 ? (
     <Row>
-      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Packets)" value={iface.in6pass.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Bytes)" value={iface.in6pass.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Packets)" value={iface.in6block.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Bytes)" value={iface.in6block.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Packets)" value={iface.out6pass.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Bytes)" value={iface.out6pass.bytes}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Packets)" value={iface.out6block.packets}/></Col>
-      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Bytes)" value={iface.out6block.bytes}/></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Packets)" value={iface.in6pass.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Pass IPv6 (Bytes)" value={iface.in6pass.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Packets)" value={iface.in6block.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="In Block IPv6 (Bytes)" value={iface.in6block.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Packets)" value={iface.out6pass.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Pass IPv6 (Bytes)" value={iface.out6pass.bytes} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Packets)" value={iface.out6block.packets} /></Col>
+      <Col xl={6} span={12}><Statistic title="Out Block IPv6 (Bytes)" value={iface.out6block.bytes} /></Col>
     </Row>
   ) : (
     <Typography>No IPv6 traffic</Typography>
@@ -222,11 +225,14 @@ function PfInterface(props) {
 
   const graph = (
     <ResponsiveContainer height={250}>
-      <ComposedChart data={iface.history} onClick={(point, event) => {
-        const name = iface.interface;
-        chartClipboard(point, name);
-      }}>
-        {iface.gaps.map(gap => gap.component)}
+      <ComposedChart
+        data={iface.history}
+        onClick={(point, event) => {
+          const name = iface.interface;
+          chartClipboard(point, name);
+        }}
+      >
+        {iface.gaps.map((gap) => gap.component)}
         <Area
           dataKey="pass4in"
           name="IPv4 Pass In"
@@ -297,9 +303,7 @@ function PfInterface(props) {
         />
         <Tooltip
           isAnimationActive={false}
-          formatter={(value, name, props) => {
-            return formatSpeed(value);
-          }}
+          formatter={(value, name, props) => formatSpeed(value)}
         />
         <Legend />
         <CartesianGrid strokeDasharray="3 3" />
@@ -316,18 +320,23 @@ function PfInterface(props) {
   return (
     <Col
       key={iface.interface}
-      xxl={{span: 18, offset: 3}}
-      xl={{span: 20, offset: 2}}
-      lg={{span: 24}}
+      xxl={{ span: 18, offset: 3 }}
+      xl={{ span: 20, offset: 2 }}
+      lg={{ span: 24 }}
     >
-      <Card title={iface.interface} style={{marginTop: "12px"}}>
-        {(ipv4 || ipv6) ? graph : ""}
+      <Card title={iface.interface} style={{ marginTop: '12px' }}>
+        {(ipv4 || ipv6) ? graph : ''}
         <Collapse>
           <Panel header="Statistics">
             <Row>
-              <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states}/></Col>
-              <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules}/></Col>
-              <Col xl={12} span={24}><Typography>Counters last cleared {iface.cleared}</Typography></Col>
+              <Col xl={6} span={12}><Statistic title="References (States)" value={iface.references.states} /></Col>
+              <Col xl={6} span={12}><Statistic title="References (Rules)" value={iface.references.rules} /></Col>
+              <Col xl={12} span={24}>
+                <Typography>
+                  Counters last cleared
+                  {iface.cleared}
+                </Typography>
+              </Col>
             </Row>
             <Divider />
             {ipv4Stats}
@@ -348,15 +357,16 @@ function PfInterfaces(props) {
   if (Object.keys(interfaces).length == 0) {
     return (
       <Spin>
-        <Card style={{margin: "30px"}}></Card>
-      </Spin>);
+        <Card style={{ margin: '30px' }} />
+      </Spin>
+    );
   }
 
   const ifaceSort = interfaceSort(interfaces);
 
   return (
-    <div style={{marginBottom: "12px"}}>
-      {ifaceSort.map(iface => {
+    <div style={{ marginBottom: '12px' }}>
+      {ifaceSort.map((iface) => {
         const name = iface.interface;
         return (<PfInterface iface={iface} key={name} />);
       })}

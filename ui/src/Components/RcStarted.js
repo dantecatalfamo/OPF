@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Button, message, Popconfirm} from 'antd';
+import { Button, message, Popconfirm } from 'antd';
 import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcStarted(props) {
   const loadingInit = props.loading;
-  const started = props.started;
-  const enabled = props.enabled;
-  const onStarted = props.onStarted;
-  const service = props.service;
+  const { started } = props;
+  const { enabled } = props;
+  const { onStarted } = props;
+  const { service } = props;
   const serviceURL = `${serverURL}/api/rc/${service}/started`;
   const [loadingSelf, setLoadingSelf] = useState(null);
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
@@ -16,11 +16,11 @@ function RcStarted(props) {
   const handleClick = () => {
     setLoadingSelf(true);
     postJSON(serviceURL, !started)
-      .then(res => {
+      .then((res) => {
         onStarted(service, res);
         setLoadingSelf(false);
-      }).catch(res => {
-        message.error(`Failed to ${!started ? "start" : "stop"} ${service}. Check logs for details.`);
+      }).catch((res) => {
+        message.error(`Failed to ${!started ? 'start' : 'stop'} ${service}. Check logs for details.`);
         setLoadingSelf(false);
       });
   };
@@ -28,10 +28,10 @@ function RcStarted(props) {
   const startButton = enabled || started ? (
     <Button
       loading={loading}
-      type={started ? "danger" : "primary"}
+      type={started ? 'danger' : 'primary'}
       onClick={handleClick}
     >
-      {started ? "Stop" : "Start"}
+      {started ? 'Stop' : 'Start'}
     </Button>
   ) : (
     <Popconfirm
@@ -42,9 +42,9 @@ function RcStarted(props) {
     >
       <Button
         loading={loading}
-        type={started ? "danger" : "primary"}
+        type={started ? 'danger' : 'primary'}
       >
-        {started ? "Stop" : "Start"}
+        {started ? 'Stop' : 'Start'}
       </Button>
     </Popconfirm>
   );

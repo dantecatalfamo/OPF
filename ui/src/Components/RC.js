@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { List, Button, Badge, Switch, Col, Card } from 'antd';
+import {
+  List, Button, Badge, Switch, Col, Card,
+} from 'antd';
 import { getJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import RcFlags from './RcFlags';
@@ -19,16 +21,16 @@ function RC() {
   const [rcStarted, setRcStarted] = useState(null);
 
   useEffect(() => {
-    getJSON(rcAllURL).then(res => setRcAll(res));
-    getJSON(rcOnURL).then(res => setRcOn(res));
-    getJSON(rcStartedURL).then(res => setRcStarted(res));
+    getJSON(rcAllURL).then((res) => setRcAll(res));
+    getJSON(rcOnURL).then((res) => setRcOn(res));
+    getJSON(rcStartedURL).then((res) => setRcStarted(res));
   }, []);
 
   const handleServiceStarted = (service, started) => {
     if (started && !rcStarted.includes(service)) {
       setRcStarted([...rcStarted, service]);
     } else {
-      setRcStarted(rcStarted.filter(s => s !== service));
+      setRcStarted(rcStarted.filter((s) => s !== service));
     }
   };
 
@@ -36,15 +38,15 @@ function RC() {
     if (enabled && !rcOn.includes(service)) {
       setRcOn([...rcOn, service]);
     } else {
-      setRcOn(rcOn.filter(s => s !== service));
+      setRcOn(rcOn.filter((s) => s !== service));
     }
   };
 
   return (
     <Col
       xxl={{ span: 10, offset: 7 }}
-      xl={{  span: 12, offset: 6 }}
-      lg={{  span: 14, offset: 5 }}
+      xl={{ span: 12, offset: 6 }}
+      lg={{ span: 14, offset: 5 }}
     >
       <Card>
         <List
@@ -52,20 +54,20 @@ function RC() {
           itemLayout="horizontal"
           bordered
           dataSource={rcAll}
-          renderItem={item => {
+          renderItem={(item) => {
             let badge;
             let started;
             const special = rcSpecials.includes(item);
             if (!rcStarted) {
-              badge = "processing";
+              badge = 'processing';
               started = null;
             } else if (rcSpecials.includes(item)) {
-              badge = "default";
+              badge = 'default';
             } else if (rcStarted.includes(item)) {
-              badge = "green";
+              badge = 'green';
               started = true;
             } else {
-              badge = "red";
+              badge = 'red';
               started = false;
             }
             let enabled;
@@ -93,7 +95,9 @@ function RC() {
                 enabled={enabled}
                 service={item}
                 onEnabled={handleServiceEnabled}
-              >{enabled ? "Disable" : "Enable"}</RcEnabled>
+              >
+                {enabled ? 'Disable' : 'Enable'}
+              </RcEnabled>
             );
 
             const flagsButton = (
@@ -110,12 +114,20 @@ function RC() {
                   special ? null : startButton,
                   enableSwitch,
                   flagsButton,
-                ]}>
+                ]}
+              >
                 <List.Item.Meta
-                  title={<span><Badge status={badge} /> {item}</span>}
+                  title={(
+                    <span>
+                      <Badge status={badge} />
+                      {' '}
+                      {item}
+                    </span>
+)}
                 />
               </List.Item>
-            );}}
+            );
+          }}
         />
       </Card>
     </Col>

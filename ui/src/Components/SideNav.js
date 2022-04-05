@@ -16,12 +16,14 @@ import {
 
 import { Layout, Menu } from 'antd';
 
-const { Header, Content, Footer, Sider } = Layout;
+const {
+  Header, Content, Footer, Sider,
+} = Layout;
 const { SubMenu } = Menu;
 
 function SideNav(props) {
   const [collapsed, setCollapsed] = useState(false);
-  const collapse = value => setCollapsed(value);
+  const collapse = (value) => setCollapsed(value);
 
   const location = useLocation();
 
@@ -51,12 +53,12 @@ function SideNav(props) {
         </Menu.Item>
         <SubMenu
           key="firewall"
-          title={
+          title={(
             <span>
               <FireOutlined />
               <span>Firewall</span>
             </span>
-          }
+          )}
         >
           <Menu.Item key="/firewall-info">
             <Link to="/firewall-info">
@@ -97,12 +99,12 @@ function SideNav(props) {
         </Menu.Item>
         <SubMenu
           key="logs"
-          title={
+          title={(
             <span>
               <ExceptionOutlined />
               <span>Logs</span>
             </span>
-          }
+          )}
         >
           <Menu.Item key="/log/daemon">
             <Link to="/log/daemon">

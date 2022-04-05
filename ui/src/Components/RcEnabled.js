@@ -4,10 +4,10 @@ import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcEnabled(props) {
-  const enabled = props.enabled;
+  const { enabled } = props;
   const loadingInit = props.loading;
-  const onEnabled = props.onEnabled;
-  const service = props.service;
+  const { onEnabled } = props;
+  const { service } = props;
   const serviceURL = `${serverURL}/api/rc/${service}/enabled`;
   const [loadingSelf, setLoadingSelf] = useState(null);
   const loading = loadingSelf === null ? loadingInit : loadingSelf;
@@ -15,11 +15,11 @@ function RcEnabled(props) {
   const handleChange = () => {
     setLoadingSelf(true);
     postJSON(serviceURL, !enabled)
-      .then(res => {
+      .then((res) => {
         onEnabled(service, res);
         setLoadingSelf(false);
-      }).catch(res => {
-        message.error(`Failed to ${!enabled ? "enable" : "disable"} ${service}.`);
+      }).catch((res) => {
+        message.error(`Failed to ${!enabled ? 'enable' : 'disable'} ${service}.`);
         setLoadingSelf(false);
       });
   };
@@ -31,8 +31,6 @@ function RcEnabled(props) {
       onChange={handleChange}
     />
   );
-
-
 }
 
 export default RcEnabled;

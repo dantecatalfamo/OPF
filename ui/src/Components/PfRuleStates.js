@@ -6,7 +6,6 @@ import './PfRuleStates.css';
 const pfRuleStatesURL = `${serverURL}/api/pf-rule-states`;
 const updateTime = 2000;
 
-
 function PfRuleStates() {
   const [rulestates, setRulestates] = useState([]);
 
@@ -27,7 +26,7 @@ function PfRuleStates() {
           </tr>
         </thead>
         <tbody>
-          {rulestates.map(rule => (
+          {rulestates.map((rule) => (
             <tr key={rule.number}>
               <td>{rule.number}</td>
               <td>{rule.rule}</td>
