@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 export async function getJSON(url: string) {
   const response = await fetch(url);
@@ -13,12 +13,14 @@ export async function postJSON(url: string, data: object) {
   return response.json();
 }
 
+// eslint-disable-next-line no-unused-vars
 export function useJSON(url: string, setter: (data: object) => void) {
   useEffect(() => {
     getJSON(url).then((res) => setter(res));
   }, [url]);
 }
 
+// eslint-disable-next-line no-unused-vars
 export function useJsonUpdates(url: string, setter: (data: any) => void, updateTime: number) {
   useEffect(() => {
     getJSON(url).then((res) => setter(res));

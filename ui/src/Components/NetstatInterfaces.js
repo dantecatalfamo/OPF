@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getJSON, useJsonUpdates } from '../helpers.ts';
+import React, { useState } from 'react';
+import { useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './NetstatInterfaces.css';
 
@@ -28,8 +28,8 @@ function NetstatInterfaces() {
           </tr>
         </thead>
         <tbody>
-          {interfaces.map((iface, idx) => (
-            <tr key={idx}>
+          {interfaces.map((iface) => (
+            <tr key={iface.name}>
               <td>{iface.name}</td>
               <td>{iface.mtu}</td>
               <td>{iface.network}</td>

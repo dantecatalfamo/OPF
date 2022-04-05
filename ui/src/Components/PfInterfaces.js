@@ -123,14 +123,14 @@ function interfaceReducer(state, update) {
     const diffTime = (newDate - oldDate) / 1000;
     const multiplier = mbits ? 8 : 1;
     const divisor = diffTime * 1024 * 1024;
-    const diffPass4In = (newPass4In - oldPass4In) * multiplier / divisor;
-    const diffPass4Out = -(newPass4Out - oldPass4Out) * multiplier / divisor;
-    const diffPass6In = (newPass6In - oldPass6In) * multiplier / divisor;
-    const diffPass6Out = -(newPass6Out - oldPass6Out) * multiplier / divisor;
-    const diffBlock4In = (newBlock4In - oldBlock4In) * multiplier / divisor;
-    const diffBlock4Out = (newBlock4Out - oldBlock4Out) * multiplier / divisor;
-    const diffBlock6In = (newBlock6In - oldBlock6In) * multiplier / divisor;
-    const diffBlock6Out = (newBlock6Out - oldBlock6Out) * multiplier / divisor;
+    const diffPass4In = ((newPass4In - oldPass4In) * multiplier) / divisor;
+    const diffPass4Out = -((newPass4Out - oldPass4Out) * multiplier) / divisor;
+    const diffPass6In = ((newPass6In - oldPass6In) * multiplier) / divisor;
+    const diffPass6Out = -((newPass6Out - oldPass6Out) * multiplier) / divisor;
+    const diffBlock4In = ((newBlock4In - oldBlock4In) * multiplier) / divisor;
+    const diffBlock4Out = ((newBlock4Out - oldBlock4Out) * multiplier) / divisor;
+    const diffBlock6In = ((newBlock6In - oldBlock6In) * multiplier) / divisor;
+    const diffBlock6Out = ((newBlock6Out - oldBlock6Out) * multiplier) / divisor;
     const point = {
       date,
       time,
@@ -151,7 +151,7 @@ function interfaceReducer(state, update) {
       return true;
     });
 
-    if ((diffTime > lagThreshold) && (oldHistory.length != 0)) {
+    if ((diffTime > lagThreshold) && (oldHistory.length !== 0)) {
       let lagTime;
       if (diffTime < 60) {
         lagTime = `${diffTime.toFixed(2)} sec`;
@@ -226,7 +226,7 @@ function PfInterface(props) {
     <ResponsiveContainer height={250}>
       <ComposedChart
         data={iface.history}
-        onClick={(point, event) => {
+        onClick={(point) => {
           const name = iface.interface;
           chartClipboard(point, name);
         }}
@@ -302,7 +302,7 @@ function PfInterface(props) {
         />
         <Tooltip
           isAnimationActive={false}
-          formatter={(value, name, props) => formatSpeed(value)}
+          formatter={(value) => formatSpeed(value)}
         />
         <Legend />
         <CartesianGrid strokeDasharray="3 3" />
@@ -348,12 +348,12 @@ function PfInterface(props) {
   );
 }
 
-function PfInterfaces(props) {
+function PfInterfaces() {
   const [interfaces, updateInterfaces] = useReducer(interfaceReducer, {});
 
   useJsonUpdates(pfInterfacesURL, updateInterfaces, updateTime);
 
-  if (Object.keys(interfaces).length == 0) {
+  if (Object.keys(interfaces).length === 0) {
     return (
       <Spin>
         <Card style={{ margin: '30px' }} />

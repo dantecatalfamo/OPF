@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Descriptions, Badge, Typography, Col, Row, Card, Statistic, Spin,
+  Descriptions, Badge, Col, Row, Card, Statistic, Spin,
 } from 'antd';
-import { getJSON, useJsonUpdates } from '../helpers.ts';
+import { useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
-const { Text } = Typography;
 const { Item } = Descriptions;
 
 const pfInfoURL = `${serverURL}/api/pf-info`;
 const updateTime = 3000;
 
-function PfInfo(props) {
+function PfInfo() {
   const [pfInfo, setPfInfo] = useState();
 
   useJsonUpdates(pfInfoURL, setPfInfo, updateTime);

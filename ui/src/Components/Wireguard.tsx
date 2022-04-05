@@ -1,5 +1,5 @@
 import {
-  Badge, Card, Col, Descriptions, Divider, Row
+  Badge, Card, Col, Descriptions, Divider, Row,
 } from 'antd';
 import React, { useState } from 'react';
 import { serverURL } from '../config';

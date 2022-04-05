@@ -18,8 +18,8 @@ function RcFlags(props) {
   const [fetching, setFetching] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleVisibleChange = (visible) => {
-    setVisible(visible);
+  const handleVisibleChange = (v) => {
+    setVisible(v);
   };
 
   const handleFlagsChange = (event) => {
@@ -39,10 +39,10 @@ function RcFlags(props) {
   const handleSave = () => {
     setSubmitting(true);
     postJSON(flagsURL, flags)
-      .then((res) => {
+      .then(() => {
         message.success('Flags saves successfully.');
         setSubmitting(false);
-      }).catch((res) => {
+      }).catch(() => {
         message.error(`Failed to set ${service} flags.`);
         setSubmitting(false);
       });

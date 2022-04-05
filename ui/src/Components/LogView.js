@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Typography } from 'antd';
 import { serverURL } from '../config';
 import './LogView.css';
-
-const { Paragraph } = Typography;
 
 const updateTime = 30 * 1000;
 
 function LogView(props) {
-  const { log } = props;
+  const { log } = props; // eslint-disable-line react/prop-types
   const [logContents, setLogContents] = useState('');
 
   const url = `${serverURL}/api/logs/${log}`;

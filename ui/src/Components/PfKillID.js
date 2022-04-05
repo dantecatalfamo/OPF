@@ -13,11 +13,11 @@ function PfKillID(props) {
   const handleClick = useCallback(() => {
     setSubmitting(true);
     postJSON(pfKillIdURL, id)
-      .then((res) => {
+      .then(() => {
         setSubmitting(false);
         setDisabled(true); // disbable button until states update and row is removed
         message.success(`Killed state ${id}`);
-      }).catch((res) => {
+      }).catch(() => {
         message.error(`Failed to kill state with ID ${id}`);
         setSubmitting(false);
       });

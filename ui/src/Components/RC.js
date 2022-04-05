@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  List, Button, Badge, Switch, Col, Card,
+  List, Badge, Col, Card,
 } from 'antd';
 import { getJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';

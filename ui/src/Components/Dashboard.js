@@ -376,11 +376,10 @@ function InterfaceRx(props) {
   useEffect(() => {
     async function runJob() {
       const colors = await keys.reduce(async (colorMap, key) => {
-        await colorMap;
+        const map = await colorMap;
         const color = await stringToColor(key);
-        // eslint-disable-next-line no-param-reassign
-        colorMap[key] = color;
-        return colorMap;
+        map[key] = color;
+        return map;
       }, {});
       setChartLineColors(colors);
     }
@@ -426,11 +425,10 @@ function InterfaceTx(props) {
   useEffect(() => {
     async function runJob() {
       const colors = await keys.reduce(async (colorMap, key) => {
-        await colorMap;
+        const map = await colorMap;
         const color = await stringToColor(key);
-        // eslint-disable-next-line no-param-reassign
-        colorMap[key] = color;
-        return colorMap;
+        map[key] = color;
+        return map;
       }, {});
       setChartLineColors(colors);
     }

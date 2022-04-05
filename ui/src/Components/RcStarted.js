@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, message, Popconfirm } from 'antd';
 import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
@@ -19,7 +19,7 @@ function RcStarted(props) {
       .then((res) => {
         onStarted(service, res);
         setLoadingSelf(false);
-      }).catch((res) => {
+      }).catch(() => {
         message.error(`Failed to ${!started ? 'start' : 'stop'} ${service}. Check logs for details.`);
         setLoadingSelf(false);
       });

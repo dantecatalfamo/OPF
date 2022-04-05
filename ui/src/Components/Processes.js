@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Table, Badge, Tooltip, Typography,
 } from 'antd';
-import { getJSON, useJsonUpdates, timeSince } from '../helpers.ts';
+import { useJsonUpdates, timeSince } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './Processes.css';
 
@@ -45,7 +45,9 @@ function Processes() {
       render: (ppid) => {
         const handleMouseEnter = () => setHighlightedProc(ppid);
         const handleMouseLeave = () => setHighlightedProc(null);
-        return (<span onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>{ppid}</span>);
+        return (
+          <span onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>{ppid}</span>
+        );
       },
     },
     {

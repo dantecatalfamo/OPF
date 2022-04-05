@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  BrowserRouter as Router, Routes, Link, Route,
+  Routes, Route,
 } from 'react-router-dom';
 import Dashboard from './Dashboard';
 import PfInfo from './PfInfo';
@@ -14,7 +14,7 @@ import RC from './RC';
 import LogView from './LogView';
 import Wireguard from './Wireguard';
 
-function MainContent(props) {
+function MainContent() {
   return (
     <Routes>
       <Route path="/dashboard" element={<Dashboard />} />

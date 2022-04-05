@@ -17,11 +17,11 @@ import {
 import { Layout, Menu } from 'antd';
 
 const {
-  Header, Content, Footer, Sider,
+  Sider,
 } = Layout;
 const { SubMenu } = Menu;
 
-function SideNav(props) {
+function SideNav() {
   const [collapsed, setCollapsed] = useState(false);
   const collapse = (value) => setCollapsed(value);
 

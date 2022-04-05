@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import {
-  Tag, Table, Typography, Card, Input, InputNumber, Button, Popover,
+  Tag, Table, Typography, Input, Button, Popover,
 } from 'antd';
 import PfKillID from './PfKillID';
 import {
-  getJSON, postJSON, useWindowSize, useJsonUpdates,
+  useWindowSize, useJsonUpdates,
 } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './PfStates.css';
@@ -13,7 +13,7 @@ import './PfStates.css';
 const { Text } = Typography;
 
 const pfStatesURL = `${serverURL}/api/pf-states`;
-const tcpDropURL = `${serverURL}/api/tcpdrop`;
+// const tcpDropURL = `${serverURL}/api/tcpdrop`;
 const updateTime = 5000;
 
 function ipLookupButton(ip) {
@@ -59,8 +59,8 @@ function portLookupButton(port) {
 }
 
 function filterDialog(placeholder) {
-  return function ({
-    setSelectedKeys, selectedKeys, confirm, clearFilters,
+  return function ({ // eslint-disable-line func-names
+    setSelectedKeys, selectedKeys, confirm, clearFilters, // eslint-disable-line react/prop-types
   }) {
     return (
       <div style={{ padding: 8 }}>
@@ -129,10 +129,11 @@ function expandedRow(row) {
 }
 
 function PfStates() {
+  // eslint-disable-next-line no-unused-vars
   const [windowWidth, windowHeight] = useWindowSize();
   const [states, setStates] = useState();
-  const [filteredInfo, setFilteredInfo] = useState({});
-  const [sortedInfo, setSortedInfo] = useState({});
+  // const [filteredInfo, setFilteredInfo] = useState({});
+  // const [sortedInfo, setSortedInfo] = useState({});
   const [tableRows, setTableRows] = useState(10);
 
   useLayoutEffect(() => {
@@ -200,7 +201,7 @@ function PfStates() {
       title: 'Port',
       dataIndex: 'sourcePort',
       width: '5em',
-      onFilter: (value, record) => record.sourcePort == value,
+      onFilter: (value, record) => record.sourcePort === value,
       filterDropdown: filterDialog('Source Port'),
       render: (prt) => portLookupButton(prt),
     },
@@ -217,7 +218,7 @@ function PfStates() {
       title: 'Port',
       dataIndex: 'destinationPort',
       width: '5em',
-      onFilter: (value, record) => record.destinationPort == value,
+      onFilter: (value, record) => record.destinationPort === value,
       filterDropdown: filterDialog('Destination Port'),
       render: (prt) => portLookupButton(prt),
     },
@@ -284,7 +285,7 @@ function PfStates() {
     {
       title: 'Rule',
       dataIndex: 'rule',
-      onFilter: (value, record) => record.rule == (value === '*' ? -1 : value),
+      onFilter: (value, record) => record.rule === (value === '*' ? -1 : value),
       filterDropdown: filterDialog('Rule'),
       render: (rule) => {
         const num = rule === -1 ? '*' : rule;
@@ -303,7 +304,6 @@ function PfStates() {
       <Table
         columns={columns}
         dataSource={states}
-        pagination
         loading={!states}
         size="small"
         rowKey="id"

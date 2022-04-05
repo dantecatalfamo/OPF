@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getJSON, useJsonUpdates } from '../helpers.ts';
+import React, { useState } from 'react';
+import { useJsonUpdates } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 import './PfRuleStates.css';
 

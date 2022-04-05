@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Switch, message } from 'antd';
 import { postJSON } from '../helpers.ts';
 import { serverURL } from '../config.ts';
 
 function RcEnabled(props) {
-  const { enabled } = props;
-  const loadingInit = props.loading;
+  const { enabled, loading } = props;
   const { onEnabled } = props;
   const { service } = props;
   const serviceURL = `${serverURL}/api/rc/${service}/enabled`;
   const [loadingSelf, setLoadingSelf] = useState(null);
-  const loading = loadingSelf === null ? loadingInit : loadingSelf;
+  const shownLoading = loadingSelf === null ? loading : loadingSelf;
 
   const handleChange = () => {
     setLoadingSelf(true);
@@ -18,7 +17,7 @@ function RcEnabled(props) {
       .then((res) => {
         onEnabled(service, res);
         setLoadingSelf(false);
-      }).catch((res) => {
+      }).catch(() => {
         message.error(`Failed to ${!enabled ? 'enable' : 'disable'} ${service}.`);
         setLoadingSelf(false);
       });
@@ -26,7 +25,7 @@ function RcEnabled(props) {
 
   return (
     <Switch
-      loading={loading}
+      loading={shownLoading}
       checked={enabled}
       onChange={handleChange}
     />

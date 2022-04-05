@@ -11,8 +11,8 @@ const {
 
 function App() {
   return (
-    <div className="App">
-      <Router>
+    <Router>
+      <div className="App">
         <Layout style={{ minHeight: '100vh' }}>
           <SideNav />
           <Layout>
@@ -22,8 +22,8 @@ function App() {
             </Content>
           </Layout>
         </Layout>
-      </Router>
-    </div>
+      </div>
+    </Router>
   );
 }
 
