@@ -28,12 +28,19 @@ interface NavGroup {
 
 const nav: NavGroup[] = [
   { label: 'Dashboard', icon: IconGauge, to: '/' },
-  { label: 'Interfaces', icon: IconNetwork, to: '/interfaces' },
+  {
+    label: 'Network', icon: IconNetwork, items: [
+      { label: 'Interfaces', to: '/interfaces' },
+      { label: 'Routing', to: '/network/routing' },
+    ],
+  },
   {
     label: 'Firewall', icon: IconShieldHalf, items: [
       { label: 'Rules', to: '/firewall/rules' },
-      { label: 'Port forwarding', to: '/firewall/forwards' },
+      { label: 'NAT', to: '/firewall/nat' },
       { label: 'Aliases', to: '/firewall/aliases' },
+      { label: 'Ruleset', to: '/firewall/ruleset' },
+      { label: 'Settings', to: '/firewall/settings' },
     ],
   },
   {

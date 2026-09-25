@@ -6,7 +6,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Interfaces } from './pages/Interfaces';
 import { InterfaceEdit } from './pages/InterfaceEdit';
 import { FirewallRules } from './pages/FirewallRules';
-import { PortForwards } from './pages/PortForwards';
+import { Nat } from './pages/Nat';
+import { Ruleset } from './pages/Ruleset';
+import { FirewallSettings } from './pages/FirewallSettings';
+import { Routing } from './pages/Routing';
 import { Aliases } from './pages/Aliases';
 import { Dhcp } from './pages/Dhcp';
 import { Dns } from './pages/Dns';
@@ -44,7 +47,12 @@ function AppRoutes() {
         <Route path="interfaces/:id" element={<InterfaceEdit />} />
         <Route path="firewall/rules" element={<FirewallRules />} />
         <Route path="firewall/rules/:iface" element={<FirewallRules />} />
-        <Route path="firewall/forwards" element={<PortForwards />} />
+        <Route path="network/routing" element={<Routing />} />
+        <Route path="network/routing/:tab" element={<Routing />} />
+        <Route path="firewall/nat" element={<Nat />} />
+        <Route path="firewall/nat/:tab" element={<Nat />} />
+        <Route path="firewall/ruleset" element={<Ruleset />} />
+        <Route path="firewall/settings" element={<FirewallSettings />} />
         <Route path="firewall/aliases" element={<Aliases />} />
         <Route path="services/dhcp" element={<Dhcp />} />
         <Route path="services/dns" element={<Dns />} />

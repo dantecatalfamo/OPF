@@ -48,7 +48,12 @@ export const ruleCounters: Record<string, { evaluations: number; states: number 
   r5: { evaluations: 18_320, states: 0 },
   r6: { evaluations: 11_002, states: 38 },
   r7: { evaluations: 4_120, states: 9 },
-  r8: { evaluations: 0, states: 0 },
+  r8: { evaluations: 2_310, states: 6 },
+  r9: { evaluations: 20_411, states: 1 },
+  r10: { evaluations: 1_402_118, states: 0 },
+  r11: { evaluations: 88_120, states: 2 },
+  r12: { evaluations: 0, states: 0 },
+  r13: { evaluations: 3_870, states: 17 },
 };
 
 // Deterministic pseudo-random so the preview looks the same each load.
@@ -192,3 +197,27 @@ export function logEntries(): LogEntry[] {
   }
   return out;
 }
+
+export const gatewayStatus: Record<string, { online: boolean; address: string; rttMs: number; lossPct: number }> = {
+  gw_wan: { online: true, address: '203.0.113.1', rttMs: 8.4, lossPct: 0 },
+  gw_wh: { online: true, address: '10.8.0.10', rttMs: 23.1, lossPct: 0.5 },
+};
+
+export interface RouteEntry {
+  destination: string;
+  gateway: string;
+  flags: string;
+  iface: string;
+  source: string;
+}
+
+// As `netstat -rn -f inet` would show it.
+export const routingTable: RouteEntry[] = [
+  { destination: 'default', gateway: '203.0.113.1', flags: 'UGS', iface: 'em0', source: 'DHCP' },
+  { destination: '10.8.0/24', gateway: '10.8.0.1', flags: 'UCn', iface: 'wg0', source: 'Interface' },
+  { destination: '10.20/16', gateway: '10.8.0.10', flags: 'UGS', iface: 'wg0', source: 'Static route' },
+  { destination: '127/8', gateway: '127.0.0.1', flags: 'UGRS', iface: 'lo0', source: 'System' },
+  { destination: '192.168.1/24', gateway: '192.168.1.1', flags: 'UCn', iface: 'em1', source: 'Interface' },
+  { destination: '192.168.20/24', gateway: '192.168.20.1', flags: 'UCn', iface: 'vlan20', source: 'Interface' },
+  { destination: '203.0.113/24', gateway: '203.0.113.24', flags: 'UCn', iface: 'em0', source: 'Interface' },
+];

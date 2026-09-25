@@ -60,3 +60,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pulse { animation: none; }
 }
+.ruleset-line {
+  padding-block: 1px;
+}
+.ruleset-line:hover {
+  background: var(--opf-bg);
+}
+.ruleset-origin {
+  opacity: 0.55;
+}
+.ruleset-line:hover .ruleset-origin {
+  opacity: 1;
+}

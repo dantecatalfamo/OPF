@@ -30,12 +30,12 @@ export function StatusDot({ ok, label }: { ok: boolean | 'warn'; label: string }
   );
 }
 
-const actionColor: Record<RuleAction, string> = { pass: 'teal', block: 'red', reject: 'orange' };
-const actionLabel: Record<RuleAction, string> = { pass: 'Allow', block: 'Block', reject: 'Reject' };
+const actionColor: Record<RuleAction, string> = { pass: 'teal', block: 'red', reject: 'orange', match: 'harbor' };
+const actionLabel: Record<RuleAction, string> = { pass: 'Allow', block: 'Block', reject: 'Reject', match: 'Match' };
 
 export function ActionBadge({ action, muted }: { action: RuleAction; muted?: boolean }) {
   return (
-    <Badge color={muted ? 'gray' : actionColor[action]} w={64}>
+    <Badge color={muted ? 'gray' : actionColor[action]} w={80}>
       {actionLabel[action]}
     </Badge>
   );

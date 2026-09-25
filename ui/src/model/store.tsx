@@ -10,11 +10,12 @@ import { sectionLabel } from '../lib/sections';
 export const CONFIRM_SECONDS = 60;
 
 // Changes to these can cut off access to the appliance itself.
-const riskySections: Section[] = ['interfaces', 'firewall'];
+const riskySections: Section[] = ['interfaces', 'routing', 'firewall'];
 
 const sectionOf: Record<Section, (m: Model) => unknown> = {
   system: (m) => m.system,
   interfaces: (m) => m.interfaces,
+  routing: (m) => m.routing,
   firewall: (m) => m.firewall,
   dhcp: (m) => m.dhcp,
   dns: (m) => m.dns,

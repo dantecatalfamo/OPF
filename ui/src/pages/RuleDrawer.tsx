@@ -1,65 +1,72 @@
-import { useEffect } from 'react';
-import { Autocomplete, Button, Drawer, Group, SegmentedControl, Select, Stack, Switch, Text, TextInput } from '@mantine/core';
+import { useEffect, useMemo } from 'react';
+import {
+  Accordion, Alert, Autocomplete, Badge, Button, Code, Drawer, Group, MultiSelect, NumberInput, SegmentedControl, Select, SimpleGrid,
+  Stack, Switch, Text, Textarea, TextInput,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { Endpoint, Model, Protocol, Rule, RuleAction } from '../model/types';
-import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
-import { commonPorts, ifaceName } from '../lib/labels';
+import { IconCode, IconForms, IconInfoCircle } from '@tabler/icons-react';
+import type { FormRule, Model, Rule, RuleInput, StateOptions } from '../model/types';
+import { ruleText } from '../model/generate';
+import { formRule } from '../model/sample';
+import { isCIDR, isIPv4, isPfPortExpr } from '../lib/ip';
+import { commonPorts } from '../lib/labels';
+import { checkPfLine } from '../lib/pfcheck';
+import { EndpointField, validateEndpoint } from '../components/EndpointField';
 
-type EndpointKind = 'any' | 'self' | `net:${string}` | 'host' | 'network' | `alias:${string}`;
+type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
 
-interface Values {
-  iface: string;
-  enabled: boolean;
-  action: RuleAction;
-  protocol: Protocol;
-  srcKind: EndpointKind;
-  srcValue: string;
-  dstKind: EndpointKind;
-  dstValue: string;
-  port: string;
-  log: boolean;
-  description: string;
-}
+const mono = { input: { fontFamily: 'var(--mantine-font-family-monospace)' } };
+const hasPorts = (p: FormRule['protocol']) => p === 'tcp' || p === 'udp' || p === 'tcp/udp';
+const isTcp = (p: FormRule['protocol']) => p === 'tcp' || p === 'tcp/udp';
 
-function kindOf(e: Endpoint): { kind: EndpointKind; value: string } {
-  switch (e.type) {
-    case 'net':
-      return { kind: `net:${e.iface}`, value: '' };
-    case 'alias':
-      return { kind: `alias:${e.alias}`, value: '' };
-    case 'host':
-    case 'network':
-      return { kind: e.type, value: e.value };
-    default:
-      return { kind: e.type, value: '' };
+function toValues(rule: Rule | null, iface: string | null): Values {
+  const base = formRule({ id: 'new', interfaces: iface ? [iface] : [], description: '', protocol: 'tcp' });
+  if (!rule) {
+    const src = iface && iface !== 'wan' ? { type: 'net' as const, iface } : { type: 'any' as const };
+    return { ...stripIds(base), source: src, mode: 'form', rawText: '' };
   }
+  if (rule.kind === 'raw') {
+    return { ...stripIds(base), interfaces: rule.interfaces, enabled: rule.enabled, description: rule.description, mode: 'raw', rawText: rule.text };
+  }
+  return { ...stripIds(rule), mode: 'form', rawText: '' };
 }
 
-function endpointOf(kind: EndpointKind, value: string): Endpoint {
-  if (kind.startsWith('net:')) return { type: 'net', iface: kind.slice(4) };
-  if (kind.startsWith('alias:')) return { type: 'alias', alias: kind.slice(6) };
-  if (kind === 'host' || kind === 'network') return { type: kind, value: value.trim() };
-  return { type: kind as 'any' | 'self' };
+function stripIds(r: FormRule): Omit<FormRule, 'id' | 'kind'> {
+  const { id: _id, kind: _kind, ...rest } = r;
+  return rest;
 }
 
-function endpointOptions(m: Model) {
-  return [
-    { group: 'General', items: [{ value: 'any', label: 'Any' }, { value: 'self', label: 'This firewall' }] },
-    {
-      group: 'Networks',
-      items: m.interfaces.filter((i) => i.role !== 'wan').map((i) => ({ value: `net:${i.id}`, label: `${i.name} network` })),
-    },
-    {
-      group: 'Aliases',
-      items: m.firewall.aliases.filter((a) => a.type !== 'ports').map((a) => ({ value: `alias:${a.name}`, label: a.name })),
-    },
-    { group: 'Custom', items: [{ value: 'host', label: 'Single address…' }, { value: 'network', label: 'Network range…' }] },
-  ].filter((g) => g.items.length);
+function toRule(v: Values): Omit<FormRule, 'id'> {
+  const { mode: _m, rawText: _r, ...rest } = v;
+  const r: Omit<FormRule, 'id'> = { ...rest, kind: 'form', description: v.description.trim() };
+  if (!hasPorts(r.protocol)) {
+    delete r.port;
+    delete r.sourcePort;
+  }
+  if (!r.port?.trim()) delete r.port;
+  if (!r.sourcePort?.trim()) delete r.sourcePort;
+  if (!isTcp(r.protocol) || !r.tcpFlags?.trim()) delete r.tcpFlags;
+  if (r.state && r.state.mode === 'keep' && !Object.entries(r.state).some(([k, val]) => k !== 'mode' && val !== undefined && val !== false && val !== '')) delete r.state;
+  for (const k of ['gateway', 'replyTo', 'tag', 'tagged', 'osFingerprint', 'icmpType'] as const) if (!r[k]) delete r[k];
+  if (r.rtable === undefined || (r.rtable as unknown) === '') delete r.rtable;
+  if (r.prio === undefined || (r.prio as unknown) === '') delete r.prio;
+  if (r.probability === undefined || (r.probability as unknown) === '' || r.probability === 100) delete r.probability;
+  if (!r.once) delete r.once;
+  return r;
 }
 
-const portless = (p: Protocol) => p === 'any' || p === 'icmp';
+function countSet(...vals: unknown[]) {
+  return vals.filter((v) => v !== undefined && v !== '' && v !== false && v !== null).length;
+}
 
-const monoInput = { input: { fontFamily: 'var(--mantine-font-family-monospace)' } };
+function SectionLabel({ label, count }: { label: string; count: number }) {
+  return (
+    <Group gap="xs">
+      <Text size="sm" fw={500}>{label}</Text>
+      {count > 0 && <Badge size="xs" color="harbor">{count} set</Badge>}
+    </Group>
+  );
+}
 
 export function RuleDrawer({
   opened, onClose, model, rule, iface, onSave,
@@ -68,167 +75,329 @@ export function RuleDrawer({
   onClose: () => void;
   model: Model;
   rule: Rule | null; // null: new rule
-  iface: string;
-  onSave: (r: Omit<Rule, 'id'>) => void;
+  iface: string | null; // null: floating
+  onSave: (r: RuleInput) => void;
 }) {
   const form = useForm<Values>({
-    initialValues: blank(iface),
-    validate: {
-      srcValue: (v, vals) => validateCustom(vals.srcKind, v),
-      dstValue: (v, vals) => validateCustom(vals.dstKind, v),
-      port: (v, vals) => (portless(vals.protocol) || !v || v.startsWith('alias:') || isPortSpec(v) ? null : 'Use a port like 443 or a range like 8000-8080'),
-      description: (v) => (v.trim() ? null : 'Describe what this rule is for'),
+    initialValues: toValues(null, iface),
+    validate: (v) => {
+      const e: Record<string, string | null> = {};
+      e.description = v.description.trim() ? null : 'Describe what this rule is for';
+      if (v.mode === 'raw') {
+        e.rawText = checkPfLine(v.rawText);
+        return e;
+      }
+      e.source = validateEndpoint(v.source, isIPv4, isCIDR);
+      e.destination = validateEndpoint(v.destination, isIPv4, isCIDR);
+      const port = (s?: string) => (!s?.trim() || s.startsWith('alias:') || isPfPortExpr(s) ? null : 'Use pf port syntax: 443, 8000:8080, > 1023, != 22, or 80,443');
+      if (hasPorts(v.protocol)) {
+        e.port = port(v.port);
+        e.sourcePort = port(v.sourcePort);
+      }
+      if (isTcp(v.protocol) && v.tcpFlags && !/^(any|[FSRPAUEW]*\/[FSRPAUEW]+)$/.test(v.tcpFlags)) e.tcpFlags = 'Like S/SA, or any';
+      if (v.state?.overload && !model.firewall.aliases.some((a) => a.name === v.state!.overload && a.type === 'table')) e['state.overload'] = 'Pick a table alias';
+      return e;
     },
   });
 
   useEffect(() => {
     if (!opened) return;
-    if (!rule) {
-      form.setValues(blank(iface));
-      return;
-    }
-    const s = kindOf(rule.source);
-    const d = kindOf(rule.destination);
-    form.setValues({
-      iface: rule.iface, enabled: rule.enabled, action: rule.action, protocol: rule.protocol,
-      srcKind: s.kind, srcValue: s.value, dstKind: d.kind, dstValue: d.value,
-      port: rule.port ?? '', log: rule.log, description: rule.description,
-    });
+    form.setValues(toValues(rule, iface));
     form.resetDirty();
+    form.clearErrors();
   }, [opened, rule, iface]); // form is stable
 
-  const options = endpointOptions(model);
-  const portAliases = model.firewall.aliases.filter((a) => a.type === 'ports').map((a) => ({ value: `alias:${a.name}`, label: `${a.name} (${a.entries.join(', ')})` }));
-  const portOptionLabel = (v: string) => [...commonPorts, ...portAliases].find((p) => p.value === v)?.label ?? v;
+  const v = form.values;
+  const preview = useMemo(() => (v.mode === 'form' ? ruleText({ ...toRule(v), id: 'preview' }, model) : ''), [v, model]);
+  const state: StateOptions = v.state ?? { mode: 'keep' };
+  const setState = (patch: Partial<StateOptions>) => form.setFieldValue('state', { ...state, ...patch });
 
-  const submit = form.onSubmit((v) => {
-    onSave({
-      iface: v.iface,
-      enabled: v.enabled,
-      action: v.action,
-      protocol: v.protocol,
-      source: endpointOf(v.srcKind, v.srcValue),
-      destination: endpointOf(v.dstKind, v.dstValue),
-      port: portless(v.protocol) || !v.port ? undefined : v.port.trim(),
-      log: v.log,
-      description: v.description.trim(),
-    });
+  const tables = model.firewall.aliases.filter((a) => a.type === 'table').map((a) => a.name);
+  const portAliases = model.firewall.aliases.filter((a) => a.type === 'ports').map((a) => `alias:${a.name}`);
+  const gateways = model.routing.gateways.map((g) => ({ value: g.id, label: `${g.name} (${g.address === 'dhcp' ? 'DHCP' : g.address})` }));
+  const portData = [{ group: 'Common', items: commonPorts.map((p) => p.value) }, ...(portAliases.length ? [{ group: 'Aliases', items: portAliases }] : [])];
+
+  const switchMode = (mode: string) => {
+    if (mode === 'raw' && v.mode === 'form') form.setValues({ mode: 'raw', rawText: preview });
+    if (mode === 'form') form.setFieldValue('mode', 'form');
+  };
+
+  const submit = form.onSubmit((vals) => {
+    if (vals.mode === 'raw') {
+      onSave({ kind: 'raw', text: vals.rawText.trim(), interfaces: vals.interfaces, enabled: vals.enabled, description: vals.description.trim() });
+    } else {
+      onSave(toRule(vals));
+    }
     onClose();
   });
 
+  const ifaceData = model.interfaces.map((i) => ({ value: i.id, label: i.name }));
+
   return (
-    <Drawer opened={opened} onClose={onClose} title={<Text fw={600} size="lg">{rule ? 'Edit rule' : 'Add rule'}</Text>}>
+    <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{rule ? 'Edit rule' : 'Add rule'}</Text>}>
       <form onSubmit={submit}>
         <Stack gap="lg">
-          <Stack gap={6}>
-            <Text size="sm" fw={500}>
-              When traffic matches
-            </Text>
-            <SegmentedControl
-              fullWidth
-              data={[
-                { value: 'pass', label: 'Allow it' },
-                { value: 'block', label: 'Drop it' },
-                { value: 'reject', label: 'Refuse it' },
-              ]}
-              color={form.values.action === 'pass' ? 'teal' : form.values.action === 'block' ? 'red' : 'orange'}
-              {...form.getInputProps('action')}
-            />
-            <Text size="xs" c="dimmed">
-              {form.values.action === 'pass' && 'Let the connection through. Replies are allowed automatically.'}
-              {form.values.action === 'block' && 'Silently discard it. The sender sees nothing, like a timeout.'}
-              {form.values.action === 'reject' && 'Discard it and tell the sender, so their connection fails quickly.'}
-            </Text>
-          </Stack>
-
-          <Select
-            label="Arriving on"
-            data={model.interfaces.map((i) => ({ value: i.id, label: i.name }))}
-            allowDeselect={false}
-            {...form.getInputProps('iface')}
+          <SegmentedControl
+            value={v.mode}
+            onChange={switchMode}
+            data={[
+              { value: 'form', label: <Group gap={6} justify="center"><IconForms size={16} />Guided</Group> },
+              { value: 'raw', label: <Group gap={6} justify="center"><IconCode size={16} />pf syntax</Group> },
+            ]}
           />
 
-          <Group grow align="flex-start">
-            <Select label="From" data={options} allowDeselect={false} {...form.getInputProps('srcKind')} />
-            <Select label="To" data={options} allowDeselect={false} {...form.getInputProps('dstKind')} />
-          </Group>
-          {(form.values.srcKind === 'host' || form.values.srcKind === 'network') && (
-            <TextInput
-              label="Source"
-              placeholder={form.values.srcKind === 'host' ? '192.168.1.50' : '192.168.1.0/24'}
-              styles={monoInput}
-              {...form.getInputProps('srcValue')}
-            />
+          {v.mode === 'raw' ? (
+            <>
+              <Textarea
+                label="Rule"
+                description="Any single pf.conf(5) rule. Macros for interfaces ($wan, $lan…) and aliases (<name>) are available. OPF checks it with pfctl before applying."
+                autosize
+                minRows={3}
+                styles={mono}
+                {...form.getInputProps('rawText')}
+              />
+              <MultiSelect
+                label="List under"
+                description="Only decides which tab shows this rule. The rule text itself says where it applies."
+                placeholder="Floating"
+                data={ifaceData}
+                {...form.getInputProps('interfaces')}
+              />
+              <TextInput label="Description" {...form.getInputProps('description')} />
+              <Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />
+              <Text size="xs" c="dimmed">Switching back to Guided discards edits made here.</Text>
+            </>
+          ) : (
+            <>
+              <Stack gap={6}>
+                <SegmentedControl
+                  fullWidth
+                  data={[
+                    { value: 'pass', label: 'Allow' },
+                    { value: 'block', label: 'Drop' },
+                    { value: 'reject', label: 'Refuse' },
+                    { value: 'match', label: 'Match only' },
+                  ]}
+                  color={v.action === 'pass' ? 'teal' : v.action === 'block' ? 'red' : v.action === 'reject' ? 'orange' : 'harbor'}
+                  {...form.getInputProps('action')}
+                />
+                <Text size="xs" c="dimmed">
+                  {v.action === 'pass' && 'Let matching connections through. Replies are allowed automatically.'}
+                  {v.action === 'block' && 'Silently discard. The sender sees nothing, like a timeout.'}
+                  {v.action === 'reject' && 'Discard and tell the sender, so their connection fails quickly (block return).'}
+                  {v.action === 'match' && 'Neither allow nor block. Apply options such as priority, tags or routing, then keep checking rules.'}
+                </Text>
+              </Stack>
+
+              <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                <MultiSelect label="Interfaces" placeholder="Any interface" data={ifaceData} {...form.getInputProps('interfaces')} />
+                <Select
+                  label="Direction"
+                  data={[{ value: 'in', label: 'Arriving (in)' }, { value: 'out', label: 'Leaving (out)' }, { value: 'any', label: 'Both' }]}
+                  allowDeselect={false}
+                  {...form.getInputProps('direction')}
+                />
+                <Select
+                  label="Address family"
+                  data={[{ value: 'inet', label: 'IPv4' }, { value: 'inet6', label: 'IPv6' }, { value: 'any', label: 'IPv4 and IPv6' }]}
+                  allowDeselect={false}
+                  {...form.getInputProps('family')}
+                />
+              </SimpleGrid>
+
+              <Select
+                label="Protocol"
+                data={[
+                  { value: 'any', label: 'Any' },
+                  { value: 'tcp', label: 'TCP' },
+                  { value: 'udp', label: 'UDP' },
+                  { value: 'tcp/udp', label: 'TCP and UDP' },
+                  { value: 'icmp', label: 'ICMP' },
+                  { value: 'icmp6', label: 'ICMPv6' },
+                  { value: 'esp', label: 'ESP (IPsec)' },
+                  { value: 'gre', label: 'GRE' },
+                ]}
+                allowDeselect={false}
+                {...form.getInputProps('protocol')}
+              />
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <Stack gap="xs">
+                  <EndpointField label="From" value={v.source} onChange={(e) => form.setFieldValue('source', e)} model={model} error={form.errors.source} />
+                  {hasPorts(v.protocol) && (
+                    <Autocomplete label="From port" placeholder="Any" data={portData} styles={mono} {...form.getInputProps('sourcePort')} />
+                  )}
+                </Stack>
+                <Stack gap="xs">
+                  <EndpointField label="To" value={v.destination} onChange={(e) => form.setFieldValue('destination', e)} model={model} error={form.errors.destination} />
+                  {hasPorts(v.protocol) && (
+                    <Autocomplete label="To port" placeholder="Any" data={portData} styles={mono} {...form.getInputProps('port')} />
+                  )}
+                </Stack>
+              </SimpleGrid>
+
+              <TextInput label="Description" placeholder="Allow the office printer to reach the print server" {...form.getInputProps('description')} />
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <Select
+                  label="Logging"
+                  data={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'New connections' }, { value: 'all', label: 'Every packet' }]}
+                  allowDeselect={false}
+                  {...form.getInputProps('log')}
+                />
+                <Stack gap={8} pt={4}>
+                  <Switch
+                    label="Stop at this rule"
+                    description={v.quick ? 'First match wins (quick).' : 'Later rules can still override this one.'}
+                    {...form.getInputProps('quick', { type: 'checkbox' })}
+                  />
+                  <Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />
+                </Stack>
+              </SimpleGrid>
+
+              <Accordion variant="separated" multiple radius="md">
+                <Accordion.Item value="state">
+                  <Accordion.Control>
+                    <SectionLabel label="Connection tracking and limits" count={countSet(v.state?.mode !== 'keep' ? v.state?.mode : undefined, v.state?.maxStates, v.state?.maxSrcConn, v.state?.maxSrcConnRate, v.state?.overload, v.tcpFlags)} />
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack>
+                      {v.action !== 'pass' && <Text size="xs" c="dimmed">These only apply to Allow rules.</Text>}
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <Select
+                          label="State tracking"
+                          data={[
+                            { value: 'keep', label: 'Keep state (default)' },
+                            { value: 'modulate', label: 'Modulate state (randomize TCP sequence numbers)' },
+                            { value: 'synproxy', label: 'SYN proxy (complete handshakes first)' },
+                            { value: 'none', label: 'No state (stateless)' },
+                          ]}
+                          value={state.mode}
+                          allowDeselect={false}
+                          onChange={(m) => m && setState({ mode: m as StateOptions['mode'] })}
+                        />
+                        {isTcp(v.protocol) && <TextInput label="TCP flags" placeholder="S/SA" styles={mono} {...form.getInputProps('tcpFlags')} />}
+                      </SimpleGrid>
+                      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                        <NumberInput label="Max connections" placeholder="No limit" min={1} value={state.maxStates ?? ''} onChange={(n) => setState({ maxStates: n === '' ? undefined : Number(n) })} />
+                        <NumberInput label="Max per source" placeholder="No limit" min={1} value={state.maxSrcConn ?? ''} onChange={(n) => setState({ maxSrcConn: n === '' ? undefined : Number(n) })} />
+                        <Group gap={6} align="flex-end" wrap="nowrap">
+                          <NumberInput label="New per source" placeholder="—" min={1} value={state.maxSrcConnRate?.count ?? ''} onChange={(n) => setState({ maxSrcConnRate: n === '' ? undefined : { count: Number(n), seconds: state.maxSrcConnRate?.seconds ?? 10 } })} />
+                          <NumberInput label="per seconds" placeholder="—" min={1} value={state.maxSrcConnRate?.seconds ?? ''} disabled={!state.maxSrcConnRate} onChange={(n) => state.maxSrcConnRate && setState({ maxSrcConnRate: { ...state.maxSrcConnRate, seconds: Number(n) || 1 } })} />
+                        </Group>
+                      </SimpleGrid>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <Select
+                          label="When a source exceeds a limit, add it to"
+                          placeholder="Nothing"
+                          data={tables}
+                          clearable
+                          value={state.overload ?? null}
+                          error={form.errors['state.overload']}
+                          onChange={(t) => setState({ overload: t ?? undefined })}
+                        />
+                        <Switch mt={30} label="…and close its existing connections" checked={!!state.flushGlobal} disabled={!state.overload} onChange={(e) => setState({ flushGlobal: e.currentTarget.checked })} />
+                      </SimpleGrid>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <Select
+                          label="State binding"
+                          data={[{ value: 'default', label: 'Firewall default' }, { value: 'if-bound', label: 'Bound to this interface' }, { value: 'floating', label: 'Any interface' }]}
+                          value={state.policy ?? 'default'}
+                          allowDeselect={false}
+                          onChange={(p) => setState({ policy: p === 'default' ? undefined : (p as StateOptions['policy']) })}
+                        />
+                        <Switch mt={30} label="Sloppy tracking (asymmetric routing)" checked={!!state.sloppy} onChange={(e) => setState({ sloppy: e.currentTarget.checked })} />
+                      </SimpleGrid>
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+
+                <Accordion.Item value="routing">
+                  <Accordion.Control>
+                    <SectionLabel label="Routing" count={countSet(v.gateway, v.replyTo, v.rtable)} />
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack>
+                      <Text size="xs" c="dimmed">Send matching traffic somewhere other than the routing table says. Useful for multiple internet connections or sending one device through a VPN.</Text>
+                      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                        <Select label="Send via gateway" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('gateway')} />
+                        <Select label="Send replies via" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('replyTo')} />
+                        <NumberInput label="Routing table" placeholder="0" min={0} max={255} {...form.getInputProps('rtable')} />
+                      </SimpleGrid>
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+
+                <Accordion.Item value="tags">
+                  <Accordion.Control>
+                    <SectionLabel label="Tags and priority" count={countSet(v.tag, v.tagged, v.prio)} />
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                      <TextInput label="Tag packets" placeholder="VOIP" styles={mono} {...form.getInputProps('tag')} />
+                      <TextInput label="Only packets tagged" placeholder="VOIP" styles={mono} {...form.getInputProps('tagged')} />
+                      <Select
+                        label="Priority"
+                        placeholder="Default (3)"
+                        data={Array.from({ length: 8 }, (_, i) => ({ value: String(i), label: `${i}${i === 7 ? ' · highest' : i === 0 ? ' · lowest' : ''}` }))}
+                        clearable
+                        value={v.prio === undefined ? null : String(v.prio)}
+                        onChange={(p) => form.setFieldValue('prio', p === null ? undefined : Number(p))}
+                      />
+                    </SimpleGrid>
+                  </Accordion.Panel>
+                </Accordion.Item>
+
+                <Accordion.Item value="match">
+                  <Accordion.Control>
+                    <SectionLabel label="More matching options" count={countSet(v.icmpType, v.osFingerprint, v.probability !== undefined && v.probability < 100 ? v.probability : undefined, v.once)} />
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                      {(v.protocol === 'icmp' || v.protocol === 'icmp6') && (
+                        <Select
+                          label="ICMP type"
+                          placeholder="Any"
+                          clearable
+                          data={v.protocol === 'icmp' ? ['echoreq', 'echorep', 'unreach', 'timex', 'paramprob', 'redir'] : ['echoreq', 'echorep', 'unreach', 'toobig', 'timex', 'neighbrsol', 'neighbradv', 'routersol', 'routeradv']}
+                          {...form.getInputProps('icmpType')}
+                        />
+                      )}
+                      <Select label="Operating system" placeholder="Any" clearable data={['Windows', 'Linux', 'OpenBSD', 'FreeBSD', 'Mac OS', 'unknown']} {...form.getInputProps('osFingerprint')} />
+                      <NumberInput label="Match only this share of packets" suffix="%" min={1} max={100} placeholder="100%" {...form.getInputProps('probability')} />
+                      <Switch mt={30} label="Match once, then disable" {...form.getInputProps('once', { type: 'checkbox' })} />
+                    </SimpleGrid>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+            </>
           )}
-          {(form.values.dstKind === 'host' || form.values.dstKind === 'network') && (
-            <TextInput
-              label="Destination"
-              placeholder={form.values.dstKind === 'host' ? '192.168.1.50' : '192.168.1.0/24'}
-              styles={monoInput}
-              {...form.getInputProps('dstValue')}
-            />
+
+          {v.mode === 'raw' && (
+            <Alert variant="light" color="harbor" icon={<IconInfoCircle size={18} />}>
+              <Text size="xs">Rules are checked from top to bottom. Floating rules come before interface rules. See the full ruleset under Firewall → Ruleset.</Text>
+            </Alert>
           )}
+        </Stack>
 
-          <Group grow align="flex-start">
-            <Select
-              label="Protocol"
-              data={[
-                { value: 'any', label: 'Any' },
-                { value: 'tcp', label: 'TCP' },
-                { value: 'udp', label: 'UDP' },
-                { value: 'tcp/udp', label: 'TCP and UDP' },
-                { value: 'icmp', label: 'ICMP (ping)' },
-              ]}
-              allowDeselect={false}
-              {...form.getInputProps('protocol')}
-            />
-            <Autocomplete
-              label="Port"
-              placeholder="Any port"
-              data={[
-                { group: 'Common', items: commonPorts.map((p) => p.value) },
-                ...(portAliases.length ? [{ group: 'Aliases', items: portAliases.map((p) => p.value) }] : []),
-              ]}
-              renderOption={({ option }) => <Text size="sm">{portOptionLabel(option.value)}</Text>}
-              disabled={portless(form.values.protocol)}
-              styles={monoInput}
-              {...form.getInputProps('port')}
-            />
-          </Group>
-
-          <TextInput label="Description" placeholder="Allow the office printer to reach the print server" {...form.getInputProps('description')} />
-
-          <Stack gap="sm">
-            <Switch label="Log matching traffic" description="Shows up under Diagnostics → Firewall log." {...form.getInputProps('log', { type: 'checkbox' })} />
-            <Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />
-          </Stack>
-
-          <Text size="xs" c="dimmed">
-            {`This rule ${form.values.action === 'pass' ? 'allows' : 'blocks'} traffic arriving on ${ifaceName(model, form.values.iface)}. Rules are checked top to bottom and the first match wins.`}
-          </Text>
-
+        <Stack
+          gap={8}
+          pt="sm"
+          pb="md"
+          mt="lg"
+          style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--mantine-color-body)', borderTop: '1px solid var(--opf-line)' }}
+        >
+          {v.mode === 'form' && (
+            <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12 }}>
+              {preview}
+            </Code>
+          )}
           <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
+            <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit">{rule ? 'Save rule' : 'Add rule'}</Button>
           </Group>
         </Stack>
       </form>
     </Drawer>
   );
-}
-
-function blank(iface: string): Values {
-  return {
-    iface, enabled: true, action: 'pass', protocol: 'tcp',
-    srcKind: iface === 'wan' ? 'any' : `net:${iface}`, srcValue: '',
-    dstKind: 'any', dstValue: '', port: '', log: false, description: '',
-  };
-}
-
-function validateCustom(kind: EndpointKind, v: string): string | null {
-  if (kind === 'host') return isIPv4(v) ? null : 'Enter an address like 192.168.1.50';
-  if (kind === 'network') return isCIDR(v) ? null : 'Enter a network like 192.168.1.0/24';
-  return null;
 }

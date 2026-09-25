@@ -5,18 +5,21 @@ export function ifaceName(m: Model, id: string): string {
 }
 
 export function endpointLabel(e: Endpoint, m: Model): string {
+  const not = e.not ? 'Not ' : '';
   switch (e.type) {
     case 'any':
       return 'Any';
     case 'self':
-      return 'This firewall';
+      return `${not}This firewall`;
     case 'net':
-      return `${ifaceName(m, e.iface)} network`;
+      return `${not}${ifaceName(m, e.iface)} network`;
+    case 'ifaddr':
+      return `${not}${ifaceName(m, e.iface)} address`;
     case 'host':
     case 'network':
-      return e.value;
+      return `${not}${e.value}`;
     case 'alias':
-      return e.alias;
+      return `${not}${e.alias}`;
   }
 }
 
@@ -26,6 +29,9 @@ export const protocolLabel: Record<Protocol, string> = {
   udp: 'UDP',
   'tcp/udp': 'TCP/UDP',
   icmp: 'ICMP',
+  icmp6: 'ICMPv6',
+  esp: 'ESP',
+  gre: 'GRE',
 };
 
 const wellKnown: Record<string, string> = {
@@ -36,6 +42,7 @@ const wellKnown: Record<string, string> = {
 export function portLabel(spec?: string): string {
   if (!spec) return 'Any';
   if (spec.startsWith('alias:')) return spec.slice(6);
+  if (!/^\d+$/.test(spec)) return spec;
   return wellKnown[spec] ? `${spec} (${wellKnown[spec]})` : spec;
 }
 

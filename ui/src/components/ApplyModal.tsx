@@ -13,13 +13,14 @@ import { FileDiff } from './FileDiff';
 const applyStep: Record<Section, string> = {
   system: 'Updating system settings',
   interfaces: 'Reconfiguring network interfaces',
+  routing: 'Updating routes',
   firewall: 'Loading firewall rules',
   dhcp: 'Restarting the DHCP server',
   dns: 'Reloading the DNS resolver',
   wireguard: 'Updating the WireGuard tunnel',
 };
 
-const order: Section[] = ['system', 'interfaces', 'firewall', 'dhcp', 'dns', 'wireguard'];
+const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard'];
 
 function ChangeList() {
   const { changes } = useStore();

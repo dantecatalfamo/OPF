@@ -27,6 +27,23 @@ generated files as its outputs.
 - [ ] Live data (interface stats, states, leases, WireGuard peers, pf
       log) from the parsers in `legacy/`.
 
+### pf coverage still missing from the UI
+
+Reachable today only through raw rules or custom pf blocks:
+
+- [ ] Traffic shaping: `queue` definitions (bandwidth, min/max, flows)
+      and assigning rules to queues.
+- [ ] Anchors, including a managed anchor per service.
+- [ ] Multi-WAN: gateway groups (`route-to` pools with failover driven
+      by gateway health), and `route-to` on a DHCP gateway, which the
+      generator currently resolves to the live address.
+- [ ] `binat-to` (1:1 NAT), `af-to` (NAT64), `divert-to`.
+- [ ] CARP and pfsync for high availability.
+- [ ] Parse pasted pf rules back into guided form where possible.
+- [ ] A packet tester: "what happens to tcp 192.168.20.5 → 192.168.1.20:445?"
+      evaluated against the ruleset.
+- [ ] IPv6: interfaces, NAT and rules are IPv4-first today.
+
 ## Verify on real OpenBSD
 
 Everything below has only run on macOS, where pledge and unveil are
