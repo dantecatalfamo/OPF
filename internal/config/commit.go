@@ -63,7 +63,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 	}
 	for _, c := range changes {
 		f := c.File
-		old, existed, err := s.Live(f)
+		old, existed, err := s.live(f)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 				return nil, err
 			}
 		}
-		staged, _, err := s.Staged(f)
+		staged, _, err := s.staged(f)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +106,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 			continue
 		}
 		f, _ := s.Lookup(ef.Name)
-		staged, _, err := s.Staged(f)
+		staged, _, err := s.staged(f)
 		if err != nil {
 			return fail(err)
 		}
@@ -316,7 +316,7 @@ func (s *Store) restage(e *Entry) error {
 			errs = append(errs, err)
 			continue
 		}
-		if _, staged, _ := s.Staged(f); staged {
+		if _, staged, _ := s.staged(f); staged {
 			continue
 		}
 		data, err := os.ReadFile(s.historyFile(e.ID, "new", f.Path))

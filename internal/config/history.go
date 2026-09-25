@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"time"
 )
@@ -100,7 +101,16 @@ func (s *Store) History() ([]*Entry, error) {
 }
 
 // EntryDiff shows what a commit changed in one file.
-func (s *Store) EntryDiff(e *Entry, ef EntryFile) (string, error) {
+func (s *Store) EntryDiff(id, name string) (string, error) {
+	e, err := s.Entry(id)
+	if err != nil {
+		return "", err
+	}
+	i := slices.IndexFunc(e.Files, func(ef EntryFile) bool { return ef.Name == name })
+	if i < 0 {
+		return "", fmt.Errorf("%s is not part of commit %s", name, id)
+	}
+	ef := e.Files[i]
 	return Diff(s.historyFile(e.ID, "old", ef.Path), s.historyFile(e.ID, "new", ef.Path),
 		ef.Path+" (before)", ef.Path+" (after)")
 }
@@ -110,10 +120,6 @@ func (s *Store) EntryDiff(e *Entry, ef EntryFile) (string, error) {
 // so it gets the same checks and confirmation as any other change.
 func (s *Store) StageFromHistory(id, name string, old bool) error {
 	e, err := s.Entry(id)
-	if err != nil {
-		return err
-	}
-	f, err := s.Lookup(name)
 	if err != nil {
 		return err
 	}
@@ -132,7 +138,7 @@ func (s *Store) StageFromHistory(id, name string, old bool) error {
 		if err != nil {
 			return err
 		}
-		return s.Stage(f, data)
+		return s.Stage(name, data)
 	}
 	return fmt.Errorf("%s is not part of commit %s", name, id)
 }

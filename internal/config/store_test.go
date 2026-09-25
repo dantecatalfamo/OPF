@@ -88,18 +88,9 @@ func readLive(t *testing.T, root, path string) string {
 	return string(data)
 }
 
-func mustLookup(t *testing.T, s *Store, name string) File {
-	t.Helper()
-	f, err := s.Lookup(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return f
-}
-
 func stage(t *testing.T, s *Store, name, data string) {
 	t.Helper()
-	if err := s.Stage(mustLookup(t, s, name), []byte(data)); err != nil {
+	if err := s.Stage(name, []byte(data)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -120,7 +111,7 @@ func staged(t *testing.T, s *Store) []string {
 func TestStageNormalizesAndUnstagesWhenUnchanged(t *testing.T) {
 	s, _, _ := newTestStore(t, time.Minute)
 	stage(t, s, "pf", "block\r\npass")
-	data, ok, _ := s.Staged(mustLookup(t, s, "pf"))
+	data, ok, _ := s.Staged("pf")
 	if !ok || string(data) != "block\npass\n" {
 		t.Fatalf("staged = %q, %v", data, ok)
 	}
@@ -164,7 +155,7 @@ func TestCommitInstallsAndReloadsRunningService(t *testing.T) {
 	if err := s.StageFromHistory(e.ID, "ntpd", true); err != nil {
 		t.Fatal(err)
 	}
-	data, _, _ := s.Staged(mustLookup(t, s, "ntpd"))
+	data, _, _ := s.Staged("ntpd")
 	if string(data) != "servers pool.ntp.org\n" {
 		t.Fatalf("restaged old = %q", data)
 	}
@@ -262,7 +253,7 @@ func TestConfirm(t *testing.T) {
 	if got := readLive(t, root, "/etc/pf.conf"); got != "pass\n" {
 		t.Fatalf("pf.conf written before confirmation: %q", got)
 	}
-	if err := s.Stage(mustLookup(t, s, "ntpd"), []byte("x\n")); !errors.Is(err, ErrPending) {
+	if err := s.Stage("ntpd", []byte("x\n")); !errors.Is(err, ErrPending) {
 		t.Fatalf("staging while pending: %v", err)
 	}
 

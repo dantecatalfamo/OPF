@@ -109,29 +109,49 @@ func (s *Store) basePath() string            { return filepath.Join(s.dir, "cand
 
 // Live returns the file as it is on the system. A missing file is not
 // an error; exists reports whether it was there.
-func (s *Store) Live(f File) (data []byte, exists bool, err error) {
-	return readOptional(s.livePath(f))
+func (s *Store) Live(name string) (data []byte, exists bool, err error) {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return nil, false, err
+	}
+	return s.live(f)
 }
 
-// Staged returns the staged contents of f, if any.
-func (s *Store) Staged(f File) (data []byte, staged bool, err error) {
-	return readOptional(s.candidatePath(f))
+func (s *Store) live(f File) ([]byte, bool, error) { return readOptional(s.livePath(f)) }
+
+// Staged returns the staged contents of a file, if any.
+func (s *Store) Staged(name string) (data []byte, staged bool, err error) {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return nil, false, err
+	}
+	return s.staged(f)
 }
+
+func (s *Store) staged(f File) ([]byte, bool, error) { return readOptional(s.candidatePath(f)) }
 
 // Current returns the staged contents if there are any, else the live
 // contents. This is what an editor should show.
-func (s *Store) Current(f File) ([]byte, error) {
-	data, staged, err := s.Staged(f)
+func (s *Store) Current(name string) ([]byte, error) {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return nil, err
+	}
+	data, staged, err := s.staged(f)
 	if err != nil || staged {
 		return data, err
 	}
-	data, _, err = s.Live(f)
+	data, _, err = s.live(f)
 	return data, err
 }
 
-// Stage records new contents for f without touching the live file.
-// Staging contents identical to the live file unstages it.
-func (s *Store) Stage(f File, data []byte) error {
+// Stage records new contents for a file without touching the live
+// file. Staging contents identical to the live file unstages it.
+func (s *Store) Stage(name string, data []byte) error {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending != nil {
@@ -141,7 +161,7 @@ func (s *Store) Stage(f File, data []byte) error {
 }
 
 func (s *Store) stage(f File, data []byte) error {
-	live, _, err := s.Live(f)
+	live, _, err := s.live(f)
 	if err != nil {
 		return err
 	}
@@ -161,7 +181,11 @@ func (s *Store) stage(f File, data []byte) error {
 	return writeFileAtomic(s.candidatePath(f), data, 0600)
 }
 
-func (s *Store) Discard(f File) error {
+func (s *Store) Discard(name string) error {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.discard(f)
@@ -205,7 +229,7 @@ func (s *Store) Changes() ([]Change, error) {
 	}
 	var out []Change
 	for _, f := range s.files {
-		if _, staged, err := s.Staged(f); err != nil {
+		if _, staged, err := s.staged(f); err != nil {
 			return nil, err
 		} else if !staged {
 			continue
@@ -226,7 +250,11 @@ func (s *Store) Changes() ([]Change, error) {
 // CheckContent runs f's checker against arbitrary contents without
 // staging them. ok is false if the check failed; err is only set if the
 // check couldn't be run at all.
-func (s *Store) CheckContent(ctx context.Context, f File, data []byte) (output string, ok bool, err error) {
+func (s *Store) CheckContent(ctx context.Context, name string, data []byte) (output string, ok bool, err error) {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return "", false, err
+	}
 	if f.Check == nil {
 		return "No checker is available for this file.", true, nil
 	}

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"embed"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -24,12 +25,12 @@ var assets embed.FS
 var pages = []string{"index.html", "file.html", "changes.html", "history.html", "entry.html", "error.html"}
 
 type Server struct {
-	store *config.Store
+	store config.Manager
 	tmpl  map[string]*template.Template
 	mux   *http.ServeMux
 }
 
-func New(store *config.Store) (*Server, error) {
+func New(store config.Manager) (*Server, error) {
 	s := &Server{store: store, tmpl: map[string]*template.Template{}, mux: http.NewServeMux()}
 	funcs := template.FuncMap{"difflines": diffLines}
 	for _, p := range pages {
@@ -136,6 +137,15 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	s.render(w, "error.html", "Error", err.Error())
 }
 
+func (s *Server) lookup(name string) (config.File, error) {
+	for _, f := range s.store.Files() {
+		if f.Name == name {
+			return f, nil
+		}
+	}
+	return config.File{}, fmt.Errorf("%w: %s", config.ErrUnknownFile, name)
+}
+
 // changed tells the banner to refresh.
 func changed(w http.ResponseWriter) { w.Header().Set("HX-Trigger", "opf-changed") }
 
@@ -148,12 +158,12 @@ type fileRow struct {
 func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	var rows []fileRow
 	for _, f := range s.store.Files() {
-		_, staged, err := s.store.Staged(f)
+		_, staged, err := s.store.Staged(f.Name)
 		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		_, exists, err := s.store.Live(f)
+		_, exists, err := s.store.Live(f.Name)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -171,11 +181,11 @@ type fileData struct {
 }
 
 func (s *Server) fileData(f config.File) (fileData, error) {
-	content, err := s.store.Current(f)
+	content, err := s.store.Current(f.Name)
 	if err != nil {
 		return fileData{}, err
 	}
-	_, exists, err := s.store.Live(f)
+	_, exists, err := s.store.Live(f.Name)
 	if err != nil {
 		return fileData{}, err
 	}
@@ -193,7 +203,7 @@ func (s *Server) fileData(f config.File) (fileData, error) {
 }
 
 func (s *Server) editFile(w http.ResponseWriter, r *http.Request) {
-	f, err := s.store.Lookup(r.PathValue("name"))
+	f, err := s.lookup(r.PathValue("name"))
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -207,12 +217,12 @@ func (s *Server) editFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) stageFile(w http.ResponseWriter, r *http.Request) {
-	f, err := s.store.Lookup(r.PathValue("name"))
+	f, err := s.lookup(r.PathValue("name"))
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	if err := s.store.Stage(f, []byte(r.FormValue("content"))); err != nil {
+	if err := s.store.Stage(f.Name, []byte(r.FormValue("content"))); err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -231,12 +241,12 @@ type checkResult struct {
 }
 
 func (s *Server) checkFile(w http.ResponseWriter, r *http.Request) {
-	f, err := s.store.Lookup(r.PathValue("name"))
+	f, err := s.lookup(r.PathValue("name"))
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	out, ok, err := s.store.CheckContent(r.Context(), f, []byte(r.FormValue("content")))
+	out, ok, err := s.store.CheckContent(r.Context(), f.Name, []byte(r.FormValue("content")))
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -245,12 +255,12 @@ func (s *Server) checkFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) discardFile(w http.ResponseWriter, r *http.Request) {
-	f, err := s.store.Lookup(r.PathValue("name"))
+	f, err := s.lookup(r.PathValue("name"))
 	if err != nil {
 		s.fail(w, r, err)
 		return
 	}
-	if err := s.store.Discard(f); err != nil {
+	if err := s.store.Discard(f.Name); err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -346,7 +356,7 @@ func (s *Server) entry(w http.ResponseWriter, r *http.Request) {
 	}
 	d := entryData{Entry: e}
 	for _, ef := range e.Files {
-		diff, err := s.store.EntryDiff(e, ef)
+		diff, err := s.store.EntryDiff(e.ID, ef.Name)
 		if err != nil {
 			s.fail(w, r, err)
 			return
