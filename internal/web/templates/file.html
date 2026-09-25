@@ -1,0 +1,17 @@
+{{define "content"}}
+<p class="muted"><code>{{.File.Path}}</code> — {{.File.Desc}}{{if not .Exists}} (doesn't exist yet){{end}}</p>
+<form hx-post="/files/{{.File.Name}}" hx-target="#result">
+  <textarea name="content" spellcheck="false" autocapitalize="off" autocomplete="off" rows="28">
+{{.Content}}</textarea>
+  <div class="actions">
+    <button type="submit">Stage</button>
+    {{if .File.Check}}<button type="button" class="secondary" hx-post="/files/{{.File.Name}}/check" hx-include="closest form" hx-target="#result">Check</button>{{end}}
+  </div>
+</form>
+{{if .Change}}
+<form method="post" action="/files/{{.File.Name}}/discard" class="inline">
+  <button class="secondary">Discard staged changes</button>
+</form>
+{{end}}
+<div id="result">{{if .Change}}{{template "diff" .Change.Diff}}{{end}}</div>
+{{end}}

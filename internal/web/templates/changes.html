@@ -1,0 +1,25 @@
+{{define "content"}}
+<section id="changes">
+{{if .}}
+  {{range .}}
+  <article>
+    <h2><a href="/files/{{.File.Name}}">{{.File.Path}}</a>
+      {{if .File.Confirm}}<span class="tag" title="Loaded from the staged copy; saved only once confirmed">needs confirmation</span>{{end}}
+    </h2>
+    {{if .Drifted}}<div class="msg bad">This file changed on disk after it was staged. Discard and re-stage it before committing.</div>{{end}}
+    {{template "diff" .Diff}}
+    <form method="post" action="/files/{{.File.Name}}/discard" class="inline">
+      <input type="hidden" name="next" value="changes">
+      <button class="secondary">Discard</button>
+    </form>
+  </article>
+  {{end}}
+  <div class="actions">
+    <button hx-post="/commit" hx-target="#changes" hx-swap="outerHTML" hx-disabled-elt="this">Check and commit</button>
+    <form method="post" action="/changes/discard" class="inline"><button class="secondary">Discard all</button></form>
+  </div>
+{{else}}
+  <p>Nothing is staged. <a href="/">Edit a file</a> to get started.</p>
+{{end}}
+</section>
+{{end}}

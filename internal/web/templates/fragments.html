@@ -1,0 +1,61 @@
+{{define "banner"}}
+<div id="banner" hx-get="/banner" hx-trigger="opf-changed from:body{{if .Pending}}, every 1s{{end}}" hx-swap="outerHTML">
+{{- if .Pending}}
+  <div class="banner warn">
+    <span>Commit <a href="/history/{{.Pending.ID}}">{{.Pending.ID}}</a> is loaded but not saved.
+    Confirm within <strong>{{.Remaining}}s</strong> or it will be reverted.</span>
+    <button hx-post="/confirm" hx-target="#banner" hx-swap="outerHTML">Confirm</button>
+    <button class="secondary" hx-post="/revert" hx-target="#banner" hx-swap="outerHTML">Revert now</button>
+  </div>
+{{- else}}
+  {{- if .Reverted}}
+  <div class="banner bad">Commit <a href="/history/{{.Reverted.ID}}">{{.Reverted.ID}}</a> was reverted. Its changes are staged again.</div>
+  {{- end}}
+  {{- if .Staged}}
+  <div class="banner">{{.Staged}} staged change{{if ne .Staged 1}}s{{end}} not yet applied. <a href="/changes">Review and commit</a></div>
+  {{- end}}
+{{- end}}
+</div>
+{{end}}
+
+{{define "diff"}}<pre class="diff">{{range difflines .}}<span class="{{.Class}}">{{.Text}}</span>
+{{end}}</pre>{{end}}
+
+{{define "error"}}<div class="msg bad">{{.}}</div>{{end}}
+
+{{define "stage-result"}}
+{{- if .Change}}
+<div class="msg ok">Staged. <a href="/changes">Review all changes</a></div>
+{{template "diff" .Change.Diff}}
+{{- else}}
+<div class="msg">Matches the live file; nothing staged.</div>
+{{- end}}
+{{end}}
+
+{{define "check-result"}}
+<div class="msg {{if .OK}}ok{{else}}bad{{end}}">{{if .OK}}Check passed.{{else}}Check failed.{{end}}</div>
+{{if .Output}}<pre>{{.Output}}</pre>{{end}}
+{{end}}
+
+{{define "commit-result"}}
+<section id="changes">
+{{- if .Check}}
+  <div class="msg bad">{{.Check.File}} failed its check. Nothing was changed.</div>
+  <pre>{{.Check.Output}}</pre>
+  <p><a href="/changes">Back to changes</a></p>
+{{- else if .Drift}}
+  <div class="msg bad">{{.Err}}</div>
+  <p><a href="/changes">Back to changes</a></p>
+{{- else if .Err}}
+  <div class="msg bad">{{.Err}}</div>
+  {{if .Entry}}<pre>{{.Entry.Log}}</pre>{{end}}
+  <p><a href="/changes">Back to changes</a></p>
+{{- else if eq .Entry.Status "pending"}}
+  <div class="msg warn">Applied. Confirm using the banner above, or the changes will be reverted.</div>
+  <pre>{{.Entry.Log}}</pre>
+{{- else}}
+  <div class="msg ok">Committed as <a href="/history/{{.Entry.ID}}">{{.Entry.ID}}</a>.</div>
+  <pre>{{.Entry.Log}}</pre>
+{{- end}}
+</section>
+{{end}}
