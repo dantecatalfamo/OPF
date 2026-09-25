@@ -1,0 +1,43 @@
+{
+  "name": "opf-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:preview": "tsc && vite build --mode preview && node scripts/fragment.mjs dist-preview/index.html dist-preview/opf-console.html",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "6.3.1",
+    "@dnd-kit/sortable": "10.0.0",
+    "@dnd-kit/utilities": "3.2.2",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@mantine/charts": "8.3.18",
+    "@mantine/core": "8.3.18",
+    "@mantine/form": "8.3.18",
+    "@mantine/hooks": "8.3.18",
+    "@mantine/notifications": "8.3.18",
+    "@tabler/icons-react": "3.48.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "7.18.4",
+    "recharts": "2.15.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "postcss": "8.5.28",
+    "postcss-preset-mantine": "1.18.0",
+    "postcss-simple-vars": "7.0.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.1",
+    "vite-plugin-singlefile": "2.3.3"
+  },
+  "overrides": {
+    "react-is": "^19.0.0"
+  }
+}

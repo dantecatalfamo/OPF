@@ -6,6 +6,18 @@ OPF edits them, validates them with the base system's own tools, and
 activates them with `pfctl`, `rcctl` and friends. Anything done over SSH
 by hand shows up in the UI and the other way around.
 
+## Web interface
+
+The appliance UI lives in `ui/` (React, Mantine, TypeScript). For now
+it runs on sample data from `ui/src/model/`:
+
+```sh
+cd ui
+npm install
+npm run dev            # http://localhost:5173
+npm run build:preview  # single-file build in ui/dist-preview/
+```
+
 ## How changes work
 
 1. **Stage.** Edits are saved under `/var/opf/candidate/`, mirroring

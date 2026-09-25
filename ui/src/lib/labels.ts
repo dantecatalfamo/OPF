@@ -1,0 +1,42 @@
+import type { Endpoint, Model, Protocol } from '../model/types';
+
+export function ifaceName(m: Model, id: string): string {
+  return m.interfaces.find((i) => i.id === id)?.name ?? id;
+}
+
+export function endpointLabel(e: Endpoint, m: Model): string {
+  switch (e.type) {
+    case 'any':
+      return 'Any';
+    case 'self':
+      return 'This firewall';
+    case 'net':
+      return `${ifaceName(m, e.iface)} network`;
+    case 'host':
+    case 'network':
+      return e.value;
+    case 'alias':
+      return e.alias;
+  }
+}
+
+export const protocolLabel: Record<Protocol, string> = {
+  any: 'Any',
+  tcp: 'TCP',
+  udp: 'UDP',
+  'tcp/udp': 'TCP/UDP',
+  icmp: 'ICMP',
+};
+
+const wellKnown: Record<string, string> = {
+  '22': 'SSH', '53': 'DNS', '80': 'HTTP', '123': 'NTP', '443': 'HTTPS', '51820': 'WireGuard',
+  '3389': 'RDP', '445': 'SMB', '25': 'SMTP', '993': 'IMAPS', '587': 'Submission',
+};
+
+export function portLabel(spec?: string): string {
+  if (!spec) return 'Any';
+  if (spec.startsWith('alias:')) return spec.slice(6);
+  return wellKnown[spec] ? `${spec} (${wellKnown[spec]})` : spec;
+}
+
+export const commonPorts = Object.entries(wellKnown).map(([value, name]) => ({ value, label: `${value} · ${name}` }));

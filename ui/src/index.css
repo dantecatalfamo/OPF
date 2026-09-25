@@ -1,0 +1,62 @@
+:root {
+  --opf-bg: var(--mantine-color-gray-0);
+  --opf-surface: var(--mantine-color-white);
+  --opf-line: var(--mantine-color-gray-2);
+}
+[data-mantine-color-scheme='dark'] {
+  --opf-bg: var(--mantine-color-dark-8);
+  --opf-surface: var(--mantine-color-dark-7);
+  --opf-line: var(--mantine-color-dark-5);
+}
+body {
+  background: var(--opf-bg);
+}
+.mono {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.92em;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.diff {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  border: 1px solid var(--opf-line);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--opf-bg);
+  padding-block: 6px;
+}
+.diff > div {
+  padding-inline: 12px;
+}
+.diff .add {
+  background: light-dark(var(--mantine-color-teal-0), rgba(18, 184, 134, 0.12));
+  color: light-dark(var(--mantine-color-teal-9), var(--mantine-color-teal-3));
+}
+.diff .del {
+  background: light-dark(var(--mantine-color-red-0), rgba(250, 82, 82, 0.12));
+  color: light-dark(var(--mantine-color-red-9), var(--mantine-color-red-3));
+}
+.diff .gap {
+  color: var(--mantine-color-dimmed);
+  font-style: italic;
+}
+.drag-row[data-dragging='true'] {
+  background: var(--opf-surface);
+  box-shadow: var(--mantine-shadow-md);
+  position: relative;
+  z-index: 2;
+}
+@keyframes opf-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 165, 38, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(224, 165, 38, 0); }
+}
+.pulse {
+  animation: opf-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse { animation: none; }
+}

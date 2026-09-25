@@ -3,6 +3,30 @@
 Things known to need more work, roughly by priority. Not a roadmap of
 new features; see "Planned next" in the README for those.
 
+## Direction change (appliance UI)
+
+Decided: the user never edits config files. One model file
+(`/var/opf/config.json`) is the source of truth and every OpenBSD file
+is generated from it; the UI is React + Mantine (`ui/`), served by the
+Go binary. The staging/commit/confirm/history engine stays, with
+generated files as its outputs.
+
+- [ ] Go: config model types matching `ui/src/model/types.ts`, and
+      generators for pf.conf, hostname.if, dhcpd.conf, unbound.conf,
+      myname and ntpd.conf (`ui/src/model/generate.ts` is the draft).
+      Golden-file tests for each generator.
+- [ ] Stage the model instead of raw files; Changes becomes a list of
+      readable change summaries, with generated-file diffs as detail.
+- [ ] JSON API for the UI, replacing the mock store in
+      `ui/src/model/store.tsx`; embed `ui/dist` in the binary. Remove the
+      htmx templates in `internal/web` once the API exists.
+- [ ] Hand-edited generated files: detect and warn before overwriting.
+- [ ] First-boot setup wizard (WAN, LAN, admin password).
+- [ ] Import an existing hand-written system into the model, or state
+      clearly that OPF takes over a fresh install.
+- [ ] Live data (interface stats, states, leases, WireGuard peers, pf
+      log) from the parsers in `legacy/`.
+
 ## Verify on real OpenBSD
 
 Everything below has only run on macOS, where pledge and unveil are
