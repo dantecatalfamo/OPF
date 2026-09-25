@@ -32,6 +32,36 @@ page and committing it like any other change.
 The managed files and how to check and apply each one are listed in
 `internal/config/registry.go`.
 
+## Processes
+
+OPF runs as two processes, like the OpenBSD base daemons:
+
+- The **parent** stays root. It owns the staging area and history, runs
+  every check and apply command, and holds the confirmation timers. It
+  never parses HTTP. On OpenBSD it pledges `stdio rpath wpath cpath
+  fattr chown proc exec id` and unveils only the directories of the
+  managed files, its state directory and the command directories.
+- The **web process** is the same binary re-executed as `_opf`. It
+  serves HTTP on a socket the parent opened, can't see the filesystem
+  at all (`unveil`) and pledges `stdio rpath inet`. It reaches the
+  parent through a fixed set of calls over a socketpair
+  (`internal/privsep`), and names files rather than passing paths or
+  commands, so it can't choose what is run or written.
+
+Timers live in the parent, so an unconfirmed commit is reverted even if
+the web process crashes; the parent restarts it. Stopping OPF reverts
+an unconfirmed commit too.
+
+## Installing
+
+```sh
+useradd -s /sbin/nologin -d /var/empty -L daemon -c "OPF web" _opf
+install -m 555 opf /usr/local/sbin/opf
+install -m 555 etc/rc.d/opf /etc/rc.d/opf
+rcctl enable opf
+rcctl start opf
+```
+
 ## Development
 
 Requires Go 1.25+.
@@ -49,13 +79,10 @@ managed path so nothing outside `dev/run` is touched.
 ## Status
 
 Early rewrite. **There is no authentication yet**, so OPF listens on
-localhost only; reach it with `ssh -L 8080:127.0.0.1:8080`. It must
-currently run as root.
+localhost only; reach it with `ssh -L 8080:127.0.0.1:8080`.
 
 Planned next:
 
-- Privilege separation: an unprivileged web process talking to a small
-  root helper, with `pledge(2)`/`unveil(2)`
 - Login against system accounts (`auth_userokay(3)`) and TLS
 - `hostname.if(5)` files, applied with `sh /etc/netstart <if>`
 - Service management (`rcctl`), with enable/disable staged through
