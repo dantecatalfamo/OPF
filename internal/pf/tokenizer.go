@@ -82,6 +82,9 @@ type Token struct {
 	Value  string
 	Line   int
 	Column int
+	// Pos and End are the token's byte offsets in the input, so text
+	// can be taken from the source exactly rather than rebuilt.
+	Pos, End int
 }
 
 // pf keywords. We recognize these but also allow them as identifiers
@@ -175,10 +178,6 @@ func (t *Tokenizer) skipWhitespace() {
 		r := t.peek()
 		if r == ' ' || r == '\t' {
 			t.advance()
-		} else if r == '\\' && t.peekN(1) == '\n' {
-			// Line continuation
-			t.advance() // skip \
-			t.advance() // skip \n
 		} else {
 			break
 		}
@@ -199,7 +198,19 @@ func (t *Tokenizer) token(typ TokenType, value string, startLine, startCol int) 
 // Next returns the next token.
 func (t *Tokenizer) Next() Token {
 	t.skipWhitespace()
+	for t.pos < len(t.input) && t.peek() == '#' {
+		t.skipComment()
+		t.skipWhitespace()
+	}
+	start := t.pos
+	tok := t.scan()
+	tok.Pos, tok.End = start, t.pos
+	return tok
+}
 
+// scan reads one token at the current position, past any whitespace
+// and comments.
+func (t *Tokenizer) scan() Token {
 	if t.pos >= len(t.input) {
 		return Token{Type: TokenEOF, Line: t.line, Column: t.col}
 	}
@@ -207,12 +218,6 @@ func (t *Tokenizer) Next() Token {
 	startLine := t.line
 	startCol := t.col
 	r := t.peek()
-
-	// Comment
-	if r == '#' {
-		t.skipComment()
-		return t.Next()
-	}
 
 	// Newline
 	if r == '\n' {
@@ -332,17 +337,13 @@ func (t *Tokenizer) scanString() Token {
 			t.advance()
 			break
 		}
-		// As in pf's parse.y: a backslash escapes a quote, space or tab,
-		// joins lines before a newline, and is kept literally otherwise.
+		// As in pf's parse.y: a backslash escapes a quote, space or tab
+		// and is kept literally otherwise. Continuations are already gone.
 		if r == '\\' {
 			switch t.peekN(1) {
 			case '"', ' ', '\t':
 				t.advance()
 				r = t.peek()
-			case '\n':
-				t.advance()
-				t.advance()
-				continue
 			}
 		}
 		sb.WriteByte(byte(r))
@@ -574,14 +575,51 @@ func isIPv6(s string) bool {
 
 // Tokenize returns all tokens from the input.
 func Tokenize(input string) []Token {
-	t := NewTokenizer(input)
+	tokens, _ := tokenize(input)
+	return tokens
+}
+
+// tokenize also returns the text the tokens' Pos and End refer to: the
+// input with line continuations removed. As in pf's lexer (parse.y
+// lgetc), a backslash-newline is dropped wherever it appears, even in
+// the middle of a word. Line and Column still point into the original
+// input.
+func tokenize(input string) ([]Token, string) {
+	joined, line, col := joinContinuations(input)
+	t := NewTokenizer(joined)
 	var tokens []Token
 	for {
 		tok := t.Next()
+		if tok.Pos < len(joined) {
+			tok.Line, tok.Column = line[tok.Pos], col[tok.Pos]
+		}
 		tokens = append(tokens, tok)
 		if tok.Type == TokenEOF {
 			break
 		}
 	}
-	return tokens
+	return tokens, joined
+}
+
+// joinContinuations removes every backslash-newline and returns, for
+// each byte of the result, its line and column in the original.
+func joinContinuations(input string) (string, []int, []int) {
+	var b strings.Builder
+	line, col := make([]int, 0, len(input)), make([]int, 0, len(input))
+	ln, cl := 1, 1
+	for i := 0; i < len(input); i++ {
+		if input[i] == '\\' && i+1 < len(input) && input[i+1] == '\n' {
+			i++
+			ln, cl = ln+1, 1
+			continue
+		}
+		b.WriteByte(input[i])
+		line, col = append(line, ln), append(col, cl)
+		if input[i] == '\n' {
+			ln, cl = ln+1, 1
+		} else {
+			cl++
+		}
+	}
+	return b.String(), line, col
 }

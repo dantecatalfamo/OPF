@@ -175,10 +175,12 @@ In order. Each step has details further down.
 - [x] **The mock UI couldn't apply.** `make mock` runs `opf -mock` with
       Vite proxying `/api` to it; the preview build uses the TypeScript
       generator offline.
-- [ ] **Raw rules are rebuilt from tokens.** `parseAsRaw` joins tokens
-      with spaces, so `$lan:network` becomes `$lan : network` and
-      `($wan:0)` becomes `( $wan : 0 )`: invalid pf. Take the rule's text
-      from the original input instead.
+- [x] **Raw rules were rebuilt from tokens.** `parseAsRaw` joined
+      tokens with spaces (`$lan : network`, invalid pf) and re-quoted
+      strings with Go's `%q`. Tokens now carry byte offsets and raw text
+      is the source slice. Continuations are removed before tokenizing,
+      as pf's lexer does, even mid-word. `FuzzRawRuleText` checks raw
+      text always comes from the input.
 - [ ] **Confirm is client-side only.** Keep and revert don't reach the
       backend; the backend never loads anything today.
 - [ ] **Unbounded request bodies** on every `/api/*` endpoint

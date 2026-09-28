@@ -2,6 +2,7 @@ package pf
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -293,4 +294,56 @@ func TestQuoteRoundTrip(t *testing.T) {
 			t.Errorf("quote(%q) = %s, read back as %+v", v, quote(v), toks[1])
 		}
 	}
+}
+
+// Raw rules keep their original text; rebuilding it from tokens split
+// "$lan:network" into "$lan : network", which pf rejects.
+func TestRawRuleKeepsSourceText(t *testing.T) {
+	for in, want := range map[string]string{
+		"match out on $wan from $lan:network nat-to ($wan:0)":              "match out on $wan from $lan:network nat-to ($wan:0)",
+		"pass in on $wan proto tcp to port 443 rdr-to 192.168.1.20  # web": "pass in on $wan proto tcp to port 443 rdr-to 192.168.1.20",
+		`anchor "ftp-proxy/*"`: `anchor "ftp-proxy/*"`,
+		`pass in all label "a \"quoted\" label" divert-to 127.0.0.1 port 8021`: `pass in all label "a \"quoted\" label" divert-to 127.0.0.1 port 8021`,
+		"pass in on $wan \\\nproto tcp rdr-to 10.0.0.1":                        "pass in on $wan proto tcp rdr-to 10.0.0.1",
+	} {
+		rule, err := ParseRule(in, nil)
+		if err != nil || rule == nil || rule.Kind != "raw" {
+			t.Errorf("ParseRule(%q) = %+v, %v; want raw", in, rule, err)
+			continue
+		}
+		if rule.Text != want {
+			t.Errorf("ParseRule(%q).Text = %q, want %q", in, rule.Text, want)
+		}
+	}
+
+	conf := "set skip on lo\n\nmatch out on egress from (lan:network) nat-to (egress:0)  # nat\n" +
+		"pass in on egress proto tcp to (egress) port 80 rdr-to 10.0.0.2 port 8080\n"
+	res := ParsePfConf(conf, nil)
+	want := []string{
+		"set skip on lo",
+		"match out on egress from (lan:network) nat-to (egress:0)",
+		"pass in on egress proto tcp to (egress) port 80 rdr-to 10.0.0.2 port 8080",
+	}
+	if len(res.Rules) != len(want) {
+		t.Fatalf("got %d rules: %+v", len(res.Rules), res.Rules)
+	}
+	for i, w := range want {
+		if res.Rules[i].Text != w {
+			t.Errorf("rule %d text = %q, want %q", i, res.Rules[i].Text, w)
+		}
+	}
+}
+
+// A raw rule's text is always a piece of the input, never rebuilt.
+func FuzzRawRuleText(f *testing.F) {
+	f.Add("match out on $wan from $lan:network nat-to ($wan:0) # c\nanchor \"x/*\"\n")
+	f.Add("pass in on $wan \\\nproto tcp rdr-to 10.0.0.1")
+	f.Fuzz(func(t *testing.T, in string) {
+		joined := strings.ReplaceAll(in, "\\\n", "")
+		for _, r := range ParsePfConf(in, nil).Rules {
+			if r.Kind == "raw" && !strings.Contains(joined, r.Text) {
+				t.Fatalf("raw text %q isn't in the input %q", r.Text, in)
+			}
+		}
+	})
 }

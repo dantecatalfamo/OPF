@@ -146,3 +146,15 @@ func TestTokenize_StringBytes(t *testing.T) {
 		t.Fatalf("tokens = %+v", toks)
 	}
 }
+
+// Continuations are removed before tokenizing, like pf's lexer does,
+// even inside a word; positions still refer to the original lines.
+func TestTokenize_Continuations(t *testing.T) {
+	toks := Tokenize("pa\\\nss \\\nin\nblock")
+	if toks[0].Value != "pass" || toks[1].Value != "in" || toks[3].Value != "block" {
+		t.Fatalf("tokens = %+v", toks)
+	}
+	if toks[1].Line != 3 || toks[1].Column != 1 || toks[3].Line != 4 {
+		t.Errorf("positions: in at %d:%d, block at line %d", toks[1].Line, toks[1].Column, toks[3].Line)
+	}
+}

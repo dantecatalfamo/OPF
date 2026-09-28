@@ -6,7 +6,7 @@
       "enabled": true,
       "interfaces": [],
       "description": "",
-      "text": "match out on $wan from $lan : network nat-to ( $wan : 0 )"
+      "text": "match out on $wan from $lan:network nat-to ($wan:0)"
     },
     {
       "id": "",

@@ -9,6 +9,7 @@ import (
 
 // Parser converts pf.conf syntax to model types.
 type Parser struct {
+	input  string // text the tokens' offsets refer to, when known
 	tokens []Token
 	pos    int
 	model  *Model // for resolving macros and aliases
@@ -21,6 +22,23 @@ type Parser struct {
 }
 
 // NewParser creates a parser for the given tokens.
+// sourceText returns the input covering tokens[from:to], exactly as
+// written apart from line continuations, which pf's lexer removes too
+// (see tokenize). Rebuilding it from tokens would split "$lan:network"
+// into "$lan : network", which pf rejects.
+func (p *Parser) sourceText(from, to int) string {
+	first, last := p.tokens[from], p.tokens[to-1]
+	if p.input == "" || last.End > len(p.input) || first.Pos > last.End {
+		// No source (a parser built directly from tokens): rebuild it.
+		var parts []string
+		for _, tok := range p.tokens[from:to] {
+			parts = append(parts, tok.Value)
+		}
+		return strings.Join(parts, " ")
+	}
+	return p.input[first.Pos:last.End]
+}
+
 func NewParser(tokens []Token, model *Model) *Parser {
 	return &Parser{
 		tokens: tokens,
@@ -286,8 +304,9 @@ func (p *Parser) skipToNextLine() {
 
 // ParseRule parses a single pf rule from text.
 func ParseRule(line string, model *Model) (*Rule, error) {
-	tokens := Tokenize(line)
+	tokens, joined := tokenize(line)
 	p := NewParser(tokens, model)
+	p.input = joined
 	rule := p.parseRule()
 	if len(p.errors) > 0 {
 		return nil, fmt.Errorf("parse error at line %d, column %d: %s",
@@ -298,8 +317,9 @@ func ParseRule(line string, model *Model) (*Rule, error) {
 
 // ParsePfConf parses a full pf.conf file.
 func ParsePfConf(content string, model *Model) *ParseResult {
-	tokens := Tokenize(content)
+	tokens, joined := tokenize(content)
 	p := NewParser(tokens, model)
+	p.input = joined
 
 	result := &ParseResult{
 		Rules:    []Rule{},
@@ -685,28 +705,13 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 // parseAsRaw captures the rest of the line as a RawRule.
 func (p *Parser) parseAsRaw() *Rule {
 	startPos := p.pos
-	// Find line start in original tokens to capture full text
-	var parts []string
 	for !p.check(TokenNewline, TokenEOF) {
-		tok := p.advance()
-		switch tok.Type {
-		case TokenString:
-			parts = append(parts, fmt.Sprintf("%q", tok.Value))
-		case TokenMacro:
-			parts = append(parts, "$"+tok.Value)
-		case TokenTable:
-			parts = append(parts, "<"+tok.Value+">")
-		default:
-			parts = append(parts, tok.Value)
-		}
+		p.advance()
 	}
-
-	if len(parts) == 0 {
+	if p.pos == startPos {
 		return nil
 	}
-
-	// Reconstruct the line
-	text := strings.Join(parts, " ")
+	text := p.sourceText(startPos, p.pos)
 
 	// Check for description in label
 	var desc string
