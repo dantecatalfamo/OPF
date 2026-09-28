@@ -135,7 +135,7 @@ func TestCommitInstallsAndReloadsRunningService(t *testing.T) {
 	stage(t, s, "ntpd", "servers time.example\n")
 	stage(t, s, "rc", "ntpd_flags=\n") // file doesn't exist yet
 
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestCommitSkipsStoppedService(t *testing.T) {
 	s, r, _ := newTestStore(t, time.Minute)
 	r.fail = []string{"rcctl check ntpd"}
 	stage(t, s, "ntpd", "servers time.example\n")
-	if _, err := s.Commit(context.Background()); err != nil {
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	if r.ran("rcctl restart") {
@@ -186,7 +186,7 @@ func TestCheckFailureLeavesSystemAlone(t *testing.T) {
 	stage(t, s, "pf", "garbage\n")
 	stage(t, s, "ntpd", "servers time.example\n")
 
-	_, err := s.Commit(context.Background())
+	_, err := s.Commit(context.Background(), CommitInfo{})
 	var ce *CheckError
 	if !errors.As(err, &ce) || ce.File != "/etc/pf.conf" {
 		t.Fatalf("err = %v", err)
@@ -206,7 +206,7 @@ func TestDriftBlocksCommit(t *testing.T) {
 	s, _, root := newTestStore(t, time.Minute)
 	stage(t, s, "ntpd", "servers time.example\n")
 	writeLive(t, root, "/etc/ntpd.conf", "edited over ssh\n")
-	_, err := s.Commit(context.Background())
+	_, err := s.Commit(context.Background(), CommitInfo{})
 	var de *DriftError
 	if !errors.As(err, &de) {
 		t.Fatalf("err = %v", err)
@@ -222,7 +222,7 @@ func TestApplyFailureRevertsEverything(t *testing.T) {
 	stage(t, s, "ntpd", "servers time.example\n")
 	stage(t, s, "pf", "block\n")
 
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err == nil {
 		t.Fatal("expected failure")
 	}
@@ -244,7 +244,7 @@ func TestConfirm(t *testing.T) {
 	s, r, root := newTestStore(t, time.Minute)
 	stage(t, s, "pf", "block\n")
 
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestUnconfirmedCommitReverts(t *testing.T) {
 	stage(t, s, "pf", "block\n")
 	stage(t, s, "ntpd", "servers time.example\n")
 
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestRecoverRevertsPendingCommit(t *testing.T) {
 	s, r, root := newTestStore(t, time.Hour)
 	stage(t, s, "pf", "block\n")
 	stage(t, s, "ntpd", "servers time.example\n")
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func TestPatternFilesCommitFirst(t *testing.T) {
 	if got := staged(t, s); !reflect.DeepEqual(got, []string{"hostname.em0", "hostname.em1", "pf"}) {
 		t.Fatalf("changes in order %v", got)
 	}
-	e, err := s.Commit(context.Background())
+	e, err := s.Commit(context.Background(), CommitInfo{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestFileLog(t *testing.T) {
 	stage(t, s, "rc", "ntpd_flags=\n")
 	stage(t, s, "ntpd", "servers x\n")
 	stage(t, s, "ntpd", "") // same as the (missing) live file: unstaged
-	if _, err := s.Commit(context.Background()); err != nil {
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Confirm(); err != nil {
@@ -469,7 +469,7 @@ func TestFileLog(t *testing.T) {
 	// A second commit that isn't confirmed: rc.conf.local is restored.
 	stage(t, s, "rc", "sshd_flags=NO\n")
 	stage(t, s, "pf", "pass\n")
-	if _, err := s.Commit(context.Background()); err != nil {
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(2 * time.Second)

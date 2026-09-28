@@ -1,12 +1,13 @@
 // Package privsep splits OPF into two processes, in the style of the
 // OpenBSD base daemons:
 //
-//   - The parent keeps root, owns the config.Store and runs every system
-//     command. It never parses HTTP.
+//   - The parent keeps root, owns the configuration (appliance.Manager
+//     and the commit engine under it) and runs every system command. It
+//     never parses HTTP.
 //   - The child is re-executed from the same binary as an unprivileged
 //     user, serves the web UI on a listener opened by the parent, and
-//     reaches the Store only through a fixed set of RPC calls over a
-//     socketpair.
+//     reaches the configuration only through the model-level calls of
+//     appliance.API, over a socketpair. It can't name files or commands.
 //
 // Both processes restrict themselves with pledge(2) and unveil(2) on
 // OpenBSD. Confirmation timers live in the parent, so an unconfirmed
@@ -26,7 +27,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 )
 
 const childEnv = "OPF_PRIVSEP_CHILD"
@@ -41,7 +42,7 @@ const (
 func IsChild() bool { return os.Getenv(childEnv) == "1" }
 
 type ParentOptions struct {
-	Store      *config.Store
+	API        *appliance.Manager
 	Listener   net.Listener
 	User       string // unprivileged user the child runs as
 	Executable string // this binary, re-executed as the child
@@ -69,7 +70,7 @@ func RunParent(ctx context.Context, opts ParentOptions) error {
 		if err != nil {
 			return err
 		}
-		go Serve(opts.Store, conn)
+		go Serve(opts.API, conn)
 		exited := make(chan error, 1)
 		go func() { exited <- cmd.Wait() }()
 
@@ -156,9 +157,9 @@ func credential(name string) (*syscall.Credential, error) {
 }
 
 // RunChild connects to the parent, sandboxes the process and calls
-// serve with a Manager backed by the parent. It exits the process if
-// the parent goes away.
-func RunChild(serve func(config.Manager, net.Listener) error) error {
+// serve with an API backed by the parent. It exits the process if the
+// parent goes away.
+func RunChild(serve func(appliance.API, net.Listener) error) error {
 	if os.Getuid() == 0 || os.Geteuid() == 0 {
 		return errors.New("privsep: web process must not run as root")
 	}
@@ -174,10 +175,7 @@ func RunChild(serve func(config.Manager, net.Listener) error) error {
 	if err != nil {
 		return fmt.Errorf("privsep: listener: %w", err)
 	}
-	client, err := NewClient(conn)
-	if err != nil {
-		return err
-	}
+	client := NewClient(conn)
 	go func() {
 		err := client.Wait()
 		log.Printf("lost privileged process: %v", err)

@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
@@ -80,6 +81,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	api, err := appliance.New(store)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := privsep.SandboxParent(store.WritableDirs(), exe); err != nil {
 		log.Fatal(err)
 	}
@@ -88,7 +93,7 @@ func main() {
 	defer stop()
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
-		Store:      store,
+		API:        api,
 		Listener:   ln,
 		User:       *webUser,
 		Executable: exe,
@@ -114,15 +119,9 @@ func main() {
 
 func serveWeb() {
 	log.SetPrefix("opf web: ")
-	err := privsep.RunChild(func(m config.Manager, ln net.Listener) error {
-		// Model path is empty for now - model management will be
-		// added via RPC to the parent process later.
-		srv, err := web.New(m, "")
-		if err != nil {
-			return err
-		}
+	err := privsep.RunChild(func(api appliance.API, ln net.Listener) error {
 		hs := &http.Server{
-			Handler:           http.NewCrossOriginProtection().Handler(srv),
+			Handler:           http.NewCrossOriginProtection().Handler(web.New(api)),
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 		return hs.Serve(ln)

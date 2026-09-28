@@ -24,7 +24,7 @@ type pendingCommit struct {
 // Confirm is called; if it isn't called before the timeout the whole
 // commit is reverted. If anything fails to apply, the whole commit is
 // reverted and the staged changes are kept so they can be fixed.
-func (s *Store) Commit(ctx context.Context) (*Entry, error) {
+func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending != nil {
@@ -57,7 +57,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 		}
 	}
 
-	e := &Entry{ID: newID(time.Now()), Time: time.Now(), Status: StatusApplying}
+	e := &Entry{ID: newID(time.Now()), Time: time.Now(), Status: StatusApplying, Message: info.Message, Changes: info.Changes}
 	if _, err := os.Stat(s.historyDir(e.ID)); err == nil {
 		return nil, fmt.Errorf("commit %s already exists; try again", e.ID)
 	}

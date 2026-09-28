@@ -1,0 +1,176 @@
+# OPF API
+
+The web UI's only way to change the system. It's served by the
+unprivileged web process (`internal/web`) and backed by the root
+process (`internal/appliance`, over `internal/privsep`), which validates
+everything it's given.
+
+There is no authentication yet; see TODO.md.
+
+## Conventions
+
+- Every body is JSON. Requests with a body must send
+  `Content-Type: application/json` (otherwise 415). Bodies are limited
+  to 4 MiB (413). Unknown fields and trailing data are rejected (400).
+- Cross-site requests that change state are refused
+  (`http.CrossOriginProtection`, 403).
+- Responses are `Cache-Control: no-store`. Configuration responses carry
+  their version as an `ETag`.
+- A **version** is a hash of a model's canonical JSON. `"none"` is the
+  version of a configuration that doesn't exist yet.
+
+### Errors
+
+```json
+{"error": {"code": "invalid", "message": "…", "details": [{"path": "firewall.aliases[2].name", "message": "…"}]}}
+```
+
+| code | status | meaning |
+|---|---|---|
+| `invalid` | 400/422 | malformed request (400), or the model fails validation (422); `details` name each field |
+| `check_failed` | 422 | a validator (`pfctl -n`, `dhcpd -n`, …) rejected a generated file; `details[].output` is its output |
+| `unsupported` | 422 | something OPF can't do yet, such as removing a file |
+| `not_found` | 404 | no such commit or resource |
+| `nothing_staged` | 404 (409 on commit) | there's no staged model |
+| `conflict` | 409 | a version didn't match: someone else changed the configuration |
+| `commit_pending` | 409 | a commit is waiting for confirmation; nothing else can change until it's kept or reverted |
+| `not_pending` | 409 | the commit isn't the one waiting (perhaps it just timed out) |
+| `modified_outside` | 409 | files were edited outside OPF; `details[].path` lists them |
+| `internal` | 500 | logged on the server; the message says only "internal error" |
+
+## Making a change
+
+```
+GET  /api/config                 → {version: L, model}
+PUT  /api/config/staged          {base: L, model}            → staged, with each file's diff
+POST /api/commits                {staged: S, message, changes} → 201, the commit
+POST /api/commits/{id}/confirm   (only if its status is "pending")
+```
+
+1. **Read** the live model and its version.
+2. **Stage** the edited model. The server validates it, generates every
+   file, and returns the diffs to review. `base` must be the live version
+   the edits started from, or it's a `conflict`. Staging replaces
+   anything staged before. If a file the model generates was edited by
+   hand, staging fails with `modified_outside`. List those paths in
+   `overwrite` to replace them with OPF's versions.
+3. **Commit** by the staged version, so what's committed is exactly what
+   was reviewed. `message` and `changes` describe the commit for
+   history. Every file is checked by its own validator first; if one
+   fails nothing is touched (`check_failed`).
+4. If the commit changed a file that could cut off access (`pf.conf`),
+   its status is `pending` with a `deadline`. Confirm before then, or the
+   server reverts it by itself. Other commits are `applied` straight
+   away.
+
+If applying fails part-way, everything is put back, the commit is
+recorded with status `failed` (still 201, with its log), and the model
+stays staged so it can be fixed. The same happens on revert: the
+reverted model is staged again.
+
+## Resources
+
+### `GET /api/status`
+
+Small enough to poll.
+
+```json
+{"live": "6265311081b0c6acc983", "staged": "9e304c6944d77c8d8571", "pending": {…commit…}}
+```
+
+`staged` and `pending` are omitted when there's none.
+
+### `GET /api/config`
+
+`{version, model}`: the live model.
+
+### `GET /api/config/staged`
+
+```json
+{
+  "version": "9e304c6944d77c8d8571",
+  "base": "6265311081b0c6acc983",
+  "model": {…},
+  "changes": [
+    {"path": "/var/opf/config.json", "status": "modified", "diff": "…", "model": true},
+    {"path": "/etc/pf.conf", "status": "modified", "diff": "…", "needsConfirm": true}
+  ]
+}
+```
+
+`status` is `added` or `modified`, and `diff` is a unified diff. `404
+nothing_staged` when there's nothing staged.
+
+### `PUT /api/config/staged`
+
+```json
+{"base": "6265311081b0c6acc983", "model": {…}, "overwrite": ["/etc/pf.conf"]}
+```
+
+Returns the staged resource. `overwrite` is optional. Refused with
+`commit_pending` while a commit waits for confirmation.
+
+### `DELETE /api/config/staged`
+
+Discards it. 204.
+
+### `GET /api/commits`
+
+History, newest first.
+
+```json
+[{
+  "id": "20260928-161602.024",
+  "time": "2026-09-28T16:16:02.024Z",
+  "status": "pending",
+  "deadline": "2026-09-28T16:17:02.024Z",
+  "message": "Disabled rule “Allow DNS from IoT devices” (IoT)",
+  "changes": [{"area": "firewall", "summary": "Disabled rule “Allow DNS from IoT devices” (IoT)"}],
+  "files": [{"path": "/var/opf/config.json", "model": true}, {"path": "/etc/pf.conf", "needsConfirm": true}]
+}]
+```
+
+`status` is one of `applying`, `pending`, `applied`, `confirmed`,
+`reverted` or `failed`. `deadline` is only there while pending.
+`files[].created` marks files the commit created.
+
+### `POST /api/commits`
+
+```json
+{"staged": "9e304c6944d77c8d8571", "message": "…", "changes": [{"area": "firewall", "summary": "…"}]}
+```
+
+`message` is at most 500 bytes. There are at most 500 `changes`, each
+with an `area` of up to 32 bytes and a `summary` of up to 300. None may
+contain control characters. Answers 201 with a `Location` header and
+the commit.
+
+### `GET /api/commits/{id}`
+
+The commit plus `diffs` (`[{path, diff}]`) and `log`, the commands run
+and their output.
+
+### `POST /api/commits/{id}/confirm`, `POST /api/commits/{id}/revert`
+
+Keep the pending commit, or undo it now. No body. `not_pending` if it
+isn't the one waiting, which includes one that has just timed out.
+
+### `GET /api/commits/{id}/config/{before|after}`
+
+`{version, model}`: the model as it was before or after the commit.
+This changes nothing. To restore it, stage it with `PUT
+/api/config/staged` and commit it, so it's validated and reviewed like
+any other change.
+
+### `POST /api/pf/parse`
+
+`{"text": "pass in on $lan …", "model": {…}}` → `{"rule": {…}}`. The
+rule is a guided (`"kind": "form"`) rule when the form can hold it
+exactly, and a raw rule otherwise. `model` resolves macros and
+interfaces and is optional. The text is at most 4096 bytes. 422 if it
+isn't a pf rule.
+
+### `POST /api/pf/render`
+
+`{"rule": {…}, "model": {…}}` → `{"text": "pass in quick on $lan …"}`,
+the text the generator writes for the rule.

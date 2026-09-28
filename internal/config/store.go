@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -35,6 +36,8 @@ var (
 	ErrPending     = errors.New("a commit is waiting for confirmation; confirm or revert it first")
 	ErrNoPending   = errors.New("no commit is waiting for confirmation")
 	ErrNoChanges   = errors.New("nothing is staged")
+	// ErrUnknownCommit means no commit has the id, or the id is malformed.
+	ErrUnknownCommit = errors.New("no such commit")
 )
 
 // DriftError means a live file changed after it was staged, e.g. it was
@@ -120,6 +123,28 @@ func (s *Store) Lookup(name string) (File, error) {
 		}
 	}
 	return File{}, fmt.Errorf("%w: %s", ErrUnknownFile, name)
+}
+
+// LookupPath finds a managed file by its path on the system, e.g.
+// /etc/hostname.em0.
+func (s *Store) LookupPath(path string) (File, error) {
+	for _, f := range s.files {
+		if !f.isPattern() && f.Path == path {
+			return f, nil
+		}
+	}
+	for _, f := range s.files {
+		if !f.isPattern() {
+			continue
+		}
+		prefix, suffix, _ := strings.Cut(f.Path, "*")
+		if len(path) > len(prefix)+len(suffix) && strings.HasPrefix(path, prefix) && strings.HasSuffix(path, suffix) {
+			if g, ok := f.instance(path[len(prefix) : len(path)-len(suffix)]); ok {
+				return g, nil
+			}
+		}
+	}
+	return File{}, fmt.Errorf("%w: %s", ErrUnknownFile, path)
 }
 
 // instances returns the registry in apply order with each pattern entry
@@ -440,8 +465,11 @@ func Diff(a, b, labelA, labelB string) (string, error) {
 	return string(out), err
 }
 
-// normalize converts browser line endings and ensures a trailing
-// newline, which many of the base system parsers expect.
+// Normalize is how staged contents are stored: browser line endings
+// converted and a trailing newline added, which many of the base system
+// parsers expect. Compare against it to know what staging would write.
+func Normalize(data []byte) []byte { return normalize(data) }
+
 func normalize(data []byte) []byte {
 	data = bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n"))
 	if len(data) > 0 && data[len(data)-1] != '\n' {

@@ -31,12 +31,27 @@ const (
 )
 
 type Entry struct {
-	ID       string      `json:"id"`
-	Time     time.Time   `json:"time"`
-	Status   Status      `json:"status"`
-	Deadline time.Time   `json:"deadline,omitzero"`
-	Files    []EntryFile `json:"files"`
-	Log      string      `json:"log"`
+	ID       string       `json:"id"`
+	Time     time.Time    `json:"time"`
+	Status   Status       `json:"status"`
+	Deadline time.Time    `json:"deadline,omitzero"`
+	Message  string       `json:"message,omitempty"`
+	Changes  []ChangeNote `json:"changes,omitempty"`
+	Files    []EntryFile  `json:"files"`
+	Log      string       `json:"log"`
+}
+
+// CommitInfo describes a commit for the people reading history later.
+type CommitInfo struct {
+	Message string
+	Changes []ChangeNote
+}
+
+// ChangeNote is one change in a commit, in words: "Disabled rule
+// “Allow LAN to anywhere” on LAN", in area "firewall".
+type ChangeNote struct {
+	Area    string `json:"area"`
+	Summary string `json:"summary"`
 }
 
 type EntryFile struct {
@@ -72,9 +87,12 @@ func (s *Store) saveEntry(e *Entry) error {
 // Entry loads one history entry.
 func (s *Store) Entry(id string) (*Entry, error) {
 	if !idRE.MatchString(id) {
-		return nil, fmt.Errorf("invalid history id %q", id)
+		return nil, fmt.Errorf("%w: %q", ErrUnknownCommit, id)
 	}
 	data, err := os.ReadFile(filepath.Join(s.historyDir(id), "manifest.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("%w: %s", ErrUnknownCommit, id)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +112,7 @@ func (s *Store) History() ([]*Entry, error) {
 			continue
 		}
 		e, err := s.Entry(d.Name())
-		if errors.Is(err, fs.ErrNotExist) {
+		if errors.Is(err, ErrUnknownCommit) {
 			continue // manifest not written yet
 		} else if err != nil {
 			return nil, err
@@ -118,6 +136,29 @@ func (s *Store) EntryDiff(id, name string) (string, error) {
 	ef := e.Files[i]
 	return Diff(s.historyFile(e.ID, "old", ef.Path), s.historyFile(e.ID, "new", ef.Path),
 		ef.Path+" (before)", ef.Path+" (after)")
+}
+
+// EntryContent returns a file of a commit as it was before (old) or
+// after it. exists is false if the file didn't exist before the commit.
+func (s *Store) EntryContent(id, name string, old bool) (data []byte, exists bool, err error) {
+	e, err := s.Entry(id)
+	if err != nil {
+		return nil, false, err
+	}
+	i := slices.IndexFunc(e.Files, func(ef EntryFile) bool { return ef.Name == name })
+	if i < 0 {
+		return nil, false, fmt.Errorf("%w: %s is not part of commit %s", ErrUnknownFile, name, id)
+	}
+	ef := e.Files[i]
+	which := "new"
+	if old {
+		if !ef.Existed {
+			return nil, false, nil
+		}
+		which = "old"
+	}
+	data, err = os.ReadFile(s.historyFile(id, which, ef.Path))
+	return data, err == nil, err
 }
 
 // StageFromHistory stages a file as it was before (old) or after (new)

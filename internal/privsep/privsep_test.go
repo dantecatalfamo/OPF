@@ -2,6 +2,7 @@ package privsep
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,24 +14,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
 // When the test binary is re-executed as the child it serves a tiny
-// HTTP handler backed by the parent's Store.
+// HTTP handler backed by the parent's API.
 func TestMain(m *testing.M) {
 	if IsChild() {
-		err := RunChild(func(mgr config.Manager, ln net.Listener) error {
+		err := RunChild(func(api appliance.API, ln net.Listener) error {
 			return http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/crash" {
 					os.Exit(3)
 				}
-				data, _, err := mgr.Live("pf")
+				st, err := api.Status()
 				if err != nil {
 					http.Error(w, err.Error(), 500)
 					return
 				}
-				fmt.Fprintf(w, "pid=%d pf=%s", os.Getpid(), data)
+				fmt.Fprintf(w, "pid=%d live=%s", os.Getpid(), st.Live)
 			}))
 		})
 		fmt.Fprintln(os.Stderr, err)
@@ -41,150 +44,173 @@ func TestMain(m *testing.M) {
 
 type failRunner struct{ fail string }
 
-func (r failRunner) Run(ctx context.Context, argv ...string) ([]byte, error) {
+func (r *failRunner) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	if r.fail != "" && strings.Contains(strings.Join(argv, " "), r.fail) {
 		return []byte("syntax error\n"), errors.New("exit status 1")
 	}
 	return nil, nil
 }
 
-func newStore(t *testing.T, fail string) (*config.Store, string) {
-	t.Helper()
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "etc"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "etc/pf.conf"), []byte("pass\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	s, err := config.New(config.Options{
-		Root: root, StateDir: t.TempDir(), Runner: failRunner{fail},
-		Files: []config.File{
-			{Name: "pf", Path: "/etc/pf.conf", Check: []string{"pfctl", "-n", "-f", "{}"}, Apply: []string{"pfctl", "-f", "{}"}, Confirm: true},
-			{Name: "ntpd", Path: "/etc/ntpd.conf", Check: []string{"ntpd", "-n", "-f", "{}"}},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return s, root
+// newAPI is a Manager on a scratch system generated from the sample
+// model.
+func newAPI(t *testing.T) *appliance.Manager {
+	api, _ := newAPIRunner(t)
+	return api
 }
 
-func newClient(t *testing.T, s *config.Store) *Client {
+func newAPIRunner(t *testing.T) (*appliance.Manager, *failRunner) {
 	t.Helper()
-	a, b := net.Pipe()
-	go Serve(s, a)
-	c, err := NewClient(b)
+	data, err := os.ReadFile("../../ui/src/model/sample-model.json")
 	if err != nil {
 		t.Fatal(err)
 	}
+	var model pf.Model
+	if err := json.Unmarshal(data, &model); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	write := func(path string, b []byte) {
+		p := filepath.Join(root, path)
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, b, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, f := range pf.GenerateFiles(&model) {
+		write(f.Path, config.Normalize([]byte(f.Content)))
+	}
+	enc, _ := appliance.EncodeModel(&model)
+	write(config.ModelPath, enc)
+	r := &failRunner{}
+	store, err := config.New(config.Options{Root: root, StateDir: t.TempDir(), Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api, err := appliance.New(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return api, r
+}
+
+func newClient(t *testing.T, api *appliance.Manager) *Client {
+	t.Helper()
+	a, b := net.Pipe()
+	go Serve(api, a)
+	c := NewClient(b)
 	t.Cleanup(func() { c.Close() })
 	return c
 }
 
+func code(err error) appliance.Code {
+	var e *appliance.Error
+	if errors.As(err, &e) {
+		return e.Code
+	}
+	return ""
+}
+
 func TestRPCRoundTrip(t *testing.T) {
-	s, root := newStore(t, "")
-	c := newClient(t, s)
+	api := newAPI(t)
+	c := newClient(t, api)
 
-	if len(c.Files()) != 2 {
-		t.Fatalf("files = %v", c.Files())
+	live, err := c.Live()
+	if err != nil || live.Model == nil || len(live.Model.Interfaces) != 4 {
+		t.Fatalf("Live = %+v, %v", live, err)
 	}
-	if data, ok, err := c.Live("pf"); err != nil || !ok || string(data) != "pass\n" {
-		t.Fatalf("Live = %q %v %v", data, ok, err)
+	live.Model.System.NTPServers = []string{"rpc.example"}
+	staged, err := c.Stage(appliance.StageRequest{Base: live.Version, Model: live.Model})
+	if err != nil || len(staged.Changes) != 2 {
+		t.Fatalf("Stage = %+v, %v", staged, err)
 	}
-	if _, _, err := c.Live("nope"); !errors.Is(err, config.ErrUnknownFile) {
-		t.Fatalf("unknown file: %v", err)
+	if st, err := c.Status(); err != nil || st.Staged != staged.Version {
+		t.Fatalf("Status = %+v, %v", st, err)
 	}
-	if err := c.Stage("pf", []byte("block\n")); err != nil {
+	commit, err := c.Commit(appliance.CommitRequest{Staged: staged.Version, Message: "NTP", Changes: []config.ChangeNote{{Area: "system", Summary: "Time servers"}}})
+	if err != nil || commit.Status != appliance.StatusApplied || commit.Message != "NTP" {
+		t.Fatalf("Commit = %+v, %v", commit, err)
+	}
+	list, err := c.Commits()
+	if err != nil || len(list) != 1 || list[0].Changes[0].Summary != "Time servers" {
+		t.Fatalf("Commits = %+v, %v", list, err)
+	}
+	d, err := c.GetCommit(commit.ID)
+	if err != nil || len(d.Diffs) != 2 {
+		t.Fatalf("GetCommit = %+v, %v", d, err)
+	}
+	back, err := c.CommitConfig(commit.ID, appliance.Before)
+	if err != nil || back.Model == nil {
+		t.Fatalf("CommitConfig = %+v, %v", back, err)
+	}
+	now, err := c.Live()
+	if err != nil {
 		t.Fatal(err)
 	}
-	changes, err := c.Changes()
-	if err != nil || len(changes) != 1 || !strings.Contains(changes[0].Diff, "+block") {
-		t.Fatalf("changes = %+v, %v", changes, err)
-	}
-	e, err := c.Commit(context.Background())
-	if err != nil || e.Status != config.StatusPending {
-		t.Fatalf("commit = %+v, %v", e, err)
-	}
-	if p := c.Pending(); p == nil || p.ID != e.ID {
-		t.Fatalf("pending = %+v", p)
-	}
-	if err := c.Stage("ntpd", []byte("x\n")); !errors.Is(err, config.ErrPending) {
-		t.Fatalf("stage while pending: %v", err)
-	}
-	if _, err := c.Commit(context.Background()); !errors.Is(err, config.ErrPending) {
-		t.Fatalf("commit while pending: %v", err)
-	}
-	if err := c.Confirm(); err != nil {
+	if _, err := c.Stage(appliance.StageRequest{Base: now.Version, Model: back.Model}); err != nil {
 		t.Fatal(err)
 	}
-	if data, _ := os.ReadFile(filepath.Join(root, "etc/pf.conf")); string(data) != "block\n" {
-		t.Fatalf("pf.conf = %q", data)
-	}
-	if err := c.Confirm(); !errors.Is(err, config.ErrNoPending) {
-		t.Fatalf("second confirm: %v", err)
-	}
-	if _, err := c.Commit(context.Background()); !errors.Is(err, config.ErrNoChanges) {
-		t.Fatalf("empty commit: %v", err)
-	}
-
-	h, err := c.History()
-	if err != nil || len(h) != 1 {
-		t.Fatalf("history = %v, %v", h, err)
-	}
-	if diff, err := c.EntryDiff(h[0].ID, "pf"); err != nil || !strings.Contains(diff, "-pass") {
-		t.Fatalf("entry diff = %q, %v", diff, err)
-	}
-	if _, err := c.Entry("../../etc"); err == nil {
-		t.Fatal("expected invalid id error")
-	}
-	if err := c.StageFromHistory(h[0].ID, "pf", true); err != nil {
+	if err := c.Discard(); err != nil {
 		t.Fatal(err)
 	}
-	if data, _, _ := c.Staged("pf"); string(data) != "pass\n" {
-		t.Fatalf("restaged = %q", data)
+	if _, err := c.Staged(); code(err) != appliance.CodeNothingStaged {
+		t.Fatalf("Staged after discard: %v", err)
 	}
 }
 
-func TestRPCTypedErrors(t *testing.T) {
-	s, root := newStore(t, "pfctl -n")
-	c := newClient(t, s)
+func TestRPCErrors(t *testing.T) {
+	api, r := newAPIRunner(t)
+	c := newClient(t, api)
+	live, _ := c.Live()
 
-	if err := c.Stage("pf", []byte("garbage\n")); err != nil {
-		t.Fatal(err)
+	bad := *live.Model
+	bad.System.Hostname = "gw; reboot"
+	_, err := c.Stage(appliance.StageRequest{Base: live.Version, Model: &bad})
+	var e *appliance.Error
+	if !errors.As(err, &e) || e.Code != appliance.CodeInvalid || e.Details[0].Path != "system.hostname" {
+		t.Fatalf("invalid model: %#v", err)
 	}
-	out, ok, err := c.CheckContent(context.Background(), "pf", []byte("garbage\n"))
-	if err != nil || ok || !strings.Contains(out, "syntax error") {
-		t.Fatalf("check = %q %v %v", out, ok, err)
+	if _, err := c.Stage(appliance.StageRequest{Base: "old", Model: live.Model}); code(err) != appliance.CodeConflict {
+		t.Fatalf("stale base: %v", err)
 	}
-	_, err = c.Commit(context.Background())
-	var ce *config.CheckError
-	if !errors.As(err, &ce) || ce.File != "/etc/pf.conf" || !strings.Contains(ce.Output, "syntax error") {
-		t.Fatalf("commit err = %#v", err)
+	if _, err := c.Confirm("20000101-000000.000"); code(err) != appliance.CodeNotFound {
+		t.Fatalf("unknown commit: %v", err)
 	}
 
-	if err := c.Discard("pf"); err != nil {
+	m := *live.Model
+	m.System.NTPServers = []string{"x.example"}
+	staged, err := c.Stage(appliance.StageRequest{Base: live.Version, Model: &m})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Stage("ntpd", []byte("servers a\n")); err != nil {
-		t.Fatal(err)
+	r.fail = "ntpd -n"
+	_, err = c.Commit(appliance.CommitRequest{Staged: staged.Version})
+	if !errors.As(err, &e) || e.Code != appliance.CodeCheckFailed || e.Details[0].Path != "/etc/ntpd.conf" || !strings.Contains(e.Details[0].Output, "syntax error") {
+		t.Fatalf("check failure: %#v", err)
 	}
-	os.WriteFile(filepath.Join(root, "etc/ntpd.conf"), []byte("hand edit\n"), 0644)
-	_, err = c.Commit(context.Background())
-	var de *config.DriftError
-	if !errors.As(err, &de) || len(de.Files) != 1 {
-		t.Fatalf("drift err = %#v", err)
+}
+
+// Internal errors are logged in the privileged process and reach the
+// web process without their details.
+func TestRPCInternalErrorsAreSanitized(t *testing.T) {
+	var r Result
+	r.set("Test", errors.New("open /var/opf/secret: permission denied"))
+	if r.Err.Code != appliance.CodeInternal || strings.Contains(r.Err.Message, "/var/opf") {
+		t.Fatalf("leaked: %+v", r.Err)
+	}
+	var ok Result
+	ok.set("Test", nil)
+	if ok.remoteErr() != nil {
+		t.Fatal("nil error came back non-nil")
 	}
 }
 
 func TestWaitReturnsWhenParentGoesAway(t *testing.T) {
-	s, _ := newStore(t, "")
+	api := newAPI(t)
 	a, b := net.Pipe()
-	go Serve(s, a)
-	c, err := NewClient(b)
-	if err != nil {
-		t.Fatal(err)
-	}
+	go Serve(api, a)
+	c := NewClient(b)
 	done := make(chan error)
 	go func() { done <- c.Wait() }()
 	a.Close()
@@ -196,7 +222,7 @@ func TestWaitReturnsWhenParentGoesAway(t *testing.T) {
 }
 
 func TestParentRunsAndRestartsChild(t *testing.T) {
-	s, _ := newStore(t, "")
+	api := newAPI(t)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -207,7 +233,7 @@ func TestParentRunsAndRestartsChild(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := make(chan error)
-	go func() { stopped <- RunParent(ctx, ParentOptions{Store: s, Listener: ln, Executable: exe}) }()
+	go func() { stopped <- RunParent(ctx, ParentOptions{API: api, Listener: ln, Executable: exe}) }()
 
 	base := "http://" + ln.Addr().String()
 	hc := &http.Client{Timeout: 2 * time.Second}
@@ -236,7 +262,7 @@ func TestParentRunsAndRestartsChild(t *testing.T) {
 	}
 
 	first := waitFor()
-	if !strings.Contains(first, "pf=pass") || strings.Contains(first, fmt.Sprintf("pid=%d ", os.Getpid())) {
+	if !strings.Contains(first, "live=") || strings.Contains(first, "live=none") || strings.Contains(first, fmt.Sprintf("pid=%d ", os.Getpid())) {
 		t.Fatalf("unexpected response %q", first)
 	}
 	hc.Post(base+"/crash", "", nil) // child exits; parent should start another

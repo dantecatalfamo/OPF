@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
@@ -41,6 +42,9 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	if err := dec.Decode(&model); err != nil {
 		return fmt.Errorf("seed model %s: %w", seedPath, err)
 	}
+	if errs := pf.Validate(&model); len(errs) > 0 {
+		return fmt.Errorf("seed model %s is invalid: %v", seedPath, errs)
+	}
 
 	// Addresses the UI's sample status data reports, so generated
 	// route-to lines match what the pages show.
@@ -51,19 +55,26 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		return err
 	}
 	root := filepath.Join(dir, "root")
-	// The "live" system is what the seed model generates, so the first
-	// diff shows only the changes made in the UI.
-	for _, f := range pf.GenerateFiles(&model) {
-		p := filepath.Join(root, f.Path)
+	// The "live" system is what the seed model generates, written the
+	// way a commit would write it, so the first diff shows only the
+	// changes made in the UI.
+	write := func(path string, data []byte, mode os.FileMode) error {
+		p := filepath.Join(root, path)
 		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(p, []byte(f.Content), 0644); err != nil {
+		return os.WriteFile(p, data, mode)
+	}
+	for _, f := range pf.GenerateFiles(&model) {
+		if err := write(f.Path, config.Normalize([]byte(f.Content)), 0644); err != nil {
 			return err
 		}
 	}
-	modelPath := filepath.Join(dir, "config.json")
-	if err := os.WriteFile(modelPath, seed, 0600); err != nil {
+	enc, err := appliance.EncodeModel(&model)
+	if err != nil {
+		return err
+	}
+	if err := write(config.ModelPath, enc, 0600); err != nil {
 		return err
 	}
 
@@ -78,10 +89,11 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
-	srv, err := web.New(store, modelPath)
+	api, err := appliance.New(store)
 	if err != nil {
 		return err
 	}
+	srv := web.New(api)
 
 	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)
 	log.Printf("mock: API on http://%s; `make mock` also starts the UI, whose dev server proxies to 127.0.0.1:18080", listen)

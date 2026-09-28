@@ -1,250 +1,155 @@
 package privsep
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/rpc"
-	"time"
 
-	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 )
 
-// WireError carries an error across the socket without losing the
-// details the UI needs: which sentinel it wraps, and the check or drift
-// details.
-type WireError struct {
-	Kind   string
-	Msg    string
-	File   string
-	Output string
-	Files  []string
+// The web process can only call these methods: whole models in,
+// commits out. It can't name files, paths or commands; the privileged
+// process validates every model before generating anything from it.
+
+// Result carries an API error in-band; net/rpc would otherwise flatten
+// it to a string. Internal errors are logged in the privileged process
+// and cross the socket without their details.
+type Result struct{ Err *appliance.Error }
+
+func (r *Result) remoteErr() error {
+	if r.Err == nil {
+		return nil // untyped: a nil *Error in an error isn't nil
+	}
+	return r.Err
 }
 
-var sentinels = map[string]error{
-	"unknown_file": config.ErrUnknownFile,
-	"pending":      config.ErrPending,
-	"no_pending":   config.ErrNoPending,
-	"no_changes":   config.ErrNoChanges,
-}
-
-func encodeErr(err error) *WireError {
+func (r *Result) set(method string, err error) {
 	if err == nil {
-		return nil
+		return
 	}
-	w := &WireError{Kind: "other", Msg: err.Error()}
-	var ce *config.CheckError
-	var de *config.DriftError
-	switch {
-	case errors.As(err, &ce):
-		w.Kind, w.File, w.Output = "check", ce.File, ce.Output
-	case errors.As(err, &de):
-		w.Kind, w.Files = "drift", de.Files
-	default:
-		for k, s := range sentinels {
-			if errors.Is(err, s) {
-				w.Kind = k
-			}
-		}
+	e := appliance.AsError(err)
+	if e.Code == appliance.CodeInternal {
+		log.Printf("%s: %s", method, e.Message)
+		e = &appliance.Error{Code: appliance.CodeInternal, Message: "internal error"}
 	}
-	return w
+	r.Err = e
 }
-
-// remoteError keeps the original message while still matching the
-// sentinel with errors.Is.
-type remoteError struct {
-	msg string
-	is  error
-}
-
-func (e *remoteError) Error() string { return e.msg }
-func (e *remoteError) Unwrap() error { return e.is }
-
-func (w *WireError) decode() error {
-	if w == nil {
-		return nil
-	}
-	switch w.Kind {
-	case "check":
-		return &config.CheckError{File: w.File, Output: w.Output}
-	case "drift":
-		return &config.DriftError{Files: w.Files}
-	}
-	if s, ok := sentinels[w.Kind]; ok {
-		return &remoteError{msg: w.Msg, is: s}
-	}
-	return errors.New(w.Msg)
-}
-
-// Every reply embeds Result so errors travel in-band; net/rpc would
-// otherwise flatten them to strings.
-type Result struct{ Err *WireError }
-
-func (r *Result) remoteErr() error { return r.Err.decode() }
 
 type (
-	None        struct{}
-	NameArgs    struct{ Name string }
-	ContentArgs struct {
-		Name string
-		Data []byte
-	}
-	HistoryArgs struct {
-		ID, Name string
-		Old      bool
+	None             struct{}
+	IDArgs           struct{ ID string }
+	CommitConfigArgs struct {
+		ID    string
+		Which appliance.Which
 	}
 
-	FilesReply struct {
+	StatusReply struct {
 		Result
-		Files []config.File
+		Status *appliance.Status
 	}
-	ContentReply struct {
+	ConfigReply struct {
 		Result
-		Data []byte
-		OK   bool
+		Config *appliance.Config
 	}
-	ChangesReply struct {
+	StagedReply struct {
 		Result
-		Changes []config.Change
+		Staged *appliance.Staged
 	}
-	CheckReply struct {
+	CommitReply struct {
 		Result
-		Output string
-		OK     bool
+		Commit *appliance.Commit
 	}
-	EntryReply struct {
+	CommitsReply struct {
 		Result
-		Entry *config.Entry
+		Commits []appliance.Commit
 	}
-	HistoryReply struct {
+	DetailReply struct {
 		Result
-		Entries []*config.Entry
-	}
-	TextReply struct {
-		Result
-		Text string
+		Detail *appliance.CommitDetail
 	}
 	EmptyReply struct{ Result }
 )
 
-// commandTimeout bounds calls that run system commands. net/rpc has no
-// way to carry the caller's context across.
-const commandTimeout = 2 * time.Minute
-
-// Service exposes a Store over net/rpc. It runs in the privileged
-// process and trusts nothing but names and contents from the caller.
+// Service exposes an appliance.Manager over net/rpc.
 type Service struct {
-	store *config.Store
-	done  chan struct{} // closed when the connection ends
+	api  *appliance.Manager
+	done chan struct{} // closed when the connection ends
 }
 
-func (s *Service) Files(_ None, r *FilesReply) error {
-	r.Files = s.store.Files()
-	return nil
-}
-
-func (s *Service) Live(a NameArgs, r *ContentReply) error {
+func (s *Service) Status(_ None, r *StatusReply) error {
 	var err error
-	r.Data, r.OK, err = s.store.Live(a.Name)
-	r.Err = encodeErr(err)
+	r.Status, err = s.api.Status()
+	r.set("Status", err)
 	return nil
 }
 
-func (s *Service) Staged(a NameArgs, r *ContentReply) error {
+func (s *Service) Live(_ None, r *ConfigReply) error {
 	var err error
-	r.Data, r.OK, err = s.store.Staged(a.Name)
-	r.Err = encodeErr(err)
+	r.Config, err = s.api.Live()
+	r.set("Live", err)
 	return nil
 }
 
-func (s *Service) Current(a NameArgs, r *ContentReply) error {
+func (s *Service) Staged(_ None, r *StagedReply) error {
 	var err error
-	r.Data, err = s.store.Current(a.Name)
-	r.Err = encodeErr(err)
+	r.Staged, err = s.api.Staged()
+	r.set("Staged", err)
 	return nil
 }
 
-func (s *Service) Stage(a ContentArgs, r *EmptyReply) error {
-	r.Err = encodeErr(s.store.Stage(a.Name, a.Data))
-	return nil
-}
-
-func (s *Service) Discard(a NameArgs, r *EmptyReply) error {
-	r.Err = encodeErr(s.store.Discard(a.Name))
-	return nil
-}
-
-func (s *Service) DiscardAll(_ None, r *EmptyReply) error {
-	r.Err = encodeErr(s.store.DiscardAll())
-	return nil
-}
-
-func (s *Service) Changes(_ None, r *ChangesReply) error {
+func (s *Service) Stage(a appliance.StageRequest, r *StagedReply) error {
 	var err error
-	r.Changes, err = s.store.Changes()
-	r.Err = encodeErr(err)
+	r.Staged, err = s.api.Stage(a)
+	r.set("Stage", err)
 	return nil
 }
 
-func (s *Service) CheckContent(a ContentArgs, r *CheckReply) error {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-	defer cancel()
+func (s *Service) Discard(_ None, r *EmptyReply) error {
+	r.set("Discard", s.api.Discard())
+	return nil
+}
+
+func (s *Service) Commit(a appliance.CommitRequest, r *CommitReply) error {
 	var err error
-	r.Output, r.OK, err = s.store.CheckContent(ctx, a.Name, a.Data)
-	r.Err = encodeErr(err)
+	r.Commit, err = s.api.Commit(a)
+	r.set("Commit", err)
 	return nil
 }
 
-func (s *Service) Commit(_ None, r *EntryReply) error {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-	defer cancel()
+func (s *Service) Commits(_ None, r *CommitsReply) error {
 	var err error
-	r.Entry, err = s.store.Commit(ctx)
-	r.Err = encodeErr(err)
+	r.Commits, err = s.api.Commits()
+	r.set("Commits", err)
 	return nil
 }
 
-func (s *Service) Pending(_ None, r *EntryReply) error {
-	r.Entry = s.store.Pending()
-	return nil
-}
-
-func (s *Service) Confirm(_ None, r *EmptyReply) error {
-	r.Err = encodeErr(s.store.Confirm())
-	return nil
-}
-
-func (s *Service) Revert(_ None, r *EmptyReply) error {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-	defer cancel()
-	r.Err = encodeErr(s.store.Revert(ctx))
-	return nil
-}
-
-func (s *Service) History(_ None, r *HistoryReply) error {
+func (s *Service) GetCommit(a IDArgs, r *DetailReply) error {
 	var err error
-	r.Entries, err = s.store.History()
-	r.Err = encodeErr(err)
+	r.Detail, err = s.api.GetCommit(a.ID)
+	r.set("GetCommit", err)
 	return nil
 }
 
-func (s *Service) Entry(a HistoryArgs, r *EntryReply) error {
+func (s *Service) Confirm(a IDArgs, r *CommitReply) error {
 	var err error
-	r.Entry, err = s.store.Entry(a.ID)
-	r.Err = encodeErr(err)
+	r.Commit, err = s.api.Confirm(a.ID)
+	r.set("Confirm", err)
 	return nil
 }
 
-func (s *Service) EntryDiff(a HistoryArgs, r *TextReply) error {
+func (s *Service) Revert(a IDArgs, r *CommitReply) error {
 	var err error
-	r.Text, err = s.store.EntryDiff(a.ID, a.Name)
-	r.Err = encodeErr(err)
+	r.Commit, err = s.api.Revert(a.ID)
+	r.set("Revert", err)
 	return nil
 }
 
-func (s *Service) StageFromHistory(a HistoryArgs, r *EmptyReply) error {
-	r.Err = encodeErr(s.store.StageFromHistory(a.ID, a.Name, a.Old))
+func (s *Service) CommitConfig(a CommitConfigArgs, r *ConfigReply) error {
+	var err error
+	r.Config, err = s.api.CommitConfig(a.ID, a.Which)
+	r.set("CommitConfig", err)
 	return nil
 }
 
@@ -252,13 +157,13 @@ func (s *Service) StageFromHistory(a HistoryArgs, r *EmptyReply) error {
 // so that it notices, and exits, when the parent goes away.
 func (s *Service) Wait(_ None, _ *None) error {
 	<-s.done
-	return errors.New("shutting down")
+	return fmt.Errorf("shutting down")
 }
 
 // Serve answers calls on conn until it is closed.
-func Serve(store *config.Store, conn io.ReadWriteCloser) {
+func Serve(api *appliance.Manager, conn io.ReadWriteCloser) {
 	srv := rpc.NewServer()
-	svc := &Service{store: store, done: make(chan struct{})}
+	svc := &Service{api: api, done: make(chan struct{})}
 	if err := srv.RegisterName("OPF", svc); err != nil {
 		panic(err) // only fails if Service's method set is malformed
 	}
@@ -266,27 +171,20 @@ func Serve(store *config.Store, conn io.ReadWriteCloser) {
 	close(svc.done)
 }
 
-// Client implements config.Manager by calling a Service.
+// Client implements appliance.API by calling a Service.
 type Client struct {
-	rpc   *rpc.Client
-	files []config.File
+	rpc *rpc.Client
 }
 
-var _ config.Manager = (*Client)(nil)
+var _ appliance.API = (*Client)(nil)
 
-func NewClient(conn io.ReadWriteCloser) (*Client, error) {
-	c := &Client{rpc: rpc.NewClient(conn)}
-	var r FilesReply
-	if err := c.call("Files", None{}, &r); err != nil {
-		return nil, err
-	}
-	c.files = r.Files
-	return c, nil
+func NewClient(conn io.ReadWriteCloser) *Client {
+	return &Client{rpc: rpc.NewClient(conn)}
 }
 
 func (c *Client) call(method string, args any, reply interface{ remoteErr() error }) error {
 	if err := c.rpc.Call("OPF."+method, args, reply); err != nil {
-		return fmt.Errorf("privileged process: %w", err)
+		return &appliance.Error{Code: appliance.CodeInternal, Message: "privileged process: " + err.Error()}
 	}
 	return reply.remoteErr()
 }
@@ -298,92 +196,66 @@ func (c *Client) Wait() error {
 
 func (c *Client) Close() error { return c.rpc.Close() }
 
-func (c *Client) Files() []config.File { return c.files }
-
-func (c *Client) Live(name string) ([]byte, bool, error) {
-	var r ContentReply
-	err := c.call("Live", NameArgs{name}, &r)
-	return r.Data, r.OK, err
+func (c *Client) Status() (*appliance.Status, error) {
+	var r StatusReply
+	err := c.call("Status", None{}, &r)
+	return r.Status, err
 }
 
-func (c *Client) Staged(name string) ([]byte, bool, error) {
-	var r ContentReply
-	err := c.call("Staged", NameArgs{name}, &r)
-	return r.Data, r.OK, err
+func (c *Client) Live() (*appliance.Config, error) {
+	var r ConfigReply
+	err := c.call("Live", None{}, &r)
+	return r.Config, err
 }
 
-func (c *Client) Current(name string) ([]byte, error) {
-	var r ContentReply
-	err := c.call("Current", NameArgs{name}, &r)
-	return r.Data, err
+func (c *Client) Staged() (*appliance.Staged, error) {
+	var r StagedReply
+	err := c.call("Staged", None{}, &r)
+	return r.Staged, err
 }
 
-func (c *Client) Stage(name string, data []byte) error {
-	return c.call("Stage", ContentArgs{name, data}, &EmptyReply{})
+func (c *Client) Stage(req appliance.StageRequest) (*appliance.Staged, error) {
+	var r StagedReply
+	err := c.call("Stage", req, &r)
+	return r.Staged, err
 }
 
-func (c *Client) Discard(name string) error {
-	return c.call("Discard", NameArgs{name}, &EmptyReply{})
+func (c *Client) Discard() error {
+	return c.call("Discard", None{}, &EmptyReply{})
 }
 
-func (c *Client) DiscardAll() error {
-	return c.call("DiscardAll", None{}, &EmptyReply{})
+func (c *Client) Commit(req appliance.CommitRequest) (*appliance.Commit, error) {
+	var r CommitReply
+	err := c.call("Commit", req, &r)
+	return r.Commit, err
 }
 
-func (c *Client) Changes() ([]config.Change, error) {
-	var r ChangesReply
-	err := c.call("Changes", None{}, &r)
-	return r.Changes, err
+func (c *Client) Commits() ([]appliance.Commit, error) {
+	var r CommitsReply
+	err := c.call("Commits", None{}, &r)
+	return r.Commits, err
 }
 
-func (c *Client) CheckContent(_ context.Context, name string, data []byte) (string, bool, error) {
-	var r CheckReply
-	err := c.call("CheckContent", ContentArgs{name, data}, &r)
-	return r.Output, r.OK, err
+func (c *Client) GetCommit(id string) (*appliance.CommitDetail, error) {
+	var r DetailReply
+	err := c.call("GetCommit", IDArgs{id}, &r)
+	return r.Detail, err
 }
 
-func (c *Client) Commit(context.Context) (*config.Entry, error) {
-	var r EntryReply
-	err := c.call("Commit", None{}, &r)
-	return r.Entry, err
+func (c *Client) Confirm(id string) (*appliance.Commit, error) {
+	var r CommitReply
+	err := c.call("Confirm", IDArgs{id}, &r)
+	return r.Commit, err
 }
 
-// Pending returns nil if the parent can't be reached; the banner is the
-// only caller and has nothing better to show.
-func (c *Client) Pending() *config.Entry {
-	var r EntryReply
-	if err := c.call("Pending", None{}, &r); err != nil {
-		return nil
-	}
-	return r.Entry
+func (c *Client) Revert(id string) (*appliance.Commit, error) {
+	var r CommitReply
+	err := c.call("Revert", IDArgs{id}, &r)
+	return r.Commit, err
 }
 
-func (c *Client) Confirm() error {
-	return c.call("Confirm", None{}, &EmptyReply{})
-}
-
-func (c *Client) Revert(context.Context) error {
-	return c.call("Revert", None{}, &EmptyReply{})
-}
-
-func (c *Client) History() ([]*config.Entry, error) {
-	var r HistoryReply
-	err := c.call("History", None{}, &r)
-	return r.Entries, err
-}
-
-func (c *Client) Entry(id string) (*config.Entry, error) {
-	var r EntryReply
-	err := c.call("Entry", HistoryArgs{ID: id}, &r)
-	return r.Entry, err
-}
-
-func (c *Client) EntryDiff(id, name string) (string, error) {
-	var r TextReply
-	err := c.call("EntryDiff", HistoryArgs{ID: id, Name: name}, &r)
-	return r.Text, err
-}
-
-func (c *Client) StageFromHistory(id, name string, old bool) error {
-	return c.call("StageFromHistory", HistoryArgs{ID: id, Name: name, Old: old}, &EmptyReply{})
+func (c *Client) CommitConfig(id string, which appliance.Which) (*appliance.Config, error) {
+	var r ConfigReply
+	err := c.call("CommitConfig", CommitConfigArgs{id, which}, &r)
+	return r.Config, err
 }

@@ -83,10 +83,34 @@ func substPart(argv []string, part string) []string {
 	return out
 }
 
+// ModelPath is where the appliance model lives. It's a managed file like
+// any other, so it's staged, committed, snapshotted and reverted
+// together with the files generated from it.
+const ModelPath = "/var/opf/config.json"
+
 // DefaultFiles are the files managed on a stock OpenBSD system, in the
 // order they are applied during a commit.
 func DefaultFiles() []File {
 	return []File{
+		{
+			Name: "config.json", Path: ModelPath,
+			Desc: "OPF's configuration model",
+			Mode: 0600,
+		},
+		{
+			// hostname(1) takes the name as an argument, so the file is
+			// read by a shell; its contents are validated by the model.
+			Name: "myname", Path: "/etc/myname",
+			Desc:  "Host name",
+			Apply: []string{"sh", "-c", `hostname "$(cat "$1")"`, "sh", "{}"},
+			Mode:  0644,
+		},
+		{
+			// Read at boot and by a full netstart; not applied on commit.
+			Name: "mygate", Path: "/etc/mygate",
+			Desc: "Default gateway (applied at boot)",
+			Mode: 0644,
+		},
 		{
 			// hostname.if(5), one per interface. Applied first, since
 			// pf rules refer to the interfaces. netstart reads /etc
