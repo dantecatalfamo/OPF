@@ -6,13 +6,7 @@
       "enabled": true,
       "interfaces": [],
       "description": "",
-      "text": "match out on $wan from $lan : network nat-to ( $wan : 0 )",
-      "source": {
-        "type": ""
-      },
-      "destination": {
-        "type": ""
-      }
+      "text": "match out on $wan from $lan : network nat-to ( $wan : 0 )"
     },
     {
       "id": "",
@@ -20,13 +14,7 @@
       "enabled": true,
       "interfaces": [],
       "description": "",
-      "text": "pass in quick on $wan proto tcp to port 443 rdr-to 192.168.1.20",
-      "source": {
-        "type": ""
-      },
-      "destination": {
-        "type": ""
-      }
+      "text": "pass in quick on $wan proto tcp to port 443 rdr-to 192.168.1.20"
     }
   ],
   "errors": null,

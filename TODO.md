@@ -163,17 +163,22 @@ In order. Each step has details further down.
       `ui/src/model/generate.ts:265`), so outbound rules such as the
       sample's floating `match out … set prio 6` are never reached. Use a
       non-quick `pass out`.
-- [ ] **`/api/model/apply` fails for any model with interfaces.** It
-      stages `hostname.<dev>`, which isn't in the config registry, so the
-      check returns "unknown file".
+- [x] **`/api/model/apply` failed for any model with interfaces.** The
+      registry now has pattern entries: `hostname.*` resolves to
+      `hostname.em0` etc. (device names only), applied first with
+      `sh /etc/netstart <dev>`, mode 0640.
 - [ ] **Apply isn't atomic.** Files are checked and staged one at a time;
       a failure part-way leaves some staged and the model unsaved.
 - [ ] **The model lives in the web process.** `ModelManager` writes
       `config.json` from the unprivileged side, non-atomically, mode
       0644. Belongs in the parent (Next up, step 2).
-- [ ] **The mock UI can't apply.** The store requires
-      `/api/model/apply`, so apply fails under `npm run dev` and in the
-      shared preview. Needs a mock mode (see Mock backend).
+- [x] **The mock UI couldn't apply.** `make mock` runs `opf -mock` with
+      Vite proxying `/api` to it; the preview build uses the TypeScript
+      generator offline.
+- [ ] **Raw rules are rebuilt from tokens.** `parseAsRaw` joins tokens
+      with spaces, so `$lan:network` becomes `$lan : network` and
+      `($wan:0)` becomes `( $wan : 0 )`: invalid pf. Take the rule's text
+      from the original input instead.
 - [ ] **Confirm is client-side only.** Keep and revert don't reach the
       backend; the backend never loads anything today.
 - [ ] **Unbounded request bodies** on every `/api/*` endpoint
@@ -433,9 +438,8 @@ skipped and the web process isn't dropped to another user.
 - [ ] If OPF is killed with SIGKILL (or crashes) during the confirm
       window, the staged pf rules stay loaded until reboot or the next
       start. `Recover` only runs at startup.
-- [ ] `hostname.if(5)`: file names aren't known in advance (need globs
-      in the registry), and `sh /etc/netstart <if>` can't load from
-      another path. Confirmation will have to install, then restore a
+- [ ] `hostname.if(5)`: pattern entries handle the names;
+      `sh /etc/netstart <if>` can't load from another path. Confirmation will have to install, then restore a
       backup on timeout, so the "reboot also reverts" guarantee is lost.
       Needs a design. Interfaces must be applied before pf.
 - [ ] rc.conf.local is only checked with `sh -n`; nothing is applied.
@@ -459,37 +463,33 @@ real OpenBSD system.
 
 ### Mock backend for non-OpenBSD platforms
 
-- [ ] `--mock` flag that enables a mock backend instead of real system
-      commands. Useful for UI development on macOS/Linux and CI testing.
-- [ ] Mock `config.Manager` implementation that:
-      - Returns pre-defined sample data for all queries
-      - Accepts stages/commits without running real validators
-      - Simulates the confirm/revert workflow with timers
-      - Logs what commands *would* have run for debugging
-- [ ] Mock data fixtures:
-      - Sample pf states, rules, and info from a realistic firewall
-      - Sample interface configs (WAN with DHCP, LAN with static IP, VLANs)
-      - Sample DHCP leases and DNS stats
-      - Sample WireGuard peer status
-- [ ] Recorded response mode: capture real OpenBSD command output to files,
-      replay in mock mode. Allows testing against real data without OpenBSD.
-      - `opf --record /path/to/fixtures` captures live data
-      - `opf --mock --fixtures /path/to/fixtures` replays it
-- [ ] Mock validator responses: simulate `pfctl -nf` validation results,
-      including realistic error messages for invalid configs.
-- [ ] Time simulation for confirm/revert testing: allow fast-forwarding
-      the confirmation timeout in mock mode.
-- [ ] API-only mock mode: `opf --mock --api-only` starts just the JSON API
-      without serving the UI, for frontend development with `npm run dev`.
-- [ ] Document mock mode limitations: what differs from real OpenBSD
-      behavior (no actual network changes, no real file writes, etc.).
+`make mock` (`scripts/mock.sh`) runs `opf -mock` on 127.0.0.1:18080 and
+the Vite dev server, which proxies `/api` to it. The mock is one
+process with the real generators, pf parser and staging engine,
+started from `ui/src/model/sample-model.json` (shared with the UI and
+checked against the Go model by `internal/pf/sample_model_test.go`). It
+keeps files in a scratch directory whose "live" files are what the
+sample model generates, logs commands instead of running them, and
+refuses non-loopback addresses.
+
+- [ ] Commit, confirm and revert through the API once it has them (the
+      UI still simulates confirmation); a short `-confirm-timeout` then
+      makes revert testable.
+- [ ] Live data endpoints fed from fixtures (states, rules with
+      counters, interfaces, leases, WireGuard peers, pflog), so the
+      dashboard and diagnostics stop reading `ui/src/model/live.ts`.
+- [ ] Recorded response mode: capture real OpenBSD command output
+      (`opf -record dir`) and replay it in the mock.
+- [ ] Simulated validator results: run the Go pf parser on staged
+      pf.conf so `pfctl -nf`-style errors can be exercised; today every
+      check passes.
+- [ ] Load the model from the backend on startup (`GET /api/model`)
+      instead of the UI's bundled copy.
 
 ### Frontend development workflow
 
-- [ ] `npm run dev` in `ui/` should work standalone with API calls proxied
-      to a mock backend or a real OPF instance.
-- [ ] Vite proxy config to forward `/api/*` to the Go backend.
-- [ ] Hot reload for UI development without rebuilding the Go binary.
+- [x] `npm run dev` proxies `/api/*` to the Go backend; `make mock`
+      starts one.
 - [ ] Storybook or similar for developing components in isolation.
 
 ## Code

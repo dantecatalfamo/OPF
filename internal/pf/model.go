@@ -228,9 +228,9 @@ type Rule struct {
 	Quick          bool          `json:"quick,omitempty"`
 	Family         Family        `json:"family,omitempty"`
 	Protocol       Protocol      `json:"protocol,omitempty"`
-	Source         Endpoint      `json:"source,omitempty"`
+	Source         Endpoint      `json:"source,omitzero"`
 	SourcePort     string        `json:"sourcePort,omitempty"`
-	Destination    Endpoint      `json:"destination,omitempty"`
+	Destination    Endpoint      `json:"destination,omitzero"`
 	Port           string        `json:"port,omitempty"`
 	Log            LogMode       `json:"log,omitempty"`
 	TCPFlags       string        `json:"tcpFlags,omitempty"`

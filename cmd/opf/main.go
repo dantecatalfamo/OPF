@@ -36,8 +36,20 @@ func main() {
 	dry := flag.Bool("dry", false, "log system commands instead of running them")
 	timeout := flag.Duration("confirm-timeout", 60*time.Second, "how long to wait for confirmation before reverting")
 	webUser := flag.String("user", "_opf", "unprivileged user for the web process")
+	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
+	seed := flag.String("seed", "ui/src/model/sample-model.json", "model the mock server starts from")
 	flag.Parse()
 	log.SetPrefix("opf: ")
+
+	if *mock {
+		addr := "127.0.0.1:18080" // where the UI's dev server proxies /api
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == "listen" {
+				addr = *listen
+			}
+		})
+		log.Fatal(runMock(addr, *seed, *timeout))
+	}
 
 	exe, err := executable()
 	if err != nil {

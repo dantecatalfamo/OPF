@@ -1,6 +1,6 @@
 DEV := dev/run
 
-.PHONY: build test dev dev-reset openbsd
+.PHONY: build test dev dev-reset mock openbsd
 
 build:
 	go build -o opf ./cmd/opf
@@ -17,6 +17,12 @@ dev: $(DEV)/root
 $(DEV)/root:
 	mkdir -p $(DEV)
 	cp -R dev/seed $(DEV)/root
+
+# The web UI against a mock backend: the real generators, parser and
+# staging engine on a sample model, with commands logged instead of run.
+# UI on http://localhost:5173.
+mock:
+	./scripts/mock.sh
 
 dev-reset:
 	rm -rf $(DEV)

@@ -6,5 +6,8 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 // sample data, for sharing the design without an appliance.
 export default defineConfig(({ mode }) => ({
   plugins: [react(), ...(mode === 'preview' ? [viteSingleFile()] : [])],
+  // `npm run dev` sends API calls to the Go backend; `make mock` starts
+  // it (opf -mock) on this address.
+  server: { proxy: { '/api': 'http://127.0.0.1:18080' } },
   build: { outDir: mode === 'preview' ? 'dist-preview' : 'dist' },
 }));

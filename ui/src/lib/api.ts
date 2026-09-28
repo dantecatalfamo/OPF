@@ -1,8 +1,13 @@
 // API client for pf.conf parsing and generation endpoints.
 
 import type { Model, Rule } from '../model/types';
+import { generateFiles, ruleText } from '../model/generate';
 
 const API_BASE = '/api';
+
+// The shared preview build has no backend. It uses the TypeScript
+// generator instead, and can't parse pf text back into a form.
+const offline = import.meta.env.MODE === 'preview';
 
 export interface ParseRuleResponse {
   rule?: Rule;
@@ -25,6 +30,7 @@ export interface GenerateConfigResponse {
  * otherwise returns a RawRule.
  */
 export async function parseRule(rule: string, model?: Model): Promise<ParseRuleResponse> {
+  if (offline) return { error: 'Not available in the preview' };
   const response = await fetch(`${API_BASE}/parse-rule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -44,6 +50,7 @@ export async function parseRule(rule: string, model?: Model): Promise<ParseRuleR
  * This is used for the preview in the rule drawer.
  */
 export async function generateRule(rule: Rule, model?: Model): Promise<GenerateRuleResponse> {
+  if (offline && model) return { text: ruleText(rule, model) };
   const response = await fetch(`${API_BASE}/generate-rule`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -64,6 +71,10 @@ export async function generateRule(rule: Rule, model?: Model): Promise<GenerateR
  * @param file - The file to generate: "pf.conf", "dhcpd.conf", "unbound.conf", or "hostname.<device>"
  */
 export async function generateConfig(model: Model, file: string = 'pf.conf'): Promise<GenerateConfigResponse> {
+  if (offline) {
+    const f = generateFiles(model).find((x) => x.path.endsWith(`/${file}`));
+    return f ? { content: f.content } : { error: `unknown file: ${file}` };
+  }
   const response = await fetch(`${API_BASE}/generate-config`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -112,6 +123,7 @@ export interface PreviewResponse {
  * This uses the backend generator (single source of truth).
  */
 export async function previewModel(model: Model): Promise<PreviewResponse> {
+  if (offline) return { files: generateFiles(model) };
   const response = await fetch(`${API_BASE}/model/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -144,6 +156,10 @@ export interface ApplyResponse {
  * This is the model-authoritative way to apply changes.
  */
 export async function applyModel(model: Model): Promise<ApplyResponse> {
+  if (offline) {
+    const files = generateFiles(model);
+    return { files, staged: files.length };
+  }
   const response = await fetch(`${API_BASE}/model/apply`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

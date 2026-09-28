@@ -12,11 +12,22 @@ The appliance UI lives in `ui/` (React, Mantine, TypeScript). For now
 it runs on sample data from `ui/src/model/`:
 
 ```sh
-cd ui
-npm install
-npm run dev            # http://localhost:5173
-npm run build:preview  # single-file build in ui/dist-preview/
+make mock              # UI on http://localhost:5173 with a mock backend
+cd ui && npm run build:preview  # single-file build in ui/dist-preview/
 ```
+
+`make mock` runs `opf -mock` and the Vite dev server together. The mock
+backend is the real Go generators, pf parser and staging engine,
+started from the sample model in `ui/src/model/sample-model.json`.
+It keeps its files in a scratch directory (printed at startup), logs
+the commands it would run instead of running them, has no
+authentication, and only listens on loopback. Vite proxies `/api` to
+it on 127.0.0.1:18080; the staged changes are also visible at
+http://127.0.0.1:18080/changes.
+
+The sample model is shared by the UI and the Go tests, which check it
+decodes into the Go model without losing anything, so a field added on
+one side only fails the build.
 
 ## How changes work
 
