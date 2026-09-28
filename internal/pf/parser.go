@@ -666,9 +666,13 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 			return nil, false
 
 		case p.checkKeyword("label"):
+			// OPF's own label carries the rule's id. Any other label
+			// can't be kept on a guided rule, whose label slot is
+			// taken, so the rule stays raw.
 			p.advance()
-			if v, ok := p.expectString(); ok {
-				rule.Description = v
+			v, ok := p.expectString()
+			if kind, id, own := ParseLabel(v); ok && own && kind == LabelRule {
+				rule.ID = id
 			} else {
 				p.notForm = true
 			}
@@ -713,12 +717,15 @@ func (p *Parser) parseAsRaw() *Rule {
 	}
 	text := p.sourceText(startPos, p.pos)
 
-	// Check for description in label
+	// A label written by hand is the best description there is. The
+	// text keeps it either way.
 	var desc string
 	for i := startPos; i < p.pos; i++ {
 		if p.tokens[i].Type == TokenKeyword && p.tokens[i].Value == "label" {
 			if i+1 < p.pos && p.tokens[i+1].Type == TokenString {
-				desc = p.tokens[i+1].Value
+				if _, _, own := ParseLabel(p.tokens[i+1].Value); !own {
+					desc = p.tokens[i+1].Value
+				}
 				break
 			}
 		}

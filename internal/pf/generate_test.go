@@ -296,8 +296,10 @@ func TestGenerateRule_Quick(t *testing.T) {
 	}
 }
 
+// A rule's label is its id; the description is a comment above it.
 func TestGenerateRule_Label(t *testing.T) {
 	rule := Rule{
+		ID:          "r7",
 		Kind:        "form",
 		Action:      ActionPass,
 		Direction:   DirectionIn,
@@ -305,9 +307,81 @@ func TestGenerateRule_Label(t *testing.T) {
 		Destination: Endpoint{Type: EndpointAny},
 		Description: "Allow SSH",
 	}
-	got := GenerateRule(&rule, nil)
-	if !strings.Contains(got, `label "Allow SSH"`) {
-		t.Errorf("Expected label in output: %q", got)
+	if got := GenerateRule(&rule, nil); got != `pass in all label "opf:rule:r7"` {
+		t.Errorf("GenerateRule = %q", got)
+	}
+	// An id that can't be a label (possible before validation) gets none.
+	rule.ID = `r7" pass all`
+	if got := GenerateRule(&rule, nil); got != "pass in all" {
+		t.Errorf("GenerateRule with a bad id = %q", got)
+	}
+}
+
+func TestDescriptionsAreComments(t *testing.T) {
+	prefix := 24
+	m := &Model{
+		Interfaces: []Iface{
+			{ID: "wan", Name: "WAN", Device: "em0", Role: RoleWAN, Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "203.0.113.2", Prefix: &prefix}},
+			{ID: "lan", Name: "LAN", Device: "em1", Role: RoleLAN, Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "192.168.1.1", Prefix: &prefix}},
+		},
+		Firewall: Firewall{
+			Rules: []Rule{
+				{ID: "r1", Kind: "form", Enabled: true, Interfaces: []string{"lan"}, Action: ActionPass, Direction: DirectionIn,
+					Source: Endpoint{Type: EndpointAny}, Destination: Endpoint{Type: EndpointAny},
+					Description: "Costs $5/month, see the \"ops\" wiki"},
+				{ID: "r2", Kind: "raw", Enabled: true, Interfaces: []string{"lan"}, Text: `pass in on $lan proto udp to port 53 label "dns"`, Description: "Raw one\\"},
+				{ID: "r3", Kind: "form", Enabled: true, Interfaces: []string{"lan"}, Action: ActionBlock, Direction: DirectionIn,
+					Source: Endpoint{Type: EndpointAny}, Destination: Endpoint{Type: EndpointAny}},
+			},
+			Forwards: []PortForward{{ID: "f1", Enabled: true, Iface: "wan", Protocol: "tcp", Source: Endpoint{Type: EndpointAny},
+				ExternalPort: "443", Target: "192.168.1.20", TargetPort: "443", Reflection: true, Description: "web"}},
+			OutboundNAT: OutboundNAT{Mode: NATModeHybrid, Rules: []NATRule{{ID: "n1", Enabled: true, Iface: "wan",
+				Source: Endpoint{Type: EndpointHost, Value: "192.168.1.9"}, Destination: Endpoint{Type: EndpointAny},
+				Translation: Translation{Type: TranslationNone}, Description: "No NAT"}}},
+		},
+	}
+	conf := GeneratePfConf(m)
+	for _, want := range []string{
+		"# Costs $5/month, see the \"ops\" wiki\npass in on $lan all label \"opf:rule:r1\"\n",
+		// Raw rules keep their text, own label and all; a trailing
+		// backslash would join the comment to the rule.
+		"# Raw one\npass in on $lan proto udp to port 53 label \"dns\"\n",
+		"\nblock in on $lan all label \"opf:rule:r3\"\n",
+		"# web\npass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
+			"pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
+			"match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan) label \"opf:forward:f1\"\n",
+		"# No NAT\npass out quick on $wan inet from 192.168.1.9 to any label \"opf:nat:n1\"\n",
+		"# Automatic: LAN to WAN\nmatch out on $wan inet from $lan:network to any nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
+		"block all label \"opf:builtin:default-block\"\n",
+		"pass out quick inet label \"opf:builtin:self-out\"\n",
+		"pass in quick on $lan proto tcp to $lan port { 443 22 } label \"opf:builtin:anti-lockout\"\n",
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in:\n%s", want, conf)
+		}
+	}
+	if strings.Contains(conf, "label \"web\"") || strings.Contains(conf, "label \"No NAT\"") {
+		t.Errorf("a description is still a label:\n%s", conf)
+	}
+}
+
+func TestLabels(t *testing.T) {
+	for _, l := range []string{"opf:rule:r1", "opf:forward:f_1", "opf:auto-nat:lan", "opf:builtin:anti-lockout", "opf:nat:" + strings.Repeat("n", 32)} {
+		kind, id, ok := ParseLabel(l)
+		if !ok || Label(kind, id) != l {
+			t.Errorf("ParseLabel(%q) = %q, %q, %v", l, kind, id, ok)
+		}
+		if len(l) > 63 {
+			t.Errorf("%q is longer than PF_RULE_LABEL_SIZE allows", l)
+		}
+	}
+	if len(Label(LabelAutoNAT, strings.Repeat("x", 32))) > 63 {
+		t.Error("the longest label doesn't fit")
+	}
+	for _, l := range []string{"", "Allow SSH", "opf:", "opf:rule", "opf:rule:", "opf:thing:x", "opf:rule:a b", "opf:rule:$nr", "xopf:rule:r1", "opf:rule:" + strings.Repeat("r", 33)} {
+		if _, _, ok := ParseLabel(l); ok {
+			t.Errorf("ParseLabel(%q) accepted it", l)
+		}
 	}
 }
 
@@ -628,8 +702,8 @@ func TestBuiltinRulesFollowAddressing(t *testing.T) {
 	}
 	conf := GeneratePfConf(m)
 	for _, want := range []string{
-		`pass in quick on $lan proto tcp to $lan port { 443 22 } label "Anti-lockout"`,
-		`pass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label "web"`,
+		`pass in quick on $lan proto tcp to $lan port { 443 22 } label "opf:builtin:anti-lockout"`,
+		`pass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label "opf:forward:f1"`,
 		`pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443`,
 		`match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan)`,
 		// The DHCP-addressed lab network gets reflection too, in parentheses.

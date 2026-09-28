@@ -13,6 +13,7 @@ import { checkPfLine } from '../lib/pfcheck';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
 import { getIcmpTypeOptions, getIcmpCodeOptions, returnIcmpCodes, returnIcmp6Codes } from '../lib/icmp';
 import { api } from '../lib/api';
+import { pfComment } from '../model/generate';
 
 type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
 
@@ -131,7 +132,8 @@ export function RuleDrawer({
       setPreviewLoading(true);
       let text: string;
       try {
-        text = await api.renderRule({ ...toRule(v), id: 'preview' } as Rule, model);
+        // With the rule's own id, so the preview shows its real label.
+        text = await api.renderRule({ ...toRule(v), id: rule?.id ?? '' } as Rule, model);
       } catch (e) {
         text = `# Couldn't render the rule: ${e instanceof Error ? e.message : e}`;
       }
@@ -142,7 +144,7 @@ export function RuleDrawer({
     }, 150); // 150ms debounce
 
     return () => clearTimeout(timer);
-  }, [v, model]);
+  }, [v, model, rule]);
 
   const state: StateOptions = v.state ?? { mode: 'keep' };
   const setState = (patch: Partial<StateOptions>) => form.setFieldValue('state', { ...state, ...patch });
@@ -161,10 +163,11 @@ export function RuleDrawer({
       if (parsedRule && parsedRule.kind === 'form') {
         // Successfully parsed - switch to form mode with populated values
         const { id: _id, kind: _kind, ...formValues } = parsedRule;
-        form.setValues({ ...formValues, mode: 'form', rawText: '' });
+        // The text has no description (a label would have kept it raw).
+        form.setValues({ ...formValues, description: v.description, mode: 'form', rawText: '' });
       } else {
         // Could not convert to form rule - show error
-        form.setFieldError('rawText', 'This rule cannot be converted to the guided form. Complex features like NAT, anchors, or queues are only supported in raw mode.');
+        form.setFieldError('rawText', 'This rule cannot be converted to the guided form. Complex features like NAT, anchors, queues or a label of its own are only supported in raw mode.');
       }
     } catch {
       form.setFieldError('rawText', 'Failed to parse rule');
@@ -175,7 +178,9 @@ export function RuleDrawer({
   const portData = [{ group: 'Common', items: commonPorts.map((p) => p.value) }, ...(portAliases.length ? [{ group: 'Aliases', items: portAliases }] : [])];
 
   const switchMode = (mode: string) => {
-    if (mode === 'raw' && v.mode === 'form') form.setValues({ mode: 'raw', rawText: preview });
+    // The raw text is the user's from here on; OPF's id label would go
+    // stale if the rule were copied, crediting its counters elsewhere.
+    if (mode === 'raw' && v.mode === 'form') form.setValues({ mode: 'raw', rawText: preview.replace(/ label "opf:rule:[A-Za-z0-9_-]+"$/, '') });
     if (mode === 'form') form.setFieldValue('mode', 'form');
   };
 
@@ -531,7 +536,7 @@ export function RuleDrawer({
           {v.mode === 'form' && (
             <Group gap="xs" align="flex-start">
               <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, flex: 1 }}>
-                {preview || '# Loading...'}
+                {preview ? [pfComment(v.description), preview].filter(Boolean).join('\n') : '# Loading...'}
               </Code>
               {previewLoading && <Loader size="xs" />}
             </Group>

@@ -146,7 +146,8 @@ In order. Each step has details further down.
       the parent before anything is generated, and on commit again.
       Limits come from pf's source (label 63 bytes, table names 31,
       `IFNAMSIZ`), interface ids can't be pf keywords
-      (`keywords_gen.go`, from parse.y), and `$` is rejected in labels.
+      (`keywords_gen.go`, from parse.y), and ids that go into labels
+      are checked against pf's label rules.
       It found two bugs in the sample model. Was: nothing checks the model before
       generating. Alias names, interface ids and devices, hostnames,
       domains, reservation names and addresses are written into pf.conf,
@@ -444,6 +445,21 @@ skipped and the web process isn't dropped to another user.
       (`http.CrossOriginProtection`); internal errors reach clients only
       as "internal error".
 - [ ] Record who made each commit in history once there are users.
+
+## pf labels
+
+Generated rules are labelled `opf:<kind>:<id>` (rule, forward, nat,
+auto-nat, builtin) and descriptions are `#` comments above them, so
+descriptions are free text and counters map back to model objects.
+
+- [ ] Show live counters per rule from `pfctl -s labels`, and kill a
+      rule's states with `pfctl -k label -k opf:rule:<id>`.
+- [ ] Map pflog entries (rule numbers) to model rules through
+      `pfctl -vvsr`'s labels.
+- [ ] Raw rules only have a label if their text has one. Offer to add
+      OPF's when a raw rule has none.
+- [ ] Importing: rules with their own label stay raw (the guided form's
+      label is its id). Offer to turn those labels into descriptions.
 
 ## DHCP names in DNS
 

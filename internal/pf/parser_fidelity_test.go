@@ -59,6 +59,9 @@ func TestParseRule_KeepsUnmodelledAsRaw(t *testing.T) {
 		"pass in all user root",
 		"pass in all max-pkt-rate 100/10",
 		"pass in all label nolabelquote",
+		"pass in all label \"desk phone\"",     // someone's own label: the form's label is the id
+		"pass in all label \"opf:forward:f1\"", // OPF's, but not a rule's
+		"pass in all label \"opf:rule:a b\"",
 		"pass in all tag",
 		"pass in all set prio (3, 5)",
 		"pass in all set tos lowdelay",
@@ -186,8 +189,8 @@ func TestParseRule_ModelledFields(t *testing.T) {
 		{"block return-icmp (port-unr) in all", func(r *Rule) bool {
 			return r.BlockReturn == BlockReturnICMP && r.ReturnICMPCode == "port-unr"
 		}},
-		{"pass in all probability 20% set prio 6 tag VOIP label \"desk phone\"", func(r *Rule) bool {
-			return *r.Probability == 20 && *r.Prio == 6 && r.Tag == "VOIP" && r.Description == "desk phone"
+		{"pass in all probability 20% set prio 6 tag VOIP label \"opf:rule:r7\"", func(r *Rule) bool {
+			return *r.Probability == 20 && *r.Prio == 6 && r.Tag == "VOIP" && r.ID == "r7" && r.Description == ""
 		}},
 	}
 	for _, tt := range tests {
@@ -234,7 +237,7 @@ func TestParseRule_RoundTrip(t *testing.T) {
 		"block return-icmp6 (port-unr) in inet6 all",
 		"pass in proto icmp all icmp-type echoreq",
 		"pass in proto icmp6 all icmp6-type neighbrsol",
-		"pass in from any os \"Windows\" to any probability 20% once set prio 6 tag A tagged B label \"x\"",
+		"pass in from any os \"Windows\" to any probability 20% once set prio 6 tag A tagged B label \"opf:rule:x\"",
 		"pass in proto tcp all synproxy state (max-src-conn 10, max-src-conn-rate 3/30, overload <bruteforce> flush global)",
 		"pass in proto tcp all no state",
 		"match out on $wan proto { tcp udp } from any to any port { 80 443 }",
@@ -256,7 +259,7 @@ func FuzzParseRuleRoundTrip(f *testing.F) {
 		"pass in on $lan from $lan:network to any route-to 10.8.0.10",
 		"block return-icmp (port-unr) in all",
 		"pass out on egress from (egress:network:0) to ! $lan:broadcast",
-		"pass in from any os \"Windows\" to any probability 20% once set prio 6 tag A tagged B label \"x\"",
+		"pass in from any os \"Windows\" to any probability 20% once set prio 6 tag A tagged B label \"opf:rule:x\"",
 	} {
 		f.Add(s)
 	}

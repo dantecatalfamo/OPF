@@ -94,7 +94,22 @@ function onClause(ifaces: string[], groups: string[]): string {
   return ` on { ${parts.join(' ')} }`;
 }
 
-const quote = (s: string) => `"${s.replace(/"/g, "'")}"`;
+// As pf reads quoted strings: only the quotes need escaping.
+const quote = (s: string) => `"${s.replace(/"/g, '\\"')}"`;
+
+// Rules are labelled with the model object they come from,
+// "opf:<kind>:<id>", which is what pfctl reports counters by;
+// descriptions are comments above them (see internal/pf/generate.go).
+const labelId = /^[A-Za-z0-9_-]{1,32}$/;
+export const pfLabel = (kind: 'rule' | 'forward' | 'nat' | 'auto-nat' | 'builtin', id: string) =>
+  labelId.test(id) ? ` label ${quote(`opf:${kind}:${id}`)}` : '';
+
+// A description as a pf.conf comment. pf continues a comment that ends
+// in a backslash onto the next line.
+export function pfComment(s: string): string {
+  const c = s.replace(/\p{Cc}/gu, ' ').replace(/[\\ ]+$/, '');
+  return c ? `# ${c}` : '';
+}
 
 export function ruleText(r: Rule, m: Model): string {
   if (r.kind === 'raw') return r.text.trim();
@@ -174,19 +189,18 @@ function formRuleText(r: FormRule, m: Model): string {
   if (rt) s += ` route-to ${rt}`;
   const rp = gatewayAddr(r.replyTo, m);
   if (rp) s += ` reply-to ${rp}`;
-  if (r.description) s += ` label ${quote(r.description)}`;
-  return s;
+  return s + pfLabel('rule', r.id);
 }
 
-export function natText(n: NatRule, m: Model): string {
+export function natText(n: NatRule, m: Model, label = pfLabel('nat', n.id)): string {
   const hosts = `on $${n.iface} inet from ${endpoint(n.source, m)} to ${endpoint(n.destination, m)}`;
   // An exception has to stop evaluation before any nat-to applies.
-  if (n.translation.type === 'none') return `pass out quick ${hosts} label ${quote(n.description)}`;
+  if (n.translation.type === 'none') return `pass out quick ${hosts}${label}`;
   let s = `match out ${hosts}`;
   s += ` nat-to ${n.translation.type === 'ifaddr' ? `($${n.iface}:0)` : n.translation.value}`;
   if (n.pool) s += ` ${n.pool}`;
   if (n.staticPort) s += ' static-port';
-  return `${s} label ${quote(n.description)}`;
+  return s + label;
 }
 
 // The NAT rules OPF adds on its own: every internal network leaves
@@ -211,15 +225,16 @@ export function forwardText(f: PortForward, m: Model): string[] {
   // Same interface references as user rules; nat-to targets stay in
   // parentheses, as pf.conf(5) advises for NAT.
   const pub = endpoint({ type: 'iface', iface: f.iface }, m);
+  const label = pfLabel('forward', f.id);
   const lines = [
-    `pass in${log} quick on $${f.iface}${proto(f.protocol)} from ${from} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort} label ${quote(f.description)}`,
+    `pass in${log} quick on $${f.iface}${proto(f.protocol)} from ${from} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort}${label}`,
   ];
   if (f.reflection) {
     const inside = m.interfaces.filter((i) => i.enabled && (i.role === 'lan' || i.role === 'opt') && i.ipv4.mode !== 'none');
     for (const i of inside) {
       const net = endpoint({ type: 'iface', iface: i.id, part: 'network' }, m);
-      lines.push(`pass in quick on $${i.id}${proto(f.protocol)} from ${net} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort}`);
-      lines.push(`match out on $${i.id}${proto(f.protocol)} from ${net} to ${f.target} port ${f.targetPort} nat-to ($${i.id})`);
+      lines.push(`pass in quick on $${i.id}${proto(f.protocol)} from ${net} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort}${label}`);
+      lines.push(`match out on $${i.id}${proto(f.protocol)} from ${net} to ${f.target} port ${f.targetPort} nat-to ($${i.id})${label}`);
     }
   }
   return lines;
@@ -230,6 +245,12 @@ export function pfRuleset(m: Model): PfLine[] {
   const L: PfLine[] = [];
   const add = (text: string, origin?: Origin) => L.push({ text, origin });
   const blank = () => L.push({ text: '' });
+  // An object's rules, with its description above them.
+  const described = (description: string, origin: Origin, ...rules: string[]) => {
+    const c = pfComment(description);
+    if (c) add(c, origin);
+    for (const r of rules) add(r, origin);
+  };
   const fw = m.firewall;
   const o = fw.options;
   const ifaces = m.interfaces.filter((i) => i.enabled);
@@ -276,24 +297,27 @@ export function pfRuleset(m: Model): PfLine[] {
   const auto = fw.outboundNat.mode === 'manual' ? [] : automaticNat(m);
   // Exceptions first, since they end evaluation. Among match rules the
   // last nat-to wins, so manual rules follow the automatic ones.
-  for (const n of manual.filter((x) => x.translation.type === 'none')) add(natText(n, m), natOrigin);
-  for (const n of auto) add(natText(n, m), natOrigin);
-  for (const n of manual.filter((x) => x.translation.type !== 'none')) add(natText(n, m), natOrigin);
+  for (const n of manual.filter((x) => x.translation.type === 'none')) described(n.description, natOrigin, natText(n, m));
+  for (const n of auto) described(n.description, natOrigin, natText(n, m, pfLabel('auto-nat', n.source.type === 'iface' ? n.source.iface ?? '' : '')));
+  for (const n of manual.filter((x) => x.translation.type !== 'none')) described(n.description, natOrigin, natText(n, m));
   blank();
 
   add('# Defaults');
-  add(o.logDefaultBlock ? 'block log all' : 'block all', { label: 'Default block', to: '/firewall/settings' });
-  add('pass out quick inet', { label: 'This firewall’s own traffic', to: '/firewall/settings' });
-  add('pass out quick inet6', { label: 'This firewall’s own traffic', to: '/firewall/settings' });
-  if (lan) add(`pass in quick on $${lan.id} proto tcp to ${endpoint({ type: 'iface', iface: lan.id }, m)} port { 443 22 } label "Anti-lockout"`, { label: 'Anti-lockout', to: `/interfaces/${lan.id}` });
-  if (wan?.blockPrivate) add(`block in log quick on $${wan.id} from <private> label "Block private networks"`, { label: 'WAN protection', to: `/interfaces/${wan.id}` });
-  if (wan?.blockBogons) add(`block in log quick on $${wan.id} from <bogons> label "Block bogon networks"`, { label: 'WAN protection', to: `/interfaces/${wan.id}` });
+  add((o.logDefaultBlock ? 'block log all' : 'block all') + pfLabel('builtin', 'default-block'), { label: 'Default block', to: '/firewall/settings' });
+  add('pass out quick inet' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
+  add('pass out quick inet6' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
+  if (lan) described('Anti-lockout: the web UI and SSH stay reachable from the LAN', { label: 'Anti-lockout', to: `/interfaces/${lan.id}` },
+    `pass in quick on $${lan.id} proto tcp to ${endpoint({ type: 'iface', iface: lan.id }, m)} port { 443 22 }${pfLabel('builtin', 'anti-lockout')}`);
+  if (wan?.blockPrivate) described('Block private networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },
+    `block in log quick on $${wan.id} from <private>${pfLabel('builtin', 'block-private')}`);
+  if (wan?.blockBogons) described('Block bogon networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },
+    `block in log quick on $${wan.id} from <bogons>${pfLabel('builtin', 'block-bogons')}`);
   blank();
 
   const forwards = fw.forwards.filter((f) => f.enabled && ifaces.some((i) => i.id === f.iface));
   if (forwards.length) {
     add('# Port forwards');
-    for (const f of forwards) for (const t of forwardText(f, m)) add(t, { label: `Port forward: ${f.description}`, to: '/firewall/nat' });
+    for (const f of forwards) described(f.description, { label: `Port forward: ${f.description}`, to: '/firewall/nat' }, ...forwardText(f, m));
     blank();
   }
 
@@ -306,14 +330,14 @@ export function pfRuleset(m: Model): PfLine[] {
   const floating = fw.rules.filter((r) => r.enabled && isFloating(r));
   if (floating.length) {
     add('# Floating rules');
-    for (const r of floating) add(ruleText(r, m), { label: `Rule: ${r.description}`, to: '/firewall/rules/floating' });
+    for (const r of floating) described(r.description, { label: `Rule: ${r.description}`, to: '/firewall/rules/floating' }, ruleText(r, m));
     blank();
   }
   for (const i of ifaces) {
     const rules = fw.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === i.id);
     if (!rules.length) continue;
     add(`# ${i.name} rules`);
-    for (const r of rules) add(ruleText(r, m), { label: `Rule: ${r.description}`, to: `/firewall/rules/${i.id}` });
+    for (const r of rules) described(r.description, { label: `Rule: ${r.description}`, to: `/firewall/rules/${i.id}` }, ruleText(r, m));
     blank();
   }
 

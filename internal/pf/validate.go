@@ -87,9 +87,10 @@ func (v *validator) intRange(path string, n, lo, hi int) {
 	}
 }
 
-// text checks free text that ends up quoted in a config file: a pf
-// label, for instance. pf's lexer can't carry a newline or a backslash
-// through a quoted string, and expands $if, $nr and similar in labels.
+// text checks free text that ends up quoted in a config file, or in a
+// comment in hostname.if, which netstart reads with the shell's read.
+// pf's lexer can't carry a newline or a backslash through a quoted
+// string, and expands $if, $nr and similar in labels.
 func (v *validator) text(path, s string, max int, required bool) {
 	switch {
 	case s == "" && required:
@@ -100,6 +101,22 @@ func (v *validator) text(path, s string, max int, required bool) {
 		v.fail(path, "is %d bytes; the most is %d", len(s), max)
 	case strings.ContainsAny(s, `\$`):
 		v.fail(path, `can't contain \ or $`)
+	case strings.ContainsFunc(s, unicode.IsControl):
+		v.fail(path, "can't contain control characters or line breaks")
+	}
+}
+
+// note checks a description written as a comment above pf rules. pf's
+// lexer continues a comment ending in a backslash onto the next line, so
+// backslashes are out; so are line breaks, which would end the comment.
+func (v *validator) note(path, s string) {
+	switch {
+	case !utf8.ValidString(s):
+		v.fail(path, "isn't valid UTF-8")
+	case len(s) > 200:
+		v.fail(path, "is %d bytes; the most is 200", len(s))
+	case strings.Contains(s, `\`):
+		v.fail(path, `can't contain \`)
 	case strings.ContainsFunc(s, unicode.IsControl):
 		v.fail(path, "can't contain control characters or line breaks")
 	}
@@ -463,7 +480,7 @@ func (v *validator) firewall() {
 	ids := map[string]bool{}
 	for i, r := range fw.Rules {
 		p := at("firewall.rules", i)
-		v.re(p+".id", r.ID, idRE, "id")
+		v.re(p+".id", r.ID, labelIDRE, "rule id (it's in the rule's pf label)")
 		v.unique(p+".id", ids, r.ID, "rule id")
 		v.ifaceList(p+".interfaces", r.Interfaces)
 		for j, g := range r.Groups {
@@ -471,7 +488,7 @@ func (v *validator) firewall() {
 				v.fail(at(p+".groups", j), "%q isn't an interface group or interface name", g)
 			}
 		}
-		v.text(p+".description", r.Description, 63, false) // PF_RULE_LABEL_SIZE
+		v.note(p+".description", r.Description)
 		switch r.Kind {
 		case "raw":
 			v.rawLine(p+".text", r.Text, true)
@@ -485,7 +502,7 @@ func (v *validator) firewall() {
 	fids := map[string]bool{}
 	for i, f := range fw.Forwards {
 		p := at("firewall.forwards", i)
-		v.re(p+".id", f.ID, idRE, "id")
+		v.re(p+".id", f.ID, labelIDRE, "port forward id (it's in the rules' pf label)")
 		v.unique(p+".id", fids, f.ID, "port forward id")
 		v.ifaceRef(p+".iface", f.Iface)
 		v.oneOf(p+".protocol", string(f.Protocol), string(ProtoTCP), string(ProtoUDP), string(ProtoTCPUDP))
@@ -496,7 +513,7 @@ func (v *validator) firewall() {
 			}
 		}
 		v.addr(p+".target", f.Target, false)
-		v.text(p+".description", f.Description, 63, false)
+		v.note(p+".description", f.Description)
 	}
 
 	nat := fw.OutboundNAT
@@ -504,7 +521,7 @@ func (v *validator) firewall() {
 	nids := map[string]bool{}
 	for i, n := range nat.Rules {
 		p := at("firewall.outboundNat.rules", i)
-		v.re(p+".id", n.ID, idRE, "id")
+		v.re(p+".id", n.ID, labelIDRE, "NAT rule id (it's in the rule's pf label)")
 		v.unique(p+".id", nids, n.ID, "NAT rule id")
 		v.ifaceRef(p+".iface", n.Iface)
 		v.endpoint(p+".source", n.Source)
@@ -519,7 +536,7 @@ func (v *validator) firewall() {
 		if n.Pool != "" {
 			v.oneOf(p+".pool", string(n.Pool), string(PoolRoundRobin), string(PoolSourceHash), string(PoolRandom))
 		}
-		v.text(p+".description", n.Description, 63, false)
+		v.note(p+".description", n.Description)
 	}
 
 	o := fw.Options

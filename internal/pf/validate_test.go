@@ -25,10 +25,14 @@ func TestValidateCatchesProblems(t *testing.T) {
 			m.Firewall.Rules[0].Description = "x\"\npass all"
 		}},
 		{"backslash in a description", "firewall.rules[0].description", func(m *Model) { m.Firewall.Rules[0].Description = `a\ b` }},
-		{"label macro in a description", "firewall.rules[0].description", func(m *Model) { m.Firewall.Rules[0].Description = "rule $nr" }},
-		{"description over pf's label size", "firewall.rules[0].description", func(m *Model) {
-			m.Firewall.Rules[0].Description = strings.Repeat("é", 32)
+		{"description ending in a backslash (continues the pf comment)", "firewall.rules[0].description", func(m *Model) { m.Firewall.Rules[0].Description = `note\` }},
+		{"description over 200 bytes", "firewall.rules[0].description", func(m *Model) {
+			m.Firewall.Rules[0].Description = strings.Repeat("é", 101)
 		}},
+		{"rule id too long for its label", "firewall.rules[0].id", func(m *Model) { m.Firewall.Rules[0].ID = strings.Repeat("r", 33) }},
+		{"rule id with a quote (label)", "firewall.rules[0].id", func(m *Model) { m.Firewall.Rules[0].ID = `r1" pass` }},
+		{"port forward id with $ (label macro)", "firewall.forwards[0].id", func(m *Model) { m.Firewall.Forwards[0].ID = "f$nr" }},
+		{"NAT rule id with a colon", "firewall.outboundNat.rules[0].id", func(m *Model) { m.Firewall.OutboundNAT.Rules[0].ID = "n:1" }},
 		{"quote in an interface name (hostname.if)", "interfaces[1].name", func(m *Model) { m.Interfaces[1].Name = `LAN" up` }},
 		{"interface id is a pf keyword", "interfaces[1].id", func(m *Model) { m.Interfaces[1].ID = "block" }},
 		{"interface id with a space", "interfaces[1].id", func(m *Model) { m.Interfaces[1].ID = "l an" }},

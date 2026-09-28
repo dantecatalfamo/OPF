@@ -225,14 +225,24 @@ func TestParseRule_BlockReturn(t *testing.T) {
 	}
 }
 
+// A label written by hand keeps the rule raw, with the label as its
+// description; OPF's own label gives a guided rule its id.
 func TestParseRule_Label(t *testing.T) {
 	input := `pass in on $wan proto tcp to port 22 label "Allow SSH"`
 	rule, err := ParseRule(input, nil)
 	if err != nil {
 		t.Fatalf("ParseRule: %v", err)
 	}
-	if rule.Description != "Allow SSH" {
-		t.Errorf("Description = %q, want %q", rule.Description, "Allow SSH")
+	if rule.Kind != "raw" || rule.Description != "Allow SSH" || rule.Text != input {
+		t.Errorf("got %+v", rule)
+	}
+	rule, err = ParseRule(`pass in on $wan proto tcp to port 22 label "opf:rule:r5"`, nil)
+	if err != nil || rule.Kind != "form" || rule.ID != "r5" || rule.Description != "" {
+		t.Errorf("OPF label: %+v, %v", rule, err)
+	}
+	rule, err = ParseRule(`pass in on $wan proto tcp to port 22 rdr-to 10.0.0.1 label "opf:forward:f1"`, nil)
+	if err != nil || rule.Kind != "raw" || rule.Description != "" {
+		t.Errorf("raw rule with OPF's label: %+v, %v", rule, err)
 	}
 }
 
@@ -318,7 +328,7 @@ func TestParseRule_Family(t *testing.T) {
 }
 
 func TestParseRule_ComplexRule(t *testing.T) {
-	input := `pass in log quick on $wan inet proto tcp from any to ($wan) port 443 flags S/SA keep state (max-src-conn 100, max-src-conn-rate 3/30, overload <bruteforce> flush global) tag WEB label "HTTPS traffic"`
+	input := `pass in log quick on $wan inet proto tcp from any to ($wan) port 443 flags S/SA keep state (max-src-conn 100, max-src-conn-rate 3/30, overload <bruteforce> flush global) tag WEB label "opf:rule:https"`
 
 	rule, err := ParseRule(input, nil)
 	if err != nil {
@@ -352,8 +362,8 @@ func TestParseRule_ComplexRule(t *testing.T) {
 	if rule.Tag != "WEB" {
 		t.Errorf("Tag = %q, want WEB", rule.Tag)
 	}
-	if rule.Description != "HTTPS traffic" {
-		t.Errorf("Description = %q, want 'HTTPS traffic'", rule.Description)
+	if rule.ID != "https" {
+		t.Errorf("ID = %q, want https", rule.ID)
 	}
 	if rule.State == nil {
 		t.Fatal("State is nil")
