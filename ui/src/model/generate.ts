@@ -1,7 +1,7 @@
 // Turns the model into the OpenBSD files it replaces. The Go backend
 // will own the real generators; these show the user exactly what Apply
 // writes and pin down the shape of the output.
-import type { Endpoint, FormRule, Iface, IfaceEndpoint, Model, NatRule, PortForward, Protocol, Rule } from './types';
+import type { Endpoint, FormRule, Iface, IfaceEndpoint, Model, NatRule, PortForward, Protocol, Rule, SelfEndpoint } from './types';
 import { isFloating } from '../lib/rules';
 import { netmask, network } from '../lib/ip';
 import { gatewayStatus } from './live';
@@ -32,7 +32,7 @@ function endpoint(e: Endpoint, m: Model): string {
     case 'any':
       return 'any';
     case 'self':
-      return `${not}self`;
+      return `${not}${ifaceRef(e, m)}`;
     case 'iface':
       return `${not}${ifaceRef(e, m)}`;
     case 'host':
@@ -44,15 +44,17 @@ function endpoint(e: Endpoint, m: Model): string {
 }
 
 // Without parentheses pf resolves an interface once, when rules load.
-export function ifaceDynamic(e: IfaceEndpoint, m: Model): boolean {
+export function ifaceDynamic(e: IfaceEndpoint | SelfEndpoint, m: Model): boolean {
   if (e.dynamic !== undefined) return e.dynamic;
+  // self is every interface's addresses: follow them if any can change.
+  if (e.type === 'self') return m.interfaces.some((i) => i.enabled && (i.ipv4.mode !== 'static' || i.ipv6 === 'slaac'));
   if (e.group) return true;
   const i = m.interfaces.find((x) => x.id === e.iface);
   return !i || i.ipv4.mode !== 'static' || i.ipv6 === 'slaac';
 }
 
-function ifaceRef(e: IfaceEndpoint, m: Model): string {
-  let ref = e.iface ? `$${e.iface}` : e.group ?? '';
+function ifaceRef(e: IfaceEndpoint | SelfEndpoint, m: Model): string {
+  let ref = e.type === 'self' ? 'self' : e.iface ? `$${e.iface}` : e.group ?? '';
   if (e.part) ref += `:${e.part}`;
   if (e.noAlias) ref += ':0';
   return ifaceDynamic(e, m) ? `(${ref})` : ref;
@@ -191,9 +193,10 @@ export function natText(n: NatRule, m: Model): string {
 // each WAN translated to that WAN's address.
 export function automaticNat(m: Model): NatRule[] {
   const wans = m.interfaces.filter((i) => i.enabled && i.role === 'wan');
+  // Every inside network, however it's addressed.
   return wans.flatMap((w) =>
-    staticIfaces(m)
-      .filter((i) => i.role !== 'wan')
+    m.interfaces
+      .filter((i) => i.enabled && i.role !== 'wan' && i.ipv4.mode !== 'none')
       .map((i) => ({
         id: `auto-${w.id}-${i.id}`, enabled: true, iface: w.id, source: { type: 'iface', iface: i.id, part: 'network' } as Endpoint,
         destination: { type: 'any' } as Endpoint, translation: { type: 'ifaddr' } as const, staticPort: false,
@@ -205,14 +208,18 @@ export function automaticNat(m: Model): NatRule[] {
 export function forwardText(f: PortForward, m: Model): string[] {
   const log = f.log ? ' log' : '';
   const from = endpoint(f.source, m);
+  // Same interface references as user rules; nat-to targets stay in
+  // parentheses, as pf.conf(5) advises for NAT.
+  const pub = endpoint({ type: 'iface', iface: f.iface }, m);
   const lines = [
-    `pass in${log} quick on $${f.iface}${proto(f.protocol)} from ${from} to ($${f.iface}) port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort} label ${quote(f.description)}`,
+    `pass in${log} quick on $${f.iface}${proto(f.protocol)} from ${from} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort} label ${quote(f.description)}`,
   ];
   if (f.reflection) {
-    const inside = staticIfaces(m).filter((i) => i.role === 'lan' || i.role === 'opt');
+    const inside = m.interfaces.filter((i) => i.enabled && (i.role === 'lan' || i.role === 'opt') && i.ipv4.mode !== 'none');
     for (const i of inside) {
-      lines.push(`pass in quick on $${i.id}${proto(f.protocol)} from $${i.id}:network to ($${f.iface}) port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort}`);
-      lines.push(`match out on $${i.id}${proto(f.protocol)} from $${i.id}:network to ${f.target} port ${f.targetPort} nat-to ($${i.id})`);
+      const net = endpoint({ type: 'iface', iface: i.id, part: 'network' }, m);
+      lines.push(`pass in quick on $${i.id}${proto(f.protocol)} from ${net} to ${pub} port ${f.externalPort} rdr-to ${f.target} port ${f.targetPort}`);
+      lines.push(`match out on $${i.id}${proto(f.protocol)} from ${net} to ${f.target} port ${f.targetPort} nat-to ($${i.id})`);
     }
   }
   return lines;
@@ -278,7 +285,7 @@ export function pfRuleset(m: Model): PfLine[] {
   add(o.logDefaultBlock ? 'block log all' : 'block all', { label: 'Default block', to: '/firewall/settings' });
   add('pass out quick inet', { label: 'This firewall’s own traffic', to: '/firewall/settings' });
   add('pass out quick inet6', { label: 'This firewall’s own traffic', to: '/firewall/settings' });
-  if (lan) add(`pass in quick on $${lan.id} proto tcp to ($${lan.id}) port { 443 22 } label "Anti-lockout"`, { label: 'Anti-lockout', to: `/interfaces/${lan.id}` });
+  if (lan) add(`pass in quick on $${lan.id} proto tcp to ${endpoint({ type: 'iface', iface: lan.id }, m)} port { 443 22 } label "Anti-lockout"`, { label: 'Anti-lockout', to: `/interfaces/${lan.id}` });
   if (wan?.blockPrivate) add(`block in log quick on $${wan.id} from <private> label "Block private networks"`, { label: 'WAN protection', to: `/interfaces/${wan.id}` });
   if (wan?.blockBogons) add(`block in log quick on $${wan.id} from <bogons> label "Block bogon networks"`, { label: 'WAN protection', to: `/interfaces/${wan.id}` });
   blank();

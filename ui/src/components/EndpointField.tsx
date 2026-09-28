@@ -1,5 +1,5 @@
 import { Checkbox, Group, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
-import type { Endpoint, IfaceEndpoint, IfacePart, Model } from '../model/types';
+import type { Endpoint, IfaceEndpoint, IfacePart, Model, SelfEndpoint } from '../model/types';
 import { ifaceDynamic } from '../model/generate';
 
 // The picker's value: 'any' | 'self' | 'iface:<id>' | 'group:<name>' |
@@ -24,12 +24,13 @@ function kindOf(e: Endpoint): Kind {
 // becomes "IoT network" rather than "IoT address".
 function fromKind(kind: Kind, prev: Endpoint): Endpoint {
   const n = prev.not ? { not: true } : {};
-  const opts = prev.type === 'iface' ? { part: prev.part, noAlias: prev.noAlias, dynamic: prev.dynamic } : { part: 'network' as IfacePart };
+  const opts = prev.type === 'iface' || prev.type === 'self' ? { part: prev.part, noAlias: prev.noAlias, dynamic: prev.dynamic } : { part: 'network' as IfacePart };
   if (kind.startsWith('iface:')) return { type: 'iface', iface: kind.slice(6), ...opts, ...n };
   if (kind.startsWith('group:')) return { type: 'iface', group: kind.slice(6), ...opts, ...n };
   if (kind.startsWith('alias:')) return { type: 'alias', alias: kind.slice(6), ...n };
   if (kind === 'host' || kind === 'network') return { type: kind, value: prev.type === 'host' || prev.type === 'network' ? prev.value : '', ...n };
-  if (kind === 'self') return { type: 'self', ...n };
+  // This firewall defaults to its own addresses, not its networks.
+  if (kind === 'self') return prev.type === 'iface' || prev.type === 'self' ? { type: 'self', ...opts, ...n } : { type: 'self', ...n };
   return { type: 'any' };
 }
 
@@ -67,7 +68,7 @@ const partLabels: { value: IfacePart | 'address'; label: string }[] = [
   { value: 'peer', label: 'Peer' },
 ];
 
-function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint; onChange: (e: Endpoint) => void; model: Model }) {
+function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfEndpoint; onChange: (e: Endpoint) => void; model: Model }) {
   const auto = ifaceDynamic({ ...value, dynamic: undefined }, model);
   const help = {
     address: 'The addresses assigned to it.',
@@ -139,7 +140,7 @@ export function EndpointField({ label, value, onChange, model, error }: {
           onChange={(ev) => onChange({ ...value, group: ev.currentTarget.value })}
         />
       )}
-      {value.type === 'iface' && <IfaceOptions value={value} onChange={onChange} model={model} />}
+      {(value.type === 'iface' || value.type === 'self') && <IfaceOptions value={value} onChange={onChange} model={model} />}
       {value.type !== 'any' && (
         <Checkbox
           size="xs"

@@ -588,3 +588,68 @@ func TestIfaceDynamicDefault(t *testing.T) {
 		}
 	}
 }
+
+// self follows address changes when any interface's address can change.
+func TestSelfDynamicDefault(t *testing.T) {
+	prefix := 24
+	static := []Iface{{ID: "lan", Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "192.168.1.1", Prefix: &prefix}}}
+	withDHCP := append([]Iface{{ID: "wan", Enabled: true, IPv4: IPv4Config{Mode: IPv4DHCP}}}, static...)
+	for _, tt := range []struct {
+		m    *Model
+		e    Endpoint
+		want string
+	}{
+		{&Model{Interfaces: static}, Endpoint{Type: EndpointSelf}, "self"},
+		{&Model{Interfaces: withDHCP}, Endpoint{Type: EndpointSelf}, "(self)"},
+		{nil, Endpoint{Type: EndpointSelf}, "self"},
+		{&Model{Interfaces: withDHCP}, Endpoint{Type: EndpointSelf, Part: PartNetwork, NoAlias: true}, "(self:network:0)"},
+		{&Model{Interfaces: static}, Endpoint{Type: EndpointSelf, Part: PartBroadcast, Not: true}, "! self:broadcast"},
+	} {
+		if got := endpoint(tt.e, tt.m); got != tt.want {
+			t.Errorf("endpoint(%+v) = %q, want %q", tt.e, got, tt.want)
+		}
+	}
+}
+
+// Built-in rules use the same interface references as user rules, so a
+// DHCP-addressed interface is always in parentheses.
+func TestBuiltinRulesFollowAddressing(t *testing.T) {
+	prefix := 24
+	m := &Model{
+		Interfaces: []Iface{
+			{ID: "wan", Device: "em0", Role: RoleWAN, Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "203.0.113.2", Prefix: &prefix}},
+			{ID: "lan", Device: "em1", Role: RoleLAN, Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "192.168.1.1", Prefix: &prefix}},
+			{ID: "lab", Device: "em2", Role: RoleOPT, Enabled: true, IPv4: IPv4Config{Mode: IPv4DHCP}},
+		},
+		Firewall: Firewall{Forwards: []PortForward{{
+			ID: "f1", Enabled: true, Iface: "wan", Protocol: "tcp", Source: Endpoint{Type: EndpointAny},
+			ExternalPort: "443", Target: "192.168.1.20", TargetPort: "443", Reflection: true, Description: "web",
+		}}},
+	}
+	conf := GeneratePfConf(m)
+	for _, want := range []string{
+		`pass in quick on $lan proto tcp to $lan port { 443 22 } label "Anti-lockout"`,
+		`pass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label "web"`,
+		`pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443`,
+		`match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan)`,
+		// The DHCP-addressed lab network gets reflection too, in parentheses.
+		`pass in quick on $lab proto tcp from ($lab:network) to $wan port 443 rdr-to 192.168.1.20 port 443`,
+		`match out on $lab proto tcp from ($lab:network) to 192.168.1.20 port 443 nat-to ($lab)`,
+		`match out on $wan inet from ($lab:network) to any nat-to ($wan:0)`,
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in:\n%s", want, conf)
+		}
+	}
+
+	m.Interfaces[0].IPv4 = IPv4Config{Mode: IPv4DHCP}
+	conf = GeneratePfConf(m)
+	for _, want := range []string{
+		`from any to ($wan) port 443 rdr-to`,
+		`from $lan:network to ($wan) port 443 rdr-to`,
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("DHCP WAN: missing %q in:\n%s", want, conf)
+		}
+	}
+}

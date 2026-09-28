@@ -29,7 +29,8 @@
       "family": "any",
       "protocol": "any",
       "source": {
-        "type": "self"
+        "type": "self",
+        "dynamic": false
       },
       "destination": {
         "type": "any"

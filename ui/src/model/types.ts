@@ -32,22 +32,33 @@ export type IfacePart = 'network' | 'broadcast' | 'peer';
 
 export type EndpointTarget =
   | { type: 'any' }
-  | { type: 'self' } // every address of this firewall
+  | SelfEndpoint
   | IfaceEndpoint
   | { type: 'host'; value: string }
   | { type: 'network'; value: string }
   | { type: 'alias'; alias: string };
 
-// An interface reference: $lan:network, ($wan), (egress:network:0)…
-export interface IfaceEndpoint {
-  type: 'iface';
-  iface?: string; // a model interface id, written as $id
-  group?: string; // or an interface group (egress) / unmanaged interface, written as-is
+// Interface modifiers, shared by interface references and self.
+export interface IfaceModifiers {
   part?: IfacePart;
   noAlias?: boolean; // :0, leave out alias addresses
   // In parentheses, so rules follow address changes. Undefined: dynamic
   // for groups and DHCP/SLAAC interfaces, fixed for static ones.
   dynamic?: boolean;
+}
+
+// An interface reference: $lan:network, ($wan), (egress:network:0)…
+export interface IfaceEndpoint extends IfaceModifiers {
+  type: 'iface';
+  iface?: string; // a model interface id, written as $id
+  group?: string; // or an interface group (egress) / unmanaged interface, written as-is
+}
+
+// Every address of this firewall; pf takes the same modifiers as for
+// interfaces (self:network, (self)). Undefined dynamic follows address
+// changes when any interface is addressed by DHCP or SLAAC.
+export interface SelfEndpoint extends IfaceModifiers {
+  type: 'self';
 }
 
 export type Endpoint = EndpointTarget & { not?: boolean };

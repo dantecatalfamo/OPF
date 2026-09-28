@@ -9,8 +9,10 @@ export function endpointLabel(e: Endpoint, m: Model): string {
   switch (e.type) {
     case 'any':
       return 'Any';
-    case 'self':
-      return `${not}This firewall`;
+    case 'self': {
+      const part = e.part ? ` ${e.part}s` : '';
+      return `${not}This firewall${part}${e.noAlias ? ' (primary)' : ''}`;
+    }
     case 'iface': {
       const name = e.iface ? ifaceName(m, e.iface) : e.group;
       return `${not}${name} ${e.part ?? 'address'}${e.noAlias ? ' (primary)' : ''}`;

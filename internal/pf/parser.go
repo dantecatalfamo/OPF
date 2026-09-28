@@ -166,7 +166,7 @@ func (p *Parser) parseGateway() string {
 	return ""
 }
 
-// parseIfaceRef reads an interface or group name and its modifiers
+// parseIfaceRef reads an interface or group name, or self, and its modifiers
 // (":network", ":broadcast", ":peer", ":0"). As in pfctl (parse.y
 // dynaddr, pfctl_parser.c host_if), the three address modifiers are
 // mutually exclusive and ":0" combines with any of them, in any order.
@@ -183,6 +183,10 @@ func (p *Parser) parseIfaceRef(dynamic bool) (Endpoint, bool) {
 	}
 	modelIface := false
 	switch {
+	case tok.Type == TokenKeyword && tok.Value == "self":
+		// Every address of this firewall; takes the same modifiers.
+		e.Type = EndpointSelf
+		modelIface = true // never a host name
 	case tok.Type == TokenMacro:
 		e.Iface = tok.Value
 		if p.model != nil && !p.model.hasInterface(tok.Value) {
@@ -841,20 +845,6 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// self. "self:network" and the like aren't modelled.
-	if p.checkKeyword("self") {
-		p.advance()
-		if p.check(TokenColon) {
-			p.notForm = true
-		}
-		endpoint = Endpoint{Type: EndpointSelf, Not: negated}
-		if p.checkKeyword("port") {
-			p.advance()
-			port = p.parsePortSpec()
-		}
-		return endpoint, port, true
-	}
-
 	// Table: <name>
 	if tok, ok := p.expect(TokenTable); ok {
 		endpoint = Endpoint{Type: EndpointAlias, Alias: tok.Value, Not: negated}
@@ -869,9 +859,6 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 	// addresses change.
 	if p.check(TokenLParen) {
 		p.advance()
-		if p.checkKeyword("self") {
-			p.notForm = true // (self) isn't modelled
-		}
 		endpoint, ok := p.parseIfaceRef(true)
 		if !ok {
 			p.notForm = true

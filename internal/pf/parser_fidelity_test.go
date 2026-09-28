@@ -48,12 +48,11 @@ func TestParseRule_KeepsUnmodelledAsRaw(t *testing.T) {
 		// interfaces and interface modifiers
 		"pass in on ! em0 all",
 		"pass in from $lan:network:broadcast to any", // pfctl: illegal combination
+		"pass in from self:peer:network to any",
 		"pass in from ($wan:bogus) to any",
 		"pass in from em9 to any",      // bare word: interface or hostname
 		"pass in from em9:0 to any",    // likewise; hostnames take :0 too
 		"pass in from $mystery to any", // not a model interface
-		"pass in from self:network to any",
-		"pass in from (self) to any",
 		// options
 		"block drop in all",
 		"pass in all user root",
@@ -155,6 +154,18 @@ func TestParseRule_ModelledFields(t *testing.T) {
 			e := r.Destination
 			return e.Group == "wg0" && e.Part == PartPeer && !*e.Dynamic
 		}},
+		{"pass in from self to any", func(r *Rule) bool {
+			return r.Source.Type == EndpointSelf && r.Source.Part == PartAddress && !*r.Source.Dynamic
+		}},
+		{"pass in from (self) to any", func(r *Rule) bool { return r.Source.Type == EndpointSelf && *r.Source.Dynamic }},
+		{"pass in from ! self:network to any", func(r *Rule) bool {
+			e := r.Source
+			return e.Type == EndpointSelf && e.Not && e.Part == PartNetwork && !*e.Dynamic
+		}},
+		{"pass in from (self:broadcast:0) to any", func(r *Rule) bool {
+			e := r.Source
+			return e.Type == EndpointSelf && e.Part == PartBroadcast && e.NoAlias && *e.Dynamic
+		}},
 		{"pass in proto tcp from ($lan:network) port 80 to any", func(r *Rule) bool {
 			return r.Source.Part == PartNetwork && r.SourcePort == "80"
 		}},
@@ -229,6 +240,7 @@ func TestParseRule_RoundTrip(t *testing.T) {
 		"pass out on egress from (egress:network:0) to ! $lan:broadcast",
 		"pass in on { em1 wg em9 } from ($wan:0) to wg0:peer",
 		"pass in from em0 to (em1:network)",
+		"pass in from (self:network:0) to ! self port 22",
 	} {
 		roundTrips(t, in, m)
 	}

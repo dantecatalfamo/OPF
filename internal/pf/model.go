@@ -140,7 +140,8 @@ type Endpoint struct {
 
 	// For iface, exactly one of Iface, a model interface id written as
 	// $id, and Group, an interface group such as egress (or an interface
-	// OPF doesn't manage) written as-is.
+	// OPF doesn't manage) written as-is. Part, NoAlias and Dynamic also
+	// apply to self, which pf treats like an interface name.
 	Iface   string    `json:"iface,omitempty"`
 	Group   string    `json:"group,omitempty"`
 	Part    IfacePart `json:"part,omitempty"`

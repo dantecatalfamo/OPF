@@ -130,13 +130,18 @@ In order. Each step has details further down.
       The `on` clause takes groups too, which make a rule floating. The
       old generator always wrote `$if:network` unparenthesized, which
       goes stale on a DHCP interface until pf reloads.
-- [ ] Still raw: `self` with modifiers (`self:network`, `(self)`), and
-      bare names or `name:0` that aren't model interfaces (pf treats them
-      as interfaces only if one exists at load time, else as hostnames).
-- [ ] The generator's built-in rules (anti-lockout, NAT reflection) are
-      format strings with a fixed `$lan:network`; build them from
-      `iface` endpoints so a DHCP-addressed inside network gets
-      parentheses too.
+- [x] `self` takes the same modifiers (`self:network`, `(self)`; in
+      the kernel `(self)` is the "all" group, `pf_if.c`). Left
+      automatic, it's in parentheses when any interface is addressed by
+      DHCP or SLAAC.
+- [x] Built-in rules (anti-lockout, port forwards, NAT reflection,
+      automatic outbound NAT) use `iface` endpoints like user rules.
+      Reflection and automatic NAT used to skip DHCP-addressed inside
+      networks entirely; now they include every enabled inside network
+      with IPv4. `nat-to` targets stay in parentheses always.
+- [ ] Still raw: bare names or `name:0` that aren't model interfaces
+      (pf treats them as interfaces only if one exists at load time,
+      else as hostnames).
 - [ ] Importing (principle 4) must build the model's interfaces first:
       rules naming devices (`on em0`) only become guided rules when the
       device is in the model, otherwise they stay raw.

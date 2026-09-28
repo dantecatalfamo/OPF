@@ -232,7 +232,7 @@ func endpoint(e Endpoint, m *Model) string {
 	case EndpointAny:
 		return "any"
 	case EndpointSelf:
-		return not + "self"
+		return not + ifaceRef(e, m)
 	case EndpointIface:
 		return not + ifaceRef(e, m)
 	case EndpointHost, EndpointNetwork:
@@ -250,7 +250,10 @@ func endpoint(e Endpoint, m *Model) string {
 // parentheses when dynamic: $lan:network, ($wan), (egress:network:0).
 func ifaceRef(e Endpoint, m *Model) string {
 	ref := e.Group
-	if e.Iface != "" {
+	switch {
+	case e.Type == EndpointSelf:
+		ref = "self"
+	case e.Iface != "":
 		ref = "$" + e.Iface
 	}
 	if e.Part != PartAddress {
@@ -271,6 +274,19 @@ func ifaceRef(e Endpoint, m *Model) string {
 func ifaceDynamic(e Endpoint, m *Model) bool {
 	if e.Dynamic != nil {
 		return *e.Dynamic
+	}
+	if e.Type == EndpointSelf {
+		// self is every interface's addresses, so it follows them if any
+		// can change. With no model to ask, keep the plain form.
+		if m == nil {
+			return false
+		}
+		for _, i := range m.Interfaces {
+			if i.Enabled && (i.IPv4.Mode != IPv4Static || i.IPv6 == IPv6SLAAC) {
+				return true
+			}
+		}
+		return false
 	}
 	if e.Group != "" || m == nil {
 		return true
@@ -414,12 +430,13 @@ func AutomaticNAT(m *Model) []NATRule {
 		}
 	}
 
-	statics := staticIfaces(m)
 	var rules []NATRule
 
 	for _, w := range wans {
-		for _, i := range statics {
-			if i.Role == RoleWAN {
+		// Every inside network, however it's addressed: the source is an
+		// interface reference, so DHCP-addressed ones get parentheses.
+		for _, i := range m.Interfaces {
+			if !i.Enabled || i.Role == RoleWAN || i.IPv4.Mode == IPv4None {
 				continue
 			}
 			rules = append(rules, NATRule{
@@ -445,23 +462,24 @@ func GeneratePortForward(f *PortForward, m *Model) []string {
 		log = " log"
 	}
 	from := endpoint(f.Source, m)
+	// Built-in references follow the same rule as user rules: in
+	// parentheses when the interface's address can change. Translation
+	// targets (nat-to) are always in parentheses, as pf.conf(5) advises.
+	public := endpoint(ifaceAddr(f.Iface), m)
 
 	lines := []string{
-		fmt.Sprintf("pass in%s quick on $%s%s from %s to ($%s) port %s rdr-to %s port %s label %s",
-			log, f.Iface, proto(f.Protocol), from, f.Iface, f.ExternalPort, f.Target, f.TargetPort, quote(f.Description)),
+		fmt.Sprintf("pass in%s quick on $%s%s from %s to %s port %s rdr-to %s port %s label %s",
+			log, f.Iface, proto(f.Protocol), from, public, f.ExternalPort, f.Target, f.TargetPort, quote(f.Description)),
 	}
 
 	if f.Reflection {
-		inside := staticIfaces(m)
-		for _, i := range inside {
-			if i.Role != RoleLAN && i.Role != RoleOPT {
-				continue
-			}
+		for _, i := range insideIfaces(m) {
+			inside := endpoint(Endpoint{Type: EndpointIface, Iface: i.ID, Part: PartNetwork}, m)
 			lines = append(lines,
-				fmt.Sprintf("pass in quick on $%s%s from $%s:network to ($%s) port %s rdr-to %s port %s",
-					i.ID, proto(f.Protocol), i.ID, f.Iface, f.ExternalPort, f.Target, f.TargetPort),
-				fmt.Sprintf("match out on $%s%s from $%s:network to %s port %s nat-to ($%s)",
-					i.ID, proto(f.Protocol), i.ID, f.Target, f.TargetPort, i.ID),
+				fmt.Sprintf("pass in quick on $%s%s from %s to %s port %s rdr-to %s port %s",
+					i.ID, proto(f.Protocol), inside, public, f.ExternalPort, f.Target, f.TargetPort),
+				fmt.Sprintf("match out on $%s%s from %s to %s port %s nat-to ($%s)",
+					i.ID, proto(f.Protocol), inside, f.Target, f.TargetPort, i.ID),
 			)
 		}
 	}
@@ -480,6 +498,24 @@ func staticIfaces(m *Model) []Iface {
 }
 
 // isFloating returns true if the rule applies to multiple or no interfaces.
+// ifaceAddr is the addresses of a model interface.
+func ifaceAddr(id string) Endpoint { return Endpoint{Type: EndpointIface, Iface: id} }
+
+// insideIfaces are the enabled LAN and optional interfaces with IPv4,
+// however they're addressed.
+func insideIfaces(m *Model) []Iface {
+	var out []Iface
+	if m == nil {
+		return out
+	}
+	for _, i := range m.Interfaces {
+		if i.Enabled && (i.Role == RoleLAN || i.Role == RoleOPT) && i.IPv4.Mode != IPv4None {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
 func isFloating(r *Rule) bool {
 	return len(r.Interfaces) != 1 || len(r.Groups) > 0
 }
@@ -633,7 +669,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	add("pass out quick inet", &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
 	add("pass out quick inet6", &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
 	if lan != nil {
-		add(fmt.Sprintf("pass in quick on $%s proto tcp to ($%s) port { 443 22 } label \"Anti-lockout\"", lan.ID, lan.ID), &Origin{Label: "Anti-lockout", To: fmt.Sprintf("/interfaces/%s", lan.ID)})
+		add(fmt.Sprintf("pass in quick on $%s proto tcp to %s port { 443 22 } label \"Anti-lockout\"", lan.ID, endpoint(ifaceAddr(lan.ID), m)), &Origin{Label: "Anti-lockout", To: fmt.Sprintf("/interfaces/%s", lan.ID)})
 	}
 	if wan != nil && wan.BlockPrivate {
 		add(fmt.Sprintf("block in log quick on $%s from <private> label \"Block private networks\"", wan.ID), &Origin{Label: "WAN protection", To: fmt.Sprintf("/interfaces/%s", wan.ID)})
