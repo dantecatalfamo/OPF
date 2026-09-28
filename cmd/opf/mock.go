@@ -73,6 +73,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		Files:          config.DefaultFiles(),
 		Runner:         run.Dry{Log: log.Default()},
 		ConfirmTimeout: timeout,
+		FileLog:        log.Default(),
 	})
 	if err != nil {
 		return err
@@ -82,7 +83,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		return err
 	}
 
-	log.Printf("mock: files in %s (kept on exit)", dir)
+	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)
 	log.Printf("mock: API on http://%s; `make mock` also starts the UI, whose dev server proxies to 127.0.0.1:18080", listen)
 	hs := &http.Server{
 		Addr:              listen,

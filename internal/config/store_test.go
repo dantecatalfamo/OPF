@@ -1,8 +1,10 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -438,5 +440,60 @@ func TestPatternValidation(t *testing.T) {
 		if _, err := New(Options{StateDir: t.TempDir(), Files: []File{f}}); err == nil {
 			t.Errorf("New accepted %+v", f)
 		}
+	}
+}
+
+func TestFileLog(t *testing.T) {
+	root := t.TempDir()
+	var buf bytes.Buffer
+	s, err := New(Options{
+		Root: root, StateDir: t.TempDir(), Files: testFiles, Runner: &fakeRunner{},
+		ConfirmTimeout: 50 * time.Millisecond, FileLog: log.New(&buf, "", 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/pf.conf", "pass\n")
+
+	stage(t, s, "pf", "block\n")
+	stage(t, s, "rc", "ntpd_flags=\n")
+	stage(t, s, "ntpd", "servers x\n")
+	stage(t, s, "ntpd", "") // same as the (missing) live file: unstaged
+	if _, err := s.Commit(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Confirm(); err != nil {
+		t.Fatal(err)
+	}
+	// A second commit that isn't confirmed: rc.conf.local is restored.
+	stage(t, s, "rc", "sshd_flags=NO\n")
+	stage(t, s, "pf", "pass\n")
+	if _, err := s.Commit(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for s.Pending() != nil && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	got := buf.String()
+	cand := func(p string) string { return filepath.Join(s.dir, "candidate", p) }
+	live := func(p string) string { return filepath.Join(root, p) }
+	for _, want := range []string{
+		"file: stage   /etc/pf.conf -> " + cand("/etc/pf.conf") + "\n",
+		"file: stage   /etc/rc.conf.local -> " + cand("/etc/rc.conf.local") + " (new file)\n",
+		"file: unstage /etc/ntpd.conf -> " + cand("/etc/ntpd.conf") + " (same as the live file)\n",
+		"file: install /etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (commit ",
+		", new file, mode 0644)\n",
+		"file: install /etc/pf.conf -> " + live("/etc/pf.conf") + " (confirmed commit ",
+		"file: restore /etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (reverting commit ",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("file log missing %q:\n%s", want, got)
+		}
+	}
+	// Clearing the candidate after a commit isn't reported as unstaging.
+	if n := strings.Count(got, "unstage"); n != 1 {
+		t.Errorf("%d unstage lines, want 1:\n%s", n, got)
 	}
 }

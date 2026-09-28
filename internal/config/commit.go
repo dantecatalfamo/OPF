@@ -111,7 +111,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 			return fail(err)
 		}
 		fmt.Fprintf(&logBuf, "# install %s\n", f.Path)
-		if err := writeFileAtomic(s.livePath(f), staged, f.Mode); err != nil {
+		if err := s.install(f, staged, "commit "+e.ID); err != nil {
 			return fail(err)
 		}
 		if err := s.apply(ctx, f, s.livePath(f), &logBuf); err != nil {
@@ -186,7 +186,7 @@ func (s *Store) Confirm() error {
 			return err
 		}
 		// If this fails the timer keeps running and will revert.
-		if err := writeFileAtomic(s.livePath(f), data, f.Mode); err != nil {
+		if err := s.install(f, data, "confirmed commit "+e.ID); err != nil {
 			return err
 		}
 		fmt.Fprintf(&logBuf, "# install %s\n", f.Path)
@@ -287,10 +287,13 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 					errs = append(errs, err)
 					continue
 				}
+				s.logFile("restore", f, live, "reverting commit "+e.ID)
 				fmt.Fprintf(logBuf, "# restore %s\n", f.Path)
 			} else {
 				if err := os.Remove(live); err != nil && !errors.Is(err, fs.ErrNotExist) {
 					errs = append(errs, err)
+				} else {
+					s.logFile("remove", f, live, "reverting commit "+e.ID+", didn't exist before")
 				}
 				fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
 				continue

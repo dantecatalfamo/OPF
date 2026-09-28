@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,6 +59,7 @@ type Store struct {
 	files          []File
 	run            run.Runner
 	confirmTimeout time.Duration
+	fileLog        *log.Logger
 
 	mu      sync.Mutex
 	pending *pendingCommit
@@ -69,6 +71,10 @@ type Options struct {
 	Files          []File
 	Runner         run.Runner
 	ConfirmTimeout time.Duration
+	// FileLog, when set, reports every change to a staged or live file:
+	// the path on the real system, where it went (with Root, a scratch
+	// location), and why. The mock server sets it.
+	FileLog *log.Logger
 }
 
 func New(opts Options) (*Store, error) {
@@ -84,6 +90,7 @@ func New(opts Options) (*Store, error) {
 		files:          opts.Files,
 		run:            opts.Runner,
 		confirmTimeout: opts.ConfirmTimeout,
+		fileLog:        opts.FileLog,
 	}
 	for _, d := range []string{"candidate", "history", "tmp"} {
 		if err := os.MkdirAll(filepath.Join(s.dir, d), 0700); err != nil {
@@ -202,12 +209,12 @@ func (s *Store) Stage(name string, data []byte) error {
 }
 
 func (s *Store) stage(f File, data []byte) error {
-	live, _, err := s.live(f)
+	live, exists, err := s.live(f)
 	if err != nil {
 		return err
 	}
 	if bytes.Equal(live, data) {
-		return s.discard(f)
+		return s.unstage(f, "same as the live file")
 	}
 	bases, err := s.bases()
 	if err != nil {
@@ -219,7 +226,15 @@ func (s *Store) stage(f File, data []byte) error {
 			return err
 		}
 	}
-	return writeFileAtomic(s.candidatePath(f), data, 0600)
+	if err := writeFileAtomic(s.candidatePath(f), data, 0600); err != nil {
+		return err
+	}
+	note := ""
+	if !exists {
+		note = "new file"
+	}
+	s.logFile("stage", f, s.candidatePath(f), note)
+	return nil
 }
 
 func (s *Store) Discard(name string) error {
@@ -229,9 +244,26 @@ func (s *Store) Discard(name string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.discard(f)
+	return s.unstage(f, "discarded")
 }
 
+// unstage discards f's staged copy and reports it if there was one.
+func (s *Store) unstage(f File, why string) error {
+	_, staged, err := s.staged(f)
+	if err != nil {
+		return err
+	}
+	if err := s.discard(f); err != nil {
+		return err
+	}
+	if staged {
+		s.logFile("unstage", f, s.candidatePath(f), why)
+	}
+	return nil
+}
+
+// discard forgets f's staged copy, silently: also used to clear the
+// candidate once a commit has used it.
 func (s *Store) discard(f File) error {
 	if err := os.Remove(s.candidatePath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -252,10 +284,42 @@ func (s *Store) DiscardAll() error {
 		return err
 	}
 	for _, f := range files {
-		if err := s.discard(f); err != nil {
+		if err := s.unstage(f, "discarded"); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// logFile reports a file operation to the FileLog, if there is one.
+func (s *Store) logFile(op string, f File, path, note string) {
+	if s.fileLog == nil {
+		return
+	}
+	msg := fmt.Sprintf("file: %-7s %s", op, f.Path)
+	if path != f.Path {
+		msg += " -> " + path
+	}
+	if note != "" {
+		msg += " (" + note + ")"
+	}
+	s.fileLog.Print(msg)
+}
+
+// install writes a live file and reports it.
+func (s *Store) install(f File, data []byte, why string) error {
+	_, exists, err := s.live(f)
+	if err != nil {
+		return err
+	}
+	if err := writeFileAtomic(s.livePath(f), data, f.Mode); err != nil {
+		return err
+	}
+	note := why
+	if !exists {
+		note = fmt.Sprintf("%s, new file, mode %04o", why, f.Mode)
+	}
+	s.logFile("install", f, s.livePath(f), note)
 	return nil
 }
 
