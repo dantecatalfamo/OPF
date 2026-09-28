@@ -2,7 +2,6 @@ package pf
 
 import (
 	"strings"
-	"unicode"
 )
 
 // TokenType identifies the kind of token.
@@ -11,32 +10,32 @@ type TokenType int
 const (
 	TokenEOF TokenType = iota
 	TokenError
-	TokenKeyword     // pass, block, match, in, out, on, proto, from, to, port, etc.
-	TokenMacro       // $name
-	TokenTable       // <name>
-	TokenNumber      // 123, 8000:8080
-	TokenIPv4        // 192.168.1.1
-	TokenIPv6        // fe80::1
-	TokenCIDR        // 192.168.1.0/24
-	TokenString      // "quoted string"
-	TokenIdent       // any identifier
-	TokenLBrace      // {
-	TokenRBrace      // }
-	TokenLParen      // (
-	TokenRParen      // )
-	TokenComma       // ,
-	TokenSlash       // /
-	TokenColon       // :
-	TokenBang        // !
-	TokenLT          // <
-	TokenGT          // >
-	TokenLTE         // <=
-	TokenGTE         // >=
-	TokenNE          // !=
-	TokenEQ          // =
-	TokenRange       // ><
-	TokenExclude     // <>
-	TokenNewline     // end of logical line
+	TokenKeyword // pass, block, match, in, out, on, proto, from, to, port, etc.
+	TokenMacro   // $name
+	TokenTable   // <name>
+	TokenNumber  // 123, 8000:8080
+	TokenIPv4    // 192.168.1.1
+	TokenIPv6    // fe80::1
+	TokenCIDR    // 192.168.1.0/24
+	TokenString  // "quoted string"
+	TokenIdent   // any identifier
+	TokenLBrace  // {
+	TokenRBrace  // }
+	TokenLParen  // (
+	TokenRParen  // )
+	TokenComma   // ,
+	TokenSlash   // /
+	TokenColon   // :
+	TokenBang    // !
+	TokenLT      // <
+	TokenGT      // >
+	TokenLTE     // <=
+	TokenGTE     // >=
+	TokenNE      // !=
+	TokenEQ      // =
+	TokenRange   // ><
+	TokenExclude // <>
+	TokenNewline // end of logical line
 )
 
 var tokenNames = map[TokenType]string{
@@ -135,6 +134,11 @@ func NewTokenizer(input string) *Tokenizer {
 		col:   1,
 	}
 }
+
+// The tokenizer works on bytes, like pf's own lexer (parse.y): bare
+// words are ASCII, and other bytes only appear inside quoted strings,
+// which are copied through unchanged. peek, peekN and advance return a
+// byte widened to a rune; they never decode UTF-8.
 
 func (t *Tokenizer) peek() rune {
 	if t.pos >= len(t.input) {
@@ -300,7 +304,7 @@ func (t *Tokenizer) Next() Token {
 	}
 
 	// Numbers, IPs, and identifiers
-	if unicode.IsDigit(r) {
+	if isDigit(r) {
 		return t.scanNumberOrIP()
 	}
 
@@ -308,9 +312,10 @@ func (t *Tokenizer) Next() Token {
 		return t.scanIdent()
 	}
 
-	// Unknown character
+	// Unknown byte
+	start := t.pos
 	t.advance()
-	return t.token(TokenError, string(r), startLine, startCol)
+	return t.token(TokenError, t.input[start:t.pos], startLine, startCol)
 }
 
 func (t *Tokenizer) scanString() Token {
@@ -331,7 +336,7 @@ func (t *Tokenizer) scanString() Token {
 			t.advance()
 			r = t.peek()
 		}
-		sb.WriteRune(r)
+		sb.WriteByte(byte(r))
 		t.advance()
 	}
 	return t.token(TokenString, sb.String(), startLine, startCol)
@@ -343,7 +348,7 @@ func (t *Tokenizer) scanMacro() Token {
 	t.advance() // skip $
 	var sb strings.Builder
 	for isIdentChar(t.peek()) {
-		sb.WriteRune(t.advance())
+		sb.WriteByte(byte(t.advance()))
 	}
 	if sb.Len() == 0 {
 		return t.token(TokenError, "empty macro name", startLine, startCol)
@@ -362,7 +367,7 @@ func (t *Tokenizer) scanTable(startLine, startCol int) Token {
 		if r == 0 || r == '\n' {
 			return t.token(TokenError, "unterminated table name", startLine, startCol)
 		}
-		sb.WriteRune(t.advance())
+		sb.WriteByte(byte(t.advance()))
 	}
 	return t.token(TokenTable, sb.String(), startLine, startCol)
 }
@@ -376,9 +381,9 @@ func (t *Tokenizer) scanNumberOrIP() Token {
 	var sb strings.Builder
 	for {
 		r := t.peek()
-		if unicode.IsDigit(r) || r == '.' || r == ':' || r == '/' ||
+		if isDigit(r) || r == '.' || r == ':' || r == '/' ||
 			(r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') {
-			sb.WriteRune(t.advance())
+			sb.WriteByte(byte(t.advance()))
 		} else {
 			break
 		}
@@ -430,8 +435,8 @@ func (t *Tokenizer) scanPlainNumber() Token {
 	startLine := t.line
 	startCol := t.col
 	var sb strings.Builder
-	for unicode.IsDigit(t.peek()) {
-		sb.WriteRune(t.advance())
+	for isDigit(t.peek()) {
+		sb.WriteByte(byte(t.advance()))
 	}
 	return t.token(TokenNumber, sb.String(), startLine, startCol)
 }
@@ -439,13 +444,14 @@ func (t *Tokenizer) scanPlainNumber() Token {
 func (t *Tokenizer) scanIdent() Token {
 	startLine := t.line
 	startCol := t.col
+	startPos := t.pos
 	var sb strings.Builder
 
 	// Collect the full identifier, including potential IPv6 chars
 	for {
 		r := t.peek()
 		if isIdentChar(r) || r == ':' {
-			sb.WriteRune(t.advance())
+			sb.WriteByte(byte(t.advance()))
 		} else {
 			break
 		}
@@ -461,11 +467,10 @@ func (t *Tokenizer) scanIdent() Token {
 	// Split and return just the identifier part, then let the tokenizer
 	// handle the colon separately
 	if idx := strings.Index(val, ":"); idx > 0 && !strings.Contains(val, "::") {
-		// Backtrack to before the colon
-		for i := len(val) - 1; i >= idx; i-- {
-			t.pos--
-			t.col--
-		}
+		// Backtrack to before the colon. Identifiers are ASCII with no
+		// newlines, so bytes, columns and characters line up.
+		t.pos = startPos + idx
+		t.col = startCol + idx
 		val = val[:idx]
 	}
 
@@ -476,20 +481,24 @@ func (t *Tokenizer) scanIdent() Token {
 	return t.token(TokenIdent, val, startLine, startCol)
 }
 
+func isDigit(r rune) bool { return r >= '0' && r <= '9' }
+
+func isLetter(r rune) bool { return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') }
+
 func isIdentStart(r rune) bool {
-	return unicode.IsLetter(r) || r == '_'
+	return isLetter(r) || r == '_'
 }
 
 func isIdentChar(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-'
+	return isLetter(r) || isDigit(r) || r == '_' || r == '-'
 }
 
 func isNumber(s string) bool {
 	if s == "" {
 		return false
 	}
-	for _, r := range s {
-		if !unicode.IsDigit(r) {
+	for i := 0; i < len(s); i++ {
+		if !isDigit(rune(s[i])) {
 			return false
 		}
 	}
@@ -527,7 +536,7 @@ func isIPv6(s string) bool {
 
 	// Must have hex chars and colons
 	for _, r := range s {
-		if !unicode.IsDigit(r) && r != ':' &&
+		if !isDigit(r) && r != ':' &&
 			!(r >= 'a' && r <= 'f') && !(r >= 'A' && r <= 'F') {
 			return false
 		}

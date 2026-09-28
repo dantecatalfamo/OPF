@@ -1,0 +1,2 @@
+go test fuzz v1
+string("pass in log (all) on { $wan \x00lan } from $lan:network to any")

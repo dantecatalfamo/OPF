@@ -12,6 +12,9 @@ type Parser struct {
 	pos    int
 	model  *Model // for resolving macros and aliases
 	errors []ParseError
+	// notForm is set when part of a rule can't be represented as a
+	// FormRule without losing meaning; the rule is kept as a RawRule.
+	notForm bool
 }
 
 // NewParser creates a parser for the given tokens.
@@ -83,6 +86,29 @@ func (p *Parser) expectKeyword(keywords ...string) (Token, bool) {
 	return Token{}, false
 }
 
+// parseBraceList reads the items of a "{ a b, c }" list, with the
+// opening brace already consumed. Every iteration consumes a token or
+// returns, so it always terminates. It fails, leaving the offending
+// token unconsumed, on a token not in accept or when the line ends
+// before the closing brace, so a missing brace can't swallow the
+// following lines.
+func (p *Parser) parseBraceList(accept ...TokenType) ([]Token, bool) {
+	var items []Token
+	for {
+		switch {
+		case p.check(TokenRBrace):
+			p.advance()
+			return items, true
+		case p.check(TokenComma):
+			p.advance()
+		case p.check(accept...):
+			items = append(items, p.advance())
+		default:
+			return items, false
+		}
+	}
+}
+
 func (p *Parser) error(msg string) {
 	tok := p.peek()
 	p.errors = append(p.errors, ParseError{
@@ -131,6 +157,7 @@ func ParsePfConf(content string, model *Model) *ParseResult {
 			continue
 		}
 
+		start := p.pos
 		rule := p.parseRule()
 		if rule != nil {
 			result.Rules = append(result.Rules, *rule)
@@ -140,6 +167,11 @@ func ParsePfConf(content string, model *Model) *ParseResult {
 		if !p.check(TokenNewline, TokenEOF) {
 			p.skipToNextLine()
 		} else if p.check(TokenNewline) {
+			p.advance()
+		}
+		if p.pos == start {
+			// Can't happen with the code above; guarantees termination
+			// if a future change breaks that.
 			p.advance()
 		}
 	}
@@ -292,6 +324,10 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 		proto, ok := p.parseProtocol()
 		if ok {
 			rule.Protocol = proto
+		} else {
+			// A protocol the form can't express; treating it as
+			// "any" would widen the rule.
+			p.notForm = true
 		}
 	}
 
@@ -475,6 +511,11 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 		}
 	}
 
+	if p.notForm {
+		p.notForm = false
+		p.pos = startPos
+		return nil, false
+	}
 	return rule, true
 }
 
@@ -529,21 +570,19 @@ func (p *Parser) parseInterfaceList() []string {
 
 	if p.check(TokenLBrace) {
 		p.advance()
-		for !p.check(TokenRBrace, TokenEOF) {
-			iface := p.parseInterfaceRef()
-			if iface != "" {
-				ifaces = append(ifaces, iface)
-			}
-			// Skip comma
-			if p.check(TokenComma) {
-				p.advance()
-			}
+		items, ok := p.parseBraceList(TokenMacro, TokenIdent, TokenKeyword)
+		if !ok {
+			p.notForm = true
 		}
-		p.expect(TokenRBrace)
+		for _, tok := range items {
+			ifaces = append(ifaces, tok.Value)
+		}
 	} else {
 		iface := p.parseInterfaceRef()
 		if iface != "" {
 			ifaces = append(ifaces, iface)
+		} else {
+			p.notForm = true
 		}
 	}
 
@@ -564,42 +603,48 @@ func (p *Parser) parseInterfaceRef() string {
 func (p *Parser) parseProtocol() (Protocol, bool) {
 	if p.check(TokenLBrace) {
 		p.advance()
-		var protos []string
-		for !p.check(TokenRBrace, TokenEOF) {
-			if tok, ok := p.expect(TokenKeyword, TokenIdent); ok {
-				protos = append(protos, tok.Value)
-			}
+		items, ok := p.parseBraceList(TokenKeyword, TokenIdent, TokenNumber)
+		if !ok {
+			return ProtoAny, false
 		}
-		p.expect(TokenRBrace)
-		// Check for tcp/udp combo
+		var protos []string
+		for _, tok := range items {
+			protos = append(protos, tok.Value)
+		}
+		// The form can only express tcp+udp as a list; anything else
+		// would lose protocols.
 		if len(protos) == 2 {
 			if (protos[0] == "tcp" && protos[1] == "udp") ||
 				(protos[0] == "udp" && protos[1] == "tcp") {
 				return ProtoTCPUDP, true
 			}
 		}
-		// Return first for simplicity
-		if len(protos) > 0 {
-			return Protocol(protos[0]), true
+		if len(protos) == 1 {
+			return knownProtocol(protos[0])
 		}
 		return ProtoAny, false
 	}
 
-	if tok, ok := p.expect(TokenKeyword, TokenIdent); ok {
-		switch tok.Value {
-		case "tcp":
-			return ProtoTCP, true
-		case "udp":
-			return ProtoUDP, true
-		case "icmp":
-			return ProtoICMP, true
-		case "icmp6":
-			return ProtoICMP6, true
-		case "esp":
-			return ProtoESP, true
-		case "gre":
-			return ProtoGRE, true
-		}
+	if tok, ok := p.expect(TokenKeyword, TokenIdent, TokenNumber); ok {
+		return knownProtocol(tok.Value)
+	}
+	return ProtoAny, false
+}
+
+func knownProtocol(name string) (Protocol, bool) {
+	switch name {
+	case "tcp":
+		return ProtoTCP, true
+	case "udp":
+		return ProtoUDP, true
+	case "icmp":
+		return ProtoICMP, true
+	case "icmp6":
+		return ProtoICMP6, true
+	case "esp":
+		return ProtoESP, true
+	case "gre":
+		return ProtoGRE, true
 	}
 	return ProtoAny, false
 }
@@ -607,6 +652,12 @@ func (p *Parser) parseProtocol() (Protocol, bool) {
 func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 	endpoint := Endpoint{Type: EndpointAny}
 	var port string
+
+	// The host may be omitted: "to port 22" means "to any port 22".
+	if p.checkKeyword("port") {
+		p.advance()
+		return endpoint, p.parsePortSpec(), true
+	}
 
 	// Check for negation
 	negated := false
@@ -727,13 +778,15 @@ func (p *Parser) parsePortSpec() string {
 	// Port can be: number, range (n:m), list {n m ...}, or operator (> n, != n)
 	if p.check(TokenLBrace) {
 		p.advance()
-		var ports []string
-		for !p.check(TokenRBrace, TokenEOF) {
-			if tok, ok := p.expect(TokenNumber, TokenIdent, TokenKeyword); ok {
-				ports = append(ports, tok.Value)
-			}
+		items, ok := p.parseBraceList(TokenNumber, TokenIdent, TokenKeyword)
+		if !ok {
+			p.notForm = true
+			return ""
 		}
-		p.expect(TokenRBrace)
+		var ports []string
+		for _, tok := range items {
+			ports = append(ports, tok.Value)
+		}
 		return strings.Join(ports, ",")
 	}
 
@@ -743,6 +796,7 @@ func (p *Parser) parsePortSpec() string {
 		if tok, ok := p.expect(TokenNumber); ok {
 			return op + " " + tok.Value
 		}
+		p.notForm = true
 		return ""
 	}
 
@@ -763,6 +817,9 @@ func (p *Parser) parsePortSpec() string {
 		return tok.Value
 	}
 
+	// "port" followed by something we can't read. Dropping it would
+	// turn the rule into one for every port.
+	p.notForm = true
 	return ""
 }
 

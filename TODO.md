@@ -76,8 +76,8 @@ break connectivity. Every feature must be:
 
 In order. Each step has details further down.
 
-1. **Fix the bugs found in review** (next section), starting with the
-   parser hangs and model validation. Both are correctness and security
+1. **Fix the bugs found in review** (next section): the parser's silent
+   drops, then model validation. Both are correctness and security
    problems under the principles above.
 2. **Move the model into the parent.** The web process sends a model
    over RPC; the parent validates it, generates every file, stages them
@@ -103,16 +103,19 @@ In order. Each step has details further down.
 
 ## Bugs found in review (2026-09-28)
 
-- [ ] **Parser hangs.** 20 seconds of fuzzing finds an infinite loop in
-      each target. Inputs are saved outside the repo; they need
-      committing as regression cases once the loops are fixed (as seed
-      inputs today they'd make `go test` hang):
-      - `FuzzParseRule`: `pass in log (all) on { $wan \x00lan } from
-        $lan:network to any` loops in `parseInterfaceList`
-        (`parser.go:533` → `:553`) on an unexpected token.
-      - `FuzzParsePfConf` and `FuzzTokenize`: invalid UTF-8 loops in the
-        tokenizer (`tokenizer.go:308` → `:473`).
-      Every parse loop needs a guaranteed advance or an error.
+- [x] **Parser hangs.** Fuzzing found infinite loops in the tokenizer
+      (bytes treated as runes, so identifiers rewound past their start)
+      and in the interface, protocol and port list loops. Fixed; the
+      inputs are regression seeds in `internal/pf/testdata/fuzz` and in
+      `parser_termination_test.go`. All three targets now run 90 s clean.
+- [ ] **The parser drops what it doesn't understand.** `route-to` and
+      `reply-to` skip their argument, and unrecognized options are
+      stepped over, producing a guided rule that means less than the
+      input. Brace lists, protocols and ports now fall back to a raw rule
+      instead; the rest of `tryParseFormRule` should do the same: any
+      token it doesn't model makes the rule raw. Also fixed: a bare
+      `to port 22` used to lose its port, and the golden file had
+      recorded that.
 - [ ] **No model validation.** Nothing checks the model before
       generating. Alias names, interface ids and devices, hostnames,
       domains, reservation names and addresses are written into pf.conf,

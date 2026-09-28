@@ -18,6 +18,7 @@
       "destination": {
         "type": "any"
       },
+      "port": "22",
       "log": "off"
     },
     {
