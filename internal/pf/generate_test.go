@@ -130,6 +130,7 @@ func TestGenerateRule_Endpoints(t *testing.T) {
 		},
 	}
 
+	fixed, dynamic := false, true
 	tests := []struct {
 		name     string
 		endpoint Endpoint
@@ -137,8 +138,14 @@ func TestGenerateRule_Endpoints(t *testing.T) {
 	}{
 		{"any", Endpoint{Type: EndpointAny}, "any"},
 		{"self", Endpoint{Type: EndpointSelf}, "self"},
-		{"net", Endpoint{Type: EndpointNet, Iface: "lan"}, "$lan:network"},
-		{"ifaddr", Endpoint{Type: EndpointIfaddr, Iface: "wan"}, "($wan)"},
+		{"network", Endpoint{Type: EndpointIface, Iface: "lan", Part: PartNetwork, Dynamic: &fixed}, "$lan:network"},
+		{"address, dynamic", Endpoint{Type: EndpointIface, Iface: "wan", Dynamic: &dynamic}, "($wan)"},
+		{"broadcast", Endpoint{Type: EndpointIface, Iface: "lan", Part: PartBroadcast, Dynamic: &fixed}, "$lan:broadcast"},
+		{"peer, no aliases", Endpoint{Type: EndpointIface, Iface: "wg", Part: PartPeer, NoAlias: true, Dynamic: &dynamic}, "($wg:peer:0)"},
+		{"group", Endpoint{Type: EndpointIface, Group: "egress", Part: PartNetwork}, "(egress:network)"},
+		{"group, fixed", Endpoint{Type: EndpointIface, Group: "egress", Dynamic: &fixed}, "egress"},
+		{"unknown interface is dynamic", Endpoint{Type: EndpointIface, Iface: "lan"}, "($lan)"},
+		{"negated interface", Endpoint{Type: EndpointIface, Iface: "lan", Part: PartNetwork, Not: true, Dynamic: &fixed}, "! $lan:network"},
 		{"host", Endpoint{Type: EndpointHost, Value: "192.168.1.1"}, "192.168.1.1"},
 		{"network", Endpoint{Type: EndpointNetwork, Value: "10.0.0.0/8"}, "10.0.0.0/8"},
 		{"alias", Endpoint{Type: EndpointAlias, Alias: "blocklist"}, "<blocklist>"},
@@ -229,13 +236,13 @@ func TestGenerateRule_BlockReturn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rule := Rule{
-				Kind:        "form",
-				Action:      ActionBlock,
-				Direction:   DirectionIn,
-				BlockReturn: tt.blockReturn,
+				Kind:         "form",
+				Action:       ActionBlock,
+				Direction:    DirectionIn,
+				BlockReturn:  tt.blockReturn,
 				ReturnRstTTL: tt.ttl,
-				Source:      Endpoint{Type: EndpointAny},
-				Destination: Endpoint{Type: EndpointAny},
+				Source:       Endpoint{Type: EndpointAny},
+				Destination:  Endpoint{Type: EndpointAny},
 			}
 			got := GenerateRule(&rule, nil)
 			if !strings.HasPrefix(got, tt.expected) {
@@ -337,7 +344,7 @@ func TestGenerateRule_RawRule(t *testing.T) {
 func TestGenerateNATRule(t *testing.T) {
 	rule := NATRule{
 		Iface:       "wan",
-		Source:      Endpoint{Type: EndpointNet, Iface: "lan"},
+		Source:      Endpoint{Type: EndpointIface, Iface: "lan", Part: PartNetwork},
 		Destination: Endpoint{Type: EndpointAny},
 		Translation: Translation{Type: TranslationIfaddr},
 		Description: "LAN to WAN",
@@ -411,7 +418,7 @@ func TestGeneratePfConf_SampleModel(t *testing.T) {
 				{
 					ID: "r2", Kind: "form", Enabled: true, Interfaces: []string{"lan"},
 					Action: ActionPass, Direction: DirectionIn,
-					Source: Endpoint{Type: EndpointNet, Iface: "lan"}, Destination: Endpoint{Type: EndpointAny},
+					Source: Endpoint{Type: EndpointIface, Iface: "lan", Part: PartNetwork}, Destination: Endpoint{Type: EndpointAny},
 					Description: "Allow LAN",
 				},
 			},
@@ -534,9 +541,9 @@ func TestGenerateUnboundConf(t *testing.T) {
 			{ID: "lan", Name: "LAN", Role: RoleLAN, Enabled: true, IPv4: IPv4Config{Mode: IPv4Static, Address: "192.168.1.1", Prefix: &prefix}},
 		},
 		DNS: DNS{
-			Enabled:    true,
-			Mode:       ResolverModeRecursive,
-			DNSSEC:     true,
+			Enabled: true,
+			Mode:    ResolverModeRecursive,
+			DNSSEC:  true,
 			Overrides: []HostOverride{
 				{Host: "www", Domain: "example.com", IP: "192.168.1.10"},
 			},
@@ -557,6 +564,27 @@ func TestGenerateUnboundConf(t *testing.T) {
 	for _, check := range checks {
 		if !strings.Contains(content, check) {
 			t.Errorf("Expected %q in output: %s", check, content)
+		}
+	}
+}
+
+// Without an explicit choice, interfaces addressed by DHCP or SLAAC are
+// written in parentheses so rules follow their address changes.
+func TestIfaceDynamicDefault(t *testing.T) {
+	prefix := 24
+	m := &Model{Interfaces: []Iface{
+		{ID: "wan", Device: "em0", IPv4: IPv4Config{Mode: IPv4DHCP}},
+		{ID: "lan", Device: "em1", IPv4: IPv4Config{Mode: IPv4Static, Address: "192.168.1.1", Prefix: &prefix}},
+		{ID: "v6", Device: "em2", IPv4: IPv4Config{Mode: IPv4Static, Address: "10.0.0.1", Prefix: &prefix}, IPv6: IPv6SLAAC},
+	}}
+	for iface, want := range map[string]string{
+		"wan": "($wan:network)",
+		"lan": "$lan:network",
+		"v6":  "($v6:network)",
+	} {
+		got := endpoint(Endpoint{Type: EndpointIface, Iface: iface, Part: PartNetwork}, m)
+		if got != want {
+			t.Errorf("%s: got %q, want %q", iface, got, want)
 		}
 	}
 }

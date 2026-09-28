@@ -2,17 +2,25 @@
   "rules": [
     {
       "id": "",
-      "kind": "raw",
+      "kind": "form",
       "enabled": true,
       "interfaces": [],
+      "groups": [
+        "em0"
+      ],
       "description": "",
-      "text": "pass in on em0 proto tcp to port 22",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
       "source": {
-        "type": ""
+        "type": "any"
       },
       "destination": {
-        "type": ""
-      }
+        "type": "any"
+      },
+      "port": "22",
+      "log": "off"
     },
     {
       "id": "",

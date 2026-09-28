@@ -9,6 +9,7 @@ import { newId, useStore } from '../model/store';
 import { ifaceStatus, peerStatus } from '../model/live';
 import type { Model, Peer } from '../model/types';
 import { automaticNat } from '../model/generate';
+import { isFloating } from '../lib/rules';
 import { formatAgo, formatBytes } from '../lib/format';
 import { isCIDR } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
@@ -173,10 +174,10 @@ function TrafficFlow() {
   const wgIface = staged.interfaces.find((i) => i.role === 'vpn');
   const wan = staged.interfaces.find((i) => i.role === 'wan');
   const wanRule = staged.firewall.rules.find((r) => r.enabled && r.kind === 'form' && r.interfaces.includes(wan?.id ?? '') && r.protocol === 'udp' && r.port === String(wg.listenPort));
-  const wgRules = staged.firewall.rules.filter((r) => r.enabled && wgIface && r.interfaces.length === 1 && r.interfaces[0] === wgIface.id);
+  const wgRules = staged.firewall.rules.filter((r) => r.enabled && wgIface && !isFloating(r) && r.interfaces[0] === wgIface.id);
   const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === wgIface?.id);
   const nat = staged.firewall.outboundNat;
-  const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'net' && n.source.iface === wgIface?.id);
+  const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'iface' && n.source.iface === wgIface?.id);
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
 
   return (

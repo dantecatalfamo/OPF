@@ -247,7 +247,7 @@ function Outbound() {
   const [drawer, setDrawer] = useState<{ open: boolean; rule: NatRule | null }>({ open: false, rule: null });
   const set = (summary: string, fn: (n: typeof nat) => typeof nat) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, outboundNat: fn(m.firewall.outboundNat) } }));
   const modeLabel = { auto: 'Automatic', hybrid: 'Automatic plus manual rules', manual: 'Manual only' };
-  const vpnCovered = nat.mode !== 'manual' || nat.rules.some((r) => r.enabled && r.source.type === 'net' && r.source.iface === 'wg');
+  const vpnCovered = nat.mode !== 'manual' || nat.rules.some((r) => r.enabled && r.source.type === 'iface' && r.source.part === 'network' && r.source.iface === 'wg');
 
   return (
     <Stack gap="md">

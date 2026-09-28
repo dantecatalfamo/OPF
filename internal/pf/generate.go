@@ -78,7 +78,7 @@ func generateFormRule(r *Rule, m *Model) string {
 	s := strings.Join(out, " ")
 
 	// On clause
-	s += onClause(r.Interfaces)
+	s += onClause(r.Interfaces, r.Groups)
 
 	// Address family
 	if r.Family != FamilyAny && r.Family != "" {
@@ -233,10 +233,8 @@ func endpoint(e Endpoint, m *Model) string {
 		return "any"
 	case EndpointSelf:
 		return not + "self"
-	case EndpointNet:
-		return fmt.Sprintf("%s$%s:network", not, e.Iface)
-	case EndpointIfaddr:
-		return fmt.Sprintf("%s($%s)", not, e.Iface)
+	case EndpointIface:
+		return not + ifaceRef(e, m)
 	case EndpointHost, EndpointNetwork:
 		return not + e.Value
 	case EndpointAlias:
@@ -246,6 +244,43 @@ func endpoint(e Endpoint, m *Model) string {
 	default:
 		return "any"
 	}
+}
+
+// ifaceRef writes an interface reference with its modifiers, in
+// parentheses when dynamic: $lan:network, ($wan), (egress:network:0).
+func ifaceRef(e Endpoint, m *Model) string {
+	ref := e.Group
+	if e.Iface != "" {
+		ref = "$" + e.Iface
+	}
+	if e.Part != PartAddress {
+		ref += ":" + string(e.Part)
+	}
+	if e.NoAlias {
+		ref += ":0"
+	}
+	if ifaceDynamic(e, m) {
+		ref = "(" + ref + ")"
+	}
+	return ref
+}
+
+// ifaceDynamic reports whether an interface reference should follow
+// address changes. Without parentheses pf resolves it once, when the
+// ruleset loads.
+func ifaceDynamic(e Endpoint, m *Model) bool {
+	if e.Dynamic != nil {
+		return *e.Dynamic
+	}
+	if e.Group != "" || m == nil {
+		return true
+	}
+	for _, i := range m.Interfaces {
+		if i.ID == e.Iface {
+			return i.IPv4.Mode != IPv4Static || i.IPv6 == IPv6SLAAC
+		}
+	}
+	return true
 }
 
 func proto(p Protocol) string {
@@ -317,16 +352,18 @@ func gatewayAddr(id string, m *Model) string {
 	return ""
 }
 
-func onClause(ifaces []string) string {
-	if len(ifaces) == 0 {
-		return ""
-	}
-	if len(ifaces) == 1 {
-		return " on $" + ifaces[0]
-	}
+// onClause writes model interfaces as $id and groups as-is.
+func onClause(ifaces, groups []string) string {
 	var parts []string
 	for _, i := range ifaces {
 		parts = append(parts, "$"+i)
+	}
+	parts = append(parts, groups...)
+	switch len(parts) {
+	case 0:
+		return ""
+	case 1:
+		return " on " + parts[0]
 	}
 	return " on { " + strings.Join(parts, " ") + " }"
 }
@@ -389,7 +426,7 @@ func AutomaticNAT(m *Model) []NATRule {
 				ID:          fmt.Sprintf("auto-%s-%s", w.ID, i.ID),
 				Enabled:     true,
 				Iface:       w.ID,
-				Source:      Endpoint{Type: EndpointNet, Iface: i.ID},
+				Source:      Endpoint{Type: EndpointIface, Iface: i.ID, Part: PartNetwork},
 				Destination: Endpoint{Type: EndpointAny},
 				Translation: Translation{Type: TranslationIfaddr},
 				StaticPort:  false,
@@ -444,7 +481,7 @@ func staticIfaces(m *Model) []Iface {
 
 // isFloating returns true if the rule applies to multiple or no interfaces.
 func isFloating(r *Rule) bool {
-	return len(r.Interfaces) != 1
+	return len(r.Interfaces) != 1 || len(r.Groups) > 0
 }
 
 // GeneratePfRuleset generates the full pf.conf as a list of lines with origins.
@@ -659,7 +696,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		var ifaceRules []Rule
 		for i := range fw.Rules {
 			r := &fw.Rules[i]
-			if r.Enabled && len(r.Interfaces) == 1 && r.Interfaces[0] == iface.ID {
+			if r.Enabled && !isFloating(r) && r.Interfaces[0] == iface.ID {
 				ifaceRules = append(ifaceRules, *r)
 			}
 		}

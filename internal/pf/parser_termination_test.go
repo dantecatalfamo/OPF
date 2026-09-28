@@ -37,6 +37,8 @@ var hangInputs = []string{
 	"pass in on em0 label \"caf\xe9\"",
 	"<\xe4>",
 	"$\xe4",
+	"pass in from (em0:0:network) to any",
+	"pass in from 0:b to any",
 }
 
 func TestParserTerminates(t *testing.T) {

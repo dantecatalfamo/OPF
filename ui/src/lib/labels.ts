@@ -11,10 +11,10 @@ export function endpointLabel(e: Endpoint, m: Model): string {
       return 'Any';
     case 'self':
       return `${not}This firewall`;
-    case 'net':
-      return `${not}${ifaceName(m, e.iface)} network`;
-    case 'ifaddr':
-      return `${not}${ifaceName(m, e.iface)} address`;
+    case 'iface': {
+      const name = e.iface ? ifaceName(m, e.iface) : e.group;
+      return `${not}${name} ${e.part ?? 'address'}${e.noAlias ? ' (primary)' : ''}`;
+    }
     case 'host':
     case 'network':
       return `${not}${e.value}`;

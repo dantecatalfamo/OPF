@@ -16,6 +16,8 @@ type Parser struct {
 	// notForm is set when part of a rule can't be represented as a
 	// FormRule without losing meaning; the rule is kept as a RawRule.
 	notForm bool
+	// groups collects the current rule's non-model "on" entries.
+	groups []string
 }
 
 // NewParser creates a parser for the given tokens.
@@ -162,6 +164,77 @@ func (p *Parser) parseGateway() string {
 	}
 	p.notForm = true
 	return ""
+}
+
+// parseIfaceRef reads an interface or group name and its modifiers
+// (":network", ":broadcast", ":peer", ":0"). As in pfctl (parse.y
+// dynaddr, pfctl_parser.c host_if), the three address modifiers are
+// mutually exclusive and ":0" combines with any of them, in any order.
+//
+// Without parentheses a name is only certainly an interface when it
+// carries :network, :broadcast or :peer, which host names can't; a bare
+// name or one with only ":0" is accepted when it's a model interface
+// and otherwise reported as not an interface (ok false).
+func (p *Parser) parseIfaceRef(dynamic bool) (Endpoint, bool) {
+	e := Endpoint{Type: EndpointIface, Dynamic: &dynamic}
+	tok, ok := p.expect(TokenMacro, TokenIdent, TokenKeyword)
+	if !ok {
+		return e, false
+	}
+	modelIface := false
+	switch {
+	case tok.Type == TokenMacro:
+		e.Iface = tok.Value
+		if p.model != nil && !p.model.hasInterface(tok.Value) {
+			p.notForm = true // a macro for something other than an interface
+		}
+		modelIface = true
+	case p.model != nil && p.model.deviceID(tok.Value) != "":
+		e.Iface = p.model.deviceID(tok.Value)
+		modelIface = true
+	default:
+		e.Group = tok.Value
+	}
+
+	for p.check(TokenColon) {
+		p.advance()
+		var part IfacePart
+		switch {
+		case p.checkKeyword("network"):
+			part = PartNetwork
+		case p.peek().Type == TokenIdent && (p.peek().Value == "broadcast" || p.peek().Value == "peer"):
+			part = IfacePart(p.peek().Value)
+		case p.peek().Type == TokenNumber && p.peek().Value == "0":
+			e.NoAlias = true
+			p.advance()
+			continue
+		default:
+			p.notForm = true // pfctl rejects other modifiers
+			return e, true
+		}
+		p.advance()
+		if e.Part != PartAddress && e.Part != part {
+			p.notForm = true // "illegal combination of interface modifiers"
+		}
+		e.Part = part
+	}
+
+	if !dynamic && !modelIface && e.Part == PartAddress {
+		// A bare name, or name:0: an interface if one exists at load
+		// time, otherwise a host name. Can't tell which.
+		if tok.Type == TokenMacro {
+			return e, true
+		}
+		return e, false
+	}
+	if !dynamic && tok.Type == TokenMacro && e.Part == PartAddress && !e.NoAlias && p.model == nil {
+		// A bare $macro could hold addresses rather than an interface.
+		// With a model, a macro named after a model interface is the one
+		// the generator defines for it, and anything else was rejected
+		// above.
+		p.notForm = true
+	}
+	return e, true
 }
 
 // parseBraceList reads the items of a "{ a b, c }" list, with the
@@ -384,8 +457,11 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 	// On: on <interface(s)>
 	if p.checkKeyword("on") {
 		p.advance()
-		ifaces := p.parseInterfaceList()
-		rule.Interfaces = ifaces
+		p.groups = nil
+		if ifaces := p.parseInterfaceList(); ifaces != nil {
+			rule.Interfaces = ifaces // otherwise stays [], never JSON null
+		}
+		rule.Groups = p.groups
 	}
 
 	// Address family: inet | inet6
@@ -658,44 +734,29 @@ func (p *Parser) parseInterfaceList() []string {
 			p.notForm = true
 		}
 		for _, tok := range items {
-			ifaces = append(ifaces, p.interfaceID(tok))
+			p.addInterface(tok, &ifaces)
 		}
+	} else if tok, ok := p.expect(TokenMacro, TokenIdent, TokenKeyword); ok {
+		p.addInterface(tok, &ifaces)
 	} else {
-		iface := p.parseInterfaceRef()
-		if iface != "" {
-			ifaces = append(ifaces, iface)
-		} else {
-			p.notForm = true
-		}
+		p.notForm = true // "on ! em0" and the like
 	}
 
 	return ifaces
 }
 
-func (p *Parser) parseInterfaceRef() string {
-	if tok, ok := p.expect(TokenMacro, TokenIdent, TokenKeyword); ok {
-		return p.interfaceID(tok)
+// addInterface records an "on" clause entry: a macro or a device in the
+// model as a model interface id, anything else (egress, wg, an
+// interface OPF doesn't manage) as a group written back as-is.
+func (p *Parser) addInterface(tok Token, ifaces *[]string) {
+	switch {
+	case tok.Type == TokenMacro:
+		*ifaces = append(*ifaces, tok.Value)
+	case p.model != nil && p.model.deviceID(tok.Value) != "":
+		*ifaces = append(*ifaces, p.model.deviceID(tok.Value))
+	default:
+		p.groups = append(p.groups, tok.Value)
 	}
-	return ""
-}
-
-// interfaceID maps an interface reference to a model interface id. The
-// generator writes interfaces as $id, so a macro is taken as the id and
-// a device name is looked up. Groups such as "egress" and devices not
-// in the model keep the rule raw.
-func (p *Parser) interfaceID(tok Token) string {
-	if tok.Type == TokenMacro {
-		return tok.Value
-	}
-	if p.model != nil {
-		for _, i := range p.model.Interfaces {
-			if i.Device == tok.Value {
-				return i.ID
-			}
-		}
-	}
-	p.notForm = true
-	return tok.Value
 }
 
 func (p *Parser) parseProtocol() (Protocol, bool) {
@@ -780,9 +841,12 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// self
+	// self. "self:network" and the like aren't modelled.
 	if p.checkKeyword("self") {
 		p.advance()
+		if p.check(TokenColon) {
+			p.notForm = true
+		}
 		endpoint = Endpoint{Type: EndpointSelf, Not: negated}
 		if p.checkKeyword("port") {
 			p.advance()
@@ -801,15 +865,18 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// ($name): the interface's addresses. Modifiers such as ($name:0)
-	// and device names keep the rule raw.
+	// (name[:modifiers]): an interface or group, followed as its
+	// addresses change.
 	if p.check(TokenLParen) {
 		p.advance()
-		if tok, ok := p.expect(TokenMacro); ok {
-			endpoint = Endpoint{Type: EndpointIfaddr, Iface: tok.Value, Not: negated}
-		} else {
+		if p.checkKeyword("self") {
+			p.notForm = true // (self) isn't modelled
+		}
+		endpoint, ok := p.parseIfaceRef(true)
+		if !ok {
 			p.notForm = true
 		}
+		endpoint.Not = negated
 		if _, ok := p.expect(TokenRParen); !ok {
 			p.notForm = true
 		}
@@ -820,19 +887,15 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	if tok, ok := p.expect(TokenMacro); ok {
-		// $name:network is modelled. A bare $name could hold anything
-		// (addresses, a list), and :broadcast, :peer and :0 aren't
-		// modelled, so those keep the rule raw.
-		endpoint = Endpoint{Type: EndpointNet, Iface: tok.Value, Not: negated}
-		if !p.check(TokenColon) {
-			p.notForm = true
-		} else {
-			p.advance()
-			if _, ok := p.expectKeyword("network"); !ok {
-				p.notForm = true
-			}
+	// name[:modifiers] without parentheses: resolved when the ruleset
+	// loads. A bare word or $macro is only an interface if it names one;
+	// otherwise pf takes it as a hostname (or the macro holds addresses).
+	if p.check(TokenMacro, TokenIdent, TokenKeyword) && !p.checkKeyword("port") {
+		endpoint, ok := p.parseIfaceRef(false)
+		if !ok {
+			return Endpoint{Type: EndpointAny}, "", false
 		}
+		endpoint.Not = negated
 		if p.checkKeyword("port") {
 			p.advance()
 			port = p.parsePortSpec()
@@ -859,10 +922,8 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// A bare word is an interface name or a hostname resolved when the
-	// rules load, not a table, and "no-route", "urpf-failed" and host
-	// lists aren't modelled: all of them make the parse fail, so the rule
-	// stays raw.
+	// Host lists, ranges and anything else aren't modelled; the parse
+	// fails, so the rule stays raw.
 	return Endpoint{Type: EndpointAny}, "", false
 }
 

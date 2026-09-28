@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Accordion, Alert, Autocomplete, Badge, Button, Code, Drawer, Group, Loader, MultiSelect, NumberInput, SegmentedControl, Select, SimpleGrid,
-  Stack, Switch, Text, Textarea, TextInput, Tooltip,
+  Stack, Switch, TagsInput, Text, Textarea, TextInput, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCode, IconForms, IconInfoCircle, IconWand } from '@tabler/icons-react';
@@ -23,13 +23,13 @@ const isTcp = (p: FormRule['protocol']) => p === 'tcp' || p === 'tcp/udp';
 function toValues(rule: Rule | null, iface: string | null): Values {
   const base = formRule({ id: 'new', interfaces: iface ? [iface] : [], description: '', protocol: 'tcp' });
   if (!rule) {
-    const src = iface && iface !== 'wan' ? { type: 'net' as const, iface } : { type: 'any' as const };
-    return { ...stripIds(base), source: src, mode: 'form', rawText: '' };
+    const src = iface && iface !== 'wan' ? { type: 'iface' as const, iface, part: 'network' as const } : { type: 'any' as const };
+    return { ...stripIds(base), groups: [], source: src, mode: 'form', rawText: '' };
   }
   if (rule.kind === 'raw') {
-    return { ...stripIds(base), interfaces: rule.interfaces, enabled: rule.enabled, description: rule.description, mode: 'raw', rawText: rule.text };
+    return { ...stripIds(base), interfaces: rule.interfaces, groups: rule.groups ?? [], enabled: rule.enabled, description: rule.description, mode: 'raw', rawText: rule.text };
   }
-  return { ...stripIds(rule), mode: 'form', rawText: '' };
+  return { ...stripIds(rule), groups: rule.groups ?? [], mode: 'form', rawText: '' };
 }
 
 function stripIds(r: FormRule): Omit<FormRule, 'id' | 'kind'> {
@@ -45,6 +45,7 @@ function toRule(v: Values): Omit<FormRule, 'id'> {
     delete r.sourcePort;
   }
   if (!r.port?.trim()) delete r.port;
+  if (!r.groups?.length) delete r.groups;
   if (!r.sourcePort?.trim()) delete r.sourcePort;
   if (!isTcp(r.protocol) || !r.tcpFlags?.trim()) delete r.tcpFlags;
   if (r.state && r.state.mode === 'keep' && !Object.entries(r.state).some(([k, val]) => k !== 'mode' && val !== undefined && val !== false && val !== '')) delete r.state;
@@ -84,6 +85,8 @@ export function RuleDrawer({
     validate: (v) => {
       const e: Record<string, string | null> = {};
       e.description = v.description.trim() ? null : 'Describe what this rule is for';
+      const badGroup = (v.groups ?? []).find((g) => !/^[A-Za-z_][A-Za-z0-9_]{0,15}$/.test(g));
+      e.groups = badGroup ? `“${badGroup}” isn’t an interface or group name` : null;
       if (v.mode === 'raw') {
         e.rawText = checkPfLine(v.rawText);
         return e;
@@ -326,6 +329,13 @@ export function RuleDrawer({
                   {...form.getInputProps('family')}
                 />
               </SimpleGrid>
+              <TagsInput
+                label="Interface groups"
+                description="Groups such as egress, or interfaces OPF doesn’t manage. Any group makes this a floating rule."
+                placeholder="egress"
+                data={['egress']}
+                {...form.getInputProps('groups')}
+              />
 
               <Select
                 label="Protocol"

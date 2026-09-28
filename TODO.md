@@ -122,6 +122,21 @@ In order. Each step has details further down.
       text), always writes aliases as `<table>`, and no longer turns
       `netbios-ssn` into `netbios:ssn`. `FuzzParseRuleRoundTrip`
       checks parse → generate → parse gives the same rule.
+- [x] **Interface references.** One `iface` endpoint replaces `net` and
+      `ifaddr`: a model interface or a group (`egress`), with
+      `:network`/`:broadcast`/`:peer`, `:0`, and parentheses when it
+      should follow address changes (automatic: yes for DHCP/SLAAC and
+      groups). Combinations follow pfctl's `parse.y` and `host_if()`.
+      The `on` clause takes groups too, which make a rule floating. The
+      old generator always wrote `$if:network` unparenthesized, which
+      goes stale on a DHCP interface until pf reloads.
+- [ ] Still raw: `self` with modifiers (`self:network`, `(self)`), and
+      bare names or `name:0` that aren't model interfaces (pf treats them
+      as interfaces only if one exists at load time, else as hostnames).
+- [ ] The generator's built-in rules (anti-lockout, NAT reflection) are
+      format strings with a fixed `$lan:network`; build them from
+      `iface` endpoints so a DHCP-addressed inside network gets
+      parentheses too.
 - [ ] Importing (principle 4) must build the model's interfaces first:
       rules naming devices (`on em0`) only become guided rules when the
       device is in the model, otherwise they stay raw.

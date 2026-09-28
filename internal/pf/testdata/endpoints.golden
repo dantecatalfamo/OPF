@@ -47,8 +47,10 @@
       "family": "any",
       "protocol": "any",
       "source": {
-        "type": "net",
-        "iface": "lan"
+        "type": "iface",
+        "iface": "lan",
+        "part": "network",
+        "dynamic": false
       },
       "destination": {
         "type": "any"
@@ -66,8 +68,9 @@
       "family": "any",
       "protocol": "any",
       "source": {
-        "type": "ifaddr",
-        "iface": "wan"
+        "type": "iface",
+        "iface": "wan",
+        "dynamic": true
       },
       "destination": {
         "type": "any"

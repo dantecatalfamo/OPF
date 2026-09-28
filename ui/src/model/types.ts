@@ -26,14 +26,29 @@ export type Direction = 'in' | 'out' | 'any';
 export type Family = 'inet' | 'inet6' | 'any';
 export type Protocol = 'any' | 'tcp' | 'udp' | 'tcp/udp' | 'icmp' | 'icmp6' | 'esp' | 'gre';
 
+// Which of an interface's addresses an iface endpoint means; pf.conf(5)
+// "interface modifiers". Undefined is the interface's own addresses.
+export type IfacePart = 'network' | 'broadcast' | 'peer';
+
 export type EndpointTarget =
   | { type: 'any' }
   | { type: 'self' } // every address of this firewall
-  | { type: 'net'; iface: string } // $lan:network
-  | { type: 'ifaddr'; iface: string } // ($lan)
+  | IfaceEndpoint
   | { type: 'host'; value: string }
   | { type: 'network'; value: string }
   | { type: 'alias'; alias: string };
+
+// An interface reference: $lan:network, ($wan), (egress:network:0)…
+export interface IfaceEndpoint {
+  type: 'iface';
+  iface?: string; // a model interface id, written as $id
+  group?: string; // or an interface group (egress) / unmanaged interface, written as-is
+  part?: IfacePart;
+  noAlias?: boolean; // :0, leave out alias addresses
+  // In parentheses, so rules follow address changes. Undefined: dynamic
+  // for groups and DHCP/SLAAC interfaces, fixed for static ones.
+  dynamic?: boolean;
+}
 
 export type Endpoint = EndpointTarget & { not?: boolean };
 
@@ -54,6 +69,9 @@ interface RuleBase {
   // Interfaces the rule applies to. One entry puts it on that
   // interface's tab; none or several make it a floating rule.
   interfaces: string[];
+  // Interface groups (egress, wg…) or unmanaged interfaces, written as-is.
+  // Any groups make the rule floating.
+  groups?: string[];
   description: string;
 }
 

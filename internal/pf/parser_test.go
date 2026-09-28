@@ -80,8 +80,8 @@ func TestParseRule_Endpoints(t *testing.T) {
 	}{
 		{"pass in from any to any", EndpointAny, EndpointAny},
 		{"pass in from self to any", EndpointSelf, EndpointAny},
-		{"pass in from $lan:network to any", EndpointNet, EndpointAny},
-		{"pass in from any to ($wan)", EndpointAny, EndpointIfaddr},
+		{"pass in from $lan:network to any", EndpointIface, EndpointAny},
+		{"pass in from any to ($wan)", EndpointAny, EndpointIface},
 		{"pass in from <bruteforce> to any", EndpointAlias, EndpointAny},
 		{"pass in from 192.168.1.1 to any", EndpointHost, EndpointAny},
 		{"pass in from 192.168.1.0/24 to any", EndpointNetwork, EndpointAny},

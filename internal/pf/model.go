@@ -116,19 +116,42 @@ type EndpointType string
 const (
 	EndpointAny    EndpointType = "any"
 	EndpointSelf   EndpointType = "self"
-	EndpointNet    EndpointType = "net"    // $iface:network
-	EndpointIfaddr EndpointType = "ifaddr" // ($iface)
+	EndpointIface  EndpointType = "iface"  // an interface's addresses or networks; see Endpoint
 	EndpointHost   EndpointType = "host"
 	EndpointNetwork EndpointType = "network"
 	EndpointAlias  EndpointType = "alias"
 )
 
+// IfacePart is the interface modifier: which of an interface's
+// addresses an iface endpoint means (pf.conf(5), "Interface names …
+// can have modifiers appended").
+type IfacePart string
+
+const (
+	PartAddress   IfacePart = ""          // the interface's own addresses
+	PartNetwork   IfacePart = "network"   // :network, the attached networks
+	PartBroadcast IfacePart = "broadcast" // :broadcast
+	PartPeer      IfacePart = "peer"      // :peer, for point-to-point links
+)
+
 type Endpoint struct {
-	Type  EndpointType `json:"type"`
-	Not   bool         `json:"not,omitempty"`
-	Iface string       `json:"iface,omitempty"` // for net, ifaddr
-	Value string       `json:"value,omitempty"` // for host, network
-	Alias string       `json:"alias,omitempty"` // for alias
+	Type EndpointType `json:"type"`
+	Not  bool         `json:"not,omitempty"`
+
+	// For iface, exactly one of Iface, a model interface id written as
+	// $id, and Group, an interface group such as egress (or an interface
+	// OPF doesn't manage) written as-is.
+	Iface   string    `json:"iface,omitempty"`
+	Group   string    `json:"group,omitempty"`
+	Part    IfacePart `json:"part,omitempty"`
+	NoAlias bool      `json:"noAlias,omitempty"` // :0, leave out alias addresses
+	// Dynamic puts the reference in parentheses, so pf follows address
+	// changes without a ruleset reload. Nil lets the generator choose:
+	// dynamic for groups and for interfaces addressed by DHCP or SLAAC.
+	Dynamic *bool `json:"dynamic,omitempty"`
+
+	Value string `json:"value,omitempty"` // for host, network
+	Alias string `json:"alias,omitempty"` // for alias
 }
 
 type StateMode string
@@ -189,6 +212,10 @@ type Rule struct {
 	Kind        string   `json:"kind"` // "form" or "raw"
 	Enabled     bool     `json:"enabled"`
 	Interfaces  []string `json:"interfaces"`
+	// Groups are interface groups (egress, wg, …) or interfaces OPF
+	// doesn't manage, written into the "on" clause as-is. A rule with
+	// any groups is a floating rule.
+	Groups      []string `json:"groups,omitempty"`
 	Description string   `json:"description"`
 
 	// RawRule fields
@@ -517,4 +544,25 @@ type PfLine struct {
 type GeneratedFile struct {
 	Path    string `json:"path"`
 	Content string `json:"content"`
+}
+
+// hasInterface reports whether id is a model interface.
+func (m *Model) hasInterface(id string) bool {
+	for _, i := range m.Interfaces {
+		if i.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// deviceID returns the id of the model interface for a device such as
+// em0, or "".
+func (m *Model) deviceID(device string) string {
+	for _, i := range m.Interfaces {
+		if i.Device == device {
+			return i.ID
+		}
+	}
+	return ""
 }

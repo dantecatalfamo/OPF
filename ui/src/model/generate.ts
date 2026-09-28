@@ -1,7 +1,8 @@
 // Turns the model into the OpenBSD files it replaces. The Go backend
 // will own the real generators; these show the user exactly what Apply
 // writes and pin down the shape of the output.
-import type { Endpoint, FormRule, Iface, Model, NatRule, PortForward, Protocol, Rule } from './types';
+import type { Endpoint, FormRule, Iface, IfaceEndpoint, Model, NatRule, PortForward, Protocol, Rule } from './types';
+import { isFloating } from '../lib/rules';
 import { netmask, network } from '../lib/ip';
 import { gatewayStatus } from './live';
 
@@ -32,16 +33,29 @@ function endpoint(e: Endpoint, m: Model): string {
       return 'any';
     case 'self':
       return `${not}self`;
-    case 'net':
-      return `${not}$${e.iface}:network`;
-    case 'ifaddr':
-      return `${not}($${e.iface})`;
+    case 'iface':
+      return `${not}${ifaceRef(e, m)}`;
     case 'host':
     case 'network':
       return `${not}${e.value}`;
     case 'alias':
       return m.firewall.aliases.some((a) => a.name === e.alias && a.type !== 'ports') ? `${not}<${e.alias}>` : `${not}${e.alias}`;
   }
+}
+
+// Without parentheses pf resolves an interface once, when rules load.
+export function ifaceDynamic(e: IfaceEndpoint, m: Model): boolean {
+  if (e.dynamic !== undefined) return e.dynamic;
+  if (e.group) return true;
+  const i = m.interfaces.find((x) => x.id === e.iface);
+  return !i || i.ipv4.mode !== 'static' || i.ipv6 === 'slaac';
+}
+
+function ifaceRef(e: IfaceEndpoint, m: Model): string {
+  let ref = e.iface ? `$${e.iface}` : e.group ?? '';
+  if (e.part) ref += `:${e.part}`;
+  if (e.noAlias) ref += ':0';
+  return ifaceDynamic(e, m) ? `(${ref})` : ref;
 }
 
 function proto(p: Protocol): string {
@@ -71,10 +85,11 @@ function gatewayAddr(id: string | undefined, m: Model): string | undefined {
   return g.address === 'dhcp' ? gatewayStatus[g.id]?.address ?? '0.0.0.0' : g.address;
 }
 
-function onClause(ifaces: string[]): string {
-  if (ifaces.length === 0) return '';
-  if (ifaces.length === 1) return ` on $${ifaces[0]}`;
-  return ` on { ${ifaces.map((i) => `$${i}`).join(' ')} }`;
+function onClause(ifaces: string[], groups: string[]): string {
+  const parts = [...ifaces.map((i) => `$${i}`), ...groups];
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return ` on ${parts[0]}`;
+  return ` on { ${parts.join(' ')} }`;
 }
 
 const quote = (s: string) => `"${s.replace(/"/g, "'")}"`;
@@ -114,7 +129,7 @@ function formRuleText(r: FormRule, m: Model): string {
   if (r.log === 'on') out.push('log');
   if (r.log === 'all') out.push('log (all)');
   if (r.quick) out.push('quick');
-  let s = out.join(' ') + onClause(r.interfaces);
+  let s = out.join(' ') + onClause(r.interfaces, r.groups ?? []);
   if (r.family !== 'any') s += ` ${r.family}`;
   s += proto(r.protocol);
 
@@ -180,7 +195,7 @@ export function automaticNat(m: Model): NatRule[] {
     staticIfaces(m)
       .filter((i) => i.role !== 'wan')
       .map((i) => ({
-        id: `auto-${w.id}-${i.id}`, enabled: true, iface: w.id, source: { type: 'net', iface: i.id } as Endpoint,
+        id: `auto-${w.id}-${i.id}`, enabled: true, iface: w.id, source: { type: 'iface', iface: i.id, part: 'network' } as Endpoint,
         destination: { type: 'any' } as Endpoint, translation: { type: 'ifaddr' } as const, staticPort: false,
         description: `Automatic: ${i.name} to ${w.name}`,
       })),
@@ -203,7 +218,6 @@ export function forwardText(f: PortForward, m: Model): string[] {
   return lines;
 }
 
-const isFloating = (r: Rule) => r.interfaces.length !== 1;
 
 export function pfRuleset(m: Model): PfLine[] {
   const L: PfLine[] = [];
@@ -289,7 +303,7 @@ export function pfRuleset(m: Model): PfLine[] {
     blank();
   }
   for (const i of ifaces) {
-    const rules = fw.rules.filter((r) => r.enabled && r.interfaces.length === 1 && r.interfaces[0] === i.id);
+    const rules = fw.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === i.id);
     if (!rules.length) continue;
     add(`# ${i.name} rules`);
     for (const r of rules) add(ruleText(r, m), { label: `Rule: ${r.description}`, to: `/firewall/rules/${i.id}` });

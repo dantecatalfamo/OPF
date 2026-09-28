@@ -14,6 +14,7 @@ import type { Model, Rule, RuleInput } from '../model/types';
 import { endpointLabel, ifaceName, portLabel, protocolLabel } from '../lib/labels';
 import { formatCount } from '../lib/format';
 import { rawAction } from '../lib/pfcheck';
+import { isFloating } from '../lib/rules';
 import { ActionBadge, PageHeader, Mono } from '../components/ui';
 import { RuleDrawer } from './RuleDrawer';
 
@@ -96,7 +97,7 @@ function RuleRow({ rule, model, showPf, floating, onEdit, onToggle, onDuplicate,
           {rule.description}
         </Text>
         <Group gap={8} mt={2} wrap="nowrap">
-          {rule.kind === 'form' && <Text size="xs" c="dimmed">{protocolLabel[rule.protocol]}{floating ? ` · ${rule.interfaces.length ? rule.interfaces.map((i) => ifaceName(model, i)).join(', ') : 'any interface'}` : ''}</Text>}
+          {rule.kind === 'form' && <Text size="xs" c="dimmed">{protocolLabel[rule.protocol]}{floating ? ` · ${[...rule.interfaces.map((i) => ifaceName(model, i)), ...(rule.groups ?? [])].join(', ') || 'any interface'}` : ''}</Text>}
           <Markers rule={rule} model={model} />
         </Group>
       </Table.Td>
@@ -182,7 +183,7 @@ export function FirewallRules() {
   const floating = param === FLOATING;
   const current = floating ? null : ifaces.find((i) => i.id === param) ?? ifaces.find((i) => i.role === 'lan') ?? ifaces[0];
   const tab = floating ? FLOATING : current!.id;
-  const inTab = (r: Rule) => (floating ? r.interfaces.length !== 1 : r.interfaces.length === 1 && r.interfaces[0] === current!.id);
+  const inTab = (r: Rule) => (floating ? isFloating(r) : !isFloating(r) && r.interfaces[0] === current!.id);
   const rules = staged.firewall.rules.filter(inTab);
   const tabName = floating ? 'floating' : current!.name;
   const [drawer, setDrawer] = useState<{ open: boolean; rule: Rule | null }>({ open: false, rule: null });
@@ -197,7 +198,7 @@ export function FirewallRules() {
     setRules(`Moved rule “${moved.description}” (${tabName})`, (all) => arrayMove(all, all.findIndex((r) => r.id === active.id), all.findIndex((r) => r.id === over.id)));
   };
 
-  const where = (r: RuleInput) => (r.interfaces.length === 1 ? `on ${ifaceName(staged, r.interfaces[0])}` : '(floating)');
+  const where = (r: RuleInput) => (isFloating(r) ? '(floating)' : `on ${ifaceName(staged, r.interfaces[0])}`);
 
   const save = (r: RuleInput) => {
     const existing = drawer.rule;
@@ -206,7 +207,7 @@ export function FirewallRules() {
     } else {
       setRules(`Added ${r.kind === 'raw' ? 'pf ' : ''}rule “${r.description}” ${where(r)}`, (all) => [...all, { ...r, id: newId('r') } as Rule]);
     }
-    const dest = r.interfaces.length === 1 ? r.interfaces[0] : FLOATING;
+    const dest = isFloating(r) ? FLOATING : r.interfaces[0];
     if (dest !== tab) navigate(`/firewall/rules/${dest}`);
   };
 
@@ -228,11 +229,11 @@ export function FirewallRules() {
       />
       <Tabs value={tab} onChange={(v) => v && navigate(`/firewall/rules/${v}`)} mb="md">
         <Tabs.List>
-          <Tabs.Tab value={FLOATING} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => r.interfaces.length !== 1).length}</Badge>}>
+          <Tabs.Tab value={FLOATING} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter(isFloating).length}</Badge>}>
             Floating
           </Tabs.Tab>
           {ifaces.map((i) => (
-            <Tabs.Tab key={i.id} value={i.id} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => r.interfaces.length === 1 && r.interfaces[0] === i.id).length}</Badge>}>
+            <Tabs.Tab key={i.id} value={i.id} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => !isFloating(r) && r.interfaces[0] === i.id).length}</Badge>}>
               {i.name}
             </Tabs.Tab>
           ))}

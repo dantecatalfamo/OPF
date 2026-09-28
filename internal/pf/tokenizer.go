@@ -436,8 +436,13 @@ func (t *Tokenizer) scanNumberOrIP() Token {
 		return t.token(TokenNumber, val, startLine, startCol)
 	}
 
-	// Not recognized, treat as ident (rare edge case)
-	return t.token(TokenIdent, val, startLine, startCol)
+	// Not a number, address or range, e.g. "0:network" in "(em0:0:network)"
+	// or "0:b" in "em0:0:broadcast": keep only the leading digits and let
+	// the colon and what follows tokenize on their own.
+	t.pos = startPos
+	t.col = startCol
+	t.line = startLine
+	return t.scanPlainNumber()
 }
 
 func (t *Tokenizer) scanPlainNumber() Token {
