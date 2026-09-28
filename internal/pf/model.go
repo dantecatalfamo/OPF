@@ -114,12 +114,12 @@ const (
 type EndpointType string
 
 const (
-	EndpointAny    EndpointType = "any"
-	EndpointSelf   EndpointType = "self"
-	EndpointIface  EndpointType = "iface"  // an interface's addresses or networks; see Endpoint
-	EndpointHost   EndpointType = "host"
+	EndpointAny     EndpointType = "any"
+	EndpointSelf    EndpointType = "self"
+	EndpointIface   EndpointType = "iface" // an interface's addresses or networks; see Endpoint
+	EndpointHost    EndpointType = "host"
 	EndpointNetwork EndpointType = "network"
-	EndpointAlias  EndpointType = "alias"
+	EndpointAlias   EndpointType = "alias"
 )
 
 // IfacePart is the interface modifier: which of an interface's
@@ -198,21 +198,21 @@ const (
 type BlockReturn string
 
 const (
-	BlockReturnDrop      BlockReturn = "drop"
-	BlockReturnReturn    BlockReturn = "return"
-	BlockReturnRST       BlockReturn = "return-rst"
-	BlockReturnICMP      BlockReturn = "return-icmp"
-	BlockReturnICMP6     BlockReturn = "return-icmp6"
+	BlockReturnDrop   BlockReturn = "drop"
+	BlockReturnReturn BlockReturn = "return"
+	BlockReturnRST    BlockReturn = "return-rst"
+	BlockReturnICMP   BlockReturn = "return-icmp"
+	BlockReturnICMP6  BlockReturn = "return-icmp6"
 )
 
 // Rule is either a FormRule or a RawRule. Use the Kind field to
 // determine which fields are valid.
 type Rule struct {
 	// Common fields
-	ID          string   `json:"id"`
-	Kind        string   `json:"kind"` // "form" or "raw"
-	Enabled     bool     `json:"enabled"`
-	Interfaces  []string `json:"interfaces"`
+	ID         string   `json:"id"`
+	Kind       string   `json:"kind"` // "form" or "raw"
+	Enabled    bool     `json:"enabled"`
+	Interfaces []string `json:"interfaces"`
 	// Groups are interface groups (egress, wg, …) or interfaces OPF
 	// doesn't manage, written into the "on" clause as-is. A rule with
 	// any groups is a floating rule.

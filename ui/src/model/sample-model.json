@@ -249,7 +249,7 @@
           "lan"
         ],
         "gateway": "gw_wh",
-        "description": "Send the build server’s internet traffic through the warehouse"
+        "description": "Send the build server’s traffic via the warehouse"
       },
       {
         "kind": "form",
@@ -635,7 +635,7 @@
       {
         "id": "p3",
         "name": "Warehouse router",
-        "publicKey": "Hc2Kx9mL5nP8qR1sT4vW7yZ0aB3dE6fG9hJ2kM5nP8=",
+        "publicKey": "V0skS4zDsde/HCnMup7ISn+4lby1kPhaLHvFwbY8cRM=",
         "address": "10.8.0.10/32",
         "networks": [
           "10.20.0.0/16"
