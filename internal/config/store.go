@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -92,15 +93,55 @@ func New(opts Options) (*Store, error) {
 	return s, nil
 }
 
+// Files lists the registry. Pattern entries (hostname.*) are listed as
+// patterns; Lookup resolves their instances.
 func (s *Store) Files() []File { return s.files }
 
+// Lookup finds a managed file by name: a fixed entry, or an instance of
+// a pattern entry such as hostname.em0 for hostname.*.
 func (s *Store) Lookup(name string) (File, error) {
 	for _, f := range s.files {
-		if f.Name == name {
+		if !f.isPattern() && f.Name == name {
 			return f, nil
 		}
 	}
+	for _, f := range s.files {
+		if f.isPattern() {
+			if g, ok := f.match(name); ok {
+				return g, nil
+			}
+		}
+	}
 	return File{}, fmt.Errorf("%w: %s", ErrUnknownFile, name)
+}
+
+// instances returns the registry in apply order with each pattern entry
+// replaced by its staged instances, sorted by name. Staged files are
+// the ones with a base hash recorded.
+func (s *Store) instances() ([]File, error) {
+	bases, err := s.bases()
+	if err != nil {
+		return nil, err
+	}
+	var out []File
+	for _, f := range s.files {
+		if !f.isPattern() {
+			out = append(out, f)
+			continue
+		}
+		var names []string
+		for name := range bases {
+			if _, ok := f.match(name); ok {
+				names = append(names, name)
+			}
+		}
+		slices.Sort(names)
+		for _, name := range names {
+			g, _ := f.match(name)
+			out = append(out, g)
+		}
+	}
+	return out, nil
 }
 
 func (s *Store) livePath(f File) string      { return filepath.Join(s.root, f.Path) }
@@ -206,7 +247,11 @@ func (s *Store) discard(f File) error {
 func (s *Store) DiscardAll() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, f := range s.files {
+	files, err := s.instances()
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
 		if err := s.discard(f); err != nil {
 			return err
 		}
@@ -227,8 +272,12 @@ func (s *Store) Changes() ([]Change, error) {
 	if err != nil {
 		return nil, err
 	}
+	files, err := s.instances()
+	if err != nil {
+		return nil, err
+	}
 	var out []Change
-	for _, f := range s.files {
+	for _, f := range files {
 		if _, staged, err := s.staged(f); err != nil {
 			return nil, err
 		} else if !staged {

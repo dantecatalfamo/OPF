@@ -183,6 +183,9 @@ type fileRow struct {
 func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 	var rows []fileRow
 	for _, f := range s.store.Files() {
+		if f.Match != "" {
+			continue // patterns like hostname.* have no single file to edit
+		}
 		_, staged, err := s.store.Staged(f.Name)
 		if err != nil {
 			s.fail(w, r, err)

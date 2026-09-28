@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"io/fs"
+	"regexp"
 	"slices"
+	"strings"
 )
 
 // File describes a configuration file OPF manages. The file on disk is
@@ -34,12 +36,67 @@ type File struct {
 
 	// Mode is used when creating a file that doesn't exist yet.
 	Mode fs.FileMode
+
+	// Match makes this entry a pattern for a family of files: Name and
+	// Path each contain one "*", and a file matches when the text in
+	// its place matches this regular expression in full. "{*}" in Check
+	// and Apply is replaced with that text. Lookup returns the concrete
+	// file, e.g. hostname.em0 for hostname.*.
+	Match string
+}
+
+func (f File) isPattern() bool { return f.Match != "" }
+
+// instance returns the concrete file a pattern entry names for part, or
+// false if part doesn't match.
+func (f File) instance(part string) (File, bool) {
+	if !regexp.MustCompile(`^(?:` + f.Match + `)$`).MatchString(part) {
+		return File{}, false
+	}
+	g := f
+	g.Name = strings.Replace(f.Name, "*", part, 1)
+	g.Path = strings.Replace(f.Path, "*", part, 1)
+	g.Match = ""
+	g.Check = substPart(f.Check, part)
+	g.Apply = substPart(f.Apply, part)
+	return g, true
+}
+
+// match reports whether name is an instance of pattern entry f, and
+// returns the instance.
+func (f File) match(name string) (File, bool) {
+	prefix, suffix, _ := strings.Cut(f.Name, "*")
+	if len(name) <= len(prefix)+len(suffix) || !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) {
+		return File{}, false
+	}
+	return f.instance(name[len(prefix) : len(name)-len(suffix)])
+}
+
+func substPart(argv []string, part string) []string {
+	if argv == nil {
+		return nil
+	}
+	out := make([]string, len(argv))
+	for i, a := range argv {
+		out[i] = strings.ReplaceAll(a, "{*}", part)
+	}
+	return out
 }
 
 // DefaultFiles are the files managed on a stock OpenBSD system, in the
 // order they are applied during a commit.
 func DefaultFiles() []File {
 	return []File{
+		{
+			// hostname.if(5), one per interface. Applied first, since
+			// pf rules refer to the interfaces. netstart reads /etc
+			// directly, so these can't be loaded from a staged copy for
+			// confirmation (see TODO).
+			Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
+			Desc:  "Network interface",
+			Apply: []string{"sh", "/etc/netstart", "{*}"},
+			Mode:  0640, // may hold keys, e.g. wgkey
+		},
 		{
 			Name: "rc.conf.local", Path: "/etc/rc.conf.local",
 			Desc:  "Enabled daemons and their flags",
@@ -102,6 +159,19 @@ func validateFiles(files []File) error {
 			return fmt.Errorf("config: duplicate file name %q", f.Name)
 		}
 		seen[f.Name] = true
+		if f.isPattern() {
+			if strings.Count(f.Name, "*") != 1 || strings.Count(f.Path, "*") != 1 {
+				return fmt.Errorf("config: pattern %s needs one * in its name and path", f.Name)
+			}
+			if _, err := regexp.Compile(f.Match); err != nil {
+				return fmt.Errorf("config: pattern %s: %w", f.Name, err)
+			}
+			if f.Confirm {
+				return fmt.Errorf("config: pattern %s can't be confirmable", f.Name)
+			}
+		} else if strings.Contains(f.Name, "*") {
+			return fmt.Errorf("config: %s has a * but no Match", f.Name)
+		}
 		if f.Confirm && !slices.Contains(f.Apply, "{}") {
 			return fmt.Errorf("config: %s needs an Apply command that takes {} to be confirmable", f.Name)
 		}

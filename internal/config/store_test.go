@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -343,5 +344,99 @@ func TestConfirmRequiresPathApply(t *testing.T) {
 	}})
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func newPatternStore(t *testing.T) (*Store, *fakeRunner, string) {
+	t.Helper()
+	root := t.TempDir()
+	r := &fakeRunner{}
+	files := append([]File{{
+		Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
+		Apply: []string{"sh", "/etc/netstart", "{*}"}, Mode: 0640,
+	}}, testFiles...)
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: files, Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/pf.conf", "pass\n")
+	return s, r, root
+}
+
+func TestPatternLookup(t *testing.T) {
+	s, _, _ := newPatternStore(t)
+	f, err := s.Lookup("hostname.vlan20")
+	if err != nil || f.Path != "/etc/hostname.vlan20" || f.Apply[2] != "vlan20" {
+		t.Fatalf("Lookup = %+v, %v", f, err)
+	}
+	for _, bad := range []string{"hostname.*", "hostname.", "hostname.../etc/passwd", "hostname.em0/x", "hostname.EM0", "hostname.em", "xhostname.em0"} {
+		if _, err := s.Lookup(bad); !errors.Is(err, ErrUnknownFile) {
+			t.Errorf("Lookup(%q) = %v, want unknown file", bad, err)
+		}
+	}
+}
+
+func TestPatternFilesCommitFirst(t *testing.T) {
+	s, r, root := newPatternStore(t)
+	stage(t, s, "pf", "block\n")
+	stage(t, s, "hostname.em1", "inet 192.168.1.1/24\nup\n")
+	stage(t, s, "hostname.em0", "inet autoconf\nup\n")
+
+	if got := staged(t, s); !reflect.DeepEqual(got, []string{"hostname.em0", "hostname.em1", "pf"}) {
+		t.Fatalf("changes in order %v", got)
+	}
+	e, err := s.Commit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := readLive(t, root, "/etc/hostname.em1"); got != "inet 192.168.1.1/24\nup\n" {
+		t.Fatalf("hostname.em1 = %q", got)
+	}
+	fi, err := os.Stat(filepath.Join(root, "/etc/hostname.em1"))
+	if err != nil || fi.Mode().Perm() != 0640 {
+		t.Fatalf("mode = %v, %v", fi.Mode(), err)
+	}
+	// Checks run first; then interfaces are applied before pf.
+	var applied []string
+	for _, c := range r.commands() {
+		if strings.HasPrefix(c, "sh /etc/netstart") || strings.HasPrefix(c, "pfctl -f") {
+			applied = append(applied, strings.Fields(c)[2])
+		}
+	}
+	if len(applied) != 3 || applied[0] != "em0" || applied[1] != "em1" || !strings.HasSuffix(applied[2], "pf.conf") {
+		t.Fatalf("apply order %v, commands %v", applied, r.commands())
+	}
+	if err := s.Confirm(); err != nil {
+		t.Fatal(err)
+	}
+	// History resolves pattern instances too.
+	if err := s.StageFromHistory(e.ID, "hostname.em0", false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPatternDiscardAll(t *testing.T) {
+	s, _, _ := newPatternStore(t)
+	stage(t, s, "hostname.em0", "up\n")
+	stage(t, s, "ntpd", "servers x\n")
+	if err := s.DiscardAll(); err != nil {
+		t.Fatal(err)
+	}
+	if got := staged(t, s); got != nil {
+		t.Fatalf("still staged: %v", got)
+	}
+}
+
+func TestPatternValidation(t *testing.T) {
+	for _, f := range []File{
+		{Name: "hostname.*", Path: "/etc/hostname", Match: `x`},
+		{Name: "a*b*", Path: "/etc/a*", Match: `x`},
+		{Name: "hostname.*", Path: "/etc/hostname.*"},
+		{Name: "hostname.*", Path: "/etc/hostname.*", Match: `(`},
+		{Name: "hostname.*", Path: "/etc/hostname.*", Match: `x`, Confirm: true, Apply: []string{"{}"}},
+	} {
+		if _, err := New(Options{StateDir: t.TempDir(), Files: []File{f}}); err == nil {
+			t.Errorf("New accepted %+v", f)
+		}
 	}
 }
