@@ -76,9 +76,9 @@ break connectivity. Every feature must be:
 
 In order. Each step has details further down.
 
-1. **Fix the bugs found in review** (next section): the parser's silent
-   drops, then model validation. Both are correctness and security
-   problems under the principles above.
+1. **Fix the bugs found in review** (next section), starting with model
+   validation, a correctness and security problem under the principles
+   above.
 2. **Move the model into the parent.** The web process sends a model
    over RPC; the parent validates it, generates every file, stages them
    as one unit, and owns `config.json` (atomic write, 0600). Commit,
@@ -108,21 +108,36 @@ In order. Each step has details further down.
       and in the interface, protocol and port list loops. Fixed; the
       inputs are regression seeds in `internal/pf/testdata/fuzz` and in
       `parser_termination_test.go`. All three targets now run 90 s clean.
-- [ ] **The parser drops what it doesn't understand.** `route-to` and
-      `reply-to` skip their argument, and unrecognized options are
-      stepped over, producing a guided rule that means less than the
-      input. Brace lists, protocols and ports now fall back to a raw rule
-      instead; the rest of `tryParseFormRule` should do the same: any
-      token it doesn't model makes the rule raw. Also fixed: a bare
-      `to port 22` used to lose its port, and the golden file had
-      recorded that.
+- [x] **The parser dropped what it didn't understand.** Anything
+      `tryParseFormRule` doesn't model now keeps the rule raw: unknown or
+      repeated options, unreadable arguments, `log (…)` other than
+      `(all)`, bare macros and hostnames, `:0`/`:broadcast`/`:peer`,
+      `! any`, interface groups and devices not in the model, host lists
+      and ranges, unmodelled state options, empty `{ }` lists, and ports,
+      flags or ICMP types on a protocol the generator won't write them
+      for. `route-to`/`reply-to` map to a model gateway by address, or
+      keep the rule raw. The tokenizer's keywords are case-sensitive and
+      its string escapes follow pf's parse.y; the generator quotes
+      strings the same way (Go's `%q` escapes reached pf as literal
+      text), always writes aliases as `<table>`, and no longer turns
+      `netbios-ssn` into `netbios:ssn`. `FuzzParseRuleRoundTrip`
+      checks parse → generate → parse gives the same rule.
+- [ ] Importing (principle 4) must build the model's interfaces first:
+      rules naming devices (`on em0`) only become guided rules when the
+      device is in the model, otherwise they stay raw.
+- [ ] Reject invalid UTF-8 on import with a clear error. `encoding/json`
+      replaces it with U+FFFD, so even raw rules would change when
+      `config.json` is saved.
 - [ ] **No model validation.** Nothing checks the model before
       generating. Alias names, interface ids and devices, hostnames,
       domains, reservation names and addresses are written into pf.conf,
       hostname.if, dhcpd.conf and unbound.conf unchecked, so a crafted
-      value can inject configuration. Labels are safer (Go `%q`).
-      Validate every field in the parent (characters, length, references
-      to other objects); raw pf rules are the only intended exception.
+      value can inject configuration. Validate every field in the parent
+      (characters, length, references to other objects); raw pf rules
+      are the only intended exception. Quoted strings in pf.conf can't
+      contain a newline, and pf's lexer eats a backslash before a space,
+      tab or quote, so those values must be rejected. The generator also
+      silently drops a port spec naming an unknown `alias:`.
 - [ ] **Outbound rules never match.** Both generators emit
       `pass out quick inet` before user rules (`internal/pf/generate.go:602`,
       `ui/src/model/generate.ts:265`), so outbound rules such as the

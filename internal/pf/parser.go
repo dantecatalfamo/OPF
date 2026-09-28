@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Parser converts pf.conf syntax to model types.
@@ -86,19 +87,98 @@ func (p *Parser) expectKeyword(keywords ...string) (Token, bool) {
 	return Token{}, false
 }
 
+// expectString consumes a quoted string. A value the generator can't
+// write back unchanged (one with a backslash or newline, or invalid
+// UTF-8, which JSON would also mangle) keeps the rule raw.
+func (p *Parser) expectString() (string, bool) {
+	tok, ok := p.expect(TokenString)
+	if !ok {
+		return "", false
+	}
+	if strings.ContainsAny(tok.Value, "\\\n") || !utf8.ValidString(tok.Value) {
+		p.notForm = true
+	}
+	return tok.Value, true
+}
+
+// expectInt consumes a plain decimal number.
+func (p *Parser) expectInt() (int, bool) {
+	tok, ok := p.expect(TokenNumber)
+	if !ok {
+		return 0, false
+	}
+	n, err := strconv.Atoi(tok.Value)
+	return n, err == nil
+}
+
+// parseParenCode reads "code)" after "return-icmp(". Anything else,
+// such as a second code for IPv6, keeps the rule raw.
+func (p *Parser) parseParenCode() string {
+	tok, ok := p.expect(TokenIdent, TokenKeyword, TokenNumber)
+	if !ok {
+		p.notForm = true
+	}
+	if _, ok := p.expect(TokenRParen); !ok {
+		p.notForm = true
+	}
+	return tok.Value
+}
+
+// parseFlags reads "S/SA", "/SA" or "any" after "flags".
+func (p *Parser) parseFlags() string {
+	if _, ok := p.expectKeyword("any"); ok {
+		return "any"
+	}
+	flags := ""
+	if tok, ok := p.expect(TokenIdent); ok {
+		flags = tok.Value
+	}
+	if _, ok := p.expect(TokenSlash); !ok {
+		p.notForm = true
+		return flags
+	}
+	tok, ok := p.expect(TokenIdent)
+	if !ok {
+		p.notForm = true
+	}
+	return flags + "/" + tok.Value
+}
+
+// parseGateway reads the address after route-to or reply-to and maps it
+// to a gateway in the model. Other forms ("(em0 10.0.0.1)", pools,
+// interface names) and addresses without a gateway keep the rule raw.
+func (p *Parser) parseGateway() string {
+	tok, ok := p.expect(TokenIPv4, TokenIPv6)
+	if !ok {
+		p.notForm = true
+		return ""
+	}
+	if p.model != nil {
+		for _, g := range p.model.Routing.Gateways {
+			if gatewayAddr(g.ID, p.model) == tok.Value {
+				return g.ID
+			}
+		}
+	}
+	p.notForm = true
+	return ""
+}
+
 // parseBraceList reads the items of a "{ a b, c }" list, with the
 // opening brace already consumed. Every iteration consumes a token or
 // returns, so it always terminates. It fails, leaving the offending
-// token unconsumed, on a token not in accept or when the line ends
-// before the closing brace, so a missing brace can't swallow the
-// following lines.
+// token unconsumed, on an empty list, on a token not in accept, or when
+// the line ends before the closing brace, so a missing brace can't
+// swallow the following lines.
 func (p *Parser) parseBraceList(accept ...TokenType) ([]Token, bool) {
 	var items []Token
 	for {
 		switch {
 		case p.check(TokenRBrace):
 			p.advance()
-			return items, true
+			// "{ }" is a syntax error in pf; accepting it would turn
+			// "port { }" into "any port".
+			return items, len(items) > 0
 		case p.check(TokenComma):
 			p.advance()
 		case p.check(accept...):
@@ -237,10 +317,10 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 				// Check for ttl
 				if p.checkKeyword("ttl") {
 					p.advance()
-					if tok, ok := p.expect(TokenNumber); ok {
-						if n, err := strconv.Atoi(tok.Value); err == nil {
-							rule.ReturnRstTTL = &n
-						}
+					if n, ok := p.expectInt(); ok {
+						rule.ReturnRstTTL = &n
+					} else {
+						p.notForm = true
 					}
 				}
 			} else if p.checkKeyword("return-icmp") {
@@ -249,20 +329,14 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 				// Check for (code)
 				if p.check(TokenLParen) {
 					p.advance()
-					if tok, ok := p.expect(TokenIdent, TokenNumber); ok {
-						rule.ReturnICMPCode = tok.Value
-					}
-					p.expect(TokenRParen)
+					rule.ReturnICMPCode = p.parseParenCode()
 				}
 			} else if p.checkKeyword("return-icmp6") {
 				p.advance()
 				rule.BlockReturn = BlockReturnICMP6
 				if p.check(TokenLParen) {
 					p.advance()
-					if tok, ok := p.expect(TokenIdent, TokenNumber); ok {
-						rule.ReturnICMPCode = tok.Value
-					}
-					p.expect(TokenRParen)
+					rule.ReturnICMPCode = p.parseParenCode()
 				}
 			}
 		case "match":
@@ -287,12 +361,17 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 		p.advance()
 		rule.Log = LogOn
 		if p.check(TokenLParen) {
+			// Only "log (all)" is modelled; "(user)", "(matches)" and
+			// "(to pflogN)" keep the rule raw.
 			p.advance()
-			if p.checkKeyword("all") {
-				p.advance()
+			if _, ok := p.expectKeyword("all"); ok {
 				rule.Log = LogAll
+			} else {
+				p.notForm = true
 			}
-			p.expect(TokenRParen)
+			if _, ok := p.expect(TokenRParen); !ok {
+				p.notForm = true
+			}
 		}
 	}
 
@@ -345,12 +424,16 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 				if port != "" {
 					rule.SourcePort = port
 				}
+			} else {
+				p.notForm = true
 			}
 			// OS fingerprint
 			if p.checkKeyword("os") {
 				p.advance()
-				if tok, ok := p.expect(TokenString); ok {
-					rule.OSFingerprint = tok.Value
+				if v, ok := p.expectString(); ok {
+					rule.OSFingerprint = v
+				} else {
+					p.notForm = true
 				}
 			}
 		}
@@ -364,151 +447,151 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 				if port != "" {
 					rule.Port = port
 				}
+			} else {
+				p.notForm = true
 			}
 		}
 	}
 
-	// Parse remaining options in a loop since they can appear in various orders
+	// Parse remaining options in a loop since they can appear in various
+	// orders. Anything not modelled here, a repeated option, or an
+	// option whose argument can't be read makes the rule raw: skipping
+	// it would silently change what the rule does.
+	seen := map[string]bool{}
 	for !p.check(TokenNewline, TokenEOF) {
-		matched := false
-
-		// TCP Flags
-		if p.checkKeyword("flags") {
-			p.advance()
-			if tok, ok := p.expect(TokenIdent, TokenKeyword); ok {
-				flags := tok.Value
-				if p.check(TokenSlash) {
-					p.advance()
-					if tok2, ok := p.expect(TokenIdent, TokenKeyword); ok {
-						flags += "/" + tok2.Value
-					}
-				}
-				rule.TCPFlags = flags
+		opt := p.peek().Value
+		if p.peek().Type == TokenKeyword {
+			if seen[opt] {
+				p.notForm = true
 			}
-			matched = true
+			seen[opt] = true
 		}
 
-		// ICMP type
-		if p.checkKeyword("icmp-type", "icmp6-type") {
+		switch {
+		case p.checkKeyword("flags"):
+			p.advance()
+			rule.TCPFlags = p.parseFlags()
+
+		case p.checkKeyword("icmp-type", "icmp6-type"):
 			p.advance()
 			if tok, ok := p.expect(TokenIdent, TokenKeyword, TokenNumber); ok {
 				rule.ICMPType = tok.Value
+			} else {
+				p.notForm = true
 			}
-			matched = true
-		}
+			if (opt == "icmp6-type") != (rule.Protocol == ProtoICMP6) {
+				p.notForm = true // the generator picks the keyword from the protocol
+			}
 
-		// Tagged
-		if p.checkKeyword("tagged") {
+		case p.checkKeyword("tagged"):
 			p.advance()
 			if tok, ok := p.expect(TokenIdent, TokenKeyword); ok {
 				rule.Tagged = tok.Value
+			} else {
+				p.notForm = true
 			}
-			matched = true
-		}
 
-		// Tag
-		if p.checkKeyword("tag") {
+		case p.checkKeyword("tag"):
 			p.advance()
 			if tok, ok := p.expect(TokenIdent, TokenKeyword); ok {
 				rule.Tag = tok.Value
+			} else {
+				p.notForm = true
 			}
-			matched = true
-		}
 
-		// Probability
-		if p.checkKeyword("probability") {
+		case p.checkKeyword("probability"):
 			p.advance()
-			if tok, ok := p.expect(TokenNumber); ok {
-				val := tok.Value
-				// Remove % if present
-				val = strings.TrimSuffix(val, "%")
-				if n, err := strconv.Atoi(val); err == nil {
-					rule.Probability = &n
-				}
+			if n, ok := p.expectInt(); ok && n >= 0 && n <= 100 {
+				rule.Probability = &n
+			} else {
+				p.notForm = true
 			}
-			// Skip % token if separate
+			// "50%" tokenizes as a number and a separate "%".
 			if p.peek().Value == "%" {
 				p.advance()
 			}
-			matched = true
-		}
 
-		// Once
-		if p.checkKeyword("once") {
+		case p.checkKeyword("once"):
 			p.advance()
 			rule.Once = true
-			matched = true
-		}
 
-		// State options: keep state | modulate state | synproxy state | no state
-		if p.checkKeyword("keep", "modulate", "synproxy", "no") {
+		case p.checkKeyword("keep", "modulate", "synproxy", "no"):
 			state, ok := p.parseStateOptions()
-			if ok && rule.Action == ActionPass {
-				rule.State = state
+			if !ok || rule.Action != ActionPass {
+				// State only means something on pass rules, and only
+				// pass rules get it back from the generator.
+				p.notForm = true
 			}
-			matched = true
-		}
-
-		// Set options: set prio N
-		if p.checkKeyword("set") {
-			p.advance()
-			if p.checkKeyword("prio") {
-				p.advance()
-				if tok, ok := p.expect(TokenNumber); ok {
-					if n, err := strconv.Atoi(tok.Value); err == nil {
-						rule.Prio = &n
-					}
-				}
+			if state != nil && *state == (StateOptions{Mode: StateModeKeep}) {
+				// Plain "keep state" is pf's default for pass rules.
+				state = nil
 			}
-			matched = true
-		}
+			rule.State = state
 
-		// Rtable
-		if p.checkKeyword("rtable") {
+		case p.checkKeyword("set"):
 			p.advance()
-			if tok, ok := p.expect(TokenNumber); ok {
-				if n, err := strconv.Atoi(tok.Value); err == nil {
-					rule.RTable = &n
-				}
+			// Only "set prio N" is modelled; "set prio (N, M)",
+			// "set tos" and "set queue" keep the rule raw.
+			if _, ok := p.expectKeyword("prio"); !ok {
+				p.notForm = true
+				break
 			}
-			matched = true
-		}
+			if n, ok := p.expectInt(); ok && n >= 0 && n <= 7 {
+				rule.Prio = &n
+			} else {
+				p.notForm = true
+			}
 
-		// Route-to
-		if p.checkKeyword("route-to") {
+		case p.checkKeyword("rtable"):
 			p.advance()
-			// This is complex - we'd need to resolve gateway
-			// For now, skip to next token
-			p.advance()
-			matched = true
-		}
+			if n, ok := p.expectInt(); ok {
+				rule.RTable = &n
+			} else {
+				p.notForm = true
+			}
 
-		// Reply-to
-		if p.checkKeyword("reply-to") {
+		case p.checkKeyword("route-to", "reply-to"):
 			p.advance()
-			p.advance()
-			matched = true
-		}
+			gw := p.parseGateway()
+			if opt == "route-to" {
+				rule.Gateway = gw
+			} else {
+				rule.ReplyTo = gw
+			}
 
-		// NAT/redirect options (not supported in FormRule)
-		if p.checkKeyword("nat-to", "rdr-to", "binat-to", "af-to", "divert-to") {
+		case p.checkKeyword("nat-to", "rdr-to", "binat-to", "af-to", "divert-to"):
+			// NAT/redirect options (not supported in FormRule)
 			p.pos = startPos
+			p.notForm = false
 			return nil, false
-		}
 
-		// Label (description)
-		if p.checkKeyword("label") {
+		case p.checkKeyword("label"):
 			p.advance()
-			if tok, ok := p.expect(TokenString); ok {
-				rule.Description = tok.Value
+			if v, ok := p.expectString(); ok {
+				rule.Description = v
+			} else {
+				p.notForm = true
 			}
-			matched = true
-		}
 
-		// If nothing matched, skip the token to avoid infinite loop
-		if !matched {
+		default:
+			p.notForm = true
 			p.advance()
 		}
+	}
+
+	// Combinations the generator can't write back.
+	hasPorts := rule.Protocol == ProtoTCP || rule.Protocol == ProtoUDP || rule.Protocol == ProtoTCPUDP
+	if (rule.Port != "" || rule.SourcePort != "") && !hasPorts {
+		p.notForm = true
+	}
+	if rule.TCPFlags != "" && rule.Protocol != ProtoTCP && rule.Protocol != ProtoTCPUDP {
+		p.notForm = true
+	}
+	if rule.ICMPType != "" && rule.Protocol != ProtoICMP && rule.Protocol != ProtoICMP6 {
+		p.notForm = true
+	}
+	if rule.BlockReturn != "" && rule.Action != ActionBlock {
+		p.notForm = true
 	}
 
 	if p.notForm {
@@ -575,7 +658,7 @@ func (p *Parser) parseInterfaceList() []string {
 			p.notForm = true
 		}
 		for _, tok := range items {
-			ifaces = append(ifaces, tok.Value)
+			ifaces = append(ifaces, p.interfaceID(tok))
 		}
 	} else {
 		iface := p.parseInterfaceRef()
@@ -590,14 +673,29 @@ func (p *Parser) parseInterfaceList() []string {
 }
 
 func (p *Parser) parseInterfaceRef() string {
-	if tok, ok := p.expect(TokenMacro); ok {
-		return tok.Value
-	}
-	if tok, ok := p.expect(TokenIdent, TokenKeyword); ok {
-		// Could be "egress" or a device name
-		return tok.Value
+	if tok, ok := p.expect(TokenMacro, TokenIdent, TokenKeyword); ok {
+		return p.interfaceID(tok)
 	}
 	return ""
+}
+
+// interfaceID maps an interface reference to a model interface id. The
+// generator writes interfaces as $id, so a macro is taken as the id and
+// a device name is looked up. Groups such as "egress" and devices not
+// in the model keep the rule raw.
+func (p *Parser) interfaceID(tok Token) string {
+	if tok.Type == TokenMacro {
+		return tok.Value
+	}
+	if p.model != nil {
+		for _, i := range p.model.Interfaces {
+			if i.Device == tok.Value {
+				return i.ID
+			}
+		}
+	}
+	p.notForm = true
+	return tok.Value
 }
 
 func (p *Parser) parseProtocol() (Protocol, bool) {
@@ -669,6 +767,10 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 	// any
 	if p.checkKeyword("any") {
 		p.advance()
+		if negated {
+			// "! any" matches nothing; the model has no way to say so.
+			p.notForm = true
+		}
 		endpoint = Endpoint{Type: EndpointAny, Not: negated}
 		// Check for port after "any"
 		if p.checkKeyword("port") {
@@ -699,18 +801,18 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// Macro: $name or ($name) or $name:network
+	// ($name): the interface's addresses. Modifiers such as ($name:0)
+	// and device names keep the rule raw.
 	if p.check(TokenLParen) {
 		p.advance()
 		if tok, ok := p.expect(TokenMacro); ok {
 			endpoint = Endpoint{Type: EndpointIfaddr, Iface: tok.Value, Not: negated}
-			// Handle :0 suffix (used in NAT)
-			if p.check(TokenColon) {
-				p.advance()
-				p.expect(TokenNumber) // consume the 0
-			}
+		} else {
+			p.notForm = true
 		}
-		p.expect(TokenRParen)
+		if _, ok := p.expect(TokenRParen); !ok {
+			p.notForm = true
+		}
 		if p.checkKeyword("port") {
 			p.advance()
 			port = p.parsePortSpec()
@@ -719,20 +821,17 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 	}
 
 	if tok, ok := p.expect(TokenMacro); ok {
-		// Check for :network suffix
-		if p.check(TokenColon) {
-			p.advance()
-			if p.checkKeyword("network") {
-				p.advance()
-				endpoint = Endpoint{Type: EndpointNet, Iface: tok.Value, Not: negated}
-			} else {
-				// Unknown suffix, treat as ifaddr
-				endpoint = Endpoint{Type: EndpointIfaddr, Iface: tok.Value, Not: negated}
-			}
+		// $name:network is modelled. A bare $name could hold anything
+		// (addresses, a list), and :broadcast, :peer and :0 aren't
+		// modelled, so those keep the rule raw.
+		endpoint = Endpoint{Type: EndpointNet, Iface: tok.Value, Not: negated}
+		if !p.check(TokenColon) {
+			p.notForm = true
 		} else {
-			// Just a macro reference - could be an alias or interface
-			// Default to interface address
-			endpoint = Endpoint{Type: EndpointIfaddr, Iface: tok.Value, Not: negated}
+			p.advance()
+			if _, ok := p.expectKeyword("network"); !ok {
+				p.notForm = true
+			}
 		}
 		if p.checkKeyword("port") {
 			p.advance()
@@ -760,17 +859,10 @@ func (p *Parser) parseEndpointWithPort() (Endpoint, string, bool) {
 		return endpoint, port, true
 	}
 
-	// Identifier (could be alias name or other)
-	if tok, ok := p.expect(TokenIdent); ok {
-		// Treat as alias
-		endpoint = Endpoint{Type: EndpointAlias, Alias: tok.Value, Not: negated}
-		if p.checkKeyword("port") {
-			p.advance()
-			port = p.parsePortSpec()
-		}
-		return endpoint, port, true
-	}
-
+	// A bare word is an interface name or a hostname resolved when the
+	// rules load, not a table, and "no-route", "urpf-failed" and host
+	// lists aren't modelled: all of them make the parse fail, so the rule
+	// stays raw.
 	return Endpoint{Type: EndpointAny}, "", false
 }
 
@@ -859,71 +951,72 @@ func (p *Parser) parseStateOptions() (*StateOptions, bool) {
 	// Parse state options in parentheses
 	if p.check(TokenLParen) {
 		p.advance()
-		for !p.check(TokenRParen, TokenEOF) {
-			if p.checkKeyword("max") {
+		// Stops at the end of the line too, so a missing ")" can't
+		// swallow the following rules.
+		for !p.check(TokenRParen, TokenNewline, TokenEOF) {
+			switch {
+			case p.checkKeyword("max"):
 				p.advance()
-				if tok, ok := p.expect(TokenNumber); ok {
-					if n, err := strconv.Atoi(tok.Value); err == nil {
-						state.MaxStates = &n
-					}
+				if n, ok := p.expectInt(); ok {
+					state.MaxStates = &n
+				} else {
+					p.notForm = true
 				}
-			} else if p.checkKeyword("max-src-conn") {
+			case p.checkKeyword("max-src-conn"):
 				p.advance()
-				if tok, ok := p.expect(TokenNumber); ok {
-					if n, err := strconv.Atoi(tok.Value); err == nil {
-						state.MaxSrcConn = &n
-					}
+				if n, ok := p.expectInt(); ok {
+					state.MaxSrcConn = &n
+				} else {
+					p.notForm = true
 				}
-			} else if p.checkKeyword("max-src-conn-rate") {
+			case p.checkKeyword("max-src-conn-rate"):
+				// count/seconds; "3/30" tokenizes as 3, /, 30.
 				p.advance()
-				// Format: count/seconds
-				if tok, ok := p.expect(TokenNumber); ok {
-					parts := strings.Split(tok.Value, "/")
-					if len(parts) == 2 {
-						count, _ := strconv.Atoi(parts[0])
-						secs, _ := strconv.Atoi(parts[1])
-						state.MaxSrcConnRate = &SrcConnRate{Count: count, Seconds: secs}
-					} else {
-						count, _ := strconv.Atoi(tok.Value)
-						if p.check(TokenSlash) {
-							p.advance()
-							if tok2, ok := p.expect(TokenNumber); ok {
-								secs, _ := strconv.Atoi(tok2.Value)
-								state.MaxSrcConnRate = &SrcConnRate{Count: count, Seconds: secs}
-							}
-						}
-					}
+				count, ok1 := p.expectInt()
+				_, ok2 := p.expect(TokenSlash)
+				secs, ok3 := p.expectInt()
+				if ok1 && ok2 && ok3 {
+					state.MaxSrcConnRate = &SrcConnRate{Count: count, Seconds: secs}
+				} else {
+					p.notForm = true
 				}
-			} else if p.checkKeyword("overload") {
+			case p.checkKeyword("overload"):
 				p.advance()
 				if tok, ok := p.expect(TokenTable); ok {
 					state.Overload = tok.Value
+				} else {
+					p.notForm = true
 				}
-				// Check for flush global
-				if p.checkKeyword("flush") {
-					p.advance()
-					if p.checkKeyword("global") {
-						p.advance()
+				// "flush" alone (only this rule's states) isn't modelled;
+				// "flush global" is.
+				if _, ok := p.expectKeyword("flush"); ok {
+					if _, ok := p.expectKeyword("global"); ok {
 						state.FlushGlobal = true
+					} else {
+						p.notForm = true
 					}
 				}
-			} else if p.checkKeyword("sloppy") {
+			case p.checkKeyword("sloppy"):
 				p.advance()
 				state.Sloppy = true
-			} else if p.checkKeyword("if-bound") {
+			case p.checkKeyword("if-bound"):
 				p.advance()
 				state.Policy = StatePolicyIfBound
-			} else if p.checkKeyword("floating") {
+			case p.checkKeyword("floating"):
 				p.advance()
 				state.Policy = StatePolicyFloating
-			} else if p.check(TokenComma) {
+			case p.check(TokenComma):
 				p.advance()
-			} else {
-				// Unknown option, skip
+			default:
+				// source-track, max-src-nodes, timeouts, no-sync, pflow
+				// and so on aren't modelled.
+				p.notForm = true
 				p.advance()
 			}
 		}
-		p.expect(TokenRParen)
+		if _, ok := p.expect(TokenRParen); !ok {
+			p.notForm = true
+		}
 	}
 
 	return state, true

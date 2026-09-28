@@ -332,9 +332,18 @@ func (t *Tokenizer) scanString() Token {
 			t.advance()
 			break
 		}
-		if r == '\\' && t.peekN(1) != 0 {
-			t.advance()
-			r = t.peek()
+		// As in pf's parse.y: a backslash escapes a quote, space or tab,
+		// joins lines before a newline, and is kept literally otherwise.
+		if r == '\\' {
+			switch t.peekN(1) {
+			case '"', ' ', '\t':
+				t.advance()
+				r = t.peek()
+			case '\n':
+				t.advance()
+				t.advance()
+				continue
+			}
 		}
 		sb.WriteByte(byte(r))
 		t.advance()
@@ -474,9 +483,10 @@ func (t *Tokenizer) scanIdent() Token {
 		val = val[:idx]
 	}
 
-	// Check if it's a keyword
-	if keywords[val] || keywords[strings.ToLower(val)] {
-		return t.token(TokenKeyword, strings.ToLower(val), startLine, startCol)
+	// pf keywords are case-sensitive: "PASS" is a syntax error, and a
+	// host or table may be called "Any".
+	if keywords[val] {
+		return t.token(TokenKeyword, val, startLine, startCol)
 	}
 	return t.token(TokenIdent, val, startLine, startCol)
 }

@@ -243,8 +243,9 @@ func TestParseRule_Tags(t *testing.T) {
 		tagged string
 	}{
 		{"pass in all tag WEB", "WEB", ""},
-		{"pass in tagged VOIP all", "", "VOIP"},
-		{"pass in tagged VOIP all tag OUTBOUND", "OUTBOUND", "VOIP"},
+		// pf.conf(5) puts filter options after the hosts.
+		{"pass in all tagged VOIP", "", "VOIP"},
+		{"pass in all tagged VOIP tag OUTBOUND", "OUTBOUND", "VOIP"},
 	}
 
 	for _, tt := range tests {

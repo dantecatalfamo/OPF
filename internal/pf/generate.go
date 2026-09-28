@@ -240,15 +240,9 @@ func endpoint(e Endpoint, m *Model) string {
 	case EndpointHost, EndpointNetwork:
 		return not + e.Value
 	case EndpointAlias:
-		// Check if it's a non-port alias
-		if m != nil {
-			for _, a := range m.Firewall.Aliases {
-				if a.Name == e.Alias && a.Type != AliasPorts {
-					return fmt.Sprintf("%s<%s>", not, e.Alias)
-				}
-			}
-		}
-		return not + e.Alias
+		// Address aliases are pf tables. Writing a bare name instead
+		// would turn a table lookup into a hostname lookup.
+		return fmt.Sprintf("%s<%s>", not, e.Alias)
 	default:
 		return "any"
 	}
@@ -296,14 +290,10 @@ func portExpr(spec string, m *Model) string {
 		return " port { " + strings.Join(trimmed, " ") + " }"
 	}
 
-	// Convert dash range to colon
-	s = strings.Replace(s, "-", ":", 1)
-	// Only convert if it's a simple range like 8000-8080, not operators
-	if matched := strings.Contains(spec, "-"); matched {
-		parts := strings.Split(spec, "-")
-		if len(parts) == 2 && isNumber(parts[0]) && isNumber(parts[1]) {
-			s = parts[0] + ":" + parts[1]
-		}
+	// The UI accepts 8000-8080 for a range; pf wants 8000:8080. Named
+	// ports such as netbios-ssn keep their dash.
+	if parts := strings.Split(s, "-"); len(parts) == 2 && isNumber(parts[0]) && isNumber(parts[1]) {
+		s = parts[0] + ":" + parts[1]
 	}
 
 	return " port " + s
@@ -341,10 +331,14 @@ func onClause(ifaces []string) string {
 	return " on { " + strings.Join(parts, " ") + " }"
 }
 
+// quote writes s as a pf.conf quoted string. pf's lexer only treats a
+// backslash specially before a quote, space, tab or newline, so escaping
+// the quotes is enough for any string without backslashes or newlines;
+// Go's %q escapes (\t, \x9b, \\) would reach pf as literal text.
+// Strings that can't be quoted faithfully must be rejected before
+// generation.
 func quote(s string) string {
-	// Replace double quotes with single quotes to avoid escaping
-	escaped := strings.ReplaceAll(s, "\"", "'")
-	return fmt.Sprintf("%q", escaped)
+	return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
 }
 
 // GenerateNATRule converts a NAT rule to pf.conf syntax.
