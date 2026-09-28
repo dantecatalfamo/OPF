@@ -1,5 +1,5 @@
 import { Button, Center, Group, Modal, RingProgress, Stack, Text, Title } from '@mantine/core';
-import { CONFIRM_SECONDS, useStore } from '../model/store';
+import { useStore } from '../model/store';
 import { useNow } from '../lib/useNow';
 
 export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
@@ -7,6 +7,7 @@ export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: ()
   const now = useNow(200);
   if (!confirming) return null;
   const left = Math.max(0, (confirming.deadline - now) / 1000);
+  const total = Math.max(1, (confirming.deadline - confirming.start) / 1000);
 
   return (
     <Modal opened={opened} onClose={onClose} closeOnClickOutside={false} size="md" withCloseButton={false}>
@@ -15,7 +16,7 @@ export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: ()
           size={132}
           thickness={9}
           roundCaps
-          sections={[{ value: (left / CONFIRM_SECONDS) * 100, color: left < 15 ? 'red' : 'amber' }]}
+          sections={[{ value: (left / total) * 100, color: left < 15 ? 'red' : 'amber' }]}
           label={
             <Center>
               <Stack gap={0} align="center">
@@ -37,7 +38,7 @@ export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: ()
           previous settings come back when the timer runs out.
         </Text>
         <Group grow w="100%" mt="xs">
-          <Button variant="default" onClick={() => revert('user')}>
+          <Button variant="default" onClick={revert}>
             Revert now
           </Button>
           <Button onClick={keep}>Keep changes</Button>

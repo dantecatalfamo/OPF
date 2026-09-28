@@ -9,14 +9,17 @@ import { PageHeader, SectionTitle } from '../components/ui';
 const statusBadge: Record<HistoryEntry['status'], { color: string; label: string }> = {
   confirmed: { color: 'teal', label: 'Confirmed' },
   applied: { color: 'teal', label: 'Applied' },
+  pending: { color: 'amber', label: 'Waiting for confirmation' },
+  applying: { color: 'amber', label: 'Applying' },
   reverted: { color: 'red', label: 'Reverted' },
+  failed: { color: 'red', label: 'Failed and reverted' },
 };
 
 const preview = () =>
   notifications.show({ title: 'Not available in this preview', message: 'On the appliance this saves or loads a single backup file.' });
 
 export function History() {
-  const { history, restore } = useStore();
+  const { history, restore, confirming } = useStore();
   return (
     <>
       <PageHeader
@@ -33,7 +36,7 @@ export function History() {
                   key={h.id}
                   bullet={
                     <ThemeIcon size={26} radius="xl" color={s.color} variant="light">
-                      {h.status === 'reverted' ? <IconX size={14} /> : <IconCheck size={14} />}
+                      {h.status === 'reverted' || h.status === 'failed' ? <IconX size={14} /> : <IconCheck size={14} />}
                     </ThemeIcon>
                   }
                 >
@@ -45,16 +48,18 @@ export function History() {
                         </Text>
                         <Badge color={s.color} size="sm">{s.label}</Badge>
                       </Group>
+                      {h.message && !(h.changes.length === 1 && h.changes[0].summary === h.message) && (
+                        <Text size="sm" fw={500}>{h.message}</Text>
+                      )}
                       {h.changes.map((c, i) => (
                         <Text key={`${c.id}-${i}`} size="sm">
                           <Text span c="dimmed" size="sm">{sectionLabel[c.section]}: </Text>
                           {c.summary}
                         </Text>
                       ))}
-                      <Text size="xs" c="dimmed">by {h.user}</Text>
                     </Stack>
-                    {h.status !== 'reverted' && (
-                      <Button size="xs" variant="default" leftSection={<IconArrowBackUp size={14} />} onClick={() => restore(h)}>
+                    {(h.status === 'applied' || h.status === 'confirmed') && (
+                      <Button size="xs" variant="default" leftSection={<IconArrowBackUp size={14} />} disabled={!!confirming} onClick={() => restore(h)}>
                         Undo
                       </Button>
                     )}

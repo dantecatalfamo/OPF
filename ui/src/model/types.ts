@@ -300,9 +300,7 @@ export interface Change {
 export interface HistoryEntry {
   id: string;
   time: number;
-  user: string;
+  status: 'applying' | 'pending' | 'applied' | 'confirmed' | 'reverted' | 'failed';
+  message: string;
   changes: Change[];
-  status: 'confirmed' | 'applied' | 'reverted';
-  before: Model;
-  after: Model;
 }

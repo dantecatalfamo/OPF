@@ -21,26 +21,39 @@ function withRuleEnabled(m: Model, id: string, enabled: boolean): Model {
   return { ...m, firewall: { ...m.firewall, rules: m.firewall.rules.map((r) => (r.id === id ? { ...r, enabled } : r)) } };
 }
 
-// A little history so the History page has something to show.
-export function sampleHistory(now: number): HistoryEntry[] {
+// A little history for the offline preview, with the model before and
+// after each commit so restoring works.
+export interface SampleCommit {
+  entry: HistoryEntry;
+  before: Model;
+  after: Model;
+}
+
+export function sampleHistory(now: number): SampleCommit[] {
   const prev = withRuleEnabled(sampleModel, 'r5', false);
   return [
     {
-      id: '20260925-141203', time: now - 3 * hour, user: 'admin', status: 'confirmed',
-      changes: [{ id: 1, section: 'firewall', summary: 'Enabled rule “Keep IoT devices off the other networks” on IoT' }],
+      entry: {
+        id: '20260925-141203.000', time: now - 3 * hour, status: 'confirmed', message: 'Keep IoT devices off the LAN',
+        changes: [{ id: 1, section: 'firewall', summary: 'Enabled rule “Keep IoT devices off the other networks” on IoT' }],
+      },
       before: prev, after: sampleModel,
     },
     {
-      id: '20260924-093340', time: now - 28 * hour, user: 'admin', status: 'reverted',
-      changes: [{ id: 2, section: 'interfaces', summary: 'LAN: address set to 10.0.0.1/24' }],
+      entry: {
+        id: '20260924-093340.000', time: now - 28 * hour, status: 'reverted', message: 'Renumber the LAN',
+        changes: [{ id: 2, section: 'interfaces', summary: 'LAN: address set to 10.0.0.1/24' }],
+      },
       before: prev, after: prev,
     },
     {
-      id: '20260922-161512', time: now - 3 * 24 * hour, user: 'admin', status: 'applied',
-      changes: [
-        { id: 3, section: 'routing', summary: 'Added route 10.20.0.0/16 via WAREHOUSE' },
-        { id: 4, section: 'wireguard', summary: 'Added VPN device “Warehouse router” (10.8.0.10/32)' },
-      ],
+      entry: {
+        id: '20260922-161512.000', time: now - 3 * 24 * hour, status: 'applied', message: 'Connect the warehouse',
+        changes: [
+          { id: 3, section: 'routing', summary: 'Added route 10.20.0.0/16 via WAREHOUSE' },
+          { id: 4, section: 'wireguard', summary: 'Added VPN device “Warehouse router” (10.8.0.10/32)' },
+        ],
+      },
       before: prev, after: prev,
     },
   ];

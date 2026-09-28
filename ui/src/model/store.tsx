@@ -1,23 +1,17 @@
-// Client-side stand-in for the appliance's staging API. Edits change the
-// staged model; Apply makes it live; risky changes must be confirmed or
-// they are reverted, exactly like the Go backend.
-//
-// Model-Authoritative Design:
-// - The backend is the single source of truth for generating config files
-// - When applying changes, we call the backend's /api/model/apply endpoint
-// - The backend validates, generates, and stages all config files
-// - This ensures frontend and backend are always in sync on what gets applied
+// The UI's view of the configuration. The server owns it: edits change a
+// local copy of the model; reviewing stages that copy on the server,
+// which validates it and says which files it changes; applying commits
+// it; the server decides whether the commit needs confirmation and
+// reverts it when the deadline passes.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Alert, Button, Center, Loader, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import type { Change, HistoryEntry, Model, Section } from './types';
-import { sampleHistory, sampleModel } from './sample';
 import { sectionLabel } from '../lib/sections';
-import { applyModel } from '../lib/api';
+import { api, offline, type ChangeNote, type CommitResource, type FileChange } from '../lib/api';
+import { localApi } from '../lib/localApi';
 
-export const CONFIRM_SECONDS = 60;
-
-// Changes to these can cut off access to the appliance itself.
-const riskySections: Section[] = ['interfaces', 'routing', 'firewall'];
+const backend = offline ? localApi : api;
 
 const sectionOf: Record<Section, (m: Model) => unknown> = {
   system: (m) => m.system,
@@ -35,11 +29,19 @@ export function changedSections(a: Model, b: Model): Section[] {
   );
 }
 
-interface PendingCommit {
+// What the server staged, for review before committing.
+export interface Review {
+  version: string;
+  files: FileChange[];
+  needsConfirm: boolean;
+}
+
+// A commit waiting for confirmation. start and deadline are the
+// server's; the dialog counts down between them.
+export interface Confirming {
+  id: string;
+  start: number;
   deadline: number;
-  before: Model;
-  after: Model;
-  changes: Change[];
 }
 
 interface Store {
@@ -48,36 +50,106 @@ interface Store {
   changes: Change[];
   pendingSections: Section[];
   history: HistoryEntry[];
-  confirming: PendingCommit | null;
+  confirming: Confirming | null;
   edit: (section: Section, summary: string, fn: (m: Model) => Model) => void;
-  discard: () => void;
-  apply: () => void;
-  keep: () => void;
-  revert: (why: 'user' | 'timeout') => void;
-  restore: (entry: HistoryEntry) => void;
-  needsConfirm: boolean;
+  discard: () => Promise<void>;
+  review: (overwrite?: string[]) => Promise<Review>;
+  apply: (review: Review) => Promise<CommitResource>;
+  keep: () => Promise<void>;
+  revert: () => Promise<void>;
+  restore: (entry: HistoryEntry) => Promise<void>;
 }
 
 const StoreContext = createContext<Store | null>(null);
 
 let nextChangeId = 100;
 
-function historyId(t: number) {
-  const d = new Date(t);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+const sections = new Set<string>(Object.keys(sectionOf));
+
+function historyOf(c: CommitResource): HistoryEntry {
+  return {
+    id: c.id,
+    time: Date.parse(c.time),
+    status: c.status,
+    message: c.message,
+    changes: c.changes.map((n, i) => ({ id: -1 - i, section: (sections.has(n.area) ? n.area : 'system') as Section, summary: n.summary })),
+  };
+}
+
+function confirmingOf(c: CommitResource): Confirming {
+  return { id: c.id, start: Date.parse(c.time), deadline: Date.parse(c.deadline ?? c.time) };
+}
+
+// The server limits commit descriptions; stay inside them.
+function clip(s: string, maxBytes: number): string {
+  const enc = new TextEncoder();
+  let out = s.replace(/\p{Cc}/gu, ' ');
+  while (enc.encode(out).length > maxBytes) out = out.slice(0, -1);
+  return out;
+}
+
+function describe(changes: Change[]): { message: string; notes: ChangeNote[] } {
+  const notes = changes.slice(0, 500).map((c) => ({ area: c.section, summary: clip(c.summary, 300) }));
+  const areas = [...new Set(changes.map((c) => sectionLabel[c.section].toLowerCase()))];
+  const message = changes.length === 1 ? changes[0].summary : `${changes.length} changes to ${areas.join(', ')}`;
+  return { message: clip(message, 500), notes };
+}
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [applied, setApplied] = useState<Model>(sampleModel);
-  const [staged, setStaged] = useState<Model>(sampleModel);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<Model | null>(null);
+  const [liveVersion, setLiveVersion] = useState('');
+  const [staged, setStaged] = useState<Model | null>(null);
   const [log, setLog] = useState<Change[]>([]);
-  const [history, setHistory] = useState<HistoryEntry[]>(() => sampleHistory(Date.now()));
-  const [confirming, setConfirming] = useState<PendingCommit | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
   const confirmingRef = useRef(confirming);
   confirmingRef.current = confirming;
 
-  const pendingSections = useMemo(() => changedSections(applied, staged), [applied, staged]);
+  const refreshHistory = useCallback(async () => {
+    setHistory((await backend.commits()).map(historyOf));
+  }, []);
+
+  // Reload the live model; without keepEdits it's also the new starting
+  // point for edits.
+  const refreshLive = useCallback(async (keepEdits: boolean) => {
+    const live = await backend.live();
+    setApplied(live.model);
+    setLiveVersion(live.version);
+    if (!keepEdits) {
+      setStaged(live.model);
+      setLog([]);
+    }
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [live, st, status] = await Promise.all([backend.live(), backend.staged(), backend.status()]);
+      setApplied(live.model);
+      setLiveVersion(live.version);
+      // Something staged by an earlier session: we have its model but
+      // not the edits, so changes are listed by section.
+      setStaged(st ? st.model : live.model);
+      setLog([]);
+      setConfirming(status.pending ? confirmingOf(status.pending) : null);
+      await refreshHistory();
+      setLoaded(true);
+    } catch (e) {
+      setLoadError(errorMessage(e));
+    }
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const pendingSections = useMemo(() => (applied && staged ? changedSections(applied, staged) : []), [applied, staged]);
 
   const changes = useMemo(() => {
     const out = log.filter((c) => pendingSections.includes(c.section));
@@ -98,125 +170,144 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    setStaged((m) => fn(m));
+    setStaged((m) => (m ? fn(m) : m));
     setLog((l) => [...l, { id: nextChangeId++, section, summary }]);
   }, []);
 
-  const discard = useCallback(() => {
+  const discard = useCallback(async () => {
+    await backend.discard();
     setStaged(applied);
     setLog([]);
   }, [applied]);
 
-  const record = useCallback((c: PendingCommit, status: HistoryEntry['status']) => {
-    const now = Date.now();
-    setHistory((h) => [
-      { id: historyId(now), time: now, user: 'admin', status, changes: c.changes, before: c.before, after: c.after },
-      ...h,
-    ]);
-  }, []);
+  const review = useCallback(async (overwrite?: string[]): Promise<Review> => {
+    if (!staged) throw new Error('not loaded');
+    const st = await backend.stage(liveVersion, staged, overwrite);
+    return { version: st.version, files: st.changes, needsConfirm: st.changes.some((c) => c.needsConfirm) };
+  }, [staged, liveVersion]);
 
-  const needsConfirm = pendingSections.some((s) => riskySections.includes(s));
+  const apply = useCallback(async (r: Review) => {
+    const { message, notes } = describe(changes);
+    const c = await backend.createCommit(r.version, message, notes);
+    await refreshHistory();
+    switch (c.status) {
+      case 'pending':
+        await refreshLive(true);
+        setConfirming(confirmingOf(c));
+        break;
+      case 'failed':
+        notifications.show({
+          color: 'red', autoClose: false, title: 'The changes couldn’t be applied',
+          message: 'Everything was put back as it was, and your changes are still pending. The commit’s log in Change history says what failed.',
+        });
+        break;
+      default:
+        await refreshLive(false);
+        notifications.show({ color: 'teal', title: 'Changes applied', message: `${changes.length} change${changes.length === 1 ? '' : 's'} now active.` });
+    }
+    return c;
+  }, [changes, refreshHistory, refreshLive]);
 
-  const apply = useCallback(async () => {
-    const commit: PendingCommit = {
-      deadline: Date.now() + CONFIRM_SECONDS * 1000,
-      before: applied,
-      after: staged,
-      changes,
-    };
-
-    // Use backend API to generate and stage config files (model-authoritative)
+  // The server reverts on its own when the deadline passes; find out.
+  const pollOnce = useCallback(async () => {
+    const c = confirmingRef.current;
+    if (!c) return;
     try {
-      const result = await applyModel(staged);
-      if (result.error) {
+      const st = await backend.status();
+      if (st.pending?.id === c.id) return;
+      setConfirming(null);
+      const d = await backend.commit(c.id);
+      if (d.status === 'reverted') {
         notifications.show({
-          color: 'red',
-          title: 'Failed to apply changes',
-          message: result.error,
-          autoClose: false,
+          color: 'red', autoClose: false, title: 'Changes reverted automatically',
+          message: 'They weren’t confirmed in time, so the previous configuration was restored. Your edits are still pending if you want to fix them and try again.',
         });
-        return;
+        await refreshLive(true);
+      } else {
+        await refreshLive(false);
       }
-      if (result.details && result.details.length > 0) {
-        const details = result.details.map(d => `${d.path}: ${d.error}`).join('\n');
-        notifications.show({
-          color: 'red',
-          title: 'Validation failed',
-          message: details,
-          autoClose: false,
-        });
-        return;
-      }
-    } catch (err) {
-      notifications.show({
-        color: 'red',
-        title: 'Failed to apply changes',
-        message: err instanceof Error ? err.message : 'Unknown error',
-        autoClose: false,
-      });
-      return;
+      await refreshHistory();
+    } catch {
+      // Unreachable, perhaps because of the change being confirmed. The
+      // server reverts regardless; keep polling.
     }
-
-    if (needsConfirm) {
-      setConfirming(commit);
-      return;
-    }
-    setApplied(staged);
-    setLog([]);
-    record(commit, 'applied');
-    notifications.show({ color: 'teal', title: 'Changes applied', message: `${changes.length} change${changes.length === 1 ? '' : 's'} now active.` });
-  }, [applied, staged, changes, needsConfirm, record]);
-
-  const keep = useCallback(() => {
-    const c = confirmingRef.current;
-    if (!c) return;
-    setApplied(c.after);
-    setLog([]);
-    setConfirming(null);
-    record(c, 'confirmed');
-    notifications.show({ color: 'teal', title: 'Changes kept', message: 'Your new configuration is saved and will survive a restart.' });
-  }, [record]);
-
-  const revert = useCallback((why: 'user' | 'timeout') => {
-    const c = confirmingRef.current;
-    if (!c) return;
-    setConfirming(null);
-    record(c, 'reverted');
-    notifications.show({
-      color: why === 'timeout' ? 'red' : 'gray',
-      autoClose: why === 'timeout' ? false : 5000,
-      title: why === 'timeout' ? 'Changes reverted automatically' : 'Changes reverted',
-      message: why === 'timeout'
-        ? 'They weren’t confirmed in time, so the previous configuration was restored. Your edits are still pending if you want to fix them and try again.'
-        : 'The previous configuration is active again. Your edits are still pending.',
-    });
-  }, [record]);
+  }, [refreshHistory, refreshLive]);
 
   useEffect(() => {
     if (!confirming) return;
-    const t = setTimeout(() => revert('timeout'), confirming.deadline - Date.now());
-    return () => clearTimeout(t);
-  }, [confirming, revert]);
+    const t = setInterval(pollOnce, 2000);
+    return () => clearInterval(t);
+  }, [confirming, pollOnce]);
 
-  const restore = useCallback((entry: HistoryEntry) => {
-    const target = entry.before;
-    const sections = changedSections(staged, target);
-    if (sections.length === 0) {
-      notifications.show({ title: 'Nothing to restore', message: 'That configuration is the same as the current one.' });
-      return;
+  const keep = useCallback(async () => {
+    const c = confirmingRef.current;
+    if (!c) return;
+    try {
+      await backend.confirm(c.id);
+      notifications.show({ color: 'teal', title: 'Changes kept', message: 'Your new configuration is saved and will survive a restart.' });
+      setConfirming(null);
+      await refreshLive(false);
+      await refreshHistory();
+    } catch (e) {
+      // Most likely it was reverted a moment ago; the poll reports it.
+      notifications.show({ color: 'red', title: 'Couldn’t keep the changes', message: errorMessage(e) });
+      await pollOnce();
     }
-    setStaged(target);
-    const when = new Date(entry.time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-    setLog((l) => [
-      ...l,
-      ...sections.map((s) => ({ id: nextChangeId++, section: s, summary: `Restored ${sectionLabel[s].toLowerCase()} settings from before ${when}` })),
-    ]);
-    notifications.show({ title: 'Restore staged', message: 'Review and apply the pending changes to finish restoring.' });
-  }, [staged]);
+  }, [pollOnce, refreshHistory, refreshLive]);
+
+  const revert = useCallback(async () => {
+    const c = confirmingRef.current;
+    if (!c) return;
+    try {
+      await backend.revert(c.id);
+      notifications.show({ title: 'Changes reverted', message: 'The previous configuration is active again. Your edits are still pending.' });
+      setConfirming(null);
+      await refreshLive(true);
+      await refreshHistory();
+    } catch (e) {
+      notifications.show({ color: 'red', title: 'Couldn’t revert', message: errorMessage(e) });
+      await pollOnce();
+    }
+  }, [pollOnce, refreshHistory, refreshLive]);
+
+  const restore = useCallback(async (entry: HistoryEntry) => {
+    if (confirmingRef.current || !applied) return;
+    try {
+      // Loaded as edits: reviewing stages it, and deals with anything the
+      // server objects to, like any other change. It replaces any edits,
+      // so it's described afresh.
+      const old = await backend.commitConfig(entry.id, 'before');
+      const when = new Date(entry.time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      setStaged(old.model);
+      setLog(changedSections(applied, old.model).map((section) => ({
+        id: nextChangeId++, section, summary: `Restored ${sectionLabel[section].toLowerCase()} settings from before ${when}`,
+      })));
+      notifications.show({ title: 'Restore ready to review', message: 'Review and apply the pending changes to finish restoring.' });
+    } catch (e) {
+      notifications.show({ color: 'red', title: 'Couldn’t restore', message: errorMessage(e) });
+    }
+  }, [applied]);
+
+  if (!loaded || !applied || !staged) {
+    return (
+      <Center h="100vh">
+        {loadError ? (
+          <Stack align="center" maw={420}>
+            <Alert color="red" title="Can’t reach OPF">
+              <Text size="sm">{loadError}</Text>
+            </Alert>
+            <Button onClick={load}>Try again</Button>
+          </Stack>
+        ) : (
+          <Loader />
+        )}
+      </Center>
+    );
+  }
 
   const value: Store = {
     applied, staged, changes, pendingSections, history, confirming,
-    edit, discard, apply, keep, revert, restore, needsConfirm,
+    edit, discard, review, apply, keep, revert, restore,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

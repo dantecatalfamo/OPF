@@ -1,24 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Accordion, Alert, Badge, Button, Group, Loader, Modal, Stack, Tabs, Text, ThemeIcon,
-} from '@mantine/core';
-import { IconAlertTriangle, IconCheck, IconFileCode } from '@tabler/icons-react';
-import { useStore } from '../model/store';
+import { useEffect, useState } from 'react';
+import { Accordion, Alert, Badge, Button, Code, Group, List, Loader, Modal, Stack, Tabs, Text, ThemeIcon } from '@mantine/core';
+import { IconAlertTriangle, IconFileCode } from '@tabler/icons-react';
+import { useStore, type Review } from '../model/store';
 import type { Section } from '../model/types';
+import { ApiError } from '../lib/api';
 import { sectionLabel } from '../lib/sections';
 import { sectionIcon } from '../lib/sectionIcons';
-import { FileDiff } from './FileDiff';
-import { previewModel, type GeneratedFile } from '../lib/api';
-
-const applyStep: Record<Section, string> = {
-  system: 'Updating system settings',
-  interfaces: 'Reconfiguring network interfaces',
-  routing: 'Updating routes',
-  firewall: 'Loading firewall rules',
-  dhcp: 'Restarting the DHCP server',
-  dns: 'Reloading the DNS resolver',
-  wireguard: 'Updating the WireGuard tunnel',
-};
+import { UnifiedDiff } from './UnifiedDiff';
 
 const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard'];
 
@@ -37,13 +25,9 @@ function ChangeList() {
               <Icon size={18} />
             </ThemeIcon>
             <Stack gap={4} style={{ flex: 1 }}>
-              <Text fw={600} size="sm">
-                {sectionLabel[section]}
-              </Text>
+              <Text fw={600} size="sm">{sectionLabel[section]}</Text>
               {items.map((c, i) => (
-                <Text key={`${c.id}-${i}`} size="sm">
-                  {c.summary}
-                </Text>
+                <Text key={`${c.id}-${i}`} size="sm">{c.summary}</Text>
               ))}
             </Stack>
           </Group>
@@ -53,85 +37,16 @@ function ChangeList() {
   );
 }
 
-interface FileDiffItem {
-  path: string;
-  before: string;
-  after: string;
-}
-
-function GeneratedFiles() {
-  const { applied, staged } = useStore();
-  const [files, setFiles] = useState<FileDiffItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchFiles() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch generated files for both applied and staged models from backend
-        const [appliedResult, stagedResult] = await Promise.all([
-          previewModel(applied),
-          previewModel(staged),
-        ]);
-
-        if (cancelled) return;
-
-        if (appliedResult.error || stagedResult.error) {
-          setError(appliedResult.error || stagedResult.error || 'Unknown error');
-          return;
-        }
-
-        const before = new Map(appliedResult.files.map((f: GeneratedFile) => [f.path, f.content]));
-        const diffs = stagedResult.files
-          .map((f: GeneratedFile) => ({ path: f.path, before: before.get(f.path) ?? '', after: f.content }))
-          .filter((f: FileDiffItem) => f.before !== f.after);
-
-        setFiles(diffs);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch generated files');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-    fetchFiles();
-    return () => { cancelled = true; };
-  }, [applied, staged]);
-
-  if (loading) {
-    return (
-      <Group gap="sm" py="sm">
-        <Loader size="sm" />
-        <Text size="sm" c="dimmed">Loading generated files...</Text>
-      </Group>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert color="red" variant="light">
-        <Text size="sm">Failed to preview files: {error}</Text>
-      </Alert>
-    );
-  }
-
+function Files({ review }: { review: Review }) {
+  const files = review.files.filter((f) => !f.model);
   if (!files.length) return null;
-
   return (
     <Accordion variant="contained" radius="md" chevronPosition="left">
       <Accordion.Item value="files">
         <Accordion.Control icon={<IconFileCode size={18} />}>
           <Text size="sm">
             Show the OpenBSD files this writes{' '}
-            <Text span c="dimmed" size="sm">
-              ({files.length})
-            </Text>
+            <Text span c="dimmed" size="sm">({files.length})</Text>
           </Text>
         </Accordion.Control>
         <Accordion.Panel>
@@ -140,12 +55,13 @@ function GeneratedFiles() {
               {files.map((f) => (
                 <Tabs.Tab key={f.path} value={f.path} className="mono" fz="xs">
                   {f.path}
+                  {f.status === 'added' && <Badge size="xs" ml={6} color="teal">new</Badge>}
                 </Tabs.Tab>
               ))}
             </Tabs.List>
             {files.map((f) => (
               <Tabs.Panel key={f.path} value={f.path}>
-                <FileDiff before={f.before} after={f.after} />
+                <UnifiedDiff diff={f.diff} />
               </Tabs.Panel>
             ))}
           </Tabs>
@@ -155,58 +71,91 @@ function GeneratedFiles() {
   );
 }
 
-function Progress({ steps, done }: { steps: string[]; done: number }) {
+// What the server objected to, in a form someone can act on.
+function Problem({ error, onOverwrite }: { error: unknown; onOverwrite: (paths: string[]) => void }) {
+  if (!(error instanceof ApiError)) {
+    return <Alert color="red" title="Something went wrong">{String(error)}</Alert>;
+  }
+  const titles: Partial<Record<ApiError['code'], string>> = {
+    invalid: 'Some settings aren’t valid',
+    check_failed: 'OpenBSD rejected the new configuration',
+    modified_outside: 'Files were changed outside OPF',
+    conflict: 'The configuration changed in the meantime',
+    commit_pending: 'Another commit is waiting for confirmation',
+    unsupported: 'OPF can’t make this change yet',
+  };
   return (
-    <Stack gap="sm" py="md">
-      {steps.map((s, i) => (
-        <Group key={s} gap="sm">
-          {i < done ? (
-            <ThemeIcon size={22} radius="xl" color="teal">
-              <IconCheck size={14} />
-            </ThemeIcon>
-          ) : i === done ? (
-            <Loader size={22} />
-          ) : (
-            <ThemeIcon size={22} radius="xl" variant="default">
-              <span />
-            </ThemeIcon>
-          )}
-          <Text size="sm" c={i > done ? 'dimmed' : undefined}>
-            {s}
-          </Text>
-        </Group>
-      ))}
-    </Stack>
+    <Alert color="red" variant="light" icon={<IconAlertTriangle size={18} />} title={titles[error.code] ?? 'The change was refused'}>
+      <Stack gap="xs">
+        <Text size="sm">{error.message}</Text>
+        {error.details.length > 0 && error.code !== 'check_failed' && (
+          <List size="sm" spacing={2}>
+            {error.details.map((d, i) => (
+              <List.Item key={i}>
+                <Text span className="mono" size="xs">{d.path}</Text>
+                {d.message && error.code !== 'modified_outside' && <Text span size="sm">: {d.message}</Text>}
+              </List.Item>
+            ))}
+          </List>
+        )}
+        {error.code === 'check_failed' && error.details.map((d, i) => (
+          <Code key={i} block style={{ whiteSpace: 'pre-wrap' }}>{d.output || d.path}</Code>
+        ))}
+        {error.code === 'modified_outside' && (
+          <Group>
+            <Button size="xs" color="red" variant="light" onClick={() => onOverwrite(error.details.map((d) => d.path))}>
+              Replace them with OPF’s versions
+            </Button>
+          </Group>
+        )}
+      </Stack>
+    </Alert>
   );
 }
 
 export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
-  const { changes, pendingSections, needsConfirm, apply, discard } = useStore();
+  const { changes, review, apply, discard } = useStore();
+  const [staging, setStaging] = useState(false);
   const [applying, setApplying] = useState(false);
-  const [done, setDone] = useState(0);
+  const [staged, setStaged] = useState<Review | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
-  const steps = useMemo(
-    () => ['Checking the new configuration', 'Saving a restore point', ...order.filter((s) => pendingSections.includes(s)).map((s) => applyStep[s])],
-    [pendingSections],
-  );
-
-  useEffect(() => {
-    if (!applying) return;
-    if (done >= steps.length) {
-      apply();
-      setApplying(false);
-      onClose();
-      return;
+  const stage = async (overwrite?: string[]) => {
+    setStaging(true);
+    setError(null);
+    setStaged(null);
+    try {
+      setStaged(await review(overwrite));
+    } catch (e) {
+      setError(e);
+    } finally {
+      setStaging(false);
     }
-    const t = setTimeout(() => setDone((d) => d + 1), 550);
-    return () => clearTimeout(t);
-  }, [applying, done, steps.length, apply, onClose]);
-
-  const start = () => {
-    setDone(0);
-    setApplying(true);
   };
 
+  useEffect(() => {
+    if (opened && changes.length) stage();
+    if (!opened) {
+      setStaged(null);
+      setError(null);
+    }
+  }, [opened]); // stage only when the dialog opens
+
+  const start = async () => {
+    if (!staged) return;
+    setApplying(true);
+    setError(null);
+    try {
+      await apply(staged);
+      onClose();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const busy = staging || applying;
   return (
     <Modal
       opened={opened}
@@ -216,43 +165,49 @@ export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () =
       size="xl"
       title={
         <Group gap="sm">
-          <Text fw={600} size="lg">
-            {applying ? 'Applying changes' : 'Review changes'}
-          </Text>
+          <Text fw={600} size="lg">{applying ? 'Applying changes' : 'Review changes'}</Text>
           {!applying && <Badge color="amber" c="dark.9" variant="filled">{changes.length}</Badge>}
         </Group>
       }
     >
-      {applying ? (
-        <Progress steps={steps} done={done} />
-      ) : changes.length === 0 ? (
+      {changes.length === 0 ? (
         <Text c="dimmed">Everything is applied. Changes you make will show up here for review first.</Text>
       ) : (
         <Stack gap="lg">
           <ChangeList />
-          {needsConfirm && (
+          {staging && (
+            <Group gap="sm"><Loader size="sm" /><Text size="sm" c="dimmed">Checking the changes…</Text></Group>
+          )}
+          {error !== null && <Problem error={error} onOverwrite={(paths) => stage(paths)} />}
+          {staged?.needsConfirm && (
             <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="You’ll be asked to confirm">
-              These changes affect how devices reach OPF. After applying, you have 60 seconds to confirm you can still
-              use this page. If you don’t, the previous settings come back on their own.
+              These changes affect how devices reach OPF. After applying, confirm you can still use this page before
+              the time runs out, or the previous settings come back on their own.
             </Alert>
           )}
-          <GeneratedFiles />
+          {staged && <Files review={staged} />}
+          {applying && (
+            <Group gap="sm"><Loader size="sm" /><Text size="sm">Checking, saving a restore point and applying…</Text></Group>
+          )}
           <Group justify="space-between">
             <Button
               variant="subtle"
               color="red"
-              onClick={() => {
-                discard();
-                onClose();
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  await discard();
+                  onClose();
+                } catch (e) {
+                  setError(e);
+                }
               }}
             >
               Discard changes
             </Button>
             <Group gap="sm">
-              <Button variant="default" onClick={onClose}>
-                Keep editing
-              </Button>
-              <Button onClick={start}>Apply changes</Button>
+              <Button variant="default" onClick={onClose} disabled={applying}>Keep editing</Button>
+              <Button onClick={start} loading={applying} disabled={!staged || staging}>Apply changes</Button>
             </Group>
           </Group>
         </Stack>

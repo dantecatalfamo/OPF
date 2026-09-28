@@ -33,3 +33,26 @@ export function diffLines(a: string, b: string): DiffLine[] {
   while (j < m) out.push({ kind: 'add', text: y[j++] });
   return out;
 }
+
+// A unified diff with three lines of context, like diff -u, for the
+// offline preview's stand-in backend.
+export function unifiedDiff(a: string, b: string, labelA: string, labelB: string): string {
+  const lines = diffLines(a, b);
+  if (!lines.some((l) => l.kind !== 'same')) return '';
+  const keep = lines.map(() => false);
+  lines.forEach((l, i) => {
+    if (l.kind !== 'same') for (let j = Math.max(0, i - 3); j <= Math.min(lines.length - 1, i + 3); j++) keep[j] = true;
+  });
+  const out = [`--- ${labelA}`, `+++ ${labelB}`];
+  let inHunk = false;
+  lines.forEach((l, i) => {
+    if (!keep[i]) {
+      inHunk = false;
+      return;
+    }
+    if (!inHunk) out.push('@@');
+    inHunk = true;
+    out.push((l.kind === 'add' ? '+' : l.kind === 'del' ? '-' : ' ') + l.text);
+  });
+  return out.join('\n') + '\n';
+}

@@ -56,38 +56,32 @@ break connectivity. Every feature must be:
 
 ## Where things stand (2026-09-28)
 
-- **Go, working and tested:** staging, check, commit with confirm and
-  auto-revert, history, recovery at startup, privilege separation with
-  pledge/unveil (`internal/config`, `internal/privsep`). It stages raw
-  files, not the model.
-- **Go, new:** `internal/pf` has the model, generators for every file,
-  a pf tokenizer and parser (text back to guided rules), golden files
-  and fuzz targets. `internal/web/model.go` has a model API
-  (`/api/model`, `/preview`, `/apply`) plus parse/generate endpoints.
-- **Not connected yet:** `cmd/opf` passes an empty model path, so the
-  model API returns 500 in the real binary. The model lives in the web
-  process instead of the parent. The UI's confirm/revert is still
-  simulated in the browser.
-- **UI:** every page exists. It runs on sample data, except Apply, which
-  now calls the backend (see bugs below).
+- **Go, working and tested:** the model is the source of truth and lives
+  in the parent (`internal/appliance`). The web process sends a model
+  over RPC; the parent validates it (`pf.Validate`), generates every
+  file, and stages the model and the files as one unit, committed,
+  confirmed and reverted together, with auto-revert and history. There's
+  a JSON API (`internal/web`, `docs/api.md`) and privilege separation
+  with pledge/unveil.
+- **UI:** every page exists. Review, apply, confirm, revert, history and
+  undo go through the API (`make mock` runs it against the real engine).
+  The dashboard and diagnostics still show sample live data.
+- **Missing:** authentication, serving the UI from the binary, import
+  from an existing system, removing generated files.
 - **Never run on OpenBSD.**
 
 ## Next up
 
 In order. Each step has details further down.
 
-1. **Fix the bugs found in review** (next section), starting with model
-   validation, a correctness and security problem under the principles
-   above.
-2. **Move the model into the parent.** The web process sends a model
-   over RPC; the parent validates it, generates every file, stages them
-   as one unit, and owns `config.json` (atomic write, 0600). Commit,
-   confirm and revert go through the same RPC, so the UI's countdown is
-   the backend's.
-3. **Make generated outputs first-class in the commit engine.** The file
-   registry becomes the set of generated files, including ones that come
-   and go (`hostname.vlan30`), with deletion. Apply order: interfaces,
-   routes, pf, services. Check the whole set before touching anything.
+1. **Fix the remaining bugs found in review** (next section): outbound
+   rules never matching.
+2. ~~Move the model into the parent.~~ Done: `internal/appliance`.
+3. **Removing generated files.** Staging a model that no longer
+   generates a file (a deleted VLAN's `hostname.vlan30`) is refused as
+   `unsupported`; the commit engine needs deletion, with restore on
+   revert. Apply order is registry order: model, interfaces, pf,
+   services.
 4. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
    generated files and the annotated ruleset from the API. Keep the
    sample model as a shared JSON fixture for Go golden tests and for
@@ -148,7 +142,12 @@ In order. Each step has details further down.
 - [ ] Reject invalid UTF-8 on import with a clear error. `encoding/json`
       replaces it with U+FFFD, so even raw rules would change when
       `config.json` is saved.
-- [ ] **No model validation.** Nothing checks the model before
+- [x] **No model validation.** `pf.Validate` now checks every field in
+      the parent before anything is generated, and on commit again.
+      Limits come from pf's source (label 63 bytes, table names 31,
+      `IFNAMSIZ`), interface ids can't be pf keywords
+      (`keywords_gen.go`, from parse.y), and `$` is rejected in labels.
+      It found two bugs in the sample model. Was: nothing checks the model before
       generating. Alias names, interface ids and devices, hostnames,
       domains, reservation names and addresses are written into pf.conf,
       hostname.if, dhcpd.conf and unbound.conf unchecked, so a crafted
@@ -167,11 +166,10 @@ In order. Each step has details further down.
       registry now has pattern entries: `hostname.*` resolves to
       `hostname.em0` etc. (device names only), applied first with
       `sh /etc/netstart <dev>`, mode 0640.
-- [ ] **Apply isn't atomic.** Files are checked and staged one at a time;
-      a failure part-way leaves some staged and the model unsaved.
-- [ ] **The model lives in the web process.** `ModelManager` writes
-      `config.json` from the unprivileged side, non-atomically, mode
-      0644. Belongs in the parent (Next up, step 2).
+- [x] **Apply isn't atomic.** The model is a managed file (0600)
+      staged with everything generated from it; a failure part-way
+      discards the lot.
+- [x] **The model lives in the web process.** It's in the parent now.
 - [x] **The mock UI couldn't apply.** `make mock` runs `opf -mock` with
       Vite proxying `/api` to it; the preview build uses the TypeScript
       generator offline.
@@ -181,10 +179,11 @@ In order. Each step has details further down.
       is the source slice. Continuations are removed before tokenizing,
       as pf's lexer does, even mid-word. `FuzzRawRuleText` checks raw
       text always comes from the input.
-- [ ] **Confirm is client-side only.** Keep and revert don't reach the
-      backend; the backend never loads anything today.
-- [ ] **Unbounded request bodies** on every `/api/*` endpoint
-      (`io.ReadAll`); use `http.MaxBytesReader`.
+- [x] **Confirm is client-side only.** Keep and revert go to the
+      server, which also reverts on its own at the deadline; the UI polls
+      `/api/status` to notice.
+- [x] **Unbounded request bodies.** 4 MiB limit, JSON only, strict
+      decoding.
 
 ## Testing
 
@@ -347,14 +346,12 @@ generated files as its outputs.
       myname and ntpd.conf (`internal/pf`). Golden files cover the pf
       parser; the other generators still need golden tests, and
       rc.conf.local isn't generated at all.
-- [ ] Stage the model instead of raw files; Changes becomes a list of
+- [x] Stage the model instead of raw files; the review dialog lists
       readable change summaries, with generated-file diffs as detail.
-- [ ] JSON API for the UI, replacing the mock store in
-      `ui/src/model/store.tsx`; embed `ui/dist` in the binary. Remove the
-      htmx templates in `internal/web` once the API exists. Started:
-      model, preview, apply and parse/generate endpoints exist but aren't
-      connected (see Where things stand).
-- [ ] Hand-edited generated files: detect and warn before overwriting.
+- [x] JSON API for the UI (`docs/api.md`); the htmx pages are gone.
+- [ ] Embed `ui/dist` in the binary.
+- [x] Hand-edited generated files: staging refuses with
+      `modified_outside` until the user chooses to replace them.
 - [ ] First-boot setup wizard (WAN, LAN, admin password).
 - [ ] **Config import parsers** (see principle 4): parse existing
       `pf.conf`, `hostname.if`, `dhcpd.conf`, `unbound.conf`, etc. into
@@ -428,15 +425,18 @@ skipped and the web process isn't dropped to another user.
 - [ ] Anyone who can commit can get root: rc.conf.local is sourced by
       rc(8), and sshd_config/httpd.conf are powerful. That comes with
       the product, but it's why auth and audit logging matter.
-- [ ] Limit request and RPC message sizes (staged contents are
-      unbounded; gob decoding in the root process should be capped).
+- [ ] Cap RPC message sizes: gob decoding in the root process is
+      unbounded (HTTP bodies are capped at 4 MiB, but a compromised web
+      process could send more).
+- [x] Cross-origin state-changing requests are refused
+      (`http.CrossOriginProtection`); internal errors reach clients only
+      as "internal error".
 - [ ] Record who made each commit in history once there are users.
 
 ## Staging and commit
 
-- [ ] While a commit waits for confirmation the editor shows the live
-      file and Stage fails with an error. The UI should show the pending
-      state and disable editing instead.
+- [x] While a commit waits for confirmation, staging is refused with
+      `commit_pending` and the UI blocks edits and undo.
 - [ ] If OPF is killed with SIGKILL (or crashes) during the confirm
       window, the staged pf rules stay loaded until reboot or the next
       start. `Recover` only runs at startup.
@@ -449,9 +449,15 @@ skipped and the web process isn't dropped to another user.
       reconciled with rcctl on commit.
 - [ ] Decide whether a service that fails to reload or restart should
       revert the whole commit (it does now).
-- [ ] Deleting a managed file isn't supported.
-- [ ] One admin assumed: two browsers staging the same file overwrite
-      each other silently. Consider tracking the base hash in the form.
+- [ ] Deleting a managed file isn't supported (Next up, step 3).
+- [x] Two browsers: staging requires the live version the edits started
+      from and committing requires the staged version, so neither undoes
+      the other's work silently (`conflict`).
+- [ ] A second browser's staging replaces the first's staged model
+      (there's one candidate). Fine for one admin; revisit with users.
+- [ ] When the UI loads a model someone else staged, it lists the
+      changes by section only ("Changed firewall settings"); the edit
+      descriptions aren't stored with the staged model.
 - [ ] History is never pruned.
 - [ ] Newly created parent directories get 0755; check what each managed
       path expects.
@@ -474,9 +480,8 @@ keeps files in a scratch directory whose "live" files are what the
 sample model generates, logs commands instead of running them, and
 refuses non-loopback addresses.
 
-- [ ] Commit, confirm and revert through the API once it has them (the
-      UI still simulates confirmation); a short `-confirm-timeout` then
-      makes revert testable.
+- [x] Commit, confirm and revert through the API; a short
+      `-confirm-timeout` makes the timeout testable.
 - [ ] Live data endpoints fed from fixtures (states, rules with
       counters, interfaces, leases, WireGuard peers, pflog), so the
       dashboard and diagnostics stop reading `ui/src/model/live.ts`.
@@ -485,8 +490,9 @@ refuses non-loopback addresses.
 - [ ] Simulated validator results: run the Go pf parser on staged
       pf.conf so `pfctl -nf`-style errors can be exercised; today every
       check passes.
-- [ ] Load the model from the backend on startup (`GET /api/model`)
-      instead of the UI's bundled copy.
+- [x] Load the model from the backend on startup (`GET /api/config`)
+      instead of the UI's bundled copy. The preview build uses an
+      in-browser stand-in (`ui/src/lib/localApi.ts`).
 
 ### Frontend development workflow
 

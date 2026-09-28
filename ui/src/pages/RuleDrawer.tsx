@@ -12,7 +12,7 @@ import { commonPorts } from '../lib/labels';
 import { checkPfLine } from '../lib/pfcheck';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
 import { getIcmpTypeOptions, getIcmpCodeOptions, returnIcmpCodes, returnIcmp6Codes } from '../lib/icmp';
-import { tryParseAsFormRule, generateRule } from '../lib/api';
+import { api } from '../lib/api';
 
 type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
 
@@ -116,7 +116,8 @@ export function RuleDrawer({
   // Use backend API for rule preview generation (debounced)
   const [preview, setPreview] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
-  const previewAbortRef = useRef<AbortController | null>(null);
+  // Responses can arrive out of order; only the latest request's counts.
+  const previewSeq = useRef(0);
 
   useEffect(() => {
     if (v.mode !== 'form') {
@@ -124,24 +125,18 @@ export function RuleDrawer({
       return;
     }
 
-    // Cancel any pending request
-    previewAbortRef.current?.abort();
-    previewAbortRef.current = new AbortController();
-
     // Debounce preview generation
     const timer = setTimeout(async () => {
+      const seq = ++previewSeq.current;
       setPreviewLoading(true);
+      let text: string;
       try {
-        const rule: Rule = { ...toRule(v), id: 'preview' };
-        const result = await generateRule(rule, model);
-        if (result.text) {
-          setPreview(result.text);
-        } else if (result.error) {
-          setPreview(`# Error: ${result.error}`);
-        }
-      } catch {
-        // Request was aborted or failed
-      } finally {
+        text = await api.renderRule({ ...toRule(v), id: 'preview' } as Rule, model);
+      } catch (e) {
+        text = `# Couldn't render the rule: ${e instanceof Error ? e.message : e}`;
+      }
+      if (seq === previewSeq.current) {
+        setPreview(text);
         setPreviewLoading(false);
       }
     }, 150); // 150ms debounce
@@ -162,7 +157,7 @@ export function RuleDrawer({
     if (!v.rawText.trim()) return;
     setParseLoading(true);
     try {
-      const parsedRule = await tryParseAsFormRule(v.rawText, model);
+      const parsedRule = await api.parseRule(v.rawText, model);
       if (parsedRule && parsedRule.kind === 'form') {
         // Successfully parsed - switch to form mode with populated values
         const { id: _id, kind: _kind, ...formValues } = parsedRule;

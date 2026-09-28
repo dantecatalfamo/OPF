@@ -1,19 +1,23 @@
 # OPF
 
 A web UI that turns OpenBSD into a firewall appliance while leaving the
-system as it is. The configuration files in `/etc` are the only state:
-OPF edits them, validates them with the base system's own tools, and
-activates them with `pfctl`, `rcctl` and friends. Anything done over SSH
-by hand shows up in the UI and the other way around.
+system as it is. One model file, `/var/opf/config.json`, describes the
+configuration; OPF generates every OpenBSD file from it (`pf.conf`,
+`hostname.if`, `dhcpd.conf`, `unbound.conf`, …), validates them with the
+base system's own tools, and activates them with `pfctl`, `rcctl` and
+friends. Files edited by hand over SSH are noticed, and never
+overwritten without asking.
 
 ## Web interface
 
-The appliance UI lives in `ui/` (React, Mantine, TypeScript). For now
-it runs on sample data from `ui/src/model/`:
+The appliance UI lives in `ui/` (React, Mantine, TypeScript) and talks
+to the JSON API described in [docs/api.md](docs/api.md). The dashboard
+and diagnostics pages still show sample data from `ui/src/model/live.ts`.
 
 ```sh
 make mock              # UI on http://localhost:5173 with a mock backend
-cd ui && npm run build:preview  # single-file build in ui/dist-preview/
+cd ui && npm run build:preview  # single-file build in ui/dist-preview/,
+                                # with an in-browser stand-in for the API
 ```
 
 `make mock` runs `opf -mock` and the Vite dev server together. The mock
@@ -38,10 +42,10 @@ The operations on the system's files are `stage`, `unstage`,
 commit's history entry and status) and `clear` (staged copies a commit
 has used), so `grep -v` can hide it.
 
-The UI's Apply only stages files for now; committing goes through the
-old page at /changes on the mock's address. Vite proxies `/api` to
-it on 127.0.0.1:18080; the staged changes are also visible at
-http://127.0.0.1:18080/changes.
+Vite proxies `/api` to the mock on 127.0.0.1:18080, so staging,
+committing, confirming, reverting and restoring all go through the real
+engine. The confirm window is 60 s; `opf -mock -confirm-timeout 15s`
+shortens it.
 
 The sample model is shared by the UI and the Go tests, which check it
 decodes into the Go model without losing anything, so a field added on
@@ -49,10 +53,12 @@ one side only fails the build.
 
 ## How changes work
 
-1. **Stage.** Edits are saved under `/var/opf/candidate/`, mirroring
-   their real paths. Nothing live changes.
-2. **Review.** The Changes page shows a diff of each staged file against
-   the live one.
+1. **Stage.** The UI sends the edited model. The root process
+   validates every field, generates every file, and saves the model and
+   the files that changed under `/var/opf/candidate/`, mirroring their
+   real paths. Nothing live changes.
+2. **Review.** The review dialog shows the changes in words and a diff
+   of each file, and says whether confirmation will be needed.
 3. **Commit.** Every staged file is checked with its daemon's own
    validator (`pfctl -nf`, `dhcpd -n`, `unbound-checkconf`, `sshd -t`,
    ...). If any check fails nothing is touched. Otherwise the old and
@@ -64,11 +70,13 @@ one side only fails the build.
    default) the live file is loaded again. Since `/etc/pf.conf` is only
    written after confirmation, a reboot also reverts it.
 
-If any apply step fails the whole commit is reverted and the changes
-stay staged so they can be fixed. If a live file changes on disk after
-it was staged, committing is refused rather than silently overwriting
-the hand edit. Rolling back is staging an old version from the History
-page and committing it like any other change.
+The model is committed together with the files generated from it, so
+they can't disagree. If any apply step fails, the whole commit is
+reverted and the changes stay staged so they can be fixed. A file that
+was edited by hand is only replaced when the user says so, and if a
+live file changes after it was staged, committing is refused. Undoing a
+commit from Change history loads the model from before it as pending
+edits, to review and commit like any other change.
 
 The managed files and how to check and apply each one are listed in
 `internal/config/registry.go`.
@@ -86,8 +94,9 @@ OPF runs as two processes, like the OpenBSD base daemons:
   serves HTTP on a socket the parent opened, can't see the filesystem
   at all (`unveil`) and pledges `stdio rpath inet`. It reaches the
   parent through a fixed set of calls over a socketpair
-  (`internal/privsep`), and names files rather than passing paths or
-  commands, so it can't choose what is run or written.
+  (`internal/privsep`) that take a model or a commit id, never paths
+  or commands. The parent validates the model and generates the files
+  itself, so the web process can't choose what is run or written.
 
 Timers live in the parent, so an unconfirmed commit is reverted even if
 the web process crashes; the parent restarts it. Stopping OPF reverts
@@ -109,13 +118,16 @@ Requires Go 1.25+.
 
 ```sh
 make test
-make dev        # http://127.0.0.1:8080, using a scratch copy of dev/seed
+make dev        # API on http://127.0.0.1:8080, using a scratch copy of dev/seed
 make dev-reset  # throw away the scratch copy
 ```
 
-`make dev` runs with `-dry`, which logs commands such as `pfctl` and
-`rcctl` instead of running them, and `-root`, which prefixes every
-managed path so nothing outside `dev/run` is touched.
+`make dev` runs the real two-process server with `-dry`, which logs
+commands such as `pfctl` and `rcctl` instead of running them, and
+`-root`, which prefixes every managed path so nothing outside `dev/run`
+is touched. It serves only the API (the UI isn't embedded in the binary
+yet) and starts without a model; `make mock` is the way to work on the
+UI.
 
 ## Status
 
@@ -125,7 +137,8 @@ localhost only; reach it with `ssh -L 8080:127.0.0.1:8080`.
 Planned next:
 
 - Login against system accounts (`auth_userokay(3)`) and TLS
-- `hostname.if(5)` files, applied with `sh /etc/netstart <if>`
+- Serving the built UI from the binary
+- Importing an existing system's configuration into the model
 - Service management (`rcctl`), with enable/disable staged through
   `rc.conf.local`
 - Monitoring pages (pf states and rules, interfaces, WireGuard) ported

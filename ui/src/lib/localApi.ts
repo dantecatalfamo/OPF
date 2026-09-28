@@ -1,0 +1,158 @@
+// An in-memory stand-in for the server, for the offline preview build.
+// It follows the server's rules (versions, pending commits that revert
+// on their own, changes staged again after a revert) using the
+// TypeScript generator, so the UI has one code path.
+import type { Model } from '../model/types';
+import { generateFiles } from '../model/generate';
+import { sampleHistory, sampleModel } from '../model/sample';
+import { unifiedDiff } from './diff';
+import {
+  ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
+  type StagedResource, type StatusResource,
+} from './api';
+
+const CONFIRM_MS = 60_000;
+const MODEL_PATH = '/var/opf/config.json';
+
+interface Record {
+  resource: CommitResource;
+  before: Model;
+  after: Model;
+  diffs: { path: string; diff: string }[];
+}
+
+function version(m: Model): string {
+  const s = JSON.stringify(m);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, '0');
+}
+
+function files(m: Model): Map<string, string> {
+  return new Map([[MODEL_PATH, JSON.stringify(m, null, 2) + '\n'], ...generateFiles(m).map((f) => [f.path, f.content] as [string, string])]);
+}
+
+function fileChanges(from: Model, to: Model): FileChange[] {
+  const a = files(from);
+  const out: FileChange[] = [];
+  for (const [path, content] of files(to)) {
+    const before = a.get(path);
+    if (before === content) continue;
+    out.push({
+      path, status: before === undefined ? 'added' : 'modified',
+      diff: unifiedDiff(before ?? '', content, `${path} (live)`, `${path} (staged)`),
+      needsConfirm: path === '/etc/pf.conf', model: path === MODEL_PATH,
+    });
+  }
+  return out;
+}
+
+const clone = <T,>(v: T): T => structuredClone(v);
+
+let live: Model = clone(sampleModel);
+let staged: Model | null = null;
+let pending: { id: string; timer: ReturnType<typeof setTimeout> } | null = null;
+const records: Record[] = sampleHistory(Date.now()).map(({ entry, before, after }) => ({
+  resource: {
+    id: entry.id, time: new Date(entry.time).toISOString(), status: entry.status, message: entry.message,
+    changes: entry.changes.map((c) => ({ area: c.section, summary: c.summary })), files: [],
+  },
+  before, after, diffs: [],
+}));
+
+function stagedResource(): StagedResource {
+  if (!staged) throw new ApiError(404, 'nothing_staged', 'nothing is staged');
+  return { version: version(staged), base: version(live), model: clone(staged), changes: fileChanges(live, staged) };
+}
+
+function record(id: string): Record {
+  const r = records.find((x) => x.resource.id === id);
+  if (!r) throw new ApiError(404, 'not_found', `no commit "${id}"`);
+  return r;
+}
+
+function requirePending(id: string): Record {
+  const r = record(id);
+  if (!pending) throw new ApiError(409, 'not_pending', `commit ${id} isn't waiting for confirmation`);
+  if (pending.id !== id) throw new ApiError(409, 'not_pending', `commit ${pending.id} is waiting for confirmation, not ${id}`);
+  return r;
+}
+
+function finishRevert(r: Record) {
+  if (pending) clearTimeout(pending.timer);
+  pending = null;
+  r.resource = { ...r.resource, status: 'reverted', deadline: undefined };
+  live = clone(r.before);
+  staged = clone(r.after); // staged again so it can be fixed
+}
+
+function newID(): string {
+  const d = new Date();
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+
+export const localApi = {
+  status: async (): Promise<StatusResource> => ({
+    live: version(live),
+    staged: staged ? version(staged) : undefined,
+    pending: pending ? clone(record(pending.id).resource) : undefined,
+  }),
+  live: async (): Promise<ConfigResource> => ({ version: version(live), model: clone(live) }),
+  staged: async (): Promise<StagedResource | null> => (staged ? stagedResource() : null),
+  stage: async (base: string, model: Model, _overwrite?: string[]): Promise<StagedResource> => {
+    if (pending) throw new ApiError(409, 'commit_pending', 'a commit is waiting for confirmation; confirm or revert it first');
+    if (base !== version(live)) throw new ApiError(409, 'conflict', 'the configuration was changed; reload and redo your changes');
+    staged = version(model) === version(live) ? null : clone(model);
+    return staged ? stagedResource() : { version: version(live), base, model: clone(model), changes: [] };
+  },
+  discard: async () => {
+    if (pending) throw new ApiError(409, 'commit_pending', 'a commit is waiting for confirmation');
+    staged = null;
+  },
+  commits: async (): Promise<CommitResource[]> => records.map((r) => clone(r.resource)),
+  commit: async (id: string): Promise<CommitDetail> => {
+    const r = record(id);
+    return { ...clone(r.resource), diffs: r.diffs, log: '(offline preview: no commands were run)' };
+  },
+  createCommit: async (stagedVersion: string, message: string, changes: ChangeNote[]): Promise<CommitResource> => {
+    if (!staged) throw new ApiError(409, 'nothing_staged', 'nothing is staged');
+    if (version(staged) !== stagedVersion) throw new ApiError(409, 'conflict', 'the staged configuration changed; review it again');
+    if (pending) throw new ApiError(409, 'commit_pending', 'a commit is already waiting for confirmation');
+    const changed = fileChanges(live, staged);
+    const needsConfirm = changed.some((c) => c.needsConfirm);
+    const id = newID();
+    const r: Record = {
+      resource: {
+        id, time: new Date().toISOString(), status: needsConfirm ? 'pending' : 'applied', message, changes,
+        deadline: needsConfirm ? new Date(Date.now() + CONFIRM_MS).toISOString() : undefined,
+        files: changed.map((c) => ({ path: c.path, created: c.status === 'added', needsConfirm: c.needsConfirm, model: c.model })),
+      },
+      before: clone(live), after: clone(staged),
+      diffs: changed.map((c) => ({ path: c.path, diff: c.diff })),
+    };
+    records.unshift(r);
+    live = clone(staged);
+    staged = null;
+    if (needsConfirm) pending = { id, timer: setTimeout(() => finishRevert(r), CONFIRM_MS) };
+    return clone(r.resource);
+  },
+  confirm: async (id: string): Promise<CommitResource> => {
+    const r = requirePending(id);
+    clearTimeout(pending!.timer);
+    pending = null;
+    r.resource = { ...r.resource, status: 'confirmed', deadline: undefined };
+    return clone(r.resource);
+  },
+  revert: async (id: string): Promise<CommitResource> => {
+    const r = requirePending(id);
+    finishRevert(r);
+    return clone(r.resource);
+  },
+  commitConfig: async (id: string, which: 'before' | 'after'): Promise<ConfigResource> => {
+    const r = record(id);
+    const model = which === 'before' ? r.before : r.after;
+    return { version: version(model), model: clone(model) };
+  },
+};
+
