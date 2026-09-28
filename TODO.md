@@ -414,6 +414,18 @@ skipped and the web process isn't dropped to another user.
       `httpd -n -f`, `ntpd -n -f`, `sshd -t -f` (host keys, `Include`).
 - [ ] Real commits, with and without confirmation, on a VM that can be
       locked out safely.
+- [ ] DHCP names in DNS (`internal/leases`): the lease file format
+      matches what OpenBSD's dhcpd writes (`db.c`: time format, `UTC`,
+      `client-hostname`); `unbound-control -c … list_local_data` output
+      and `local_data` replies are as parsed; the control socket at
+      `/var/run/unbound.sock` works with unbound's chroot; the parent can
+      read `/var/db/dhcpd.leases` under unveil, including after dhcpd
+      replaces the file.
+- [ ] Check how dhcpd writes a `client-hostname` containing `"`. If
+      `db_printable` lets it through unescaped, a client can forge extra
+      lease statements in the file. Records limits the damage (dynamic
+      range only, reserved names, clashing names dropped), but the
+      parser can't tell forged statements from real ones.
 
 ## Security
 
@@ -432,6 +444,16 @@ skipped and the web process isn't dropped to another user.
       (`http.CrossOriginProtection`); internal errors reach clients only
       as "internal error".
 - [ ] Record who made each commit in history once there are users.
+
+## DHCP names in DNS
+
+- [ ] No PTR records for leases (or reservations): reverse lookups of
+      DHCP clients fail.
+- [ ] A commit reverted by the confirm timeout doesn't kick the watcher,
+      so names are missing for up to 15 s after unbound reloads.
+- [ ] IPv4 only; no names for SLAAC or DHCPv6 clients.
+- [ ] Show registered and refused names in the UI (the DHCP leases page
+      still uses sample data).
 
 ## Staging and commit
 

@@ -20,6 +20,8 @@ import (
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/leases"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
@@ -85,12 +87,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := privsep.SandboxParent(store.WritableDirs(), exe); err != nil {
+	leasesFile := filepath.Join(*root, leases.Path)
+	if err := privsep.SandboxParent(store.WritableDirs(), []string{leasesFile}, exe); err != nil {
 		log.Fatal(err)
 	}
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// DHCP clients' names in DNS, when the model asks for them.
+	var resolver leases.Resolver = leases.Unbound{Runner: runner, Config: "/var/unbound/etc/unbound.conf"}
+	if *dry {
+		resolver = &leases.Memory{Log: log.Default()}
+	}
+	watcher := &leases.Watcher{File: leasesFile, Model: liveModel(api), Resolver: resolver, Log: log.Default()}
+	api.OnChange(watcher.Kick)
+	go watcher.Run(sigCtx)
+
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
 		API:        api,
@@ -127,6 +140,16 @@ func serveWeb() {
 		return hs.Serve(ln)
 	})
 	log.Fatal(err)
+}
+
+func liveModel(api *appliance.Manager) func() (*pf.Model, error) {
+	return func() (*pf.Model, error) {
+		c, err := api.Live()
+		if err != nil {
+			return nil, err
+		}
+		return c.Model, nil
+	}
 }
 
 func executable() (string, error) {

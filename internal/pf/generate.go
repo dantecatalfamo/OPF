@@ -919,12 +919,18 @@ func GenerateUnboundConf(m *Model) string {
 		lines = append(lines, fmt.Sprintf("\tlocal-data: \"%s.%s. IN A %s\"", o.Host, o.Domain, o.IP))
 	}
 
-	if d.RegisterLeases {
+	if d.RegisterReservations {
 		for _, s := range m.DHCP {
 			for _, r := range s.Reservations {
 				lines = append(lines, fmt.Sprintf("\tlocal-data: \"%s.%s. IN A %s\"", r.Hostname, m.System.Domain, r.IP))
 			}
 		}
+	}
+
+	// Dynamic leases are added at runtime, over a control socket that
+	// only root can use.
+	if d.RegisterDynamicLeases {
+		lines = append(lines, "", "remote-control:", "\tcontrol-enable: yes", "\tcontrol-interface: /var/run/unbound.sock")
 	}
 
 	if d.Mode == ResolverModeForward {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
@@ -77,6 +79,9 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	if err := write(config.ModelPath, enc, 0600); err != nil {
 		return err
 	}
+	if err := write(leases.Path, mockLeases(time.Now()), 0644); err != nil {
+		return err
+	}
 
 	store, err := config.New(config.Options{
 		Root:           root,
@@ -95,6 +100,15 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	}
 	srv := web.New(api)
 
+	watcher := &leases.Watcher{
+		File:     filepath.Join(root, leases.Path),
+		Model:    liveModel(api),
+		Resolver: &leases.Memory{Log: log.Default()},
+		Log:      log.Default(),
+	}
+	api.OnChange(watcher.Kick)
+	go watcher.Run(context.Background())
+
 	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)
 	log.Printf("mock: API on http://%s; `make mock` also starts the UI, whose dev server proxies to 127.0.0.1:18080", listen)
 	hs := &http.Server{
@@ -103,4 +117,45 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return hs.ListenAndServe()
+}
+
+// mockLeases is a dhcpd.leases file with the dynamic clients the UI's
+// sample data shows (ui/src/model/live.ts), plus clients asking for
+// names they mustn't get, so the log shows what's registered and what
+// isn't.
+func mockLeases(now time.Time) []byte {
+	clients := []struct {
+		ip, mac, name string
+		left          time.Duration
+	}{
+		{"192.168.1.112", "3c:22:fb:91:04:7d", "priya-mbp", 1402 * time.Minute},
+		{"192.168.1.118", "f0:18:98:2e:aa:13", "sam-thinkpad", 610 * time.Minute},
+		{"192.168.1.131", "8c:85:90:4b:77:02", "reception-pc", 95 * time.Minute},
+		{"192.168.1.144", "b8:27:eb:5a:19:c4", "door-display", 1177 * time.Minute},
+		{"192.168.20.101", "68:57:2d:10:e3:41", "thermostat", 402 * time.Minute},
+		{"192.168.20.102", "50:02:91:7c:3a:0f", "camera-front", 655 * time.Minute},
+		{"192.168.20.103", "50:02:91:7c:3a:1a", "camera-dock", 612 * time.Minute},
+		{"192.168.20.117", "d8:f1:5b:8e:22:90", "tv-lobby", 38 * time.Minute},
+		// Not registered:
+		{"192.168.1.150", "02:00:00:00:00:01", "wpad", time.Hour},                // reserved name
+		{"192.168.20.140", "02:00:00:00:00:02", "gw", time.Hour},                 // the router's name
+		{"192.168.20.141", "02:00:00:00:00:03", "printer", time.Hour},            // a reservation's name
+		{"192.168.20.142", "02:00:00:00:00:04", "Priya's iPad", time.Hour},       // not a host name
+		{"192.168.20.143", "02:00:00:00:00:05", "files.evil.example", time.Hour}, // not a single label
+		{"192.168.1.160", "02:00:00:00:00:06", "old-laptop", -time.Hour},         // expired
+	}
+	stamp := func(t time.Time) string {
+		t = t.UTC()
+		return fmt.Sprintf("%d %s UTC", t.Weekday(), t.Format("2006/01/02 15:04:05"))
+	}
+	var b bytes.Buffer
+	for _, c := range clients {
+		start := now.Add(-time.Hour)
+		if c.left < 0 {
+			start = now.Add(c.left - time.Hour)
+		}
+		fmt.Fprintf(&b, "lease %s {\n\tstarts %s;\n\tends %s;\n\thardware ethernet %s;\n\tclient-hostname \"%s\";\n}\n",
+			c.ip, stamp(start), stamp(now.Add(c.left)), c.mac, c.name)
+	}
+	return b.Bytes()
 }

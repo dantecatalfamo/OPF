@@ -413,3 +413,25 @@ func TestRestore(t *testing.T) {
 		t.Fatalf("stage the old model: %+v, %v", st, err)
 	}
 }
+
+func TestOnChange(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	n := 0
+	// It runs without the lock held, so it may call back in.
+	e.m.OnChange(func() {
+		n++
+		e.m.Discard() // takes the lock
+	})
+	model := sample(t)
+	model.System.NTPServers = []string{"c.example"}
+	st, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: model})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "ntp"}); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("called %d times after a commit", n)
+	}
+}

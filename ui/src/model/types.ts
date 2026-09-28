@@ -251,7 +251,10 @@ export interface Dns {
   forwarders: string[];
   forwardTls: boolean;
   dnssec: boolean;
-  registerLeases: boolean;
+  /** Put each DHCP reservation's name in DNS. */
+  registerReservations: boolean;
+  /** Also register the names devices ask for with dynamic leases. */
+  registerDynamicLeases: boolean;
   overrides: HostOverride[];
 }
 

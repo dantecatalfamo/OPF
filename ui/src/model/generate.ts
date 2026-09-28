@@ -381,7 +381,8 @@ function unboundConf(m: Model): string {
   if (d.dnssec) lines.push('\tauto-trust-anchor-file: "/var/unbound/db/root.key"', '\tval-log-level: 2');
   lines.push(`\tlocal-zone: "${m.system.domain}." static`);
   for (const o of d.overrides) lines.push(`\tlocal-data: "${o.host}.${o.domain}. IN A ${o.ip}"`);
-  if (d.registerLeases) for (const s of m.dhcp) for (const r of s.reservations) lines.push(`\tlocal-data: "${r.hostname}.${m.system.domain}. IN A ${r.ip}"`);
+  if (d.registerReservations) for (const s of m.dhcp) for (const r of s.reservations) lines.push(`\tlocal-data: "${r.hostname}.${m.system.domain}. IN A ${r.ip}"`);
+  if (d.registerDynamicLeases) lines.push('', 'remote-control:', '\tcontrol-enable: yes', '\tcontrol-interface: /var/run/unbound.sock');
   if (d.mode === 'forward') {
     lines.push('', 'forward-zone:', '\tname: "."');
     if (d.forwardTls) lines.push('\tforward-tls-upstream: yes');

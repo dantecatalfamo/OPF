@@ -52,7 +52,7 @@ export function Dns() {
   const { staged, edit } = useStore();
   const dns = staged.dns;
   const [modal, setModal] = useState(false);
-  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerLeases: d.registerLeases });
+  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases });
   const form = useForm<Settings>({
     initialValues: pick(dns),
     validate: { forwarders: (v, vals) => (vals.mode === 'recursive' || (v.length && v.every(isIPv4)) ? null : 'Enter one or more IPv4 addresses') },
@@ -95,7 +95,12 @@ export function Dns() {
                   </>
                 )}
                 <Switch label="Verify answers with DNSSEC" description="Rejects answers that have been tampered with." {...form.getInputProps('dnssec', { type: 'checkbox' })} />
-                <Switch label="Add DHCP devices by name" description={`Reserved devices can be reached as name.${staged.system.domain}.`} {...form.getInputProps('registerLeases', { type: 'checkbox' })} />
+                <Switch label="Add reserved devices by name" description={`Devices with a DHCP reservation can be reached as name.${staged.system.domain}.`} {...form.getInputProps('registerReservations', { type: 'checkbox' })} />
+                <Switch
+                  label="Add other DHCP devices by name"
+                  description={`Devices can be reached by the name they give themselves, as name.${staged.system.domain}. Any device can pick any name, so names used by this configuration, and names claimed by two devices, are never added.`}
+                  {...form.getInputProps('registerDynamicLeases', { type: 'checkbox' })}
+                />
                 <Group justify="flex-end">
                   <Button type="submit" disabled={!form.isDirty()}>Save</Button>
                 </Group>

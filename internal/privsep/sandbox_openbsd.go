@@ -18,14 +18,20 @@ import (
 var execDirs = []string{"/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/local/sbin"}
 
 // SandboxParent limits the privileged process to the directories it
-// writes, the commands it runs, and re-executing itself.
+// writes, the files it only reads, the commands it runs, and
+// re-executing itself.
 //
 // "id" is needed because the child drops privileges between fork and
 // exec, while still under the parent's pledge.
-func SandboxParent(writable []string, exe string) error {
+func SandboxParent(writable, readable []string, exe string) error {
 	preload()
 	for _, d := range writable {
 		if err := unveil(d, "rwc"); err != nil {
+			return err
+		}
+	}
+	for _, p := range readable {
+		if err := unveil(p, "r"); err != nil {
 			return err
 		}
 	}

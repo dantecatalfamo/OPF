@@ -81,6 +81,20 @@ edits, to review and commit like any other change.
 The managed files and how to check and apply each one are listed in
 `internal/config/registry.go`.
 
+## DHCP names in DNS
+
+With "Add other DHCP devices by name" on, the root process watches
+`/var/db/dhcpd.leases` and gives each client the name it asked for, as
+`name.<domain>`, through `unbound-control local_data` (the generated
+`unbound.conf` then has a control socket only root can use). These
+records live in unbound at runtime and aren't part of the configuration
+or its history; they're re-added within 15 s whenever unbound reloads.
+A client picks its own name, so it's only registered if it's a single
+valid label, isn't used by the configuration (the router, reservations,
+host overrides, `wpad`, `isatap`, `localhost`), isn't asked for by
+another client too, and the address is in a DHCP range. See
+`internal/leases`.
+
 ## Processes
 
 OPF runs as two processes, like the OpenBSD base daemons:

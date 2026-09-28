@@ -472,13 +472,18 @@ const (
 )
 
 type DNS struct {
-	Enabled        bool           `json:"enabled"`
-	Mode           ResolverMode   `json:"mode"`
-	Forwarders     []string       `json:"forwarders"`
-	ForwardTLS     bool           `json:"forwardTls"`
-	DNSSEC         bool           `json:"dnssec"`
-	RegisterLeases bool           `json:"registerLeases"`
-	Overrides      []HostOverride `json:"overrides"`
+	Enabled    bool         `json:"enabled"`
+	Mode       ResolverMode `json:"mode"`
+	Forwarders []string     `json:"forwarders"`
+	ForwardTLS bool         `json:"forwardTls"`
+	DNSSEC     bool         `json:"dnssec"`
+	// RegisterReservations puts each DHCP reservation's name in DNS.
+	RegisterReservations bool `json:"registerReservations"`
+	// RegisterDynamicLeases also registers the names clients ask for
+	// with dynamic leases (package leases), at runtime through
+	// unbound-control.
+	RegisterDynamicLeases bool           `json:"registerDynamicLeases"`
+	Overrides             []HostOverride `json:"overrides"`
 }
 
 type ClientRoutes string

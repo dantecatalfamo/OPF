@@ -590,7 +590,8 @@
     ],
     "forwardTls": true,
     "dnssec": true,
-    "registerLeases": true,
+    "registerReservations": true,
+    "registerDynamicLeases": true,
     "overrides": [
       {
         "id": "h1",

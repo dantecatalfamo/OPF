@@ -40,6 +40,19 @@ type Manager struct {
 	// mu makes stage-then-commit sequences atomic with respect to each
 	// other; the store has its own lock for its internals.
 	mu sync.Mutex
+
+	onChange func()
+}
+
+// OnChange sets a function called, without the lock held, after each
+// commit or revert has been attempted: something the system runs may
+// have been reloaded. Set it before serving.
+func (m *Manager) OnChange(f func()) { m.onChange = f }
+
+func (m *Manager) changed() {
+	if m.onChange != nil {
+		m.onChange()
+	}
 }
 
 var _ API = (*Manager)(nil)
@@ -354,6 +367,7 @@ func checkNotes(req CommitRequest) *Error {
 }
 
 func (m *Manager) Commit(req CommitRequest) (*Commit, error) {
+	defer m.changed() // after unlocking
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	c, err := m.commit(req)
@@ -480,6 +494,7 @@ func (m *Manager) Confirm(id string) (*Commit, error) {
 }
 
 func (m *Manager) Revert(id string) (*Commit, error) {
+	defer m.changed() // after unlocking
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.pendingIs(id); err != nil {
