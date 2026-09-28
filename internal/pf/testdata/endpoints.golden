@@ -1,0 +1,157 @@
+{
+  "rules": [
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "self"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "net",
+        "iface": "lan"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "ifaddr",
+        "iface": "wan"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "alias",
+        "alias": "blocklist"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "host",
+        "value": "192.168.1.1"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "network",
+        "value": "10.0.0.0/8"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "alias",
+        "not": true,
+        "alias": "badguys"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    }
+  ],
+  "errors": null,
+  "warnings": []
+}

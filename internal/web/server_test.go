@@ -30,7 +30,7 @@ func TestStageCommitConfirm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := New(store)
+	srv, err := New(store, "")
 	if err != nil {
 		t.Fatal(err)
 	}

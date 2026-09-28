@@ -4,11 +4,11 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle, IconCheck, IconFileCode } from '@tabler/icons-react';
 import { useStore } from '../model/store';
-import { generateFiles } from '../model/generate';
 import type { Section } from '../model/types';
 import { sectionLabel } from '../lib/sections';
 import { sectionIcon } from '../lib/sectionIcons';
 import { FileDiff } from './FileDiff';
+import { previewModel, type GeneratedFile } from '../lib/api';
 
 const applyStep: Record<Section, string> = {
   system: 'Updating system settings',
@@ -53,15 +53,76 @@ function ChangeList() {
   );
 }
 
+interface FileDiffItem {
+  path: string;
+  before: string;
+  after: string;
+}
+
 function GeneratedFiles() {
   const { applied, staged } = useStore();
-  const files = useMemo(() => {
-    const before = new Map(generateFiles(applied).map((f) => [f.path, f.content]));
-    return generateFiles(staged)
-      .map((f) => ({ path: f.path, before: before.get(f.path) ?? '', after: f.content }))
-      .filter((f) => f.before !== f.after);
+  const [files, setFiles] = useState<FileDiffItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchFiles() {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch generated files for both applied and staged models from backend
+        const [appliedResult, stagedResult] = await Promise.all([
+          previewModel(applied),
+          previewModel(staged),
+        ]);
+
+        if (cancelled) return;
+
+        if (appliedResult.error || stagedResult.error) {
+          setError(appliedResult.error || stagedResult.error || 'Unknown error');
+          return;
+        }
+
+        const before = new Map(appliedResult.files.map((f: GeneratedFile) => [f.path, f.content]));
+        const diffs = stagedResult.files
+          .map((f: GeneratedFile) => ({ path: f.path, before: before.get(f.path) ?? '', after: f.content }))
+          .filter((f: FileDiffItem) => f.before !== f.after);
+
+        setFiles(diffs);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch generated files');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+    fetchFiles();
+    return () => { cancelled = true; };
   }, [applied, staged]);
+
+  if (loading) {
+    return (
+      <Group gap="sm" py="sm">
+        <Loader size="sm" />
+        <Text size="sm" c="dimmed">Loading generated files...</Text>
+      </Group>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert color="red" variant="light">
+        <Text size="sm">Failed to preview files: {error}</Text>
+      </Alert>
+    );
+  }
+
   if (!files.length) return null;
+
   return (
     <Accordion variant="contained" radius="md" chevronPosition="left">
       <Accordion.Item value="files">

@@ -1,0 +1,65 @@
+{
+  "rules": [
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [
+        "em0"
+      ],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "block",
+      "direction": "out",
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [
+        "wan"
+      ],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "quick": true,
+      "family": "any",
+      "protocol": "any",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off"
+    }
+  ],
+  "errors": null,
+  "warnings": []
+}

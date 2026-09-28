@@ -57,6 +57,8 @@ interface RuleBase {
   description: string;
 }
 
+export type BlockReturn = 'drop' | 'return' | 'return-rst' | 'return-icmp' | 'return-icmp6';
+
 export interface FormRule extends RuleBase {
   kind: 'form';
   action: RuleAction;
@@ -81,6 +83,10 @@ export interface FormRule extends RuleBase {
   osFingerprint?: string;
   probability?: number; // percent
   once?: boolean;
+  // Block return options (only for action: 'block')
+  blockReturn?: BlockReturn;
+  returnRstTtl?: number;
+  returnIcmpCode?: string;
 }
 
 // A rule written directly in pf syntax.

@@ -1,11 +1,18 @@
 // Client-side stand-in for the appliance's staging API. Edits change the
 // staged model; Apply makes it live; risky changes must be confirmed or
 // they are reverted, exactly like the Go backend.
+//
+// Model-Authoritative Design:
+// - The backend is the single source of truth for generating config files
+// - When applying changes, we call the backend's /api/model/apply endpoint
+// - The backend validates, generates, and stages all config files
+// - This ensures frontend and backend are always in sync on what gets applied
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { Change, HistoryEntry, Model, Section } from './types';
 import { sampleHistory, sampleModel } from './sample';
 import { sectionLabel } from '../lib/sections';
+import { applyModel } from '../lib/api';
 
 export const CONFIRM_SECONDS = 60;
 
@@ -110,13 +117,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const needsConfirm = pendingSections.some((s) => riskySections.includes(s));
 
-  const apply = useCallback(() => {
+  const apply = useCallback(async () => {
     const commit: PendingCommit = {
       deadline: Date.now() + CONFIRM_SECONDS * 1000,
       before: applied,
       after: staged,
       changes,
     };
+
+    // Use backend API to generate and stage config files (model-authoritative)
+    try {
+      const result = await applyModel(staged);
+      if (result.error) {
+        notifications.show({
+          color: 'red',
+          title: 'Failed to apply changes',
+          message: result.error,
+          autoClose: false,
+        });
+        return;
+      }
+      if (result.details && result.details.length > 0) {
+        const details = result.details.map(d => `${d.path}: ${d.error}`).join('\n');
+        notifications.show({
+          color: 'red',
+          title: 'Validation failed',
+          message: details,
+          autoClose: false,
+        });
+        return;
+      }
+    } catch (err) {
+      notifications.show({
+        color: 'red',
+        title: 'Failed to apply changes',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        autoClose: false,
+      });
+      return;
+    }
+
     if (needsConfirm) {
       setConfirming(commit);
       return;

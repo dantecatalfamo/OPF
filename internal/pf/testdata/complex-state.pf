@@ -1,0 +1,6 @@
+pass in proto tcp keep state (max 1000)
+pass in proto tcp keep state (max-src-conn 10, max-src-conn-rate 3/30)
+pass in proto tcp keep state (overload <bruteforce> flush global)
+pass in proto tcp modulate state
+pass in proto tcp synproxy state
+pass in proto tcp no state

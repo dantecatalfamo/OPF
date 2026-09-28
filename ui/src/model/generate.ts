@@ -85,7 +85,31 @@ export function ruleText(r: Rule, m: Model): string {
 }
 
 function formRuleText(r: FormRule, m: Model): string {
-  const out: string[] = [r.action === 'reject' ? 'block return' : r.action];
+  // Build the action part
+  let action: string;
+  if (r.action === 'reject') {
+    action = 'block return';
+  } else if (r.action === 'block' && r.blockReturn) {
+    switch (r.blockReturn) {
+      case 'return':
+        action = 'block return';
+        break;
+      case 'return-rst':
+        action = r.returnRstTtl !== undefined ? `block return-rst ttl ${r.returnRstTtl}` : 'block return-rst';
+        break;
+      case 'return-icmp':
+        action = r.returnIcmpCode ? `block return-icmp (${r.returnIcmpCode})` : 'block return-icmp';
+        break;
+      case 'return-icmp6':
+        action = r.returnIcmpCode ? `block return-icmp6 (${r.returnIcmpCode})` : 'block return-icmp6';
+        break;
+      default:
+        action = 'block';
+    }
+  } else {
+    action = r.action;
+  }
+  const out: string[] = [action];
   if (r.direction !== 'any') out.push(r.direction);
   if (r.log === 'on') out.push('log');
   if (r.log === 'all') out.push('log (all)');

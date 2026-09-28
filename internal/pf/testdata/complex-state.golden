@@ -1,0 +1,140 @@
+{
+  "rules": [
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "keep",
+        "maxStates": 1000
+      }
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "keep",
+        "maxSrcConn": 10,
+        "maxSrcConnRate": {
+          "count": 3,
+          "seconds": 30
+        }
+      }
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "keep",
+        "overload": "bruteforce",
+        "flushGlobal": true
+      }
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "modulate"
+      }
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "synproxy"
+      }
+    },
+    {
+      "id": "",
+      "kind": "form",
+      "enabled": true,
+      "interfaces": [],
+      "description": "",
+      "action": "pass",
+      "direction": "in",
+      "family": "any",
+      "protocol": "tcp",
+      "source": {
+        "type": "any"
+      },
+      "destination": {
+        "type": "any"
+      },
+      "log": "off",
+      "state": {
+        "mode": "none"
+      }
+    }
+  ],
+  "errors": null,
+  "warnings": []
+}

@@ -1,17 +1,18 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Accordion, Alert, Autocomplete, Badge, Button, Code, Drawer, Group, MultiSelect, NumberInput, SegmentedControl, Select, SimpleGrid,
-  Stack, Switch, Text, Textarea, TextInput,
+  Accordion, Alert, Autocomplete, Badge, Button, Code, Drawer, Group, Loader, MultiSelect, NumberInput, SegmentedControl, Select, SimpleGrid,
+  Stack, Switch, Text, Textarea, TextInput, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconCode, IconForms, IconInfoCircle } from '@tabler/icons-react';
-import type { FormRule, Model, Rule, RuleInput, StateOptions } from '../model/types';
-import { ruleText } from '../model/generate';
+import { IconCode, IconForms, IconInfoCircle, IconWand } from '@tabler/icons-react';
+import type { BlockReturn, FormRule, Model, Rule, RuleInput, StateOptions } from '../model/types';
 import { formRule } from '../model/sample';
 import { isCIDR, isIPv4, isPfPortExpr } from '../lib/ip';
 import { commonPorts } from '../lib/labels';
 import { checkPfLine } from '../lib/pfcheck';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
+import { getIcmpTypeOptions, getIcmpCodeOptions, returnIcmpCodes, returnIcmp6Codes } from '../lib/icmp';
+import { tryParseAsFormRule, generateRule } from '../lib/api';
 
 type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
 
@@ -108,13 +109,71 @@ export function RuleDrawer({
   }, [opened, rule, iface]); // form is stable
 
   const v = form.values;
-  const preview = useMemo(() => (v.mode === 'form' ? ruleText({ ...toRule(v), id: 'preview' }, model) : ''), [v, model]);
+
+  // Use backend API for rule preview generation (debounced)
+  const [preview, setPreview] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (v.mode !== 'form') {
+      setPreview('');
+      return;
+    }
+
+    // Cancel any pending request
+    previewAbortRef.current?.abort();
+    previewAbortRef.current = new AbortController();
+
+    // Debounce preview generation
+    const timer = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const rule: Rule = { ...toRule(v), id: 'preview' };
+        const result = await generateRule(rule, model);
+        if (result.text) {
+          setPreview(result.text);
+        } else if (result.error) {
+          setPreview(`# Error: ${result.error}`);
+        }
+      } catch {
+        // Request was aborted or failed
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 150); // 150ms debounce
+
+    return () => clearTimeout(timer);
+  }, [v, model]);
+
   const state: StateOptions = v.state ?? { mode: 'keep' };
   const setState = (patch: Partial<StateOptions>) => form.setFieldValue('state', { ...state, ...patch });
 
   const tables = model.firewall.aliases.filter((a) => a.type === 'table').map((a) => a.name);
   const portAliases = model.firewall.aliases.filter((a) => a.type === 'ports').map((a) => `alias:${a.name}`);
   const gateways = model.routing.gateways.map((g) => ({ value: g.id, label: `${g.name} (${g.address === 'dhcp' ? 'DHCP' : g.address})` }));
+
+  // Parse rule from raw syntax state
+  const [parseLoading, setParseLoading] = useState(false);
+  const handleParseRule = async () => {
+    if (!v.rawText.trim()) return;
+    setParseLoading(true);
+    try {
+      const parsedRule = await tryParseAsFormRule(v.rawText, model);
+      if (parsedRule && parsedRule.kind === 'form') {
+        // Successfully parsed - switch to form mode with populated values
+        const { id: _id, kind: _kind, ...formValues } = parsedRule;
+        form.setValues({ ...formValues, mode: 'form', rawText: '' });
+      } else {
+        // Could not convert to form rule - show error
+        form.setFieldError('rawText', 'This rule cannot be converted to the guided form. Complex features like NAT, anchors, or queues are only supported in raw mode.');
+      }
+    } catch {
+      form.setFieldError('rawText', 'Failed to parse rule');
+    } finally {
+      setParseLoading(false);
+    }
+  };
   const portData = [{ group: 'Common', items: commonPorts.map((p) => p.value) }, ...(portAliases.length ? [{ group: 'Aliases', items: portAliases }] : [])];
 
   const switchMode = (mode: string) => {
@@ -156,6 +215,20 @@ export function RuleDrawer({
                 styles={mono}
                 {...form.getInputProps('rawText')}
               />
+              <Group justify="flex-end">
+                <Tooltip label="Try to convert this rule to the guided form">
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    leftSection={<IconWand size={14} />}
+                    loading={parseLoading}
+                    onClick={handleParseRule}
+                    disabled={!v.rawText.trim()}
+                  >
+                    Parse to guided
+                  </Button>
+                </Tooltip>
+              </Group>
               <MultiSelect
                 label="List under"
                 description="Only decides which tab shows this rule. The rule text itself says where it applies."
@@ -181,9 +254,58 @@ export function RuleDrawer({
                   color={v.action === 'pass' ? 'teal' : v.action === 'block' ? 'red' : v.action === 'reject' ? 'orange' : 'harbor'}
                   {...form.getInputProps('action')}
                 />
+                {v.action === 'block' && (
+                  <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                    <Select
+                      label="Block return type"
+                      data={[
+                        { value: 'drop', label: 'Silent drop' },
+                        { value: 'return', label: 'Return (TCP RST or ICMP)' },
+                        { value: 'return-rst', label: 'Return RST (TCP only)' },
+                        { value: 'return-icmp', label: 'Return ICMP error' },
+                        { value: 'return-icmp6', label: 'Return ICMPv6 error' },
+                      ]}
+                      value={v.blockReturn ?? 'drop'}
+                      onChange={(val) => form.setFieldValue('blockReturn', (val ?? 'drop') as BlockReturn)}
+                      allowDeselect={false}
+                    />
+                    {v.blockReturn === 'return-rst' && (
+                      <NumberInput
+                        label="RST TTL"
+                        placeholder="Default"
+                        min={1}
+                        max={255}
+                        {...form.getInputProps('returnRstTtl')}
+                      />
+                    )}
+                    {v.blockReturn === 'return-icmp' && (
+                      <Select
+                        label="ICMP code"
+                        placeholder="port-unr (default)"
+                        data={returnIcmpCodes}
+                        clearable
+                        {...form.getInputProps('returnIcmpCode')}
+                      />
+                    )}
+                    {v.blockReturn === 'return-icmp6' && (
+                      <Select
+                        label="ICMPv6 code"
+                        placeholder="port-unr (default)"
+                        data={returnIcmp6Codes}
+                        clearable
+                        {...form.getInputProps('returnIcmpCode')}
+                      />
+                    )}
+                  </SimpleGrid>
+                )}
                 <Text size="xs" c="dimmed">
                   {v.action === 'pass' && 'Let matching connections through. Replies are allowed automatically.'}
-                  {v.action === 'block' && 'Silently discard. The sender sees nothing, like a timeout.'}
+                  {v.action === 'block' && !v.blockReturn && 'Silently discard. The sender sees nothing, like a timeout.'}
+                  {v.action === 'block' && v.blockReturn === 'drop' && 'Silently discard. The sender sees nothing, like a timeout.'}
+                  {v.action === 'block' && v.blockReturn === 'return' && 'Send TCP RST for TCP, ICMP unreachable for others.'}
+                  {v.action === 'block' && v.blockReturn === 'return-rst' && 'Send TCP RST. Only works for TCP connections.'}
+                  {v.action === 'block' && v.blockReturn === 'return-icmp' && 'Send ICMP unreachable error to IPv4 sender.'}
+                  {v.action === 'block' && v.blockReturn === 'return-icmp6' && 'Send ICMPv6 unreachable error to IPv6 sender.'}
                   {v.action === 'reject' && 'Discard and tell the sender, so their connection fails quickly (block return).'}
                   {v.action === 'match' && 'Neither allow nor block. Apply options such as priority, tags or routing, then keep checking rules.'}
                 </Text>
@@ -353,20 +475,34 @@ export function RuleDrawer({
                     <SectionLabel label="More matching options" count={countSet(v.icmpType, v.osFingerprint, v.probability !== undefined && v.probability < 100 ? v.probability : undefined, v.once)} />
                   </Accordion.Control>
                   <Accordion.Panel>
-                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                    <Stack gap="md">
                       {(v.protocol === 'icmp' || v.protocol === 'icmp6') && (
-                        <Select
-                          label="ICMP type"
-                          placeholder="Any"
-                          clearable
-                          data={v.protocol === 'icmp' ? ['echoreq', 'echorep', 'unreach', 'timex', 'paramprob', 'redir'] : ['echoreq', 'echorep', 'unreach', 'toobig', 'timex', 'neighbrsol', 'neighbradv', 'routersol', 'routeradv']}
-                          {...form.getInputProps('icmpType')}
-                        />
+                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                          <Select
+                            label="ICMP type"
+                            placeholder="Any"
+                            clearable
+                            searchable
+                            data={getIcmpTypeOptions(v.protocol === 'icmp6')}
+                            {...form.getInputProps('icmpType')}
+                          />
+                          {v.icmpType && getIcmpCodeOptions(v.icmpType, v.protocol === 'icmp6').length > 0 && (
+                            <Select
+                              label="ICMP code"
+                              placeholder="Any"
+                              clearable
+                              data={getIcmpCodeOptions(v.icmpType, v.protocol === 'icmp6')}
+                              description="Optional: filter by specific code"
+                            />
+                          )}
+                        </SimpleGrid>
                       )}
-                      <Select label="Operating system" placeholder="Any" clearable data={['Windows', 'Linux', 'OpenBSD', 'FreeBSD', 'Mac OS', 'unknown']} {...form.getInputProps('osFingerprint')} />
-                      <NumberInput label="Match only this share of packets" suffix="%" min={1} max={100} placeholder="100%" {...form.getInputProps('probability')} />
-                      <Switch mt={30} label="Match once, then disable" {...form.getInputProps('once', { type: 'checkbox' })} />
-                    </SimpleGrid>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <Select label="Operating system" placeholder="Any" clearable data={['Windows', 'Linux', 'OpenBSD', 'FreeBSD', 'Mac OS', 'unknown']} {...form.getInputProps('osFingerprint')} />
+                        <NumberInput label="Match only this share of packets" suffix="%" min={1} max={100} placeholder="100%" {...form.getInputProps('probability')} />
+                      </SimpleGrid>
+                      <Switch label="Match once, then disable" {...form.getInputProps('once', { type: 'checkbox' })} />
+                    </Stack>
                   </Accordion.Panel>
                 </Accordion.Item>
               </Accordion>
@@ -388,9 +524,12 @@ export function RuleDrawer({
           style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--mantine-color-body)', borderTop: '1px solid var(--opf-line)' }}
         >
           {v.mode === 'form' && (
-            <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12 }}>
-              {preview}
-            </Code>
+            <Group gap="xs" align="flex-start">
+              <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, flex: 1 }}>
+                {preview || '# Loading...'}
+              </Code>
+              {previewLoading && <Loader size="xs" />}
+            </Group>
           )}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancel</Button>

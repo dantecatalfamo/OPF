@@ -1,0 +1,8 @@
+pass in from any to any
+pass in from self to any
+pass in from $lan:network to any
+pass in from ($wan) to any
+pass in from <blocklist> to any
+pass in from 192.168.1.1 to any
+pass in from 10.0.0.0/8 to any
+pass in from ! <badguys> to any

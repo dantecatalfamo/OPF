@@ -6,9 +6,11 @@ package web
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log"
 	"math"
@@ -17,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
 //go:embed templates static
@@ -25,13 +28,23 @@ var assets embed.FS
 var pages = []string{"index.html", "file.html", "changes.html", "history.html", "entry.html", "error.html"}
 
 type Server struct {
-	store config.Manager
-	tmpl  map[string]*template.Template
-	mux   *http.ServeMux
+	store    config.Manager
+	modelMgr *ModelManager
+	tmpl     map[string]*template.Template
+	mux      *http.ServeMux
 }
 
-func New(store config.Manager) (*Server, error) {
+func New(store config.Manager, modelPath string) (*Server, error) {
 	s := &Server{store: store, tmpl: map[string]*template.Template{}, mux: http.NewServeMux()}
+
+	// Initialize model manager if a path is provided
+	if modelPath != "" {
+		mgr, err := NewModelManager(modelPath)
+		if err != nil {
+			return nil, fmt.Errorf("model manager: %w", err)
+		}
+		s.modelMgr = mgr
+	}
 	funcs := template.FuncMap{"difflines": diffLines}
 	for _, p := range pages {
 		t, err := template.New(p).Funcs(funcs).ParseFS(assets, "templates/layout.html", "templates/fragments.html", "templates/"+p)
@@ -62,6 +75,18 @@ func New(store config.Manager) (*Server, error) {
 	s.mux.HandleFunc("GET /history", s.history)
 	s.mux.HandleFunc("GET /history/{id}", s.entry)
 	s.mux.HandleFunc("POST /history/{id}/stage", s.stageFromHistory)
+
+	// JSON API endpoints for pf.conf parsing and generation
+	s.mux.HandleFunc("POST /api/parse-rule", s.apiParseRule)
+	s.mux.HandleFunc("POST /api/generate-rule", s.apiGenerateRule)
+	s.mux.HandleFunc("POST /api/generate-config", s.apiGenerateConfig)
+
+	// Model-authoritative API: backend is single source of truth
+	s.mux.HandleFunc("GET /api/model", s.apiGetModel)
+	s.mux.HandleFunc("PUT /api/model", s.apiPutModel)
+	s.mux.HandleFunc("POST /api/model/preview", s.apiPreviewModel)
+	s.mux.HandleFunc("POST /api/model/apply", s.apiApplyModel)
+
 	return s, nil
 }
 
@@ -398,4 +423,144 @@ func diffLines(diff string) []diffLine {
 		out = append(out, diffLine{Class: class, Text: line})
 	}
 	return out
+}
+
+// ---------- JSON API for pf.conf parsing and generation ----------
+
+type parseRuleRequest struct {
+	Rule  string    `json:"rule"`
+	Model *pf.Model `json:"model"`
+}
+
+type parseRuleResponse struct {
+	Rule  *pf.Rule `json:"rule,omitempty"`
+	Error string   `json:"error,omitempty"`
+}
+
+func (s *Server) apiParseRule(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		apiError(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var req parseRuleRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		apiError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rule, err := pf.ParseRule(req.Rule, req.Model)
+	var resp parseRuleResponse
+	if err != nil {
+		resp.Error = err.Error()
+	} else {
+		resp.Rule = rule
+	}
+
+	apiJSON(w, resp)
+}
+
+type generateRuleRequest struct {
+	Rule  *pf.Rule  `json:"rule"`
+	Model *pf.Model `json:"model"`
+}
+
+type generateRuleResponse struct {
+	Text  string `json:"text,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+func (s *Server) apiGenerateRule(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		apiError(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var req generateRuleRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		apiError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Rule == nil {
+		apiError(w, "rule is required", http.StatusBadRequest)
+		return
+	}
+
+	text := pf.GenerateRule(req.Rule, req.Model)
+	apiJSON(w, generateRuleResponse{Text: text})
+}
+
+type generateConfigRequest struct {
+	Model *pf.Model `json:"model"`
+	File  string    `json:"file"` // e.g., "pf.conf", "dhcpd.conf"
+}
+
+type generateConfigResponse struct {
+	Content string `json:"content,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func (s *Server) apiGenerateConfig(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		apiError(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	var req generateConfigRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		apiError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Model == nil {
+		apiError(w, "model is required", http.StatusBadRequest)
+		return
+	}
+
+	var content string
+	switch req.File {
+	case "pf.conf", "":
+		content = pf.GeneratePfConf(req.Model)
+	case "dhcpd.conf":
+		content = pf.GenerateDHCPdConf(req.Model)
+	case "unbound.conf":
+		content = pf.GenerateUnboundConf(req.Model)
+	default:
+		// Try to find an interface for hostname.<device>
+		if strings.HasPrefix(req.File, "hostname.") {
+			device := strings.TrimPrefix(req.File, "hostname.")
+			for i := range req.Model.Interfaces {
+				if req.Model.Interfaces[i].Device == device {
+					content = pf.GenerateHostnameIf(&req.Model.Interfaces[i], req.Model)
+					break
+				}
+			}
+			if content == "" {
+				apiError(w, "unknown interface device: "+device, http.StatusBadRequest)
+				return
+			}
+		} else {
+			apiError(w, "unknown file: "+req.File, http.StatusBadRequest)
+			return
+		}
+	}
+
+	apiJSON(w, generateConfigResponse{Content: content})
+}
+
+func apiJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("web: encoding JSON: %v", err)
+	}
+}
+
+func apiError(w http.ResponseWriter, msg string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }

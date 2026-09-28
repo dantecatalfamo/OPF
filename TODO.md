@@ -3,6 +3,205 @@
 Things known to need more work, roughly by priority. Not a roadmap of
 new features; see "Planned next" in the README for those.
 
+## Principles
+
+**Correctness and security are the top priorities.** OPF manages a
+firewall—mistakes can lock out administrators, expose networks, or
+break connectivity. Every feature must be:
+
+1. **Correct first.** Parsers must handle all valid input and fail
+   gracefully on unexpected input, never crash or produce wrong output.
+   Generators must produce valid config files for every valid model.
+   Golden-file tests and property-based tests where practical.
+
+2. **Secure by design.** Privilege separation, input validation, no
+   shell injection, no path traversal. The web process cannot choose
+   what commands run or what paths are written. Auth and audit logging
+   before any production use.
+
+3. **Single-binary deployment.** The entire application—Go backend,
+   React UI, static assets—must be embedded in one executable. No
+   external files, no runtime dependencies beyond base OpenBSD. Copy
+   the binary, run it. This simplifies installation, updates, and
+   reduces attack surface. Use `go:embed` for the built `ui/dist`.
+
+4. **Drop-in adoption.** It must be possible to install OPF on an
+   existing, already-configured OpenBSD system and have it work
+   immediately. This means:
+   - Import existing configs (`pf.conf`, `dhcpd.conf`, `hostname.if`,
+     etc.) into the OPF model on first run or via an import command.
+   - Parsers for config files (the reverse of generators) that handle
+     real-world hand-written configs, not just OPF-generated ones.
+   - Preserve existing behavior exactly—importing must not change how
+     the system operates until the admin makes an explicit change.
+   - Handle configs that use features OPF doesn't yet support: warn
+     the admin, preserve the raw config, don't silently drop rules.
+   - First-run wizard that detects existing configs and offers import.
+
+4. **Validated against OpenBSD.** Every parser, generator, and system
+   integration must be validated against the latest OpenBSD documentation
+   and source code. This means:
+   - Parsers must handle output formats documented in the relevant man
+     pages (`pfctl(8)`, `ifconfig(8)`, `rcctl(8)`, etc.) and tested
+     against actual command output from current OpenBSD.
+   - Generators must produce config files that conform to the file format
+     man pages (`pf.conf(5)`, `hostname.if(5)`, `dhcpd.conf(5)`, etc.)
+     and pass validation by the target daemon.
+   - When OpenBSD releases a new version, review the relevant man pages
+     and source (cvsweb.openbsd.org) for changes. Update parsers and
+     generators, add new test fixtures, and document version-specific
+     behavior.
+   - Link to authoritative sources in code comments where format details
+     are non-obvious.
+
+## Testing
+
+Every component must have extensive test coverage. Regressions in a
+firewall appliance can silently break network security. Tests are not
+optional—they are a blocking requirement for every feature.
+
+### Parsers (monitoring data from system commands)
+
+- [ ] Golden-file tests for every parser against real output captured
+      from multiple OpenBSD versions (7.4, 7.5, 7.6, 7.7, 7.8+).
+- [ ] Edge-case fixtures: empty output, single entry, maximum realistic
+      size, Unicode in hostnames/descriptions, IPv6 addresses, unusual
+      but valid formats.
+- [ ] Error-path tests: truncated output, garbage input, partial lines,
+      binary data. Parsers must return errors, never panic.
+- [ ] Fuzz testing with `go test -fuzz` for every parser. Run fuzzing
+      in CI for a minimum duration on each PR.
+- [ ] Regression tests: when a bug is found, add the failing input as
+      a permanent test case before fixing.
+
+### Generators (model → config files)
+
+- [ ] Golden-file tests for every generator (pf.conf, hostname.if,
+      dhcpd.conf, unbound.conf, ntpd.conf, myname, mygate, rc.conf.local).
+- [ ] Round-trip property tests where applicable: generate config,
+      validate with the real tool (`pfctl -nf`, `dhcpd -n`, etc.),
+      confirm no errors.
+- [ ] Boundary tests: empty model sections, maximum number of rules/
+      interfaces/aliases, special characters in names/descriptions,
+      every protocol and endpoint type combination.
+- [ ] Fuzz the model→generator path: random valid models must produce
+      valid config files (validated by the daemon's own checker).
+- [ ] Regression tests for every generator bug found in production.
+
+### Config importers (existing config files → model)
+
+- [ ] Golden-file tests against real-world hand-written configs
+      collected from production systems (anonymized).
+- [ ] Round-trip tests: import config → export config → diff must be
+      semantically equivalent (comments/whitespace may differ, but
+      behavior must be identical).
+- [ ] Preserve unsupported features: configs using pf features OPF
+      doesn't model (anchors, queues, etc.) must import as raw blocks
+      and re-export correctly.
+- [ ] Handle all valid syntax variations: macros, includes, multi-line
+      rules, comments, blank lines, mixed indentation.
+- [ ] Error handling: malformed configs should produce clear errors
+      pointing to the problem, not crash or silently drop rules.
+- [ ] Fuzz with valid configs: generate random valid pf.conf (etc.)
+      files, import, export, validate with `pfctl -nf`.
+
+### Config engine (staging, commit, confirm, history, revert)
+
+- [ ] Integration tests for the full commit workflow: stage → check →
+      apply → confirm, and stage → check → apply → timeout → revert.
+- [ ] Failure injection: check fails, apply fails, service restart
+      fails, disk full, permission denied. Verify correct rollback.
+- [ ] Concurrent access tests: multiple stages, commits racing, confirm
+      during revert. Verify no corruption or deadlocks.
+- [ ] History integrity: commits produce correct diffs, rollback stages
+      the exact previous content, history survives restart.
+- [ ] File drift detection: hand-edits between stage and commit must
+      block the commit and preserve the hand-edit.
+
+### Privilege separation (parent/child RPC)
+
+- [ ] Every RPC method must have explicit tests for success and error
+      paths, including sentinel errors crossing the process boundary.
+- [ ] Invalid/malicious RPC inputs: oversized messages, path traversal
+      attempts in file names, unknown method calls. Child must not be
+      able to escalate or crash parent.
+- [ ] Process lifecycle: child crash → parent restarts it, parent
+      shutdown → child terminates cleanly, unconfirmed commits revert.
+- [ ] Fuzz the RPC protocol: random bytes over the socketpair must not
+      crash either process.
+
+### Web server and API
+
+- [ ] HTTP endpoint tests for every route: valid requests, invalid
+      parameters, missing auth (once added), CSRF protection.
+- [ ] Input validation: oversized bodies, malformed JSON, path traversal
+      in URL parameters.
+- [ ] Error responses: every error code path must be tested and must
+      not leak internal details.
+
+### Frontend (React UI)
+
+- [ ] Component tests for every form: valid input accepted, invalid
+      input rejected with clear errors, edge cases (empty, max length).
+- [ ] Integration tests for critical workflows: add rule → commit →
+      confirm, edit interface → see generated config, revert from
+      history.
+- [ ] Visual regression tests for key pages (optional but recommended).
+
+### CI requirements
+
+- [ ] All tests run on every PR, blocking merge on failure.
+- [ ] `go test -race` to catch data races.
+- [ ] `go test -fuzz` with minimum duration (e.g., 30s per fuzz target).
+- [ ] Cross-compile and vet for GOOS=openbsd on every PR.
+- [ ] Coverage tracking: no decrease in coverage without justification.
+
+### OpenBSD version compatibility
+
+- [ ] Maintain test fixtures captured from each supported OpenBSD version
+      (currently 7.4+). Each new OpenBSD release requires:
+      1. Capture fresh output from all parsed commands (`pfctl -s states`,
+         `pfctl -s rules`, `ifconfig`, `rcctl ls all`, etc.)
+      2. Review man page changes for parsed commands and config files
+         (compare with previous version via `cvsweb.openbsd.org`)
+      3. Update parsers/generators if formats changed
+      4. Add new fixtures to the test suite
+      5. Document any version-specific behavior
+- [ ] Track minimum and maximum supported OpenBSD versions in README.
+- [ ] Parsers must degrade gracefully on older versions—missing fields
+      should result in zero/empty values, not crashes.
+
+### Live on-OpenBSD test suite
+
+Extensive testing that runs directly on OpenBSD to validate parsers against
+real system output. This ensures compatibility with the current OpenBSD
+version and catches any format changes that static fixtures might miss.
+
+- [ ] Test harness that runs on OpenBSD and collects live data from:
+      - `pfctl -s states` (connection states)
+      - `pfctl -s rules -v` (rules with counters)
+      - `pfctl -s info` (pf statistics)
+      - `pfctl -s Anchors -v` (anchor contents)
+      - `ifconfig -a` (interface configuration)
+      - `netstat -rn` (routing table)
+      - `rcctl ls all` / `rcctl get <service>` (service status)
+      - `dhcpleasectl show` (DHCP leases if server is running)
+      - `wg show` (WireGuard status if configured)
+      - `unbound-control stats` (DNS resolver stats if running)
+- [ ] Feed live output through each parser, verify no panics or errors
+      on valid data.
+- [ ] Compare parsed structures against expected values where deterministic
+      (e.g., interface names, IP addresses that can be verified).
+- [ ] Store captured output as new test fixtures for regression testing.
+- [ ] Run as part of a CI job on an OpenBSD VM (at minimum on each new
+      OpenBSD release, ideally on every PR).
+- [ ] Include edge cases triggered by real usage: busy state tables,
+      many interfaces, complex pf rulesets, IPv6-heavy configurations.
+- [ ] Test config generators by: generating config from current model,
+      validating with `pfctl -nf -`, comparing against actual system config.
+- [ ] Document any differences between test VM and production systems
+      (services not running, minimal config, etc.) that affect coverage.
+
 ## Direction change (appliance UI)
 
 Decided: the user never edits config files. One model file
@@ -22,8 +221,11 @@ generated files as its outputs.
       htmx templates in `internal/web` once the API exists.
 - [ ] Hand-edited generated files: detect and warn before overwriting.
 - [ ] First-boot setup wizard (WAN, LAN, admin password).
-- [ ] Import an existing hand-written system into the model, or state
-      clearly that OPF takes over a fresh install.
+- [ ] **Config import parsers** (see principle 4): parse existing
+      `pf.conf`, `hostname.if`, `dhcpd.conf`, `unbound.conf`, etc. into
+      the OPF model. Must handle hand-written configs with comments,
+      includes, macros, and features OPF doesn't fully support (preserve
+      as raw blocks). Golden-file tests against real-world configs.
 - [ ] Live data (interface stats, states, leases, WireGuard peers, pf
       log) from the parsers in `legacy/`.
 
@@ -43,6 +245,10 @@ Reachable today only through raw rules or custom pf blocks:
 - [ ] A packet tester: "what happens to tcp 192.168.20.5 → 192.168.1.20:445?"
       evaluated against the ruleset.
 - [ ] IPv6: interfaces, NAT and rules are IPv4-first today.
+- [ ] Per-client traffic stats and graphs: pf only tracks bytes per
+      active connection (lost when closed) and per-interface aggregates.
+      Options: periodic state polling with aggregation by IP, pf rule
+      labels with accounting, or pflow(4) NetFlow export to a collector.
 
 ## Verify on real OpenBSD
 
@@ -107,14 +313,86 @@ skipped and the web process isn't dropped to another user.
 - [ ] Newly created parent directories get 0755; check what each managed
       path expects.
 
+## Development and cross-platform testing
+
+OPF targets OpenBSD exclusively, but development and testing should be
+possible on any platform. This requires mocking the OpenBSD-specific
+backends so the UI, API, and business logic can be tested without a
+real OpenBSD system.
+
+### Mock backend for non-OpenBSD platforms
+
+- [ ] `--mock` flag that enables a mock backend instead of real system
+      commands. Useful for UI development on macOS/Linux and CI testing.
+- [ ] Mock `config.Manager` implementation that:
+      - Returns pre-defined sample data for all queries
+      - Accepts stages/commits without running real validators
+      - Simulates the confirm/revert workflow with timers
+      - Logs what commands *would* have run for debugging
+- [ ] Mock data fixtures:
+      - Sample pf states, rules, and info from a realistic firewall
+      - Sample interface configs (WAN with DHCP, LAN with static IP, VLANs)
+      - Sample DHCP leases and DNS stats
+      - Sample WireGuard peer status
+- [ ] Recorded response mode: capture real OpenBSD command output to files,
+      replay in mock mode. Allows testing against real data without OpenBSD.
+      - `opf --record /path/to/fixtures` captures live data
+      - `opf --mock --fixtures /path/to/fixtures` replays it
+- [ ] Mock validator responses: simulate `pfctl -nf` validation results,
+      including realistic error messages for invalid configs.
+- [ ] Time simulation for confirm/revert testing: allow fast-forwarding
+      the confirmation timeout in mock mode.
+- [ ] API-only mock mode: `opf --mock --api-only` starts just the JSON API
+      without serving the UI, for frontend development with `npm run dev`.
+- [ ] Document mock mode limitations: what differs from real OpenBSD
+      behavior (no actual network changes, no real file writes, etc.).
+
+### Frontend development workflow
+
+- [ ] `npm run dev` in `ui/` should work standalone with API calls proxied
+      to a mock backend or a real OPF instance.
+- [ ] Vite proxy config to forward `/api/*` to the Go backend.
+- [ ] Hot reload for UI development without rebuilding the Go binary.
+- [ ] Storybook or similar for developing components in isolation.
+
 ## Code
 
-- [ ] Port monitoring parsers from `legacy/server` (pf states, rules,
-      info, interfaces, `ifconfig wg`, `rcctl`) with golden tests on
-      captured output; they index fields by position and crash on
-      unexpected input. Delete `legacy/` afterwards.
+- [ ] **Rewrite monitoring parsers** from scratch, using `legacy/server`
+      only as a reference. The legacy parsers index fields by position
+      and crash on unexpected input—they are not safe to port directly.
+      New parsers must:
+      - Handle all valid output from each command (`pfctl -s states`,
+        `pfctl -s rules`, `pfctl -s info`, `ifconfig`, `rcctl`, etc.)
+      - Return errors on malformed input, never panic or produce garbage
+      - Have golden-file tests against real captured output from multiple
+        OpenBSD versions
+      - Be fuzz-tested where practical
+      Delete `legacy/` only after the new parsers are complete and tested.
+- [ ] Per-rule stats over time: the UI shows live counters but there's
+      no historical data or graphing. Needs periodic polling and storage
+      to graph evaluations/packets/bytes per rule.
 - [ ] `privsep.Client.Pending` drops RPC errors; the banner shows nothing
       if the parent is unreachable.
 - [ ] `golang.org/x/sys` is pinned to v0.44.0 to keep Go 1.25; revisit
       when OpenBSD packages Go 1.26.
 - [ ] CI running `make test`, plus GOOS=openbsd vet/build.
+- [ ] `myname` and `mygate` are generated but not in the registry—need
+      managed file entries or generate them outside the commit flow.
+- [ ] URL-type alias tables need a refresh mechanism (cron-like, or on
+      demand) to re-fetch and reload the table files.
+- [ ] WireGuard private key storage: currently a placeholder in the
+      hostname.if generator; needs secure storage and key generation.
+- [ ] `resolv.conf` not handled; DNS client config isn't generated or
+      managed (OpenBSD uses /etc/resolv.conf.tail with resolvd).
+- [ ] `lib/ip.ts` is IPv4-only—needs `isIPv6()`, v6 CIDR validation, and
+      `network()`/`netmask()` equivalents for IPv6.
+- [ ] Generators are IPv4-first: `automaticNat()` only emits `inet` rules,
+      `unboundConf()` only adds IPv4 access-control entries.
+- [ ] DHCP gateway handling in `mygate`: generator skips it when the
+      default gateway is DHCP; dhclient handles this differently.
+- [ ] Frontend tests: no UI test coverage exists.
+- [ ] File locking: no guard against two OPF instances running at once.
+- [ ] Graceful shutdown: document/verify that SIGTERM waits for pending
+      operations and reverts unconfirmed commits.
+- [ ] Backup/restore: no way to export/import the config.json model for
+      disaster recovery or migration.

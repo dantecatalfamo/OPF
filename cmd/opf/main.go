@@ -103,7 +103,9 @@ func main() {
 func serveWeb() {
 	log.SetPrefix("opf web: ")
 	err := privsep.RunChild(func(m config.Manager, ln net.Listener) error {
-		srv, err := web.New(m)
+		// Model path is empty for now - model management will be
+		// added via RPC to the parent process later.
+		srv, err := web.New(m, "")
 		if err != nil {
 			return err
 		}
