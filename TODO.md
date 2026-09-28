@@ -38,7 +38,7 @@ break connectivity. Every feature must be:
      the admin, preserve the raw config, don't silently drop rules.
    - First-run wizard that detects existing configs and offers import.
 
-4. **Validated against OpenBSD.** Every parser, generator, and system
+5. **Validated against OpenBSD.** Every parser, generator, and system
    integration must be validated against the latest OpenBSD documentation
    and source code. This means:
    - Parsers must handle output formats documented in the relevant man
@@ -53,6 +53,93 @@ break connectivity. Every feature must be:
      behavior.
    - Link to authoritative sources in code comments where format details
      are non-obvious.
+
+## Where things stand (2026-09-28)
+
+- **Go, working and tested:** staging, check, commit with confirm and
+  auto-revert, history, recovery at startup, privilege separation with
+  pledge/unveil (`internal/config`, `internal/privsep`). It stages raw
+  files, not the model.
+- **Go, new:** `internal/pf` has the model, generators for every file,
+  a pf tokenizer and parser (text back to guided rules), golden files
+  and fuzz targets. `internal/web/model.go` has a model API
+  (`/api/model`, `/preview`, `/apply`) plus parse/generate endpoints.
+- **Not connected yet:** `cmd/opf` passes an empty model path, so the
+  model API returns 500 in the real binary. The model lives in the web
+  process instead of the parent. The UI's confirm/revert is still
+  simulated in the browser.
+- **UI:** every page exists. It runs on sample data, except Apply, which
+  now calls the backend (see bugs below).
+- **Never run on OpenBSD.**
+
+## Next up
+
+In order. Each step has details further down.
+
+1. **Fix the bugs found in review** (next section), starting with the
+   parser hangs and model validation. Both are correctness and security
+   problems under the principles above.
+2. **Move the model into the parent.** The web process sends a model
+   over RPC; the parent validates it, generates every file, stages them
+   as one unit, and owns `config.json` (atomic write, 0600). Commit,
+   confirm and revert go through the same RPC, so the UI's countdown is
+   the backend's.
+3. **Make generated outputs first-class in the commit engine.** The file
+   registry becomes the set of generated files, including ones that come
+   and go (`hostname.vlan30`), with deletion. Apply order: interfaces,
+   routes, pf, services. Check the whole set before touching anything.
+4. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
+   generated files and the annotated ruleset from the API. Keep the
+   sample model as a shared JSON fixture for Go golden tests and for
+   the UI's mock mode.
+5. **Authentication and TLS**, enforced in the parent (see Security).
+6. **Run on OpenBSD** (see Verify on real OpenBSD). The `openbsd-dev`
+   host in the SSH config is a candidate; ask before using it.
+7. **Import** (principle 4): `ParsePfConf` plus importers for
+   `hostname.if`, `dhcpd.conf` and `unbound.conf`, then the first-run
+   wizard.
+8. **Live data:** new parsers for pfctl, ifconfig, leases, WireGuard and
+   pflog behind the API.
+
+## Bugs found in review (2026-09-28)
+
+- [ ] **Parser hangs.** 20 seconds of fuzzing finds an infinite loop in
+      each target. Inputs are saved outside the repo; they need
+      committing as regression cases once the loops are fixed (as seed
+      inputs today they'd make `go test` hang):
+      - `FuzzParseRule`: `pass in log (all) on { $wan \x00lan } from
+        $lan:network to any` loops in `parseInterfaceList`
+        (`parser.go:533` → `:553`) on an unexpected token.
+      - `FuzzParsePfConf` and `FuzzTokenize`: invalid UTF-8 loops in the
+        tokenizer (`tokenizer.go:308` → `:473`).
+      Every parse loop needs a guaranteed advance or an error.
+- [ ] **No model validation.** Nothing checks the model before
+      generating. Alias names, interface ids and devices, hostnames,
+      domains, reservation names and addresses are written into pf.conf,
+      hostname.if, dhcpd.conf and unbound.conf unchecked, so a crafted
+      value can inject configuration. Labels are safer (Go `%q`).
+      Validate every field in the parent (characters, length, references
+      to other objects); raw pf rules are the only intended exception.
+- [ ] **Outbound rules never match.** Both generators emit
+      `pass out quick inet` before user rules (`internal/pf/generate.go:602`,
+      `ui/src/model/generate.ts:265`), so outbound rules such as the
+      sample's floating `match out … set prio 6` are never reached. Use a
+      non-quick `pass out`.
+- [ ] **`/api/model/apply` fails for any model with interfaces.** It
+      stages `hostname.<dev>`, which isn't in the config registry, so the
+      check returns "unknown file".
+- [ ] **Apply isn't atomic.** Files are checked and staged one at a time;
+      a failure part-way leaves some staged and the model unsaved.
+- [ ] **The model lives in the web process.** `ModelManager` writes
+      `config.json` from the unprivileged side, non-atomically, mode
+      0644. Belongs in the parent (Next up, step 2).
+- [ ] **The mock UI can't apply.** The store requires
+      `/api/model/apply`, so apply fails under `npm run dev` and in the
+      shared preview. Needs a mock mode (see Mock backend).
+- [ ] **Confirm is client-side only.** Keep and revert don't reach the
+      backend; the backend never loads anything today.
+- [ ] **Unbounded request bodies** on every `/api/*` endpoint
+      (`io.ReadAll`); use `http.MaxBytesReader`.
 
 ## Testing
 
@@ -210,15 +297,18 @@ is generated from it; the UI is React + Mantine (`ui/`), served by the
 Go binary. The staging/commit/confirm/history engine stays, with
 generated files as its outputs.
 
-- [ ] Go: config model types matching `ui/src/model/types.ts`, and
+- [x] Go: config model types matching `ui/src/model/types.ts`, and
       generators for pf.conf, hostname.if, dhcpd.conf, unbound.conf,
-      myname and ntpd.conf (`ui/src/model/generate.ts` is the draft).
-      Golden-file tests for each generator.
+      myname and ntpd.conf (`internal/pf`). Golden files cover the pf
+      parser; the other generators still need golden tests, and
+      rc.conf.local isn't generated at all.
 - [ ] Stage the model instead of raw files; Changes becomes a list of
       readable change summaries, with generated-file diffs as detail.
 - [ ] JSON API for the UI, replacing the mock store in
       `ui/src/model/store.tsx`; embed `ui/dist` in the binary. Remove the
-      htmx templates in `internal/web` once the API exists.
+      htmx templates in `internal/web` once the API exists. Started:
+      model, preview, apply and parse/generate endpoints exist but aren't
+      connected (see Where things stand).
 - [ ] Hand-edited generated files: detect and warn before overwriting.
 - [ ] First-boot setup wizard (WAN, LAN, admin password).
 - [ ] **Config import parsers** (see principle 4): parse existing
@@ -245,6 +335,15 @@ Reachable today only through raw rules or custom pf blocks:
 - [ ] A packet tester: "what happens to tcp 192.168.20.5 → 192.168.1.20:445?"
       evaluated against the ruleset.
 - [ ] IPv6: interfaces, NAT and rules are IPv4-first today.
+- [ ] rc.conf.local generation: enabling DHCP, DNS or WireGuard must set
+      `dhcpd_flags` (with the interface list), `unbound_flags` and so on,
+      applied with rcctl.
+- [ ] Anti-lockout ports (443, 22) are hard-coded; derive them from the
+      web UI and sshd settings.
+- [ ] NAT reflection is added on every inside interface; limit it to the
+      ones that need it.
+- [ ] Check whether reloading pf empties `persist` tables such as
+      `<bruteforce>`; if so, save and restore their contents.
 - [ ] Per-client traffic stats and graphs: pf only tracks bytes per
       active connection (lost when closed) and per-interface aggregates.
       Options: periodic state polling with aggregation by IP, pf rule
@@ -391,6 +490,16 @@ real OpenBSD system.
 - [ ] DHCP gateway handling in `mygate`: generator skips it when the
       default gateway is DHCP; dhclient handles this differently.
 - [ ] Frontend tests: no UI test coverage exists.
+- [ ] UI gaps: deleting VLANs and interfaces (and their `hostname.*`
+      files); a Services page (rcctl status, start/stop); sign-in page;
+      real actions behind placeholders (change password, syspatch,
+      backup download/restore); diagnostics tools (ping, traceroute, DNS
+      lookup, `pfctl -k`); showing that editing is blocked while a
+      commit waits for confirmation; a version on the staged model so
+      two admins can't silently overwrite each other; splitting the
+      1.6 MB bundle by page.
+- [ ] Delete the stale Dependabot branches on origin; they target the
+      old `ui/`.
 - [ ] File locking: no guard against two OPF instances running at once.
 - [ ] Graceful shutdown: document/verify that SIGTERM waits for pending
       operations and reverts unconfirmed commits.
