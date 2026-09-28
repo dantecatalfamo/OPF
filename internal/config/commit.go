@@ -71,6 +71,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 			if err := writeFileAtomic(s.historyFile(e.ID, "old", f.Path), old, 0600); err != nil {
 				return nil, err
 			}
+			s.logFile("snapshot", f, s.historyFile(e.ID, "old", f.Path), "restore point before commit "+e.ID)
 		}
 		staged, _, err := s.staged(f)
 		if err != nil {
@@ -79,6 +80,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 		if err := writeFileAtomic(s.historyFile(e.ID, "new", f.Path), staged, 0600); err != nil {
 			return nil, err
 		}
+		s.logFile("snapshot", f, s.historyFile(e.ID, "new", f.Path), "contents of commit "+e.ID)
 		e.Files = append(e.Files, EntryFile{Name: f.Name, Path: f.Path, Existed: existed, Confirm: f.Confirm})
 	}
 	// Written before anything live changes, so an interrupted commit
@@ -130,6 +132,7 @@ func (s *Store) Commit(ctx context.Context) (*Entry, error) {
 	}
 
 	for _, c := range changes {
+		s.logFile("clear", c.File, s.candidatePath(c.File), "used by commit "+e.ID)
 		if err := s.discard(c.File); err != nil {
 			log.Printf("config: clearing staged %s: %v", c.File.Name, err)
 		}

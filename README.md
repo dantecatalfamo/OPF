@@ -26,10 +26,17 @@ installs, restores or removes is logged with the path it would have on
 the real system and where it actually went:
 
 ```
-file: stage   /etc/hostname.vlan30 -> <scratch>/state/candidate/etc/hostname.vlan30 (new file)
-file: install /etc/hostname.vlan30 -> <scratch>/root/etc/hostname.vlan30 (commit …, new file, mode 0640)
-file: restore /var/unbound/etc/unbound.conf -> <scratch>/root/var/unbound/etc/unbound.conf (reverting commit …)
+file: stage    /etc/hostname.vlan30 -> <scratch>/state/candidate/etc/hostname.vlan30 (new file)
+file: install  /etc/hostname.vlan30 -> <scratch>/root/etc/hostname.vlan30 (commit …, new file, mode 0640)
+file: restore  /var/unbound/etc/unbound.conf -> <scratch>/root/var/unbound/etc/unbound.conf (reverting commit …)
 ```
+
+The operations on the system's files are `stage`, `unstage`,
+`install`, `restore` and `remove`. OPF's own bookkeeping is logged too:
+`check` (temporary copy for a validator), `index` (the staging index),
+`snapshot` (a commit's restore point and contents), `record` (a
+commit's history entry and status) and `clear` (staged copies a commit
+has used), so `grep -v` can hide it.
 
 The UI's Apply only stages files for now; committing goes through the
 old page at /changes on the mock's address. Vite proxies `/api` to

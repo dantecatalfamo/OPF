@@ -61,7 +61,12 @@ func (s *Store) saveEntry(e *Entry) error {
 	if err != nil {
 		return err
 	}
-	return writeFileAtomic(filepath.Join(s.historyDir(e.ID), "manifest.json"), data, 0600)
+	path := filepath.Join(s.historyDir(e.ID), "manifest.json")
+	if err := writeFileAtomic(path, data, 0600); err != nil {
+		return err
+	}
+	s.logPath("record", "", path, fmt.Sprintf("commit %s, %s", e.ID, e.Status))
+	return nil
 }
 
 // Entry loads one history entry.

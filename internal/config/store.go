@@ -272,6 +272,9 @@ func (s *Store) discard(f File) error {
 	if err != nil {
 		return err
 	}
+	if _, ok := bases[f.Name]; !ok {
+		return nil // wasn't staged; leave the index alone
+	}
 	delete(bases, f.Name)
 	return s.writeBases(bases)
 }
@@ -291,14 +294,26 @@ func (s *Store) DiscardAll() error {
 	return nil
 }
 
-// logFile reports a file operation to the FileLog, if there is one.
+// logFile reports an operation on a managed file to the FileLog, if
+// there is one: its path on the real system, then where it went.
 func (s *Store) logFile(op string, f File, path, note string) {
+	s.logPath(op, f.Path, path, note)
+}
+
+// logPath reports a file operation. real is the path on the real system
+// the file stands for, or "" for OPF's own bookkeeping files.
+func (s *Store) logPath(op, real, path, note string) {
 	if s.fileLog == nil {
 		return
 	}
-	msg := fmt.Sprintf("file: %-7s %s", op, f.Path)
-	if path != f.Path {
-		msg += " -> " + path
+	msg := fmt.Sprintf("file: %-8s ", op)
+	switch {
+	case real == "":
+		msg += path
+	case path == real:
+		msg += real
+	default:
+		msg += real + " -> " + path
 	}
 	if note != "" {
 		msg += " (" + note + ")"
@@ -375,6 +390,7 @@ func (s *Store) CheckContent(ctx context.Context, name string, data []byte) (out
 	if err != nil {
 		return "", false, err
 	}
+	s.logFile("check", f, tmp.Name(), "temporary copy for the checker, removed after")
 	defer os.Remove(tmp.Name())
 	if _, err := tmp.Write(normalize(data)); err != nil {
 		tmp.Close()
@@ -401,7 +417,11 @@ func (s *Store) writeBases(m map[string]string) error {
 	if err != nil {
 		return err
 	}
-	return writeFileAtomic(s.basePath(), data, 0600)
+	if err := writeFileAtomic(s.basePath(), data, 0600); err != nil {
+		return err
+	}
+	s.logPath("index", "", s.basePath(), fmt.Sprintf("staging index, %d staged", len(m)))
+	return nil
 }
 
 // Diff returns a unified diff between two files, either of which may be

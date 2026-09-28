@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -479,14 +480,26 @@ func TestFileLog(t *testing.T) {
 	got := buf.String()
 	cand := func(p string) string { return filepath.Join(s.dir, "candidate", p) }
 	live := func(p string) string { return filepath.Join(root, p) }
+	op := func(name string) string { return fmt.Sprintf("file: %-8s ", name) }
 	for _, want := range []string{
-		"file: stage   /etc/pf.conf -> " + cand("/etc/pf.conf") + "\n",
-		"file: stage   /etc/rc.conf.local -> " + cand("/etc/rc.conf.local") + " (new file)\n",
-		"file: unstage /etc/ntpd.conf -> " + cand("/etc/ntpd.conf") + " (same as the live file)\n",
-		"file: install /etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (commit ",
+		op("stage") + "/etc/pf.conf -> " + cand("/etc/pf.conf") + "\n",
+		op("stage") + "/etc/rc.conf.local -> " + cand("/etc/rc.conf.local") + " (new file)\n",
+		op("unstage") + "/etc/ntpd.conf -> " + cand("/etc/ntpd.conf") + " (same as the live file)\n",
+		op("install") + "/etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (commit ",
 		", new file, mode 0644)\n",
-		"file: install /etc/pf.conf -> " + live("/etc/pf.conf") + " (confirmed commit ",
-		"file: restore /etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (reverting commit ",
+		op("install") + "/etc/pf.conf -> " + live("/etc/pf.conf") + " (confirmed commit ",
+		op("restore") + "/etc/rc.conf.local -> " + live("/etc/rc.conf.local") + " (reverting commit ",
+		// bookkeeping
+		op("index") + filepath.Join(s.dir, "candidate", "base.json") + " (staging index, 1 staged)\n",
+		op("snapshot") + "/etc/pf.conf -> " + filepath.Join(s.dir, "history"),
+		"/old/etc/pf.conf (restore point before commit ",
+		"/new/etc/rc.conf.local (contents of commit ",
+		op("record") + filepath.Join(s.dir, "history"),
+		"/manifest.json (commit ",
+		", applying)\n",
+		", confirmed)\n",
+		", reverted)\n",
+		op("clear") + "/etc/rc.conf.local -> " + cand("/etc/rc.conf.local") + " (used by commit ",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("file log missing %q:\n%s", want, got)
@@ -495,5 +508,20 @@ func TestFileLog(t *testing.T) {
 	// Clearing the candidate after a commit isn't reported as unstaging.
 	if n := strings.Count(got, "unstage"); n != 1 {
 		t.Errorf("%d unstage lines, want 1:\n%s", n, got)
+	}
+}
+
+func TestFileLogCheck(t *testing.T) {
+	var buf bytes.Buffer
+	s, err := New(Options{StateDir: t.TempDir(), Files: testFiles, Runner: &fakeRunner{}, FileLog: log.New(&buf, "", 0)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.CheckContent(context.Background(), "pf", []byte("pass\n")); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("file: %-8s /etc/pf.conf -> %s", "check", filepath.Join(s.dir, "tmp", "pf."))
+	if !strings.Contains(buf.String(), want) || !strings.Contains(buf.String(), "(temporary copy for the checker, removed after)") {
+		t.Errorf("got %q, want %q…", buf.String(), want)
 	}
 }
