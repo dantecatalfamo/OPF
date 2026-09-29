@@ -656,7 +656,8 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	}
 
 	settings := &Origin{Label: "Firewall settings", To: "/firewall/settings"}
-	custom := &Origin{Label: "Custom pf", To: "/firewall/ruleset"}
+	// The custom pf editor is a drawer on the Ruleset page.
+	custom := &Origin{Label: "Custom pf", To: "/firewall/ruleset?edit=custom"}
 
 	add(header, nil)
 	blank()

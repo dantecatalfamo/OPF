@@ -290,7 +290,8 @@ export function pfRuleset(m: Model): PfLine[] {
   const wan = ifaces.find((i) => i.role === 'wan');
   const lan = ifaces.find((i) => i.role === 'lan');
   const settings: Origin = { label: 'Firewall settings', to: '/firewall/settings' };
-  const custom: Origin = { label: 'Custom pf', to: '/firewall/ruleset' };
+  // The custom pf editor is a drawer on the Ruleset page.
+  const custom: Origin = { label: 'Custom pf', to: '/firewall/ruleset?edit=custom' };
 
   add(header);
   blank();

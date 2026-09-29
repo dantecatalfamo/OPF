@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Anchor, Box, Button, Card, CopyButton, Drawer, Group, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconCopy, IconPencil, IconSearch } from '@tabler/icons-react';
@@ -57,7 +57,16 @@ export function Ruleset() {
   const { staged, pendingSections } = useStore();
   const lines = useMemo(() => pfRuleset(staged), [staged]);
   const [q, setQ] = useState('');
-  const [editing, setEditing] = useState(false);
+  // ?edit=custom, from a custom pf line's link, opens the editor.
+  const [params, setParams] = useSearchParams();
+  const editing = params.get('edit') === 'custom';
+  const setEditing = (open: boolean) =>
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      if (open) next.set('edit', 'custom');
+      else next.delete('edit');
+      return next;
+    });
   const text = lines.map((l) => l.text).join('\n');
   const shown = lines.map((l, i) => ({ ...l, n: i + 1 })).filter((l) => !q || l.text.toLowerCase().includes(q.toLowerCase()) || l.origin?.label.toLowerCase().includes(q.toLowerCase()));
 
