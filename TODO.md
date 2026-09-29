@@ -1181,6 +1181,17 @@ refuses non-loopback addresses.
       commit waits for confirmation; a version on the staged model so
       two admins can't silently overwrite each other; splitting the
       1.6 MB bundle by page.
+- [ ] Responsive design: the UI must be usable on all common screen
+      sizes, from large desktop monitors down to phones. Admins may need
+      to check status or make urgent changes from a mobile device.
+      - Test on common breakpoints: phone (375px), tablet (768px),
+        laptop (1024px), desktop (1440px+)
+      - Tables should scroll horizontally or collapse to cards on mobile
+      - Navigation should collapse to hamburger menu (already does)
+      - Forms should stack vertically on narrow screens
+      - Touch targets should be large enough (44px minimum)
+      - Critical actions (apply, confirm, revert) must work on mobile
+      - Dashboard should remain useful on phone screens
 - [ ] Delete the stale Dependabot branches on origin; they target the
       old `ui/`.
 - [ ] File locking: no guard against two OPF instances running at once.
