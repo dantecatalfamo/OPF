@@ -52,25 +52,34 @@ func TestLeaseNames(t *testing.T) {
 	if err != nil || !n.Enabled || n.Checked == nil || n.Error != "" {
 		t.Fatalf("%+v, %v", n, err)
 	}
-	if len(n.Registered) != 1 || n.Registered[0] != (LeaseName{"laptop.office.arpa", "192.168.1.101"}) {
-		t.Errorf("registered %+v", n.Registered)
+	// With sanitization, invalid hostnames are now cleaned up and registered.
+	// The bidi override, control char, and invalid UTF-8 get stripped, leaving valid labels.
+	regByIP := map[string]string{}
+	for _, r := range n.Registered {
+		regByIP[r.IP] = r.Name
 	}
+	for ip, want := range map[string]string{
+		"192.168.1.101": "laptop.office.arpa",
+		"192.168.1.102": "gpjexe.office.arpa",                                           // bidi char stripped
+		"192.168.1.103": "bell.office.arpa",                                             // control char stripped
+		"192.168.1.104": "caf.office.arpa",                                              // invalid UTF-8 stripped
+		"192.168.1.105": strings.Repeat("x", 63) + ".office.arpa",                       // truncated to 63
+	} {
+		if regByIP[ip] != want {
+			t.Errorf("%s: registered %q, want %q", ip, regByIP[ip], want)
+		}
+	}
+	if len(n.Registered) != 5 {
+		t.Errorf("registered %d names, want 5: %+v", len(n.Registered), n.Registered)
+	}
+
+	// The bad names (with spaces) in other ranges are still refused.
 	byIP := map[string]string{}
 	for _, r := range n.Refused {
 		if !utf8.ValidString(r.Hostname) || strings.ContainsFunc(r.Hostname, func(c rune) bool { return !unicode.IsPrint(c) && c != utf8.RuneError }) {
 			t.Errorf("hostname %q isn't safe to show", r.Hostname)
 		}
 		byIP[r.IP] = r.Hostname
-	}
-	for ip, want := range map[string]string{
-		"192.168.1.102": "\ufffdgpj.exe",
-		"192.168.1.103": "bell\ufffd",
-		"192.168.1.104": "caf\ufffd",
-		"192.168.1.105": strings.Repeat("x", MaxHostnameRunes) + "…",
-	} {
-		if byIP[ip] != want {
-			t.Errorf("%s: hostname %q, want %q", ip, byIP[ip], want)
-		}
 	}
 	if len(n.Refused) != MaxLeaseNames || !n.Truncated {
 		t.Errorf("%d refused, truncated %v; want %d and true", len(n.Refused), n.Truncated, MaxLeaseNames)
@@ -128,7 +137,8 @@ lease 10.99.0.1 { ends %[2]s; client-hostname "%[4]s"; }
 	if d := got["192.168.20.117"]; d.Iface != "iot" || d.MAC != "d8:f1:5b:8e:22:90" || d.DNSName != "tv-lobby.office.arpa" || d.Ends == nil || d.Starts == nil {
 		t.Errorf("tv-lobby: %+v", d)
 	}
-	if d := got["192.168.1.112"]; d.Iface != "lan" || d.Hostname != "Priya's iPad" || d.DNSName != "" || d.DNSRefused != "not a valid host name" {
+	// "Priya's iPad" gets sanitized to "priyas-ipad" and registered.
+	if d := got["192.168.1.112"]; d.Iface != "lan" || d.Hostname != "Priya's iPad" || d.DNSName != "priyas-ipad.office.arpa" || d.DNSRefused != "" {
 		t.Errorf("Priya's iPad: %+v", d)
 	}
 	if d := got["192.168.1.113"]; d.Ends != nil || d.Hostname != "" || d.DNSName != "" || d.DNSRefused != "" {

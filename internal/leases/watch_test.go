@@ -44,11 +44,11 @@ func TestUnbound(t *testing.T) {
 	ctx := context.Background()
 
 	got, err := u.List(ctx)
-	want := []Record{{"gw.office.arpa.", netip.MustParseAddr("192.168.1.1")}, {"laptop.office.arpa.", netip.MustParseAddr("192.168.1.101")}}
+	want := []Record{{Name: "gw.office.arpa.", IP: netip.MustParseAddr("192.168.1.1")}, {Name: "laptop.office.arpa.", IP: netip.MustParseAddr("192.168.1.101")}}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("List = %+v, %v", got, err)
 	}
-	if err := u.Add(ctx, Record{"phone.office.arpa.", netip.MustParseAddr("192.168.1.102")}); err != nil {
+	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}); err != nil {
 		t.Fatal(err)
 	}
 	if err := u.Remove(ctx, "phone.office.arpa."); err != nil {
@@ -66,11 +66,11 @@ func TestUnbound(t *testing.T) {
 	// Names that didn't come from Records never reach unbound-control.
 	f.calls = nil
 	for _, name := range []string{"phone.office.arpa", "a b.office.arpa.", "x.office.arpa.\n", "phone.", ".", "a..b."} {
-		if u.Add(ctx, Record{name, netip.MustParseAddr("192.168.1.102")}) == nil || u.Remove(ctx, name) == nil {
+		if u.Add(ctx, Record{Name: name, IP: netip.MustParseAddr("192.168.1.102")}) == nil || u.Remove(ctx, name) == nil {
 			t.Errorf("accepted %q", name)
 		}
 	}
-	if u.Add(ctx, Record{"phone.office.arpa.", netip.MustParseAddr("fe80::1")}) == nil {
+	if u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("fe80::1")}) == nil {
 		t.Error("accepted an IPv6 address for an A record")
 	}
 	if len(f.calls) != 0 {
@@ -78,7 +78,7 @@ func TestUnbound(t *testing.T) {
 	}
 
 	f.reply = "error name not in zone\n"
-	if err := u.Add(ctx, Record{"phone.office.arpa.", netip.MustParseAddr("192.168.1.102")}); err == nil {
+	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}); err == nil {
 		t.Error("an unexpected reply wasn't an error")
 	}
 	f.err = errors.New("exit status 1")
@@ -148,12 +148,12 @@ func TestWatcher(t *testing.T) {
 
 	// Records from the configuration are in unbound too; they're never
 	// touched, even when a lease claims the name.
-	e.dns.Add(ctx, Record{"gw.office.arpa.", netip.MustParseAddr("192.168.1.1")})
-	e.dns.Add(ctx, Record{"wiki.office.arpa.", netip.MustParseAddr("192.168.1.25")})
+	e.dns.Add(ctx, Record{Name: "gw.office.arpa.", IP: netip.MustParseAddr("192.168.1.1")})
+	e.dns.Add(ctx, Record{Name: "wiki.office.arpa.", IP: netip.MustParseAddr("192.168.1.25")})
 	// Records in other zones aren't ours either.
-	e.dns.Add(ctx, Record{"host.example.com.", netip.MustParseAddr("10.0.0.1")})
+	e.dns.Add(ctx, Record{Name: "host.example.com.", IP: netip.MustParseAddr("10.0.0.1")})
 	// One left over from before a restart, or added by hand, is.
-	e.dns.Add(ctx, Record{"stale.office.arpa.", netip.MustParseAddr("192.168.1.199")})
+	e.dns.Add(ctx, Record{Name: "stale.office.arpa.", IP: netip.MustParseAddr("192.168.1.199")})
 
 	e.leases("192.168.1.101", "laptop", "192.168.1.102", "phone", "192.168.1.103", "gw")
 	e.sync()

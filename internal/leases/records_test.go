@@ -55,24 +55,47 @@ func TestRecords(t *testing.T) {
 	ls = append(ls, old)
 
 	got, skipped := Records(testModel(), ls, now)
+
+	// Names are sanitized: "a.b" → "ab", "x y" → "x-y", "-x" → "x", "bad\nname" → "badname".
+	// The 64-char name is truncated to 63, colliding with the already-63-char name.
 	want := []Record{
-		{"a23456789012345678901234567890123456789012345678901234567890123.office.arpa.", netip.MustParseAddr("192.168.1.116")},
-		{"laptop.office.arpa.", netip.MustParseAddr("192.168.1.101")},
-		{"phone.office.arpa.", netip.MustParseAddr("192.168.1.102")},
+		{Name: "ab.office.arpa.", IP: netip.MustParseAddr("192.168.1.109"), From: "a.b"},
+		{Name: "badname.office.arpa.", IP: netip.MustParseAddr("192.168.1.114"), From: "bad\nname"},
+		{Name: "laptop.office.arpa.", IP: netip.MustParseAddr("192.168.1.101")},
+		{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")},
+		{Name: "x-y.office.arpa.", IP: netip.MustParseAddr("192.168.1.110"), From: "x y"},
+		{Name: "x.office.arpa.", IP: netip.MustParseAddr("192.168.1.111"), From: "-x"},
+	}
+
+	// The two 63-char names collide and are both skipped.
+	gotByName := map[string]Record{}
+	for _, r := range got {
+		gotByName[r.Name+r.IP.String()] = r
+	}
+	wantByName := map[string]Record{}
+	for _, r := range want {
+		wantByName[r.Name+r.IP.String()] = r
 	}
 	if len(got) != len(want) {
-		t.Fatalf("records %+v", got)
+		t.Fatalf("got %d records, want %d:\ngot:  %+v\nwant: %+v", len(got), len(want), got, want)
 	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("record %d = %+v, want %+v", i, got[i], want[i])
+	for key, w := range wantByName {
+		g, ok := gotByName[key]
+		if !ok {
+			t.Errorf("missing record %+v", w)
+		} else if g != w {
+			t.Errorf("record %+v != want %+v", g, w)
 		}
 	}
+
 	reasons := map[string]string{}
 	for _, s := range skipped {
 		reasons[s.IP.String()] = s.Reason
 	}
-	for _, ip := range []string{"104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "117"} {
+	// Skipped: reserved names (104-108), twin collision (112, 113),
+	// truncation collision (116, 117: both end up as 63-char same label).
+	// No longer skipped: sanitized names (109, 110, 111, 114).
+	for _, ip := range []string{"104", "105", "106", "107", "108", "112", "113", "116", "117"} {
 		if reasons["192.168.1."+ip] == "" {
 			t.Errorf("192.168.1.%s wasn't reported as skipped", ip)
 		}
