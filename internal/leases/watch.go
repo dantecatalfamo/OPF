@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/netip"
-	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -164,21 +162,7 @@ func (w *Watcher) Sync(ctx context.Context) error {
 	return nil
 }
 
-func (w *Watcher) read() ([]Lease, error) {
-	f, err := os.Open(w.File)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil // dhcpd hasn't run yet
-	} else if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	leases, err := Parse(f)
-	if err != nil {
-		// Leave the records as they are until the file is readable.
-		return nil, fmt.Errorf("%s: %w", w.File, err)
-	}
-	return leases, nil
-}
+func (w *Watcher) read() ([]Lease, error) { return Read(w.File) }
 
 // reconcile adds and removes records so that the names in zone that
 // aren't the configuration's (static) are exactly want. Records in the

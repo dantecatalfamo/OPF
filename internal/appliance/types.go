@@ -31,6 +31,7 @@ type API interface {
 	Revert(id string) (*Commit, error)
 	CommitConfig(id string, which Which) (*Config, error)
 	LeaseNames() (*LeaseNames, error)
+	DHCPLeases() (*DHCPLeases, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -157,9 +158,34 @@ type RefusedName struct {
 	Reason   string `json:"reason"`
 }
 
-// Limits on what LeaseNames reports, whatever the leases file holds.
+// DHCPLeases is dhcpd's current leases, from its leases file.
+type DHCPLeases struct {
+	Leases []DHCPLease `json:"leases"` // by address
+	// Truncated says the list was cut to MaxLeases entries.
+	Truncated bool   `json:"truncated,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+type DHCPLease struct {
+	IP  string `json:"ip"`
+	MAC string `json:"mac,omitempty"`
+	// Hostname is what the device asked to be called, sanitized.
+	Hostname string     `json:"hostname,omitempty"`
+	Iface    string     `json:"iface,omitempty"` // the interface whose DHCP range holds it
+	Starts   *time.Time `json:"starts,omitempty"`
+	Ends     *time.Time `json:"ends,omitempty"` // absent: the lease doesn't end
+	// DNSName is the name the lease has in DNS; DNSRefused says why the
+	// name it asked for wasn't given. Both are empty when names from
+	// leases are off, or it didn't ask for one.
+	DNSName    string `json:"dnsName,omitempty"`
+	DNSRefused string `json:"dnsRefused,omitempty"`
+}
+
+// Limits on what LeaseNames and DHCPLeases report, whatever the leases
+// file holds.
 const (
 	MaxLeaseNames    = 1000
+	MaxLeases        = 5000
 	MaxHostnameRunes = 64
 )
 

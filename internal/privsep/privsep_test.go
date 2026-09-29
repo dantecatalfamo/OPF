@@ -143,6 +143,9 @@ func TestRPCRoundTrip(t *testing.T) {
 	if n, err := c.LeaseNames(); err != nil || n == nil || n.Registered == nil {
 		t.Fatalf("LeaseNames = %+v, %v", n, err)
 	}
+	if l, err := c.DHCPLeases(); err != nil || l == nil || l.Leases == nil {
+		t.Fatalf("DHCPLeases = %+v, %v", l, err)
+	}
 	back, err := c.CommitConfig(commit.ID, appliance.Before)
 	if err != nil || back.Model == nil {
 		t.Fatalf("CommitConfig = %+v, %v", back, err)

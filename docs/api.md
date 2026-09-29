@@ -162,6 +162,29 @@ This changes nothing. To restore it, stage it with `PUT
 /api/config/staged` and commit it, so it's validated and reviewed like
 any other change.
 
+### `GET /api/dhcp/leases`
+
+dhcpd's current leases, read from its leases file, by address.
+
+```json
+{
+  "leases": [{
+    "ip": "192.168.20.142", "mac": "02:00:00:00:00:04", "hostname": "Priya's iPad", "iface": "iot",
+    "starts": "2026-09-28T16:17:40Z", "ends": "2026-09-28T18:17:40Z",
+    "dnsRefused": "not a valid host name"
+  }],
+  "error": "dhcpd’s leases file couldn’t be read"
+}
+```
+
+`iface` is the interface whose DHCP range holds the address. `ends` is
+absent for a lease that doesn't end. `dnsName` is the name the lease
+has in DNS, and `dnsRefused` why it didn't get the one it asked for
+(both from the lease watcher's last pass; absent while names from
+leases are off). Hostnames are sanitized as below, and the list holds at
+most 5000 leases, with `truncated` set when there were more. Leases for
+reserved (fixed) addresses aren't in the file, so they aren't listed.
+
 ### `GET /api/dns/leases`
 
 What the DHCP lease watcher last did: the names dynamic leases have in

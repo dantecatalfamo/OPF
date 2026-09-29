@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/netip"
 	"slices"
 	"strings"
 	"sync"
@@ -75,6 +77,72 @@ func (m *Manager) LeaseNames() (*LeaseNames, error) {
 			break
 		}
 		out.Refused = append(out.Refused, RefusedName{r.IP.String(), displayable(r.Hostname), r.Reason})
+	}
+	return out, nil
+}
+
+// DHCPLeases returns dhcpd's current leases, each with the interface
+// whose DHCP range holds it and what became of the name it asked for.
+// Like LeaseNames it doesn't take the lock.
+func (m *Manager) DHCPLeases() (*DHCPLeases, error) {
+	out := &DHCPLeases{Leases: []DHCPLease{}}
+	if m.leases == nil {
+		return out, nil
+	}
+	all, err := leases.Read(m.leases.File)
+	if err != nil {
+		log.Printf("reading DHCP leases: %v", err)
+		out.Error = "dhcpd’s leases file couldn’t be read"
+		return out, nil
+	}
+	model, _, err := m.live()
+	if err != nil {
+		return nil, apiError(err)
+	}
+	type span struct {
+		lo, hi netip.Addr
+		iface  string
+	}
+	var ranges []span
+	if model != nil {
+		for _, s := range model.DHCP {
+			lo, err1 := netip.ParseAddr(s.RangeStart)
+			hi, err2 := netip.ParseAddr(s.RangeEnd)
+			if err1 == nil && err2 == nil {
+				ranges = append(ranges, span{lo, hi, s.Iface})
+			}
+		}
+	}
+	st := m.leases.State()
+	names, refused := map[netip.Addr]string{}, map[netip.Addr]string{}
+	for _, r := range st.Registered {
+		names[r.IP] = strings.TrimSuffix(r.Name, ".")
+	}
+	for _, r := range st.Refused {
+		refused[r.IP] = r.Reason
+	}
+
+	current := leases.Current(all, time.Now())
+	slices.SortFunc(current, func(a, b leases.Lease) int { return a.IP.Compare(b.IP) })
+	for _, l := range current {
+		if len(out.Leases) == MaxLeases {
+			out.Truncated = true
+			break
+		}
+		d := DHCPLease{IP: l.IP.String(), MAC: displayable(l.MAC), Hostname: displayable(l.Hostname), DNSName: names[l.IP], DNSRefused: refused[l.IP]}
+		for _, r := range ranges {
+			if l.IP.Compare(r.lo) >= 0 && l.IP.Compare(r.hi) <= 0 {
+				d.Iface = r.iface
+				break
+			}
+		}
+		if !l.Starts.IsZero() {
+			d.Starts = &l.Starts
+		}
+		if !l.Ends.IsZero() {
+			d.Ends = &l.Ends
+		}
+		out.Leases = append(out.Leases, d)
 	}
 	return out, nil
 }

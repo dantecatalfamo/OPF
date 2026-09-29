@@ -86,6 +86,24 @@ export interface LeaseNamesResource {
   error?: string;
 }
 
+/** dhcpd's current leases (GET /api/dhcp/leases), by address. */
+export interface DhcpLeasesResource {
+  leases: {
+    ip: string;
+    mac?: string;
+    /** What the device asked to be called; chosen by it, sanitized by the server. */
+    hostname?: string;
+    iface?: string;
+    starts?: string;
+    /** Absent: the lease doesn't end. */
+    ends?: string;
+    dnsName?: string;
+    dnsRefused?: string;
+  }[];
+  truncated?: boolean;
+  error?: string;
+}
+
 export interface StatusResource {
   live: string;
   staged?: string;
@@ -139,6 +157,7 @@ export const api = {
   /** The configuration before or after a commit. Restoring it is staging it. */
   commitConfig: (id: string, which: 'before' | 'after') => request<ConfigResource>('GET', `/commits/${enc(id)}/config/${which}`),
   leaseNames: () => request<LeaseNamesResource>('GET', '/dns/leases'),
+  dhcpLeases: () => request<DhcpLeasesResource>('GET', '/dhcp/leases'),
 
   /** pf rule text for a rule. */
   renderRule: async (rule: Rule, model?: Model): Promise<string> => {

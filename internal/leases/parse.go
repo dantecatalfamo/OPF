@@ -17,7 +17,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/netip"
+	"os"
 	"strings"
 	"time"
 )
@@ -43,6 +45,23 @@ type Lease struct {
 // Active reports whether the lease is current at now.
 func (l Lease) Active(now time.Time) bool {
 	return !l.Abandoned && (l.Ends.IsZero() || now.Before(l.Ends))
+}
+
+// Read reads a leases file. A missing one has no leases: dhcpd hasn't
+// run yet.
+func Read(path string) ([]Lease, error) {
+	f, err := os.Open(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	leases, err := Parse(f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return leases, nil
 }
 
 // Current returns the leases in effect at now, one per address. dhcpd

@@ -545,8 +545,31 @@ Types, roughly in order of usefulness:
 - [ ] IPv4 only; no names for SLAAC or DHCPv6 clients.
 - [x] Show registered and refused names in the UI: `GET /api/dns/leases`
       and "DHCP devices by name" on the DNS page.
-- [ ] The DHCP page's leases table still uses sample data; it could read
-      the leases file too and say which name each device got.
+- [x] The DHCP page's leases table reads the leases file
+      (`GET /api/dhcp/leases`) and says which name each device got.
+- [ ] **Naming a device yourself.** A device asking for an invalid name
+      ("Priya's iPad") or a taken one gets no DNS name. Options, best
+      first:
+      - A name the admin gives a lease from the leases table, used
+        instead of the one the device asked for. Trusted input, so no
+        guessing; keyed by MAC like reservations, so it has the same
+        weaknesses (MACs can be spoofed, and phones rotate private MACs
+        per network or over time, which loses the name). Could be
+        "Reserve and name" (the existing reservation, which also fixes
+        the address) or a name-only mapping.
+      - Optionally, a conservative automatic rewrite: lower-case, drop
+        apostrophes, turn spaces and underscores into hyphens, collapse
+        repeats, and refuse anything left that isn't ASCII
+        ("Priya's iPad" → "priyas-ipad"). It must run before every
+        existing check, so a rewritten name can't reach a reserved one
+        ("WPAD " → "wpad" is still refused) and two devices rewriting to
+        the same name still get neither. Show both ("priyas-ipad, from
+        “Priya's iPad”") so it's never surprising. Off by default.
+      - Not: punycode for non-ASCII names (unreadable), or guessing a
+        name from the MAC vendor.
+- [ ] Reserving an address from the leases table picks the lease's
+      address, which is inside the dynamic range. dhcpd can then hand it
+      to another device too; offer a free address outside the range.
 
 ## Staging and commit
 

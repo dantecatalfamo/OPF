@@ -206,6 +206,11 @@ func TestLeaseNames(t *testing.T) {
 	c := client{t, newServer(t)}
 	var n appliance.LeaseNames
 	c.do("GET", "/api/dns/leases", "", 200, &n)
+	var l appliance.DHCPLeases
+	c.do("GET", "/api/dhcp/leases", "", 200, &l)
+	if l.Leases == nil {
+		t.Errorf("the list should be empty, not missing: %+v", l)
+	}
 	if n.Registered == nil || n.Refused == nil {
 		t.Errorf("lists should be empty, not missing: %+v", n)
 	}

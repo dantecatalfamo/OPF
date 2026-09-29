@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ActionIcon, Badge, Button, Card, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconBookmark, IconPlus, IconTrash } from '@tabler/icons-react';
-import { newId, useStore } from '../model/store';
-import { leases } from '../model/live';
+import { IconAlertTriangle, IconBookmark, IconPlus, IconTrash } from '@tabler/icons-react';
+import { backend, newId, useStore } from '../model/store';
+import type { DhcpLeasesResource } from '../lib/api';
+import { useNow } from '../lib/useNow';
 import type { DhcpScope, Iface, Reservation } from '../model/types';
 import { inSubnet, isIPv4, isMAC, toInt } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
@@ -114,6 +115,30 @@ function ReservationModal({ opened, onClose, iface, scope, initial }: {
   );
 }
 
+// dhcpd's leases, from the server, refreshed while the page is open.
+function useDhcpLeases() {
+  const [data, setData] = useState<DhcpLeasesResource | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      backend.dhcpLeases().then(
+        (d) => { if (live) { setData(d); setFailed(null); } },
+        (e) => { if (live) setFailed(e instanceof Error ? e.message : String(e)); },
+      );
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+  return { data, failed };
+}
+
+function endsIn(ends: string | undefined, now: number): string {
+  if (!ends) return 'never';
+  const min = Math.max(0, Math.round((Date.parse(ends) - now) / 60_000));
+  return min >= 60 ? `in ${Math.floor(min / 60)} h` : `in ${min} min`;
+}
+
 export function Dhcp() {
   const { staged, edit } = useStore();
   const [params] = useSearchParams();
@@ -131,7 +156,9 @@ export function Dhcp() {
       return { ...m, dhcp: [...m.dhcp, { iface: iface.id, enabled: true, rangeStart: `${base}.100`, rangeEnd: `${base}.199`, leaseHours: 24, dns: 'self', dnsServers: [], reservations: [] }] };
     });
 
-  const ifaceLeases = leases.filter((l) => l.iface === iface.id);
+  const { data: leaseData, failed: leasesFailed } = useDhcpLeases();
+  const now = useNow(30_000);
+  const ifaceLeases = (leaseData?.leases ?? []).filter((l) => l.iface === iface.id);
 
   return (
     <>
@@ -187,6 +214,8 @@ export function Dhcp() {
               </Card>
               <Card>
                 <SectionTitle right={<Badge color="gray">{ifaceLeases.length} devices</Badge>}>Connected devices</SectionTitle>
+                {leasesFailed && <Alert color="red" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {leasesFailed}</Alert>}
+                {leaseData?.error && <Alert color="yellow" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>{leaseData.error}.</Alert>}
                 <Table.ScrollContainer minWidth={520}>
                   <Table highlightOnHover>
                     <Table.Thead>
@@ -201,19 +230,22 @@ export function Dhcp() {
                       {ifaceLeases.map((l) => {
                         const reserved = scope.reservations.some((r) => r.mac === l.mac);
                         return (
-                          <Table.Tr key={l.mac}>
+                          <Table.Tr key={l.ip}>
                             <Table.Td>
-                              <Text size="sm" fw={500}>{l.hostname}</Text>
-                              <Mono c="dimmed">{l.mac}</Mono>
+                              {/* The name is the device's own choice; shown as text, never markup. */}
+                              {l.hostname ? <Text size="sm" fw={500}>{l.hostname}</Text> : <Text size="sm" c="dimmed">Unnamed device</Text>}
+                              {l.mac && <Mono c="dimmed">{l.mac}</Mono>}
+                              {l.dnsName && <Text size="xs" c="dimmed">In DNS as <Mono>{l.dnsName}</Mono></Text>}
+                              {l.dnsRefused && <Text size="xs" c="dimmed">Not in DNS: {l.dnsRefused}</Text>}
                             </Table.Td>
                             <Table.Td><Mono>{l.ip}</Mono></Table.Td>
-                            <Table.Td><Text size="sm" c="dimmed" className="num">in {l.expiresInMin >= 60 ? `${Math.floor(l.expiresInMin / 60)} h` : `${l.expiresInMin} min`}</Text></Table.Td>
+                            <Table.Td><Text size="sm" c="dimmed" className="num">{endsIn(l.ends, now)}</Text></Table.Td>
                             <Table.Td w={44}>
                               {reserved ? (
                                 <Tooltip label="Reserved"><IconBookmark size={16} color="var(--mantine-color-harbor-6)" /></Tooltip>
                               ) : (
                                 <Tooltip label="Always give this device this address">
-                                  <ActionIcon variant="subtle" aria-label="Reserve" onClick={() => setModal({ open: true, initial: { hostname: l.hostname, mac: l.mac, ip: l.ip } })}>
+                                  <ActionIcon variant="subtle" aria-label="Reserve" onClick={() => setModal({ open: true, initial: { hostname: l.hostname ?? '', mac: l.mac ?? '', ip: l.ip } })}>
                                     <IconBookmark size={16} />
                                   </ActionIcon>
                                 </Tooltip>
@@ -225,7 +257,8 @@ export function Dhcp() {
                     </Table.Tbody>
                   </Table>
                 </Table.ScrollContainer>
-                {ifaceLeases.length === 0 && <Empty>No devices have an address yet.</Empty>}
+                {leaseData && ifaceLeases.length === 0 && <Empty>No devices have an address yet.</Empty>}
+                {leaseData?.truncated && <Text size="xs" c="dimmed">Showing the first 5000 leases.</Text>}
               </Card>
             </Stack>
           </Grid.Col>

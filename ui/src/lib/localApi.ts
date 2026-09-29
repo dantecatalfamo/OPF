@@ -9,7 +9,7 @@ import { unifiedDiff } from './diff';
 import { leases as sampleLeases } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
-  type LeaseNamesResource, type StagedResource, type StatusResource,
+  type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -163,6 +163,21 @@ export const localApi = {
       checked: new Date().toISOString(),
       registered: dynamic.filter((l) => !taken.has(l.hostname)).map((l) => ({ name: `${l.hostname}.${live.system.domain}`, ip: l.ip })),
       refused: dynamic.filter((l) => taken.has(l.hostname)).map((l) => ({ ip: l.ip, hostname: l.hostname, reason: 'the name is taken by the configuration' })),
+    };
+  },
+  // The sample's leases (ui/src/model/live.ts), without the reserved
+  // devices: dhcpd doesn't record leases for fixed addresses.
+  dhcpLeases: async (): Promise<DhcpLeasesResource> => {
+    const names = await localApi.leaseNames();
+    const reserved = live.dhcp.flatMap((s) => s.reservations);
+    const now = Date.now();
+    return {
+      leases: sampleLeases.filter((l) => !reserved.some((r) => r.ip === l.ip)).map((l) => ({
+        ip: l.ip, mac: l.mac, hostname: l.hostname, iface: l.iface,
+        starts: new Date(now - 3600_000).toISOString(), ends: new Date(now + l.expiresInMin * 60_000).toISOString(),
+        dnsName: names.registered.find((r) => r.ip === l.ip)?.name,
+        dnsRefused: names.refused.find((r) => r.ip === l.ip)?.reason,
+      })),
     };
   },
   commitConfig: async (id: string, which: 'before' | 'after'): Promise<ConfigResource> => {

@@ -73,6 +73,10 @@ type (
 		Result
 		Names *appliance.LeaseNames
 	}
+	DHCPLeasesReply struct {
+		Result
+		Leases *appliance.DHCPLeases
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -93,6 +97,13 @@ func (s *Service) LeaseNames(_ None, r *LeaseNamesReply) error {
 	var err error
 	r.Names, err = s.api.LeaseNames()
 	r.set("LeaseNames", err)
+	return nil
+}
+
+func (s *Service) DHCPLeases(_ None, r *DHCPLeasesReply) error {
+	var err error
+	r.Leases, err = s.api.DHCPLeases()
+	r.set("DHCPLeases", err)
 	return nil
 }
 
@@ -226,6 +237,15 @@ func (c *Client) LeaseNames() (*appliance.LeaseNames, error) {
 		}
 	}
 	return r.Names, err
+}
+
+func (c *Client) DHCPLeases() (*appliance.DHCPLeases, error) {
+	var r DHCPLeasesReply
+	err := c.call("DHCPLeases", None{}, &r)
+	if r.Leases != nil && r.Leases.Leases == nil {
+		r.Leases.Leases = []appliance.DHCPLease{} // see LeaseNames
+	}
+	return r.Leases, err
 }
 
 func (c *Client) Live() (*appliance.Config, error) {

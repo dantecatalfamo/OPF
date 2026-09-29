@@ -29,9 +29,9 @@ func TestLeaseNames(t *testing.T) {
 			now.Add(time.Hour).UTC().Weekday(), now.Add(time.Hour).UTC().Format("2006/01/02 15:04:05"), name)
 	}
 	lease("192.168.1.101", "laptop")
-	lease("192.168.1.102", "‮gpj.exe") // bidi override: reads as "exe.jpg"
-	lease("192.168.1.103", "bell\x07") // control character
-	lease("192.168.1.104", "caf\xe9")  // invalid UTF-8
+	lease("192.168.1.102", "\u202egpj.exe") // bidi override: reads as "exe.jpg"
+	lease("192.168.1.103", "bell\x07")      // control character
+	lease("192.168.1.104", "caf\xe9")       // invalid UTF-8
 	lease("192.168.1.105", strings.Repeat("x", 500))
 	// More refused leases than are reported, each on its own address
 	// (only the last lease for an address counts), sorting after the
@@ -63,9 +63,9 @@ func TestLeaseNames(t *testing.T) {
 		byIP[r.IP] = r.Hostname
 	}
 	for ip, want := range map[string]string{
-		"192.168.1.102": "�gpj.exe",
-		"192.168.1.103": "bell�",
-		"192.168.1.104": "caf�",
+		"192.168.1.102": "\ufffdgpj.exe",
+		"192.168.1.103": "bell\ufffd",
+		"192.168.1.104": "caf\ufffd",
 		"192.168.1.105": strings.Repeat("x", MaxHostnameRunes) + "…",
 	} {
 		if byIP[ip] != want {
@@ -74,5 +74,73 @@ func TestLeaseNames(t *testing.T) {
 	}
 	if len(n.Refused) != MaxLeaseNames || !n.Truncated {
 		t.Errorf("%d refused, truncated %v; want %d and true", len(n.Refused), n.Truncated, MaxLeaseNames)
+	}
+}
+
+func TestDHCPLeases(t *testing.T) {
+	m := &Manager{}
+	if l, err := m.DHCPLeases(); err != nil || l.Leases == nil || len(l.Leases) != 0 {
+		t.Fatalf("without a watcher: %+v, %v", l, err)
+	}
+
+	e := newEnv(t, time.Minute) // a Manager with the sample model live
+	now := time.Now().UTC()
+	stamp := func(t time.Time) string {
+		return fmt.Sprintf("%d %s UTC", t.Weekday(), t.Format("2006/01/02 15:04:05"))
+	}
+	file := filepath.Join(t.TempDir(), "dhcpd.leases")
+	write := func(s string) {
+		if err := os.WriteFile(file, []byte(s), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w := &leases.Watcher{File: file, Model: func() (*pf.Model, error) { c, err := e.m.Live(); return c.Model, err }, Resolver: &leases.Memory{}}
+	e.m.SetLeaseWatcher(w)
+
+	// No file yet: no leases, no error.
+	if l, err := e.m.DHCPLeases(); err != nil || len(l.Leases) != 0 || l.Error != "" {
+		t.Fatalf("no file: %+v, %v", l, err)
+	}
+
+	ends := stamp(now.Add(time.Hour))
+	write(fmt.Sprintf(`lease 192.168.20.117 { starts %[1]s; ends %[2]s; hardware ethernet D8:F1:5B:8E:22:90; client-hostname "tv-lobby"; }
+lease 192.168.1.112 { starts %[1]s; ends %[2]s; hardware ethernet 3c:22:fb:91:04:7d; client-hostname "Priya's iPad"; }
+lease 192.168.1.113 { starts %[1]s; ends never; hardware ethernet 3c:22:fb:91:04:7e; }
+lease 192.168.1.114 { starts %[1]s; ends %[3]s; client-hostname "gone"; }
+lease 10.99.0.1 { ends %[2]s; client-hostname "%[4]s"; }
+`, stamp(now.Add(-time.Hour)), ends, stamp(now.Add(-time.Minute)), "elsewhere\u202e"))
+	if err := w.Sync(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	l, err := e.m.DHCPLeases()
+	if err != nil || l.Error != "" {
+		t.Fatalf("%+v, %v", l, err)
+	}
+	got := map[string]DHCPLease{}
+	var order []string
+	for _, d := range l.Leases {
+		got[d.IP] = d
+		order = append(order, d.IP)
+	}
+	if strings.Join(order, " ") != "10.99.0.1 192.168.1.112 192.168.1.113 192.168.20.117" {
+		t.Errorf("leases %v: want current ones, by address", order) // .114 has ended
+	}
+	if d := got["192.168.20.117"]; d.Iface != "iot" || d.MAC != "d8:f1:5b:8e:22:90" || d.DNSName != "tv-lobby.office.arpa" || d.Ends == nil || d.Starts == nil {
+		t.Errorf("tv-lobby: %+v", d)
+	}
+	if d := got["192.168.1.112"]; d.Iface != "lan" || d.Hostname != "Priya's iPad" || d.DNSName != "" || d.DNSRefused != "not a valid host name" {
+		t.Errorf("Priya's iPad: %+v", d)
+	}
+	if d := got["192.168.1.113"]; d.Ends != nil || d.Hostname != "" || d.DNSName != "" || d.DNSRefused != "" {
+		t.Errorf("unnamed, never-ending lease: %+v", d)
+	}
+	if d := got["10.99.0.1"]; d.Iface != "" || d.Hostname != "elsewhere\ufffd" {
+		t.Errorf("lease outside any range: %+v", d)
+	}
+
+	// A damaged file is reported without its details.
+	write(`lease 192.168.1.112 { client-hostname "unterminated`)
+	if l, err := e.m.DHCPLeases(); err != nil || l.Error != "dhcpd’s leases file couldn’t be read" || len(l.Leases) != 0 {
+		t.Errorf("damaged file: %+v, %v", l, err)
 	}
 }
