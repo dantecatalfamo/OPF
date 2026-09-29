@@ -12,8 +12,11 @@ import (
 
 // Record is an A record in unbound's local data.
 type Record struct {
-	Name string // fully qualified, lower case, with the trailing dot
-	IP   netip.Addr
+	Name string     // fully qualified, lower case, with the trailing dot
+	IP   netip.Addr //
+	// From is set when the name was sanitized from an invalid hostname.
+	// Empty if the client asked for a valid name.
+	From string
 }
 
 // Skipped is a lease whose name wasn't registered, and why.
@@ -29,6 +32,70 @@ const TTL = 300
 
 // A single DNS label (RFC 1123): letters, digits and inner hyphens.
 var labelRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// sanitizeLabel attempts to convert a device-chosen hostname into a valid
+// DNS label. Devices pick their own hostnames and often use spaces,
+// apostrophes, or other characters DNS doesn't allow.
+//
+// The transformation: lower-case, replace spaces and underscores with
+// hyphens, drop characters that aren't ASCII letters, digits, or hyphens,
+// collapse repeated hyphens, and trim leading/trailing hyphens.
+//
+// Returns the sanitized label and true if sanitization produced a valid
+// label different from the lowercased original. Returns the lowercased
+// original and false if no valid label could be made.
+//
+// Examples:
+//
+//	"Priya's iPad"  → "priyas-ipad", true
+//	"Living_Room"   → "living-room", true
+//	"my--host"      → "my-host", true
+//	"válid"         → "vlid", true (drops non-ASCII)
+//	"validhost"     → "validhost", false (already valid)
+//	"---"           → "", false (nothing left)
+func sanitizeLabel(hostname string) (label string, sanitized bool) {
+	original := strings.ToLower(hostname)
+
+	// Already valid: no sanitization needed
+	if labelRE.MatchString(original) {
+		return original, false
+	}
+
+	// Replace spaces and underscores with hyphens
+	s := strings.ReplaceAll(original, " ", "-")
+	s = strings.ReplaceAll(s, "_", "-")
+
+	// Keep only ASCII letters, digits, and hyphens
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			b.WriteRune(r)
+		}
+	}
+	s = b.String()
+
+	// Collapse repeated hyphens
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+
+	// Trim leading/trailing hyphens
+	s = strings.Trim(s, "-")
+
+	// Enforce length limit (63 chars max for a DNS label)
+	if len(s) > 63 {
+		s = s[:63]
+		s = strings.TrimRight(s, "-") // don't end with hyphen after truncation
+	}
+
+	// Check if we got a valid label
+	if s != "" && labelRE.MatchString(s) {
+		return s, true
+	}
+
+	return original, false
+}
 
 // Names no client may claim, because software looks them up to find
 // services: web proxy auto-discovery, Windows' ISATAP tunnels.
@@ -118,14 +185,22 @@ func Records(m *pf.Model, leases []Lease, now time.Time) ([]Record, []Skipped) {
 		return false
 	}
 
+	// Track which leases use which label, and whether the label was sanitized.
+	type candidate struct {
+		lease     Lease
+		sanitized bool // true if the label was derived by sanitization
+	}
 	var skipped []Skipped
-	byName := map[string][]Lease{}
+	byName := map[string][]candidate{}
 	for _, l := range Current(leases, now) {
 		if l.Hostname == "" {
 			continue
 		}
 		skip := func(reason string) { skipped = append(skipped, Skipped{l.IP, l.Hostname, reason}) }
-		label := strings.ToLower(l.Hostname)
+
+		// Try to get a valid label, sanitizing if needed
+		label, wasSanitized := sanitizeLabel(l.Hostname)
+
 		switch {
 		case !labelRE.MatchString(label):
 			skip("not a valid host name")
@@ -136,19 +211,24 @@ func Records(m *pf.Model, leases []Lease, now time.Time) ([]Record, []Skipped) {
 		case reserved[l.IP]:
 			skip("the address is reserved for another device")
 		default:
-			byName[label] = append(byName[label], l)
+			byName[label] = append(byName[label], candidate{l, wasSanitized})
 		}
 	}
 
 	var records []Record
-	for label, ls := range byName {
-		if len(ls) > 1 {
-			for _, l := range ls {
-				skipped = append(skipped, Skipped{l.IP, l.Hostname, "another device uses the same name"})
+	for label, cs := range byName {
+		if len(cs) > 1 {
+			for _, c := range cs {
+				skipped = append(skipped, Skipped{c.lease.IP, c.lease.Hostname, "another device uses the same name"})
 			}
 			continue
 		}
-		records = append(records, Record{Name: label + "." + zone, IP: ls[0].IP})
+		c := cs[0]
+		rec := Record{Name: label + "." + zone, IP: c.lease.IP}
+		if c.sanitized {
+			rec.From = c.lease.Hostname
+		}
+		records = append(records, rec)
 	}
 	slices.SortFunc(records, func(a, b Record) int { return strings.Compare(a.Name, b.Name) })
 	slices.SortFunc(skipped, func(a, b Skipped) int { return a.IP.Compare(b.IP) })
