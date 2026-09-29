@@ -215,6 +215,11 @@ diffs, whether confirmation is needed, and the server's objections.
 - **UI:** every page exists. Review, apply, confirm, revert, history and
   undo go through the API (`make mock` runs it against the real engine).
   The dashboard and diagnostics still show sample live data.
+- **Live data:** ARP table and routing table have real backend
+  implementations with `runtime.GOOS` checks for mock data on non-OpenBSD.
+  All other live data (system metrics, pf states, services, logs) still
+  uses frontend-only mock data. See "Live monitoring data" section below
+  for the full list of features to implement.
 - **Missing:** authentication, serving the UI from the binary, import
   from an existing system, removing generated files.
 - **Never run on OpenBSD.**
@@ -599,6 +604,142 @@ skipped and the web process isn't dropped to another user.
       as "internal error".
 - [ ] Record who made each commit in history once there are users.
 
+## Live monitoring data
+
+The legacy server (`legacy/server/`) collected extensive runtime data
+that the new UI doesn't yet surface. Each feature needs:
+1. **Go backend**: Parser for command output, API endpoint, mock data for non-OpenBSD
+2. **Frontend**: UI page or component, TypeScript types, mock data in `live.ts`
+
+### System metrics
+
+- [ ] **CPU usage** (`sysctl kern.cp_time`)
+      - Backend: Parser, `GET /api/system/cpu`, mock data
+      - Frontend: Dashboard meter (currently hardcoded 18%), history graph
+- [ ] **Load average** (`sysctl vm.loadavg`)
+      - Backend: Parser, `GET /api/system/loadavg`, mock data
+      - Frontend: Dashboard display, 1/5/15 minute values
+- [ ] **Memory details** (vmstat, `sysctl hw.physmem`)
+      - Backend: Parser, `GET /api/system/memory`, mock data
+      - Frontend: Dashboard meter with breakdown (active/free/wired/cached)
+- [ ] **Swap usage** (`swapctl -l`)
+      - Backend: Parser, `GET /api/system/swap`, mock data
+      - Frontend: Dashboard meter when swap is configured
+- [ ] **Disk usage** (`df -P`)
+      - Backend: Parser, `GET /api/system/disks`, mock data
+      - Frontend: Dashboard meter per mount, storage page
+- [ ] **Disk I/O** (vmstat disk transfers)
+      - Backend: Parser, `GET /api/system/diskio`, mock data
+      - Frontend: Per-disk read/write rates
+- [ ] **Boot time / uptime** (`sysctl kern.boottime`)
+      - Backend: Parser, `GET /api/system/uptime`, mock data
+      - Frontend: Dashboard (currently mock), System General page
+- [ ] **Hardware sensors** (`sysctl hw.sensors`)
+      - Backend: Parser, `GET /api/system/sensors`, mock data
+      - Frontend: Temperature, fan speed, voltage readings
+- [ ] **Hardware info** (`sysctl hw`)
+      - Backend: Parser, `GET /api/system/hardware`, mock data
+      - Frontend: System General page (CPU model, RAM, disks)
+- [ ] **Process list** (`ps aux`)
+      - Backend: Parser, `GET /api/system/processes`, mock data
+      - Frontend: New Diagnostics > Processes page with sorting/filtering
+
+### pf firewall diagnostics
+
+- [ ] **pf states** (`pfctl -vv -s states`)
+      - Backend: Parser, `GET /api/pf/states`, mock data
+      - Frontend: Connections page (currently mock only), kill state action
+- [ ] **pf rule statistics** (`pfctl -vv -s rules`)
+      - Backend: Parser, `GET /api/pf/rules`, mock data
+      - Frontend: Rules page per-rule counters (evaluations, packets, bytes)
+- [ ] **pf info/counters** (`pfctl -v -s info`)
+      - Backend: Parser, `GET /api/pf/info`, mock data
+      - Frontend: Firewall dashboard tile (state table size, match rate, drops)
+- [ ] **pf interface stats** (`pfctl -vv -s Interface`)
+      - Backend: Parser, `GET /api/pf/interfaces`, mock data
+      - Frontend: Per-interface packet/byte counters, cleared/referenced stats
+- [ ] **pf memory** (`pfctl -s memory`)
+      - Backend: Parser, `GET /api/pf/memory`, mock data
+      - Frontend: Firewall Settings or System page (state table limits)
+- [ ] **Kill state by ID** (`pfctl -k id -k <id>`)
+      - Backend: `POST /api/pf/kill`, action endpoint
+      - Frontend: Kill button in Connections page per-connection
+- [ ] **Kill states by criteria** (`pfctl -k <src> -k <dst>`)
+      - Backend: `POST /api/pf/kill`, action endpoint with filters
+      - Frontend: Bulk kill by IP/interface in Connections page
+
+### Network interfaces
+
+- [ ] **Interface statistics** (`netstat -i -n`)
+      - Backend: Parser, `GET /api/network/interfaces`, mock data
+      - Frontend: Interfaces page (rx/tx packets, errors, collisions)
+- [ ] **Interface status** (`ifconfig -a`)
+      - Backend: Parser, included in interfaces endpoint, mock data
+      - Frontend: Link state, media type, addresses, flags
+
+### WireGuard
+
+- [ ] **Peer status** (`ifconfig wgN` or `wg show`)
+      - Backend: Parser, `GET /api/wireguard/status`, mock data
+      - Frontend: WireGuard page peer list (handshake time, rx/tx bytes)
+      - Note: Parser must handle per-tunnel output
+
+### Services management
+
+- [ ] **Service list** (`rcctl ls all`)
+      - Backend: Parser, `GET /api/services`, mock data
+      - Frontend: New Services page listing all services
+- [ ] **Service status** (`rcctl ls on`, `rcctl ls started`)
+      - Backend: Combined in services endpoint, mock data
+      - Frontend: Enabled/running status per service
+- [ ] **Service details** (`rcctl get <service>`)
+      - Backend: Parser, `GET /api/services/:name`, mock data
+      - Frontend: Service detail view (flags, user, rtable, timeout)
+- [ ] **Start/stop service** (`rcctl start/stop <service>`)
+      - Backend: `POST /api/services/:name/start`, `POST /api/services/:name/stop`
+      - Frontend: Start/Stop buttons in Services page
+- [ ] **Enable/disable service** (`rcctl enable/disable <service>`)
+      - Backend: `POST /api/services/:name/enable`, `POST /api/services/:name/disable`
+      - Frontend: Enable/Disable toggle in Services page
+
+### System logs
+
+- [ ] **dmesg** (`dmesg`)
+      - Backend: Parser (or raw), `GET /api/logs/dmesg`, mock data
+      - Frontend: New Diagnostics > System Logs page, dmesg tab
+- [ ] **/var/log/messages**
+      - Backend: File reader with tail, `GET /api/logs/messages`, mock data
+      - Frontend: System Logs page, messages tab
+- [ ] **/var/log/daemon**
+      - Backend: File reader with tail, `GET /api/logs/daemon`, mock data
+      - Frontend: System Logs page, daemon tab
+- [ ] **/var/log/authlog**
+      - Backend: File reader with tail, `GET /api/logs/authlog`, mock data
+      - Frontend: System Logs page, auth tab (login attempts, sudo)
+- [ ] **Firewall log** (`tcpdump -n -e -ttt -r /var/log/pflog`)
+      - Backend: Parser, `GET /api/logs/firewall`, mock data
+      - Frontend: Diagnostics > Firewall log (currently mock only)
+
+### Traffic and bandwidth
+
+- [ ] **Interface traffic rates** (periodic `netstat -i` delta)
+      - Backend: Rate calculation from counter deltas, mock data
+      - Frontend: Dashboard traffic chart (currently simulated), per-interface sparklines
+- [ ] **Per-rule traffic** (`pfctl -s labels`)
+      - Backend: Parser, `GET /api/pf/labels`, mock data
+      - Frontend: Rules page with bytes/packets per rule
+
+### Implementation notes
+
+- All parsers go in `internal/appliance/` alongside existing `parseARPOutput`
+  and `parseRoutingOutput`
+- Each parser needs `runtime.GOOS` check to return mock data on non-OpenBSD
+- Mock data functions follow `sampleARPTable()` / `sampleRoutingTable()` pattern
+- Frontend types go in `ui/src/lib/api.ts` (API types) and `ui/src/model/live.ts` (mock)
+- Consider batching related endpoints (e.g., `/api/system/stats` combining CPU/memory/load)
+- Rate-limited polling in frontend (e.g., 5s for stats, 30s for logs)
+- WebSocket option for real-time updates (pflog, traffic) - future consideration
+
 ## pf labels
 
 Generated rules are labelled `opf:<kind>:<id>` (rule, forward, nat,
@@ -769,9 +910,13 @@ refuses non-loopback addresses.
 
 - [x] Commit, confirm and revert through the API; a short
       `-confirm-timeout` makes the timeout testable.
+- [x] Pattern established for live data: `runtime.GOOS` check in each
+      method, `sample*()` functions return mock data on non-OpenBSD.
+      See ARP table and routing table implementations in `manager.go`.
 - [ ] Live data endpoints fed from fixtures (states, rules with
       counters, interfaces, leases, WireGuard peers, pflog), so the
       dashboard and diagnostics stop reading `ui/src/model/live.ts`.
+      See "Live monitoring data" section for the full feature list.
 - [ ] Recorded response mode: capture real OpenBSD command output
       (`opf -record dir`) and replay it in the mock.
 - [ ] Simulated validator results: run the Go pf parser on staged
