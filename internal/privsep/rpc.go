@@ -77,6 +77,14 @@ type (
 		Result
 		Leases *appliance.DHCPLeases
 	}
+	ARPTableReply struct {
+		Result
+		Table *appliance.ARPTable
+	}
+	RoutingTableReply struct {
+		Result
+		Table *appliance.RoutingTable
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -104,6 +112,20 @@ func (s *Service) DHCPLeases(_ None, r *DHCPLeasesReply) error {
 	var err error
 	r.Leases, err = s.api.DHCPLeases()
 	r.set("DHCPLeases", err)
+	return nil
+}
+
+func (s *Service) ARPTable(_ None, r *ARPTableReply) error {
+	var err error
+	r.Table, err = s.api.ARPTable()
+	r.set("ARPTable", err)
+	return nil
+}
+
+func (s *Service) RoutingTable(_ None, r *RoutingTableReply) error {
+	var err error
+	r.Table, err = s.api.RoutingTable()
+	r.set("RoutingTable", err)
 	return nil
 }
 
@@ -304,4 +326,27 @@ func (c *Client) CommitConfig(id string, which appliance.Which) (*appliance.Conf
 	var r ConfigReply
 	err := c.call("CommitConfig", CommitConfigArgs{id, which}, &r)
 	return r.Config, err
+}
+
+func (c *Client) ARPTable() (*appliance.ARPTable, error) {
+	var r ARPTableReply
+	err := c.call("ARPTable", None{}, &r)
+	if r.Table != nil && r.Table.Entries == nil {
+		r.Table.Entries = []appliance.ARPEntry{}
+	}
+	return r.Table, err
+}
+
+func (c *Client) RoutingTable() (*appliance.RoutingTable, error) {
+	var r RoutingTableReply
+	err := c.call("RoutingTable", None{}, &r)
+	if r.Table != nil {
+		if r.Table.IPv4 == nil {
+			r.Table.IPv4 = []appliance.RouteEntry{}
+		}
+		if r.Table.IPv6 == nil {
+			r.Table.IPv6 = []appliance.RouteEntry{}
+		}
+	}
+	return r.Table, err
 }

@@ -32,6 +32,8 @@ type API interface {
 	CommitConfig(id string, which Which) (*Config, error)
 	LeaseNames() (*LeaseNames, error)
 	DHCPLeases() (*DHCPLeases, error)
+	ARPTable() (*ARPTable, error)
+	RoutingTable() (*RoutingTable, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -188,6 +190,38 @@ const (
 	MaxLeases        = 5000
 	MaxHostnameRunes = 64
 )
+
+// ARPTable is the system's ARP cache, from `arp -an`.
+type ARPTable struct {
+	Entries []ARPEntry `json:"entries"`
+	Error   string     `json:"error,omitempty"`
+}
+
+type ARPEntry struct {
+	IP        string `json:"ip"`
+	MAC       string `json:"mac"`
+	Iface     string `json:"iface"`
+	Expires   string `json:"expires,omitempty"`   // time until expiry, or "permanent"
+	Flags     string `json:"flags,omitempty"`     // published, static, etc.
+	Hostname  string `json:"hostname,omitempty"`  // reverse DNS if known
+}
+
+// RoutingTable is the system's routing table, from `netstat -rn`.
+type RoutingTable struct {
+	IPv4  []RouteEntry `json:"ipv4"`
+	IPv6  []RouteEntry `json:"ipv6,omitempty"`
+	Error string       `json:"error,omitempty"`
+}
+
+type RouteEntry struct {
+	Destination string `json:"destination"`
+	Gateway     string `json:"gateway"`
+	Flags       string `json:"flags"`
+	Iface       string `json:"iface"`
+	Priority    int    `json:"priority,omitempty"`
+	// Source describes where the route came from (e.g., "static", "dhcp", "interface").
+	Source string `json:"source,omitempty"`
+}
 
 // Which picks a side of a commit: the configuration before or after it.
 type Which string
