@@ -23,6 +23,11 @@ type File struct {
 	// which for Confirm files is the staged copy rather than Path.
 	Apply []string
 
+	// Remove undoes what a file set up, after a commit removes it: "{}"
+	// is the removed path and "{*}" works as for Apply. Nil means
+	// removing the file is enough (it's only read at boot, say).
+	Remove []string
+
 	// ApplyWhenRemoved runs Apply even when reverting a commit removes
 	// the file (it didn't exist before), with "{}" naming the missing
 	// path; for files whose absence means something, like
@@ -65,6 +70,7 @@ func (f File) instance(part string) (File, bool) {
 	g.Match = ""
 	g.Check = substPart(f.Check, part)
 	g.Apply = substPart(f.Apply, part)
+	g.Remove = substPart(f.Remove, part)
 	return g, true
 }
 
@@ -125,7 +131,10 @@ func DefaultFiles() []File {
 			Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
 			Desc:  "Network interface",
 			Apply: []string{"sh", "/etc/netstart", "{*}"},
-			Mode:  0640, // may hold keys, e.g. wgkey
+			// Virtual interfaces (vlan, wg) are destroyed; a physical
+			// port can't be, so it's taken down instead.
+			Remove: []string{"sh", "-c", `ifconfig "$1" destroy 2>/dev/null || ifconfig "$1" down`, "sh", "{*}"},
+			Mode:   0640, // may hold keys, e.g. wgkey
 		},
 		{
 			Name: "pf.conf", Path: "/etc/pf.conf",

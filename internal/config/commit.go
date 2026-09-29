@@ -48,7 +48,7 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		return nil, &DriftError{Files: drifted}
 	}
 	for _, c := range changes {
-		if c.File.Check == nil {
+		if c.File.Check == nil || c.Removed {
 			continue
 		}
 		out, err := s.run.Run(ctx, subst(c.File.Check, s.candidatePath(c.File))...)
@@ -73,15 +73,18 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			}
 			s.logFile("snapshot", f, s.historyFile(e.ID, "old", f.Path), "restore point before commit "+e.ID)
 		}
-		staged, _, err := s.staged(f)
-		if err != nil {
-			return nil, err
+		// A removed file has no new contents; its absence is the record.
+		if !c.Removed {
+			staged, _, err := s.staged(f)
+			if err != nil {
+				return nil, err
+			}
+			if err := writeFileAtomic(s.historyFile(e.ID, "new", f.Path), staged, 0600); err != nil {
+				return nil, err
+			}
+			s.logFile("snapshot", f, s.historyFile(e.ID, "new", f.Path), "contents of commit "+e.ID)
 		}
-		if err := writeFileAtomic(s.historyFile(e.ID, "new", f.Path), staged, 0600); err != nil {
-			return nil, err
-		}
-		s.logFile("snapshot", f, s.historyFile(e.ID, "new", f.Path), "contents of commit "+e.ID)
-		e.Files = append(e.Files, EntryFile{Name: f.Name, Path: f.Path, Existed: existed, Confirm: f.Confirm})
+		e.Files = append(e.Files, EntryFile{Name: f.Name, Path: f.Path, Existed: existed, Removed: c.Removed, Confirm: f.Confirm})
 	}
 	// Written before anything live changes, so an interrupted commit
 	// can be found and reverted by Recover.
@@ -108,6 +111,12 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			continue
 		}
 		f, _ := s.Lookup(ef.Name)
+		if ef.Removed {
+			if err := s.remove(ctx, f, "commit "+e.ID, &logBuf); err != nil {
+				return fail(err)
+			}
+			continue
+		}
 		staged, _, err := s.staged(f)
 		if err != nil {
 			return fail(err)
@@ -330,6 +339,10 @@ func (s *Store) restage(e *Entry) error {
 		if _, staged, _ := s.staged(f); staged {
 			continue
 		}
+		if ef.Removed {
+			errs = append(errs, s.stageRemoval(f))
+			continue
+		}
 		data, err := os.ReadFile(s.historyFile(e.ID, "new", f.Path))
 		if err == nil {
 			err = s.stage(f, data)
@@ -337,6 +350,19 @@ func (s *Store) restage(e *Entry) error {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+// remove deletes a live file for a commit and undoes what it set up.
+func (s *Store) remove(ctx context.Context, f File, why string, logBuf *bytes.Buffer) error {
+	if err := os.Remove(s.livePath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	s.logFile("remove", f, s.livePath(f), why)
+	fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
+	if f.Remove != nil {
+		return s.logRun(ctx, logBuf, subst(f.Remove, s.livePath(f))...)
+	}
+	return nil
 }
 
 // apply activates f, loading it from path.

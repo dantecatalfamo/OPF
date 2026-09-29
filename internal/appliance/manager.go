@@ -334,7 +334,10 @@ func (m *Manager) changes() ([]FileChange, error) {
 			return nil, err
 		}
 		status := "modified"
-		if !exists {
+		switch {
+		case c.Removed:
+			status = "removed"
+		case !exists:
 			status = "added"
 		}
 		out = append(out, FileChange{
@@ -384,7 +387,7 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		liveGen = generated(liveModel)
 	}
 	var problems []Detail
-	var removed []Detail
+	var removed []config.File // generated before, not any more
 	type file struct {
 		f       config.File
 		content []byte
@@ -419,17 +422,26 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		if err != nil {
 			continue
 		}
-		if _, onDisk, err := m.store.Live(f.Name); err == nil && onDisk {
-			removed = append(removed, Detail{Path: path, Message: "would have to be removed, which OPF can't do yet"})
+		disk, onDisk, err := m.store.Live(f.Name)
+		if err != nil {
+			return nil, err
 		}
+		if !onDisk {
+			continue
+		}
+		if f.Confirm {
+			// The generators always write pf.conf; this would be a bug.
+			return nil, fmt.Errorf("the model no longer generates %s, which can't be removed", path)
+		}
+		// Don't delete someone's hand edits without asking either.
+		if !bytes.Equal(disk, config.Normalize([]byte(liveGen[path]))) && !slices.Contains(req.Overwrite, path) {
+			problems = append(problems, Detail{Path: path, Message: "changed outside OPF, and the change removes it; list it in overwrite to remove it"})
+		}
+		removed = append(removed, f)
 	}
 	if len(problems) > 0 {
 		sortDetails(problems)
 		return nil, &Error{Code: CodeModifiedOutside, Message: "some files were changed outside OPF", Details: problems}
-	}
-	if len(removed) > 0 {
-		sortDetails(removed)
-		return nil, &Error{Code: CodeUnsupported, Message: "the change removes files, which isn't supported yet", Details: removed}
 	}
 
 	// Stage the whole set or nothing.
@@ -439,6 +451,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 	slices.SortFunc(files, func(a, b file) int { return strings.Compare(a.f.Path, b.f.Path) })
 	for _, f := range append([]file{{f: mustLookup(m.store, modelFile), content: data}}, files...) {
 		if err := m.store.Stage(f.f.Name, f.content); err != nil {
+			m.store.DiscardAll()
+			if errors.Is(err, config.ErrPending) {
+				return nil, errorf(CodePending, "a commit is waiting for confirmation")
+			}
+			return nil, err
+		}
+	}
+	for _, f := range removed {
+		if err := m.store.StageRemoval(f.Name); err != nil {
 			m.store.DiscardAll()
 			if errors.Is(err, config.ErrPending) {
 				return nil, errorf(CodePending, "a commit is waiting for confirmation")
@@ -708,7 +729,7 @@ func commitOf(e *config.Entry) *Commit {
 		c.Deadline = &d
 	}
 	for _, f := range e.Files {
-		c.Files = append(c.Files, CommitFile{Path: f.Path, Created: !f.Existed, NeedsConfirm: f.Confirm, Model: f.Name == modelFile})
+		c.Files = append(c.Files, CommitFile{Path: f.Path, Created: !f.Existed, Removed: f.Removed, NeedsConfirm: f.Confirm, Model: f.Name == modelFile})
 	}
 	return c
 }

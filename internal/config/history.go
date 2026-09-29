@@ -58,6 +58,7 @@ type EntryFile struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Existed bool   `json:"existed"`
+	Removed bool   `json:"removed,omitempty"` // the commit removed it
 	Confirm bool   `json:"confirm"`
 }
 

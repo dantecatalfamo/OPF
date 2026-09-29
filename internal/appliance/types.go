@@ -58,7 +58,7 @@ type Staged struct {
 // FileChange is one file a commit would change.
 type FileChange struct {
 	Path   string `json:"path"`
-	Status string `json:"status"` // "added" or "modified"
+	Status string `json:"status"` // "added", "modified" or "removed"
 	Diff   string `json:"diff"`
 	// NeedsConfirm files are loaded provisionally and reverted unless
 	// the commit is confirmed.
@@ -113,6 +113,7 @@ type Commit struct {
 type CommitFile struct {
 	Path         string `json:"path"`
 	Created      bool   `json:"created,omitempty"`
+	Removed      bool   `json:"removed,omitempty"`
 	NeedsConfirm bool   `json:"needsConfirm,omitempty"`
 	Model        bool   `json:"model,omitempty"`
 }

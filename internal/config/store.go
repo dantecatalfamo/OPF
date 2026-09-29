@@ -180,6 +180,15 @@ func (s *Store) livePath(f File) string      { return filepath.Join(s.root, f.Pa
 func (s *Store) candidatePath(f File) string { return filepath.Join(s.dir, "candidate", f.Path) }
 func (s *Store) basePath() string            { return filepath.Join(s.dir, "candidate", "base.json") }
 
+// removalPath marks a file staged for removal. It's in its own tree so
+// it can't collide with a staged file's contents.
+func (s *Store) removalPath(f File) string { return filepath.Join(s.dir, "remove", f.Path) }
+
+func (s *Store) removing(f File) (bool, error) {
+	_, marked, err := readOptional(s.removalPath(f))
+	return marked, err
+}
+
 // Live returns the file as it is on the system. A missing file is not
 // an error; exists reports whether it was there.
 func (s *Store) Live(name string) (data []byte, exists bool, err error) {
@@ -241,6 +250,9 @@ func (s *Store) stage(f File, data []byte) error {
 	if bytes.Equal(live, data) {
 		return s.unstage(f, "same as the live file")
 	}
+	if err := os.Remove(s.removalPath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 	bases, err := s.bases()
 	if err != nil {
 		return err
@@ -262,6 +274,53 @@ func (s *Store) stage(f File, data []byte) error {
 	return nil
 }
 
+// StageRemoval records that the next commit should remove a file.
+// Removing a file that isn't there unstages it. Confirm files can't be
+// removed: they have to be there to load.
+func (s *Store) StageRemoval(name string) error {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.pending != nil {
+		return ErrPending
+	}
+	return s.stageRemoval(f)
+}
+
+func (s *Store) stageRemoval(f File) error {
+	if f.Confirm {
+		return fmt.Errorf("config: %s can't be removed", f.Name)
+	}
+	_, exists, err := s.live(f)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return s.unstage(f, "already absent")
+	}
+	bases, err := s.bases()
+	if err != nil {
+		return err
+	}
+	if _, ok := bases[f.Name]; !ok {
+		bases[f.Name] = hash(s.livePath(f))
+		if err := s.writeBases(bases); err != nil {
+			return err
+		}
+	}
+	if err := os.Remove(s.candidatePath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if err := writeFileAtomic(s.removalPath(f), nil, 0600); err != nil {
+		return err
+	}
+	s.logFile("stage", f, s.removalPath(f), "to be removed")
+	return nil
+}
+
 func (s *Store) Discard(name string) error {
 	f, err := s.Lookup(name)
 	if err != nil {
@@ -272,16 +331,21 @@ func (s *Store) Discard(name string) error {
 	return s.unstage(f, "discarded")
 }
 
-// unstage discards f's staged copy and reports it if there was one.
+// unstage discards f's staged copy or removal and reports it if there
+// was one.
 func (s *Store) unstage(f File, why string) error {
 	_, staged, err := s.staged(f)
+	if err != nil {
+		return err
+	}
+	removing, err := s.removing(f)
 	if err != nil {
 		return err
 	}
 	if err := s.discard(f); err != nil {
 		return err
 	}
-	if staged {
+	if staged || removing {
 		s.logFile("unstage", f, s.candidatePath(f), why)
 	}
 	return nil
@@ -290,8 +354,10 @@ func (s *Store) unstage(f File, why string) error {
 // discard forgets f's staged copy, silently: also used to clear the
 // candidate once a commit has used it.
 func (s *Store) discard(f File) error {
-	if err := os.Remove(s.candidatePath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
+	for _, p := range []string{s.candidatePath(f), s.removalPath(f)} {
+		if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
 	}
 	bases, err := s.bases()
 	if err != nil {
@@ -368,6 +434,7 @@ type Change struct {
 	File    File
 	Diff    string
 	Drifted bool // the live file changed after staging
+	Removed bool // staged for removal
 }
 
 // Changes lists staged files in apply order.
@@ -382,11 +449,19 @@ func (s *Store) Changes() ([]Change, error) {
 	}
 	var out []Change
 	for _, f := range files {
-		if _, staged, err := s.staged(f); err != nil {
+		_, staged, err := s.staged(f)
+		if err != nil {
 			return nil, err
-		} else if !staged {
+		}
+		removed, err := s.removing(f)
+		if err != nil {
+			return nil, err
+		}
+		if !staged && !removed {
 			continue
 		}
+		// A file staged for removal has no candidate, so it diffs
+		// against nothing.
 		diff, err := Diff(s.livePath(f), s.candidatePath(f), f.Path+" (live)", f.Path+" (staged)")
 		if err != nil {
 			return nil, err
@@ -395,6 +470,7 @@ func (s *Store) Changes() ([]Change, error) {
 			File:    f,
 			Diff:    diff,
 			Drifted: bases[f.Name] != hash(s.livePath(f)),
+			Removed: removed,
 		})
 	}
 	return out, nil

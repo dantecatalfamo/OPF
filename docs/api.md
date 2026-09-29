@@ -29,7 +29,7 @@ There is no authentication yet; see TODO.md.
 |---|---|---|
 | `invalid` | 400/422 | malformed request (400), or the model fails validation (422); `details` name each field |
 | `check_failed` | 422 | a validator (`pfctl -n`, `dhcpd -n`, …) rejected a generated file; `details[].output` is its output |
-| `unsupported` | 422 | something OPF can't do yet, such as removing a file |
+| `unsupported` | 422 | something OPF can't do yet |
 | `not_found` | 404 | no such commit or resource |
 | `nothing_staged` | 404 (409 on commit) | there's no staged model |
 | `conflict` | 409 | a version didn't match: someone else changed the configuration |
@@ -98,7 +98,9 @@ Small enough to poll.
 }
 ```
 
-`status` is `added` or `modified`, and `diff` is a unified diff. `404
+`status` is `added`, `modified` or `removed` (a file the model no longer
+generates, such as a deleted VLAN's `hostname.if`), and `diff` is a
+unified diff. `404
 nothing_staged` when there's nothing staged.
 
 ### `PUT /api/config/staged`
@@ -132,7 +134,8 @@ History, newest first.
 
 `status` is one of `applying`, `pending`, `applied`, `confirmed`,
 `reverted` or `failed`. `deadline` is only there while pending.
-`files[].created` marks files the commit created.
+`files[].created` and `files[].removed` mark files the commit created or
+removed.
 
 ### `POST /api/commits`
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,16 +16,24 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
-// runner succeeds unless a command contains one of fail.
+// runner records commands and succeeds unless one contains one of fail.
 type runner struct {
 	mu   sync.Mutex
 	fail []string
+	cmds []string
+}
+
+func (r *runner) commands() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.cmds)
 }
 
 func (r *runner) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	line := strings.Join(argv, " ")
+	r.cmds = append(r.cmds, line)
 	for _, f := range r.fail {
 		if strings.Contains(line, f) {
 			return []byte("syntax error\n"), errors.New("exit status 1")
@@ -219,8 +228,19 @@ func TestStageRejects(t *testing.T) {
 	for i := range gone.Firewall.Rules {
 		gone.Firewall.Rules[i].Gateway = ""
 	}
-	if _, err := e.m.Stage(StageRequest{Base: live.Version, Model: gone}); code(err) != CodeUnsupported {
-		t.Errorf("removing interfaces: %v", err)
+	// Removing interfaces stages removing their files.
+	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: gone})
+	if err != nil {
+		t.Fatalf("removing interfaces: %v", err)
+	}
+	var removedFiles []string
+	for _, c := range st.Changes {
+		if c.Status == "removed" {
+			removedFiles = append(removedFiles, c.Path)
+		}
+	}
+	if strings.Join(removedFiles, " ") != "/etc/hostname.vlan20 /etc/hostname.wg0 /etc/hostname.wg1" {
+		t.Errorf("removed %v", removedFiles)
 	}
 
 	same, err := e.m.Stage(StageRequest{Base: live.Version, Model: live.Model})
@@ -448,5 +468,52 @@ func TestRcServicesMatchGenerator(t *testing.T) {
 	}
 	if strings.Join(names, " ") != strings.Join(config.RcServices, " ") {
 		t.Errorf("rc.conf.local sets %v, but the reconcile manages %v", names, config.RcServices)
+	}
+}
+
+// Committing a model without an interface removes its hostname.if and
+// destroys the device; reverting puts both back.
+func TestRemoveInterface(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	live := e.live()
+	m := sample(t)
+	// Drop the site-to-site tunnel and what refers to it.
+	m.Interfaces = slices.DeleteFunc(m.Interfaces, func(i pf.Iface) bool { return i.ID == "wg1" })
+	m.Firewall.Rules = slices.DeleteFunc(m.Firewall.Rules, func(r pf.Rule) bool { return slices.Contains(r.Interfaces, "wg1") })
+	m.Routing.Gateways = slices.DeleteFunc(m.Routing.Gateways, func(g pf.Gateway) bool { return g.Iface == "wg1" })
+	m.Routing.Routes = nil
+	for i := range m.Firewall.Rules {
+		if m.Firewall.Rules[i].Gateway == "gw_wh" {
+			m.Firewall.Rules[i].Gateway = ""
+		}
+	}
+	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	if err != nil {
+		t.Fatalf("%v %+v", err, AsError(err).Details)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "remove the site tunnel"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(e.root, "/etc/hostname.wg1")); !os.IsNotExist(err) {
+		t.Errorf("hostname.wg1 is still there: %v", err)
+	}
+	if cmds := strings.Join(e.run.commands(), "\n"); !strings.Contains(cmds, "destroy") || !strings.Contains(cmds, "sh wg1") {
+		t.Errorf("wg1 wasn't destroyed: %s", cmds)
+	}
+	removed := false
+	for _, f := range c.Files {
+		removed = removed || (f.Path == "/etc/hostname.wg1" && f.Removed)
+	}
+	if !removed {
+		t.Errorf("the commit doesn't record the removal: %+v", c.Files)
+	}
+	if c.Status == StatusPending {
+		if _, err := e.m.Revert(c.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(e.root, "/etc/hostname.wg1")); err != nil {
+			t.Errorf("reverting didn't restore hostname.wg1: %v", err)
+		}
 	}
 }
