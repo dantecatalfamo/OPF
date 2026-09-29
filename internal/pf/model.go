@@ -68,6 +68,9 @@ type Iface struct {
 	VLAN         *VLANConfig `json:"vlan,omitempty"`
 	BlockPrivate bool        `json:"blockPrivate,omitempty"`
 	BlockBogons  bool        `json:"blockBogons,omitempty"`
+	// Antispoof blocks traffic claiming to come from this interface's
+	// network arriving anywhere else (pf's antispoof).
+	Antispoof bool `json:"antispoof,omitempty"`
 	// WireGuard is set on every VPN interface (role vpn, device wgN):
 	// each is its own tunnel.
 	WireGuard *WireGuard `json:"wireguard,omitempty"`
@@ -375,12 +378,16 @@ const (
 )
 
 type ScrubOptions struct {
-	Enabled  bool `json:"enabled"`
-	MaxMss   *int `json:"maxMss,omitempty"`
-	RandomID bool `json:"randomId"`
-	NoDf     bool `json:"noDf"`
+	Enabled       bool `json:"enabled"`
+	MaxMss        *int `json:"maxMss,omitempty"`
+	RandomID      bool `json:"randomId"`
+	NoDf          bool `json:"noDf"`
+	MinTTL        *int `json:"minTtl,omitempty"`
+	ReassembleTCP bool `json:"reassembleTcp,omitempty"`
 }
 
+// FirewallOptions are pf.conf(5)'s "set" options. For every optional
+// one, leaving it out means pf's own default.
 type FirewallOptions struct {
 	BlockPolicy     BlockPolicy       `json:"blockPolicy"`
 	StatePolicy     StatePolicyOption `json:"statePolicy"`
@@ -389,7 +396,62 @@ type FirewallOptions struct {
 	Syncookies      Syncookies        `json:"syncookies"`
 	Scrub           ScrubOptions      `json:"scrub"`
 	LogDefaultBlock bool              `json:"logDefaultBlock"`
+
+	// SyncookiesStart and SyncookiesEnd are adaptive syncookies'
+	// thresholds, as percentages of the state table (pf: 25 and 12).
+	SyncookiesStart *int `json:"syncookiesStart,omitempty"`
+	SyncookiesEnd   *int `json:"syncookiesEnd,omitempty"`
+	// Limits are the other `set limit` values (MaxStates is states).
+	Limits Limits `json:"limits,omitzero"`
+	// Timeouts are `set timeout` values by pf's name for them
+	// (tcp.established, adaptive.start, …); see TimeoutNames.
+	Timeouts map[string]int `json:"timeouts,omitempty"`
+	// StateDefaults are state options every rule gets (set
+	// state-defaults): see StateDefaultNames.
+	StateDefaults []string `json:"stateDefaults,omitempty"`
+	// Reassemble is "yes" or "no" (set reassemble); ReassembleNoDf
+	// also clears the don't-fragment bit of reassembled packets.
+	Reassemble     string `json:"reassemble,omitempty"`
+	ReassembleNoDf bool   `json:"reassembleNoDf,omitempty"`
+	// RulesetOptimization is none, basic or profile.
+	RulesetOptimization string `json:"rulesetOptimization,omitempty"`
+	// Debug is the level pf logs at: emerg … debug.
+	Debug string `json:"debug,omitempty"`
+	// HostID identifies this firewall to pfsync (set hostid).
+	HostID *uint32 `json:"hostId,omitempty"`
+	// Fingerprints is the OS fingerprint file (pf: /etc/pf.os).
+	Fingerprints string `json:"fingerprints,omitempty"`
+	// LogInterface is the interface pf keeps statistics for: an
+	// interface id, "none", or empty for the WAN.
+	LogInterface string `json:"logInterface,omitempty"`
+	// SkipOn are interfaces or groups pf doesn't filter at all, besides
+	// lo. Anything listed here is wide open.
+	SkipOn []string `json:"skipOn,omitempty"`
 }
+
+// Limits are `set limit` values; nil is pf's default.
+type Limits struct {
+	SrcNodes     *int `json:"srcNodes,omitempty"`
+	Frags        *int `json:"frags,omitempty"`
+	Tables       *int `json:"tables,omitempty"`
+	TableEntries *int `json:"tableEntries,omitempty"`
+	PktdelayPkts *int `json:"pktdelayPkts,omitempty"`
+	Anchors      *int `json:"anchors,omitempty"`
+}
+
+// TimeoutNames are `set timeout`'s keys, in pf.conf(5)'s order.
+// adaptive.start and adaptive.end are state counts; the rest seconds.
+var TimeoutNames = []string{
+	"tcp.first", "tcp.opening", "tcp.established", "tcp.closing", "tcp.finwait", "tcp.closed", "tcp.tsdiff",
+	"udp.first", "udp.single", "udp.multiple",
+	"icmp.first", "icmp.error",
+	"other.first", "other.single", "other.multiple",
+	"frag", "interval", "src.track",
+	"adaptive.start", "adaptive.end",
+}
+
+// StateDefaultNames are the state options set state-defaults may hold.
+var StateDefaultNames = []string{"no-sync", "pflow", "sloppy"}
 
 type CustomPf struct {
 	Options      string `json:"options"`

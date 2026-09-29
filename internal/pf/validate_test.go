@@ -67,6 +67,28 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"a user tag in OPF's namespace", "firewall.rules[2].tag", func(m *Model) { m.Firewall.Rules[2].Tag = "opf_nonat" }},
 		{"reservation inside the dynamic range", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.150" }},
 		{"reservation on the interface's own address", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.1" }},
+		// pf options
+		{"skipping the WAN", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"wan"} }},
+		{"skipping egress", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"egress"} }},
+		{"skipping the WAN's device", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"em0"} }},
+		{"skipping something that isn't an interface", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"lan; pass all"} }},
+		{"unknown timeout", "firewall.options.timeouts.tcp.forever", func(m *Model) { m.Firewall.Options.Timeouts = map[string]int{"tcp.forever": 1} }},
+		{"adaptive timeouts the wrong way round", "firewall.options.timeouts.adaptive.end", func(m *Model) {
+			m.Firewall.Options.Timeouts = map[string]int{"adaptive.start": 5000, "adaptive.end": 4000}
+		}},
+		{"syncookies thresholds the wrong way round", "firewall.options.syncookiesEnd", func(m *Model) {
+			s, e := 10, 20
+			m.Firewall.Options.Syncookies, m.Firewall.Options.SyncookiesStart, m.Firewall.Options.SyncookiesEnd = SyncookiesAdaptive, &s, &e
+		}},
+		{"a limit of zero", "firewall.options.limits.tableEntries", func(m *Model) { z := 0; m.Firewall.Options.Limits.TableEntries = &z }},
+		{"unknown state default", "firewall.options.stateDefaults[0]", func(m *Model) { m.Firewall.Options.StateDefaults = []string{"max 10"} }},
+		{"no-df without reassembly", "firewall.options.reassembleNoDf", func(m *Model) { m.Firewall.Options.ReassembleNoDf = true }},
+		{"fingerprints path with a quote", "firewall.options.fingerprints", func(m *Model) { m.Firewall.Options.Fingerprints = `/etc/pf.os" pass all` }},
+		{"fingerprints path going up", "firewall.options.fingerprints", func(m *Model) { m.Firewall.Options.Fingerprints = "/etc/../root/x" }},
+		{"loginterface that doesn't exist", "firewall.options.logInterface", func(m *Model) { m.Firewall.Options.LogInterface = "nope" }},
+		{"debug level that isn't one", "firewall.options.debug", func(m *Model) { m.Firewall.Options.Debug = "loud" }},
+		{"min-ttl out of range", "firewall.options.scrub.minTtl", func(m *Model) { n := 300; m.Firewall.Options.Scrub.MinTTL = &n }},
+		{"antispoof on a DHCP interface", "interfaces[0].antispoof", func(m *Model) { m.Interfaces[0].Antispoof = true }},
 		// Several tunnels
 		{"two tunnels on one port", "interfaces[4].wireguard.listenPort", func(m *Model) { wg(m, 4).ListenPort = wg(m, 3).ListenPort }},
 		{"two tunnels with one key", "interfaces[4].wireguard.publicKey", func(m *Model) { wg(m, 4).PublicKey = wg(m, 3).PublicKey }},

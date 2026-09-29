@@ -903,3 +903,71 @@ func TestGenerateRcConfLocal(t *testing.T) {
 		t.Errorf("iot off:\n%s", got)
 	}
 }
+
+func TestPfOptions(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	// The sample sets none of the optional ones: pf's defaults stand.
+	conf := GeneratePfConf(m)
+	for _, absent := range []string{"set timeout", "set state-defaults", "set reassemble", "set debug", "set hostid", "set fingerprints", "set ruleset-optimization", "antispoof"} {
+		if strings.Contains(conf, absent) {
+			t.Errorf("%q with nothing set", absent)
+		}
+	}
+	for _, want := range []string{"set limit states 100000\n", "set skip on lo\n", "set loginterface $wan\n", `set syncookies adaptive (start 25%, end 12%)`} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+
+	n := func(i int) *int { return &i }
+	id := uint32(7)
+	o := &m.Firewall.Options
+	o.SyncookiesStart, o.SyncookiesEnd = n(40), n(20)
+	o.Limits = Limits{SrcNodes: n(20000), TableEntries: n(500000), Anchors: n(1024)}
+	o.Timeouts = map[string]int{"tcp.established": 3600, "adaptive.start": 60000, "adaptive.end": 120000}
+	o.StateDefaults = []string{"no-sync", "pflow"}
+	o.Reassemble, o.ReassembleNoDf = "yes", true
+	o.RulesetOptimization = "basic"
+	o.Debug = "notice"
+	o.HostID = &id
+	o.Fingerprints = "/etc/pf.os"
+	o.LogInterface = "none"
+	o.SkipOn = []string{"iot", "enc0"}
+	o.Scrub = ScrubOptions{Enabled: true, MinTTL: n(64), ReassembleTCP: true}
+	m.Interfaces[1].Antispoof = true // lan
+	conf = GeneratePfConf(m)
+	for _, want := range []string{
+		"set ruleset-optimization basic\n",
+		"set limit { states 100000, src-nodes 20000, table-entries 500000, anchors 1024 }\n",
+		"set timeout { tcp.established 3600, adaptive.start 60000, adaptive.end 120000 }\n",
+		"set syncookies adaptive (start 40%, end 20%)\n",
+		"set state-defaults no-sync, pflow\n",
+		"set reassemble yes no-df\n",
+		"set debug notice\n",
+		"set hostid 7\n",
+		`set fingerprints "/etc/pf.os"`,
+		"set skip on { lo $iot enc0 }\n",
+		"set loginterface none\n",
+		"match in all scrub (min-ttl 64 reassemble tcp)\n",
+		`antispoof log quick for $lan inet label "opf:antispoof:lan"`,
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in:\n%s", want, conf)
+		}
+	}
+	// Every option line links to its setting by name.
+	named := false
+	for _, l := range GeneratePfRuleset(m) {
+		named = named || (strings.HasPrefix(l.Text, "set limit") && l.Origin != nil && l.Origin.Label == "Firewall settings: Limits")
+	}
+	if !named {
+		t.Error("option lines don't name their setting")
+	}
+
+	// Scrub with nothing selected writes no rule (pf needs at least one
+	// option in the parentheses).
+	o.Scrub = ScrubOptions{Enabled: true}
+	if conf := GeneratePfConf(m); strings.Contains(conf, "scrub") {
+		t.Errorf("empty scrub:\n%s", conf)
+	}
+}

@@ -300,6 +300,11 @@ func (v *validator) interfaces() {
 		case f.Role != RoleVPN && (isWG || f.WireGuard != nil):
 			v.fail(p+".role", "a WireGuard interface must have role vpn")
 		}
+		// pf expands antispoof once, when it loads the rules, so an
+		// address that changes (DHCP) would leave it guarding the old one.
+		if f.Antispoof && (f.IPv4.Mode != IPv4Static || f.IPv4.Prefix == nil) {
+			v.fail(p+".antispoof", "needs a fixed address; with an address that changes it would guard the old one")
+		}
 	}
 
 	// Two interfaces on overlapping networks can't both be routed to.
@@ -597,6 +602,7 @@ func (v *validator) firewall() {
 	if o.Scrub.MaxMss != nil {
 		v.intRange("firewall.options.scrub.maxMss", *o.Scrub.MaxMss, 536, 65535)
 	}
+	v.options(o)
 
 	// Custom pf is an escape hatch and may hold anything pf accepts, but
 	// no control characters besides tabs and line breaks.
@@ -765,6 +771,112 @@ func (v *validator) dns() {
 		v.domain(p+".domain", o.Domain)
 		v.addr(p+".ip", o.IP, false)
 		v.text(p+".description", o.Description, 200, false)
+	}
+}
+
+var fingerprintsRE = regexp.MustCompile(`^/[A-Za-z0-9._/-]{1,254}$`)
+
+// options checks the less common pf options: each a value pf accepts,
+// and nothing that would switch filtering off where it matters.
+func (v *validator) options(o FirewallOptions) {
+	const p = "firewall.options"
+	if o.Scrub.MinTTL != nil {
+		v.intRange(p+".scrub.minTtl", *o.Scrub.MinTTL, 1, 255)
+	}
+	if o.SyncookiesStart != nil {
+		v.intRange(p+".syncookiesStart", *o.SyncookiesStart, 1, 100)
+	}
+	if o.SyncookiesEnd != nil {
+		v.intRange(p+".syncookiesEnd", *o.SyncookiesEnd, 1, 100)
+	}
+	start, end := 25, 12
+	if o.SyncookiesStart != nil {
+		start = *o.SyncookiesStart
+	}
+	if o.SyncookiesEnd != nil {
+		end = *o.SyncookiesEnd
+	}
+	if o.Syncookies == SyncookiesAdaptive && end >= start {
+		v.fail(p+".syncookiesEnd", "must be below the start threshold (%d%%), so syncookies turn off again", start)
+	}
+
+	for _, l := range []struct {
+		name string
+		n    *int
+		max  int
+	}{
+		{"srcNodes", o.Limits.SrcNodes, 10_000_000}, {"frags", o.Limits.Frags, 10_000_000}, {"tables", o.Limits.Tables, 1_000_000},
+		{"tableEntries", o.Limits.TableEntries, 100_000_000}, {"pktdelayPkts", o.Limits.PktdelayPkts, 10_000_000}, {"anchors", o.Limits.Anchors, 1_000_000},
+	} {
+		if l.n != nil {
+			v.intRange(p+".limits."+l.name, *l.n, 1, l.max)
+		}
+	}
+
+	for name, n := range o.Timeouts {
+		tp := p + ".timeouts." + name
+		switch {
+		case !slices.Contains(TimeoutNames, name):
+			v.fail(tp, "%q isn't a pf timeout", name)
+		case strings.HasPrefix(name, "adaptive."):
+			v.intRange(tp, n, 0, 10_000_000) // state counts
+		default:
+			v.intRange(tp, n, 0, 30*86400) // seconds
+		}
+	}
+	as, okS := o.Timeouts["adaptive.start"]
+	ae, okE := o.Timeouts["adaptive.end"]
+	if okS && okE && ae <= as {
+		v.fail(p+".timeouts.adaptive.end", "must be above adaptive.start (%d)", as)
+	}
+
+	seen := map[string]bool{}
+	for i, d := range o.StateDefaults {
+		v.oneOf(at(p+".stateDefaults", i), d, StateDefaultNames...)
+		v.unique(at(p+".stateDefaults", i), seen, d, "state default")
+	}
+	if o.Reassemble != "" {
+		v.oneOf(p+".reassemble", o.Reassemble, "yes", "no")
+	}
+	if o.ReassembleNoDf && o.Reassemble != "yes" {
+		v.fail(p+".reassembleNoDf", "only applies when reassembly is on")
+	}
+	if o.RulesetOptimization != "" {
+		v.oneOf(p+".rulesetOptimization", o.RulesetOptimization, "none", "basic", "profile")
+	}
+	if o.Debug != "" {
+		v.oneOf(p+".debug", o.Debug, "emerg", "alert", "crit", "err", "warning", "notice", "info", "debug")
+	}
+	if o.HostID != nil && *o.HostID == 0 {
+		v.fail(p+".hostId", "must be 1 or more")
+	}
+	if o.Fingerprints != "" && (!fingerprintsRE.MatchString(o.Fingerprints) || strings.Contains(o.Fingerprints, "..")) {
+		v.fail(p+".fingerprints", "must be an absolute path to a file, like /etc/pf.os")
+	}
+	switch o.LogInterface {
+	case "", "none":
+	default:
+		v.ifaceRef(p+".logInterface", o.LogInterface)
+	}
+
+	// Skipping an interface turns filtering off on it entirely, so the
+	// WAN can't be skipped: that would leave the firewall open.
+	for i, x := range o.SkipOn {
+		sp := at(p+".skipOn", i)
+		if f := v.iface(x); f != nil {
+			if f.Role == RoleWAN {
+				v.fail(sp, "%s is the internet side; skipping it would turn the firewall off there", f.Name)
+			}
+			continue
+		}
+		switch {
+		case x == "egress":
+			v.fail(sp, "egress is the internet side; skipping it would turn the firewall off there")
+		case len(x) > 15 || !(groupRE.MatchString(x) || deviceRE.MatchString(x)):
+			v.fail(sp, "%q isn't an interface, group or device", x)
+		case slices.ContainsFunc(v.m.Interfaces, func(f Iface) bool { return f.Device == x && f.Role == RoleWAN }):
+			v.fail(sp, "%s is the internet side; skipping it would turn the firewall off there", x)
+		}
 	}
 }
 

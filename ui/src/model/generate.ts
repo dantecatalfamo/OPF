@@ -1,7 +1,7 @@
 // Turns the model into the OpenBSD files it replaces. The Go backend
 // will own the real generators; these show the user exactly what Apply
 // writes and pin down the shape of the output.
-import { tunnels, type Endpoint, type FormRule, type Iface, type IfaceEndpoint, type Model, type NatRule, type PortForward, type Protocol, type Rule, type SelfEndpoint } from './types';
+import { timeoutNames, tunnels, type Endpoint, type FormRule, type Iface, type IfaceEndpoint, type Model, type NatRule, type PortForward, type Protocol, type Rule, type SelfEndpoint } from './types';
 import { isFloating } from '../lib/rules';
 import { netmask, network } from '../lib/ip';
 import { gatewayStatus } from './live';
@@ -101,7 +101,7 @@ const quote = (s: string) => `"${s.replace(/"/g, '\\"')}"`;
 // "opf:<kind>:<id>", which is what pfctl reports counters by;
 // descriptions are comments above them (see internal/pf/generate.go).
 const labelId = /^[A-Za-z0-9_-]{1,32}$/;
-export const pfLabel = (kind: 'rule' | 'forward' | 'nat' | 'auto-nat' | 'builtin' | 'split-tunnel', id: string) =>
+export const pfLabel = (kind: 'rule' | 'forward' | 'nat' | 'auto-nat' | 'builtin' | 'split-tunnel' | 'antispoof', id: string) =>
   labelId.test(id) ? ` label ${quote(`opf:${kind}:${id}`)}` : '';
 
 // A description as a pf.conf comment. pf continues a comment that ends
@@ -289,7 +289,6 @@ export function pfRuleset(m: Model): PfLine[] {
   const ifaces = m.interfaces.filter((i) => i.enabled);
   const wan = ifaces.find((i) => i.role === 'wan');
   const lan = ifaces.find((i) => i.role === 'lan');
-  const settings: Origin = { label: 'Firewall settings', to: '/firewall/settings' };
   // The custom pf editor is a drawer on the Ruleset page.
   const custom: Origin = { label: 'Custom pf', to: '/firewall/ruleset?edit=custom' };
 
@@ -312,19 +311,35 @@ export function pfRuleset(m: Model): PfLine[] {
   if (split.length) add(`table <${localTable}> const { ${localNetworks(m, true).join(' ')} }`, { label: 'WireGuard: your networks', to: '/services/wireguard' });
   blank();
 
+  // Options, in pf.conf(5)'s order; each links to its setting.
   add('# Options');
-  add(`set block-policy ${o.blockPolicy}`, settings);
-  add(`set state-policy ${o.statePolicy}`, settings);
-  add(`set optimization ${o.optimization}`, settings);
-  add(`set limit states ${o.maxStates}`, settings);
-  add(`set syncookies ${o.syncookies}${o.syncookies === 'adaptive' ? ' (start 25%, end 12%)' : ''}`, settings);
-  add('set skip on lo', settings);
-  if (wan) add(`set loginterface $${wan.id}`, settings);
+  const opt = (what: string, line: string) => add(line, { label: `Firewall settings: ${what}`, to: '/firewall/settings' });
+  const braced = (items: string[]) => (items.length === 1 ? items[0] : `{ ${items.join(', ')} }`);
+  opt('Blocked traffic', `set block-policy ${o.blockPolicy}`);
+  opt('Connection tracking', `set state-policy ${o.statePolicy}`);
+  opt('Timeouts', `set optimization ${o.optimization}`);
+  if (o.rulesetOptimization) opt('Ruleset optimization', `set ruleset-optimization ${o.rulesetOptimization}`);
+  const lim = o.limits ?? {};
+  const limits = [`states ${o.maxStates}`, ...([['src-nodes', lim.srcNodes], ['frags', lim.frags], ['tables', lim.tables], ['table-entries', lim.tableEntries], ['pktdelay_pkts', lim.pktdelayPkts], ['anchors', lim.anchors]] as const)
+    .filter(([, n]) => n !== undefined).map(([k, n]) => `${k} ${n}`)];
+  opt('Limits', `set limit ${braced(limits)}`);
+  const timeouts = timeoutNames.filter((k) => o.timeouts?.[k] !== undefined).map((k) => `${k} ${o.timeouts![k]}`);
+  if (timeouts.length) opt('Timeouts', `set timeout ${braced(timeouts)}`);
+  opt('SYN cookies', `set syncookies ${o.syncookies}${o.syncookies === 'adaptive' ? ` (start ${o.syncookiesStart ?? 25}%, end ${o.syncookiesEnd ?? 12}%)` : ''}`);
+  if (o.stateDefaults?.length) opt('State defaults', `set state-defaults ${o.stateDefaults.join(', ')}`);
+  if (o.reassemble) opt('Fragment reassembly', `set reassemble ${o.reassemble}${o.reassemble === 'yes' && o.reassembleNoDf ? ' no-df' : ''}`);
+  if (o.debug) opt('Debug level', `set debug ${o.debug}`);
+  if (o.hostId !== undefined) opt('Host id', `set hostid ${o.hostId}`);
+  if (o.fingerprints) opt('OS fingerprints', `set fingerprints ${quote(o.fingerprints)}`);
+  const skip = ['lo', ...(o.skipOn ?? []).map((x) => (m.interfaces.some((i) => i.id === x) ? `$${x}` : x))];
+  opt('Unfiltered interfaces', skip.length === 1 ? 'set skip on lo' : `set skip on { ${skip.join(' ')} }`);
+  if (o.logInterface === 'none') opt('Statistics interface', 'set loginterface none');
+  else if (o.logInterface) opt('Statistics interface', `set loginterface $${o.logInterface}`);
+  else if (wan) opt('Statistics interface', `set loginterface $${wan.id}`);
   for (const l of fw.custom.options.split('\n').filter((x) => x.trim())) add(l, custom);
-  if (o.scrub.enabled) {
-    const sc = [o.scrub.noDf && 'no-df', o.scrub.randomId && 'random-id', o.scrub.maxMss && `max-mss ${o.scrub.maxMss}`].filter(Boolean).join(' ');
-    add(`match in all scrub (${sc})`, settings);
-  }
+  // scrub takes a list of options; with none there's nothing to say.
+  const sc = [o.scrub.noDf && 'no-df', o.scrub.randomId && 'random-id', o.scrub.minTtl && `min-ttl ${o.scrub.minTtl}`, o.scrub.maxMss && `max-mss ${o.scrub.maxMss}`, o.scrub.reassembleTcp && 'reassemble tcp'].filter(Boolean);
+  if (o.scrub.enabled && sc.length) opt('Packet normalization', `match in all scrub (${sc.join(' ')})`);
   blank();
 
   add('# Outbound NAT');
@@ -345,6 +360,10 @@ export function pfRuleset(m: Model): PfLine[] {
   add('pass out inet6' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
   if (lan) described('Anti-lockout: the web UI and SSH stay reachable from the LAN', { label: 'Anti-lockout', to: `/interfaces/${lan.id}` },
     `pass in quick on $${lan.id} proto tcp to ${endpoint({ type: 'iface', iface: lan.id }, m)} port { 443 22 }${pfLabel('builtin', 'anti-lockout')}`);
+  for (const i of ifaces.filter((x) => x.antispoof)) {
+    described(`Antispoof: nothing from ${i.name}'s network arrives anywhere else`, { label: `Antispoof: ${i.name}`, to: `/interfaces/${i.id}` },
+      `antispoof log quick for $${i.id} inet${pfLabel('antispoof', i.id)}`);
+  }
   if (wan?.blockPrivate) described('Block private networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },
     `block in log quick on $${wan.id} from <private>${pfLabel('builtin', 'block-private')}`);
   if (wan?.blockBogons) described('Block bogon networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },

@@ -17,6 +17,7 @@ export interface Iface {
   vlan?: { parent: string; tag: number };
   blockPrivate?: boolean; // WAN only
   blockBogons?: boolean; // WAN only
+  antispoof?: boolean; // pf antispoof for the interface's network; fixed addresses only
   wireguard?: WireGuard; // VPN interfaces (wgN) only: each is its own tunnel
 }
 
@@ -179,9 +180,30 @@ export interface FirewallOptions {
   optimization: 'normal' | 'high-latency' | 'satellite' | 'aggressive' | 'conservative';
   maxStates: number;
   syncookies: 'never' | 'adaptive' | 'always';
-  scrub: { enabled: boolean; maxMss?: number; randomId: boolean; noDf: boolean };
+  scrub: { enabled: boolean; maxMss?: number; randomId: boolean; noDf: boolean; minTtl?: number; reassembleTcp?: boolean };
   logDefaultBlock: boolean;
+  // The rest are optional: left out, pf's default applies.
+  syncookiesStart?: number; // % of the state table (pf: 25)
+  syncookiesEnd?: number; // (pf: 12)
+  limits?: Partial<Record<'srcNodes' | 'frags' | 'tables' | 'tableEntries' | 'pktdelayPkts' | 'anchors', number>>;
+  timeouts?: Record<string, number>; // by pf's name: tcp.established, adaptive.start, …
+  stateDefaults?: ('no-sync' | 'pflow' | 'sloppy')[];
+  reassemble?: 'yes' | 'no';
+  reassembleNoDf?: boolean;
+  rulesetOptimization?: 'none' | 'basic' | 'profile';
+  debug?: 'emerg' | 'alert' | 'crit' | 'err' | 'warning' | 'notice' | 'info' | 'debug';
+  hostId?: number;
+  fingerprints?: string;
+  logInterface?: string; // interface id, 'none', or unset for the WAN
+  skipOn?: string[]; // interfaces or groups pf doesn't filter, besides lo
 }
+
+/** set timeout's keys, in pf.conf(5)'s order (internal/pf TimeoutNames). */
+export const timeoutNames = [
+  'tcp.first', 'tcp.opening', 'tcp.established', 'tcp.closing', 'tcp.finwait', 'tcp.closed', 'tcp.tsdiff',
+  'udp.first', 'udp.single', 'udp.multiple', 'icmp.first', 'icmp.error', 'other.first', 'other.single', 'other.multiple',
+  'frag', 'interval', 'src.track', 'adaptive.start', 'adaptive.end',
+] as const;
 
 export interface CustomPf {
   options: string; // after the set lines

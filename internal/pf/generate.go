@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -401,12 +402,13 @@ func quote(s string) string {
 // at most 63 bytes, expands macros such as $if, and changes the loaded
 // ruleset whenever it's edited.
 const (
-	LabelRule    = "rule"         // a firewall rule, by id
-	LabelForward = "forward"      // a port forward and its reflection rules, by id
-	LabelNAT     = "nat"          // an outbound NAT rule, by id
-	LabelAutoNAT = "auto-nat"     // automatic outbound NAT, by inside interface id
-	LabelBuiltin = "builtin"      // OPF's own rules, by name
-	LabelSplit   = "split-tunnel" // limits on a tunnel's split-tunnel peers, by interface id
+	LabelRule      = "rule"         // a firewall rule, by id
+	LabelForward   = "forward"      // a port forward and its reflection rules, by id
+	LabelNAT       = "nat"          // an outbound NAT rule, by id
+	LabelAutoNAT   = "auto-nat"     // automatic outbound NAT, by inside interface id
+	LabelBuiltin   = "builtin"      // OPF's own rules, by name
+	LabelSplit     = "split-tunnel" // limits on a tunnel's split-tunnel peers, by interface id
+	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
 )
 
 const labelPrefix = "opf:"
@@ -427,7 +429,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelAntispoof:
 	default:
 		return "", "", false
 	}
@@ -655,7 +657,6 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		}
 	}
 
-	settings := &Origin{Label: "Firewall settings", To: "/firewall/settings"}
 	// The custom pf editor is a drawer on the Ruleset page.
 	custom := &Origin{Label: "Custom pf", To: "/firewall/ruleset?edit=custom"}
 
@@ -702,38 +703,89 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	}
 	blank()
 
-	// Options
+	// Options, in pf.conf(5)'s order; each links to its setting.
 	add("# Options", nil)
-	add(fmt.Sprintf("set block-policy %s", o.BlockPolicy), settings)
-	add(fmt.Sprintf("set state-policy %s", o.StatePolicy), settings)
-	add(fmt.Sprintf("set optimization %s", o.Optimization), settings)
-	add(fmt.Sprintf("set limit states %d", o.MaxStates), settings)
+	opt := func(what, line string) {
+		add(line, &Origin{Label: "Firewall settings: " + what, To: "/firewall/settings"})
+	}
+	opt("Blocked traffic", fmt.Sprintf("set block-policy %s", o.BlockPolicy))
+	opt("Connection tracking", fmt.Sprintf("set state-policy %s", o.StatePolicy))
+	opt("Timeouts", fmt.Sprintf("set optimization %s", o.Optimization))
+	if o.RulesetOptimization != "" {
+		opt("Ruleset optimization", "set ruleset-optimization "+o.RulesetOptimization)
+	}
+	opt("Limits", "set limit "+braced(pfLimits(o)))
+	var timeouts []string
+	for _, name := range TimeoutNames {
+		if v, ok := o.Timeouts[name]; ok {
+			timeouts = append(timeouts, fmt.Sprintf("%s %d", name, v))
+		}
+	}
+	if len(timeouts) > 0 {
+		opt("Timeouts", "set timeout "+braced(timeouts))
+	}
 	syncookies := string(o.Syncookies)
 	if o.Syncookies == SyncookiesAdaptive {
-		syncookies += " (start 25%, end 12%)"
+		start, end := 25, 12
+		if o.SyncookiesStart != nil {
+			start = *o.SyncookiesStart
+		}
+		if o.SyncookiesEnd != nil {
+			end = *o.SyncookiesEnd
+		}
+		syncookies += fmt.Sprintf(" (start %d%%, end %d%%)", start, end)
 	}
-	add(fmt.Sprintf("set syncookies %s", syncookies), settings)
-	add("set skip on lo", settings)
-	if wan != nil {
-		add(fmt.Sprintf("set loginterface $%s", wan.ID), settings)
+	opt("SYN cookies", "set syncookies "+syncookies)
+	if len(o.StateDefaults) > 0 {
+		opt("State defaults", "set state-defaults "+strings.Join(o.StateDefaults, ", "))
+	}
+	switch o.Reassemble {
+	case "yes":
+		if o.ReassembleNoDf {
+			opt("Fragment reassembly", "set reassemble yes no-df")
+		} else {
+			opt("Fragment reassembly", "set reassemble yes")
+		}
+	case "no":
+		opt("Fragment reassembly", "set reassemble no")
+	}
+	if o.Debug != "" {
+		opt("Debug level", "set debug "+o.Debug)
+	}
+	if o.HostID != nil {
+		opt("Host id", fmt.Sprintf("set hostid %d", *o.HostID))
+	}
+	if o.Fingerprints != "" {
+		opt("OS fingerprints", "set fingerprints "+quote(o.Fingerprints))
+	}
+	skip := []string{"lo"}
+	for _, x := range o.SkipOn {
+		if slices.ContainsFunc(m.Interfaces, func(i Iface) bool { return i.ID == x }) {
+			x = "$" + x // a model interface, by its macro
+		}
+		skip = append(skip, x)
+	}
+	if len(skip) == 1 {
+		opt("Unfiltered interfaces", "set skip on lo")
+	} else {
+		opt("Unfiltered interfaces", "set skip on { "+strings.Join(skip, " ")+" }")
+	}
+	switch {
+	case o.LogInterface == "none":
+		opt("Statistics interface", "set loginterface none")
+	case o.LogInterface != "":
+		opt("Statistics interface", "set loginterface $"+o.LogInterface)
+	case wan != nil:
+		opt("Statistics interface", fmt.Sprintf("set loginterface $%s", wan.ID))
 	}
 	for _, line := range strings.Split(fw.Custom.Options, "\n") {
 		if strings.TrimSpace(line) != "" {
 			add(line, custom)
 		}
 	}
-	if o.Scrub.Enabled {
-		var scrubOpts []string
-		if o.Scrub.NoDf {
-			scrubOpts = append(scrubOpts, "no-df")
-		}
-		if o.Scrub.RandomID {
-			scrubOpts = append(scrubOpts, "random-id")
-		}
-		if o.Scrub.MaxMss != nil {
-			scrubOpts = append(scrubOpts, fmt.Sprintf("max-mss %d", *o.Scrub.MaxMss))
-		}
-		add(fmt.Sprintf("match in all scrub (%s)", strings.Join(scrubOpts, " ")), settings)
+	// scrub takes a list of options; with none there's nothing to say.
+	if sc := scrubOptions(o.Scrub); o.Scrub.Enabled && len(sc) > 0 {
+		opt("Packet normalization", fmt.Sprintf("match in all scrub (%s)", strings.Join(sc, " ")))
 	}
 	blank()
 
@@ -787,6 +839,12 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	if lan != nil {
 		described("Anti-lockout: the web UI and SSH stay reachable from the LAN", &Origin{Label: "Anti-lockout", To: fmt.Sprintf("/interfaces/%s", lan.ID)},
 			fmt.Sprintf("pass in quick on $%s proto tcp to %s port { 443 22 }%s", lan.ID, endpoint(ifaceAddr(lan.ID), m), label(LabelBuiltin, "anti-lockout")))
+	}
+	for _, i := range ifaces {
+		if i.Antispoof {
+			described("Antispoof: nothing from "+i.Name+"'s network arrives anywhere else", &Origin{Label: "Antispoof: " + i.Name, To: fmt.Sprintf("/interfaces/%s", i.ID)},
+				fmt.Sprintf("antispoof log quick for $%s inet%s", i.ID, label(LabelAntispoof, i.ID)))
+		}
 	}
 	if wan != nil && wan.BlockPrivate {
 		described("Block private networks", &Origin{Label: "WAN protection", To: fmt.Sprintf("/interfaces/%s", wan.ID)},
@@ -1207,6 +1265,51 @@ func splitPeers(m *Model) []splitTunnel {
 		if len(peers) > 0 {
 			out = append(out, splitTunnel{t, peers})
 		}
+	}
+	return out
+}
+
+// pfLimits are the `set limit` values: states always, the rest when set.
+func pfLimits(o FirewallOptions) []string {
+	out := []string{fmt.Sprintf("states %d", o.MaxStates)}
+	for _, l := range []struct {
+		name string
+		v    *int
+	}{
+		{"src-nodes", o.Limits.SrcNodes}, {"frags", o.Limits.Frags}, {"tables", o.Limits.Tables},
+		{"table-entries", o.Limits.TableEntries}, {"pktdelay_pkts", o.Limits.PktdelayPkts}, {"anchors", o.Limits.Anchors},
+	} {
+		if l.v != nil {
+			out = append(out, fmt.Sprintf("%s %d", l.name, *l.v))
+		}
+	}
+	return out
+}
+
+// braced writes one `set` value plainly and several as a { a, b } list.
+func braced(items []string) string {
+	if len(items) == 1 {
+		return items[0]
+	}
+	return "{ " + strings.Join(items, ", ") + " }"
+}
+
+func scrubOptions(sc ScrubOptions) []string {
+	var out []string
+	if sc.NoDf {
+		out = append(out, "no-df")
+	}
+	if sc.RandomID {
+		out = append(out, "random-id")
+	}
+	if sc.MinTTL != nil {
+		out = append(out, fmt.Sprintf("min-ttl %d", *sc.MinTTL))
+	}
+	if sc.MaxMss != nil {
+		out = append(out, fmt.Sprintf("max-mss %d", *sc.MaxMss))
+	}
+	if sc.ReassembleTCP {
+		out = append(out, "reassemble tcp")
 	}
 	return out
 }

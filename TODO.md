@@ -707,6 +707,11 @@ skipped and the web process isn't dropped to another user.
       later rules in the same evaluation (`! tagged opf_nonat` on the
       nat-to rules), so excepted traffic leaves untranslated and still
       reaches the outbound user rules.
+- [ ] pf options: pfctl accepts every generated `set` line (a braced
+      `set limit`/`set timeout` list, `set skip on { lo $iot }` with a
+      group or device, `set hostid`, quoted `set fingerprints`), scrub's
+      `min-ttl` and `reassemble tcp`, and `antispoof log quick for $lan
+      inet label …`.
 - [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
       in a `const` table (used for DHCP-addressed inside networks in
       `<opf_local>`), and the block rule stops a split-tunnel device
@@ -735,6 +740,15 @@ Finished work, kept here for now. Git history has the details.
 
 Parser and generators:
 
+- [x] Every pf.conf(5) option: `set limit` (all of them), `set timeout`
+      (each key), adaptive syncookies' thresholds, `set state-defaults`,
+      `set reassemble`, `set ruleset-optimization`, `set debug`,
+      `set hostid`, `set fingerprints`, the statistics interface and
+      unfiltered interfaces (never the WAN or `egress`), scrub's
+      `min-ttl` and `reassemble tcp`, and antispoof per interface (fixed
+      addresses only). Unset means pf's default and writes nothing.
+      Option lines in the ruleset name their setting. Scrub with no
+      options no longer writes an invalid `scrub ()`.
 - [x] NAT exceptions no longer skip outbound rules: instead of
       `pass out quick`, an exception tags its traffic (`opf_nonat`,
       reserved) and the nat-to rules on that interface skip tagged

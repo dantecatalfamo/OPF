@@ -22,6 +22,7 @@ interface Values {
   mtu: number | string;
   blockPrivate: boolean;
   blockBogons: boolean;
+  antispoof: boolean;
 }
 
 function toValues(i: Iface): Values {
@@ -36,6 +37,7 @@ function toValues(i: Iface): Values {
     mtu: i.mtu ?? '',
     blockPrivate: !!i.blockPrivate,
     blockBogons: !!i.blockBogons,
+    antispoof: !!i.antispoof,
   };
 }
 
@@ -52,6 +54,7 @@ function describe(before: Iface, after: Iface): string {
   if (before.mtu !== after.mtu) parts.push(`MTU ${after.mtu ?? 'default'}`);
   if (!!before.blockPrivate !== !!after.blockPrivate) parts.push(after.blockPrivate ? 'blocks private networks' : 'allows private networks');
   if (!!before.blockBogons !== !!after.blockBogons) parts.push(after.blockBogons ? 'blocks bogon networks' : 'allows bogon networks');
+  if (!!before.antispoof !== !!after.antispoof) parts.push(after.antispoof ? 'blocks spoofed addresses' : 'no longer blocks spoofed addresses');
   return `${before.name}: ${parts.join(', ') || 'updated'}`;
 }
 
@@ -102,7 +105,10 @@ export function InterfaceEdit() {
       ipv6: v.ipv6,
       mtu: v.mtu === '' ? undefined : Number(v.mtu),
       ...(isWan ? { blockPrivate: v.blockPrivate, blockBogons: v.blockBogons } : {}),
+      // Antispoof needs a fixed address (pf expands it when it loads).
+      antispoof: v.mode === 'static' && v.antispoof ? true : undefined,
     };
+    if (next.antispoof === undefined) delete next.antispoof;
     if (JSON.stringify(next) === JSON.stringify(iface)) {
       navigate('/interfaces');
       return;
@@ -209,10 +215,19 @@ export function InterfaceEdit() {
           </Stack>
         </Card>
 
-        {isWan && (
-          <Card>
-            <SectionTitle>Protection</SectionTitle>
-            <Stack>
+        <Card>
+          <SectionTitle>Protection</SectionTitle>
+          <Stack>
+            <Switch
+              label="Block spoofed addresses"
+              description={form.values.mode === 'static'
+                ? `Drop traffic that claims to come from ${iface.name}’s network but arrives on another interface (pf’s antispoof).`
+                : 'Needs a fixed address: pf would keep guarding the old network after the address changed.'}
+              disabled={form.values.mode !== 'static'}
+              {...form.getInputProps('antispoof', { type: 'checkbox' })}
+            />
+            {isWan && (
+              <>
               <Switch
                 label="Block private networks"
                 description="Drop traffic from the internet that claims to come from a private address such as 192.168.0.0/16."
@@ -223,9 +238,10 @@ export function InterfaceEdit() {
                 description="Drop traffic from addresses that should never appear on the internet."
                 {...form.getInputProps('blockBogons', { type: 'checkbox' })}
               />
-            </Stack>
-          </Card>
-        )}
+              </>
+            )}
+          </Stack>
+        </Card>
       </Stack>
       {iface.vlan && <DeleteInterface iface={iface} kind="VLAN network" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/interfaces')} />}
     </form>
