@@ -515,12 +515,6 @@ Firewall:
 - [ ] Per-rule counters (`pfctl -s labels`, or `pfctl -vv -s rules`) →
       `GET /api/pf/labels`: evaluations, packets and bytes on the Rules
       page, matched to model rules by their labels.
-- [ ] Per-rule history: counters polled and stored so they can be
-      graphed over time.
-- [ ] Per-client traffic: pf only keeps bytes per live connection (lost
-      when it closes) and per interface. Options: periodic state polling
-      aggregated by address, rule labels with accounting, or pflow(4)
-      export to a collector.
 - [ ] pf info (`pfctl -v -s info`) → `GET /api/pf/info`: the firewall
       dashboard tile (state table size, match rate, drops); interface
       stats (`pfctl -vv -s Interface`) and memory limits
@@ -534,14 +528,48 @@ Network, VPN and logs:
 - [ ] Interfaces (`netstat -in`, `ifconfig -a`) →
       `GET /api/network/interfaces`: packets, errors, collisions, link
       state, media, addresses and flags.
-- [ ] Traffic rates (deltas of `netstat -i`): the dashboard chart
-      (simulated today) and per-interface sparklines.
 - [ ] WireGuard peer status (`ifconfig wgN` or `wg show`) →
       `GET /api/wireguard/status`: handshake and bytes per peer, keyed by
       tunnel and peer.
 - [ ] System logs → `GET /api/logs/{dmesg,messages,daemon,authlog}`: a
       Diagnostics › System logs page with a tab each.
 - [ ] Diagnostics tools: ping, traceroute, DNS lookup.
+
+History over time (the pages above show the current values; these keep
+them, so they can be graphed and compared):
+
+- [ ] **A collector** in the parent that samples on a fixed interval
+      (10 s, say) and keeps each series in a bounded store: recent
+      samples at full resolution, older ones averaged down (1 min for a
+      day, 1 h for a month, and so on, like RRD), with a fixed cap on
+      disk under the state directory so it can never fill the disk.
+      Counters are stored as rates (deltas per second), and a counter
+      that goes backwards (a pf reload, a reboot) starts over rather
+      than giving a negative spike. It survives restarts, and the API
+      gives a series over a time range at the resolution asked for.
+- [ ] What to collect:
+      - **Interface traffic**: bytes, packets, errors and drops in and
+        out per interface (`netstat -in`, or the kernel's counters):
+        the dashboard chart (simulated today) and per-interface graphs.
+      - **pf as a whole** (`pfctl -si`): state table size against its
+        limit, state inserts and removals, searches, matches, and drops
+        by reason (memory, fragment, state mismatch…); syncookies
+        active; table-entries use against its limit.
+      - **Per rule** (`pfctl -s labels`, by OPF's labels): evaluations,
+        packets, bytes and states per model rule, on the Rules page and
+        a rule's own graph.
+      - **Per host**: states and traffic per inside address. pf only
+        keeps bytes per live connection (lost when it closes) and per
+        interface, so: periodic state polling aggregated by address,
+        rule labels with accounting, or pflow(4) export to a collector.
+        Top talkers over time, and a host's own history.
+      - **WireGuard**: bytes per peer, and handshake age.
+      - **Gateways**: latency and loss, once gateway monitoring exists.
+      - **DNS and DHCP**: queries and cache hits (`unbound-control
+        stats`), leases in use per scope against the range's size.
+      - **System**: CPU, load, memory, swap, disk use, temperatures.
+- [ ] Graphs in the UI: time range picker, per-interface, per-rule and
+      per-host views, and the dashboard's charts from real data.
 
 ## UI
 
