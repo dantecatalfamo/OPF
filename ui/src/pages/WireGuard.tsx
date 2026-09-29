@@ -14,6 +14,7 @@ import { isFloating } from '../lib/rules';
 import { formatAgo, formatBytes } from '../lib/format';
 import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
+import { DeleteInterface } from '../components/DeleteInterface';
 
 // Stand-in for a real key pair; the appliance generates these like wg(8).
 function fakeKey(): string {
@@ -341,6 +342,8 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
 
 function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   const { staged, edit } = useStore();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const vpns = tunnels(staged);
   const form = useForm({
     initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string },
@@ -389,11 +392,13 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
             <Text size="sm" fw={500}>Public key</Text>
             <Copyable value={tunnel.wireguard.publicKey} />
           </Stack>
-          <Group justify="flex-end">
+          <Group justify="space-between">
+            <Button variant="subtle" color="red" onClick={() => setDeleting(true)}>Delete tunnel</Button>
             <Button type="submit" disabled={!form.isDirty()}>Save</Button>
           </Group>
         </Stack>
       </form>
+      <DeleteInterface iface={tunnel} kind="WireGuard tunnel" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/services/wireguard')} />
     </Card>
   );
 }

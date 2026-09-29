@@ -56,6 +56,7 @@ function Files({ review }: { review: Review }) {
                 <Tabs.Tab key={f.path} value={f.path} className="mono" fz="xs">
                   {f.path}
                   {f.status === 'added' && <Badge size="xs" ml={6} color="teal">new</Badge>}
+                  {f.status === 'removed' && <Badge size="xs" ml={6} color="red">removed</Badge>}
                 </Tabs.Tab>
               ))}
             </Tabs.List>

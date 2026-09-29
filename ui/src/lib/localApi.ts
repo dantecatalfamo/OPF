@@ -37,7 +37,8 @@ function files(m: Model): Map<string, string> {
 function fileChanges(from: Model, to: Model): FileChange[] {
   const a = files(from);
   const out: FileChange[] = [];
-  for (const [path, content] of files(to)) {
+  const b = files(to);
+  for (const [path, content] of b) {
     const before = a.get(path);
     if (before === content) continue;
     out.push({
@@ -45,6 +46,10 @@ function fileChanges(from: Model, to: Model): FileChange[] {
       diff: unifiedDiff(before ?? '', content, `${path} (live)`, `${path} (staged)`),
       needsConfirm: path === '/etc/pf.conf', model: path === MODEL_PATH,
     });
+  }
+  // Files the new model no longer generates, such as a deleted VLAN's.
+  for (const [path, before] of a) {
+    if (!b.has(path)) out.push({ path, status: 'removed', diff: unifiedDiff(before, '', `${path} (live)`, `${path} (staged)`) });
   }
   return out;
 }
@@ -128,7 +133,7 @@ export const localApi = {
       resource: {
         id, time: new Date().toISOString(), status: needsConfirm ? 'pending' : 'applied', message, changes,
         deadline: needsConfirm ? new Date(Date.now() + CONFIRM_MS).toISOString() : undefined,
-        files: changed.map((c) => ({ path: c.path, created: c.status === 'added', needsConfirm: c.needsConfirm, model: c.model })),
+        files: changed.map((c) => ({ path: c.path, created: c.status === 'added', removed: c.status === 'removed', needsConfirm: c.needsConfirm, model: c.model })),
       },
       before: clone(live), after: clone(staged),
       diffs: changed.map((c) => ({ path: c.path, diff: c.diff })),

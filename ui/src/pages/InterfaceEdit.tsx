@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   Alert, Anchor, Breadcrumbs, Button, Card, Group, NumberInput, SegmentedControl, Select, Stack, Switch, Text, TextInput,
@@ -9,6 +9,7 @@ import { useStore } from '../model/store';
 import type { Iface } from '../model/types';
 import { isIPv4, inSubnet } from '../lib/ip';
 import { PageHeader, SectionTitle } from '../components/ui';
+import { DeleteInterface } from '../components/DeleteInterface';
 
 interface Values {
   name: string;
@@ -58,6 +59,7 @@ export function InterfaceEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { staged, edit } = useStore();
+  const [deleting, setDeleting] = useState(false);
   const iface = staged.interfaces.find((i) => i.id === id);
 
   const form = useForm<Values>({
@@ -123,6 +125,11 @@ export function InterfaceEdit() {
         description={iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`}
         actions={
           <>
+            {iface.vlan && (
+              <Button variant="subtle" color="red" onClick={() => setDeleting(true)}>
+                Delete VLAN
+              </Button>
+            )}
             <Button variant="default" component={Link} to="/interfaces">
               Cancel
             </Button>
@@ -220,6 +227,7 @@ export function InterfaceEdit() {
           </Card>
         )}
       </Stack>
+      {iface.vlan && <DeleteInterface iface={iface} kind="VLAN network" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/interfaces')} />}
     </form>
   );
 }

@@ -39,7 +39,7 @@ export interface ConfigResource {
 
 export interface FileChange {
   path: string;
-  status: 'added' | 'modified';
+  status: 'added' | 'modified' | 'removed';
   diff: string;
   needsConfirm?: boolean;
   model?: boolean;
@@ -67,7 +67,7 @@ export interface CommitResource {
   deadline?: string;
   message: string;
   changes: ChangeNote[];
-  files: { path: string; created?: boolean; needsConfirm?: boolean; model?: boolean }[];
+  files: { path: string; created?: boolean; removed?: boolean; needsConfirm?: boolean; model?: boolean }[];
 }
 
 export interface CommitDetail extends CommitResource {
