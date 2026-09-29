@@ -435,11 +435,12 @@ checker (`httpd -n`, `smtpd -n`, `bgpd -n`, `ospfd -n`). Each daemon's
 model gets structured fields where practical plus a field for extra
 lines, all through the commit engine.
 
-- [ ] **`rc.conf.local`** is only checked with `sh -n` and nothing
-      applies it. Enabling a service, or DHCP, DNS or WireGuard, must
-      stage it (`dhcpd_flags` with the interface list, `unbound_flags`
-      and so on) and reconcile with rcctl on commit. It's sourced by
-      rc(8) as root (Security).
+- [ ] **OPF owns all of `rc.conf.local`.** It's generated whole, so an
+      existing system's lines (`pkg_scripts`, other daemons' flags) are
+      flagged as changed outside OPF and replaced if the user agrees.
+      Import should carry them into the model, and the Services page
+      will need the file to hold every service it manages
+      (`config.RcServices` and the generator grow together).
 - [ ] **A Services page** listing every base daemon, grouped by
       category, with name, description, enabled and running, quick
       actions (start, stop, restart, enable, disable) and links to the
@@ -709,6 +710,11 @@ skipped and the web process isn't dropped to another user.
       lease statements in the file. Records limits the damage (dynamic
       range only, reserved names, clashing names dropped), but the
       parser can't tell forged statements from real ones.
+- [ ] rc.conf.local: rc.d reads the quoted `dhcpd_flags="em1 vlan20"`
+      and empty `unbound_flags=""` as `rcctl set`/`enable` would write
+      them; `rcctl check`, `start`, `restart` and `stop` behave as the
+      reconcile expects; a newly enabled dhcpd starts with the new
+      dhcpd.conf.
 - [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
       in a `const` table (used for DHCP-addressed inside networks in
       `<opf_local>`), and the block rule stops a split-tunnel device
@@ -773,6 +779,12 @@ Parser and generators:
 
 Commit engine and API:
 
+- [x] `rc.conf.local` is generated from the model (dhcpd with the devices
+      that have a DHCP scope, so never the WAN; unbound when DNS is on)
+      and applied last, after every service's configuration, by a
+      reconcile that starts, restarts or stops dhcpd and unbound to
+      match; also after a revert removes the file. Turning on DHCP or
+      DNS now enables and starts the daemon.
 - [x] The binary serves the UI: `make build` embeds `ui/dist` (package
       `ui`, tag `embedui`), served with a strict Content-Security-Policy,
       no framing, no referrer, and long caching only for hashed assets.

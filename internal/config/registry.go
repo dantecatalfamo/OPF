@@ -23,6 +23,12 @@ type File struct {
 	// which for Confirm files is the staged copy rather than Path.
 	Apply []string
 
+	// ApplyWhenRemoved runs Apply even when reverting a commit removes
+	// the file (it didn't exist before), with "{}" naming the missing
+	// path; for files whose absence means something, like
+	// rc.conf.local's defaults.
+	ApplyWhenRemoved bool
+
 	// Service, if set, is reloaded or restarted with rcctl after the
 	// file changes, but only when it is already running.
 	Service       string
@@ -122,12 +128,6 @@ func DefaultFiles() []File {
 			Mode:  0640, // may hold keys, e.g. wgkey
 		},
 		{
-			Name: "rc.conf.local", Path: "/etc/rc.conf.local",
-			Desc:  "Enabled daemons and their flags",
-			Check: []string{"sh", "-n", "{}"},
-			Mode:  0644,
-		},
-		{
 			Name: "pf.conf", Path: "/etc/pf.conf",
 			Desc:    "Packet filter rules",
 			Check:   []string{"pfctl", "-n", "-f", "{}"},
@@ -170,8 +170,40 @@ func DefaultFiles() []File {
 			Service: "sshd", ServiceAction: "reload",
 			Mode: 0644,
 		},
+		{
+			// After every service's configuration, so a service it
+			// enables starts with its new configuration file.
+			Name: "rc.conf.local", Path: "/etc/rc.conf.local",
+			Desc:             "Enabled daemons and their flags",
+			Check:            []string{"sh", "-n", "{}"},
+			Apply:            []string{"sh", "-c", RcReconcile, "sh", "{}"},
+			ApplyWhenRemoved: true,
+			Mode:             0644,
+		},
 	}
 }
+
+// RcServices are the daemons whose rc.conf.local lines OPF writes
+// (pf.GenerateRcConfLocal), and so the ones RcReconcile manages.
+var RcServices = []string{"dhcpd", "unbound"}
+
+// RcReconcile brings RcServices in line with an rc.conf.local, $1: a
+// service it disables is stopped, one it enables is restarted if it's
+// running (so new flags take effect) or started if not. The file may be
+// gone after a revert, which leaves them all disabled, as they are by
+// default. Any failure fails the commit, which is then reverted.
+var RcReconcile = `set -e
+if [ -f "$1" ]; then . "$1"; fi
+for s in ` + strings.Join(RcServices, " ") + `; do
+	eval "f=\${${s}_flags-NO}"
+	if [ "$f" = NO ]; then
+		if rcctl check "$s" >/dev/null 2>&1; then rcctl stop "$s"; fi
+	elif rcctl check "$s" >/dev/null 2>&1; then
+		rcctl restart "$s"
+	else
+		rcctl start "$s"
+	fi
+done`
 
 func validateFiles(files []File) error {
 	seen := map[string]bool{}

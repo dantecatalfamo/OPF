@@ -435,3 +435,18 @@ func TestOnChange(t *testing.T) {
 		t.Errorf("called %d times after a commit", n)
 	}
 }
+
+// The daemons rc.conf.local is generated for are the ones the reconcile
+// after installing it manages.
+func TestRcServicesMatchGenerator(t *testing.T) {
+	got := pf.GenerateRcConfLocal(sample(t))
+	var names []string
+	for _, line := range strings.Split(got, "\n") {
+		if name, _, ok := strings.Cut(line, "_flags="); ok && !strings.HasPrefix(line, "#") {
+			names = append(names, name)
+		}
+	}
+	if strings.Join(names, " ") != strings.Join(config.RcServices, " ") {
+		t.Errorf("rc.conf.local sets %v, but the reconcile manages %v", names, config.RcServices)
+	}
+}

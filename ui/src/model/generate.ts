@@ -458,6 +458,16 @@ function unboundConf(m: Model): string {
   return lines.join('\n') + '\n';
 }
 
+// /etc/rc.conf.local: which daemons OPF runs, and their flags
+// (internal/pf GenerateRcConfLocal).
+function rcConfLocal(m: Model): string {
+  const devices = m.dhcp
+    .filter((s) => s.enabled)
+    .flatMap((s) => m.interfaces.filter((i) => i.id === s.iface && i.enabled && i.ipv4.mode === 'static' && i.ipv4.address && i.ipv4.prefix !== undefined))
+    .map((i) => i.device);
+  return `${header}\ndhcpd_flags="${devices.length ? devices.join(' ') : 'NO'}"\nunbound_flags="${m.dns.enabled ? '' : 'NO'}"\n`;
+}
+
 export function generateFiles(m: Model): GeneratedFile[] {
   const files: GeneratedFile[] = [
     { path: '/etc/myname', content: `${m.system.hostname}.${m.system.domain}\n` },
@@ -465,6 +475,7 @@ export function generateFiles(m: Model): GeneratedFile[] {
     { path: '/etc/pf.conf', content: pfConf(m) },
     { path: '/etc/dhcpd.conf', content: dhcpdConf(m) },
     { path: '/var/unbound/etc/unbound.conf', content: unboundConf(m) },
+    { path: '/etc/rc.conf.local', content: rcConfLocal(m) },
   ];
   const def = m.routing.gateways.find((g) => g.id === m.routing.defaultGateway);
   if (def && def.address !== 'dhcp') files.push({ path: '/etc/mygate', content: `${def.address}\n` });

@@ -299,6 +299,11 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 					s.logFile("remove", f, live, "reverting commit "+e.ID+", didn't exist before")
 				}
 				fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
+				if f.ApplyWhenRemoved {
+					if err := s.apply(ctx, f, live, logBuf); err != nil {
+						errs = append(errs, err)
+					}
+				}
 				continue
 			}
 		}

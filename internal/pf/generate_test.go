@@ -847,3 +847,25 @@ func TestNoQuickOutboundPassBeforeUserRules(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateRcConfLocal(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	got := GenerateRcConfLocal(m)
+	// Only the devices with a DHCP scope: never the WAN.
+	if !strings.Contains(got, "\ndhcpd_flags=\"em1 vlan20\"\n") || !strings.Contains(got, "\nunbound_flags=\"\"\n") {
+		t.Errorf("sample:\n%s", got)
+	}
+	for i := range m.DHCP {
+		m.DHCP[i].Enabled = false
+	}
+	m.DNS.Enabled = false
+	if got := GenerateRcConfLocal(m); !strings.Contains(got, "dhcpd_flags=\"NO\"") || !strings.Contains(got, "unbound_flags=\"NO\"") {
+		t.Errorf("all off:\n%s", got)
+	}
+	// A scope on a disabled interface isn't served.
+	m, _ = loadSampleModel(t)
+	m.Interfaces[2].Enabled = false // iot, vlan20
+	if got := GenerateRcConfLocal(m); !strings.Contains(got, "dhcpd_flags=\"em1\"") {
+		t.Errorf("iot off:\n%s", got)
+	}
+}
