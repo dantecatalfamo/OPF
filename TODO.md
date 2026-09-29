@@ -222,34 +222,32 @@ diffs, whether confirmation is needed, and the server's objections.
   Leases, lease names, the ARP table and the routing table are live; the
   rest of the dashboard and diagnostics still show sample data from
   `ui/src/model/live.ts`.
-- **Missing:** authentication, importing an existing system, removing
-  generated files.
+- **Missing:** authentication, importing an existing system.
 - **Never run on OpenBSD.**
 
 ## Roadmap
 
 In order. Each step's details are in the section it points to.
 
-1. **Removing generated files** (Commit engine), which deleting VLANs,
-   tunnels and other interfaces waits on.
-2. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
+1. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
    generated files and the annotated ruleset from the API, and the
    offline preview build gets them from a stand-in. Keep the sample
    model as the shared fixture for Go tests and the mock.
-3. **Authentication and TLS**, enforced in the parent (Security).
-4. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
+2. **Authentication and TLS**, enforced in the parent (Security).
+3. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
    in the SSH config is a candidate; ask before using it.
-5. **Import** (Parser and import), then the first-run wizard.
-6. **Live data** (Live data and monitoring).
+4. **Import** (Parser and import), then the first-run wizard.
+5. **Live data** (Live data and monitoring).
 
 ## Commit engine and staging
 
-- [ ] **Removing generated files.** Staging a model that no longer
-      generates a file (a deleted VLAN's `hostname.vlan30`, a tunnel's
-      `hostname.wg1`) is refused as `unsupported`. The engine needs
-      deletion with restore on revert, and interfaces need
-      `ifconfig <dev> destroy` (Interfaces). Until then the UI can't
-      delete VLANs, tunnels or other interfaces, only turn them off.
+- [ ] Deleting an interface leaves things that mention it without
+      referring to it: a WAN rule that opened a deleted tunnel's port,
+      and alias entries with its network. List them in the delete
+      dialog too, and offer to remove them.
+- [ ] Removing a physical port's `hostname.if` only takes the port down
+      (it can't be destroyed); its addresses stay until a reboot.
+      Nothing in the UI removes physical ports yet.
 - [ ] **Confirm and auto-revert for `hostname.if` changes.** They're
       applied directly with `sh /etc/netstart <devs>`, which can't load a
       staged copy, so they get no confirmation: moving the LAN's address
@@ -348,8 +346,6 @@ Today there are physical ports, VLANs and WireGuard tunnels, each one
 `hostname.<dev>` file applied with `sh /etc/netstart <devs>`. Virtual
 interfaces need, first:
 
-- [ ] Removing interfaces (Commit engine), plus `ifconfig <dev>
-      destroy`.
 - [ ] Confirm and auto-revert for interface changes (Commit engine).
 - [ ] **Apply order by dependency.** netstart brings up the devices it's
       given in order, and OPF passes them in path order, so
@@ -383,8 +379,6 @@ Types, roughly in order of usefulness:
 
 ## WireGuard
 
-- [ ] Removing a tunnel waits on removing interfaces (Commit engine);
-      until then a tunnel can only be turned off.
 - [ ] Editing a peer: only adding and removing exist.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
       usually no NAT) and remote-access ones (clients NATed out) need
@@ -779,6 +773,14 @@ Parser and generators:
 
 Commit engine and API:
 
+- [x] Removing generated files: a file the new model no longer generates
+      is staged for removal (with the same modified-outside protection),
+      committed by removing it and running its Remove command (`ifconfig
+      <dev> destroy`, or `down` for a physical port), and restored and
+      re-applied on revert. VLANs and tunnels can be deleted from the UI,
+      which lists what uses them (rules, DHCP, NAT, forwards, gateways,
+      routes, routed rules, and pf text to edit) before removing or
+      changing it.
 - [x] `rc.conf.local` is generated from the model (dhcpd with the devices
       that have a DHCP scope, so never the WAN; unbound when DNS is on)
       and applied last, after every service's configuration, by a
