@@ -18,6 +18,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
+	"github.com/dantecatalfamo/OPF/ui"
 )
 
 // runMock serves the web UI's API against a throwaway system generated
@@ -99,7 +100,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		return err
 	}
 	api.Runner = run.Dry{Log: log.Default()}
-	srv := web.New(api)
+	srv := web.New(api, ui.Files())
 
 	watcher := &leases.Watcher{
 		File:     filepath.Join(root, leases.Path),

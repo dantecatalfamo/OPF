@@ -28,9 +28,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net/http"
+	"path"
+	"strings"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -41,11 +44,14 @@ const maxBody = 4 << 20
 
 type Server struct {
 	api appliance.API
+	ui  fs.FS // the built web interface, or nil
 	mux *http.ServeMux
 }
 
-func New(api appliance.API) *Server {
-	s := &Server{api: api, mux: http.NewServeMux()}
+// New returns a Server for the API and, unless ui is nil, the built web
+// interface (package ui) at every other path.
+func New(api appliance.API, ui fs.FS) *Server {
+	s := &Server{api: api, ui: ui, mux: http.NewServeMux()}
 	s.mux.HandleFunc("GET /api/status", s.status)
 	s.mux.HandleFunc("GET /api/config", s.getLive)
 	s.mux.HandleFunc("GET /api/config/staged", s.getStaged)
@@ -66,7 +72,57 @@ func New(api appliance.API) *Server {
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, &appliance.Error{Code: appliance.CodeNotFound, Message: "no such resource"})
 	})
+	s.mux.HandleFunc("/", s.serveUI)
 	return s
+}
+
+func init() {
+	// Go's built-in table lacks the fonts, and the web process can't
+	// read /etc/mime.types once it's sandboxed.
+	mime.AddExtensionType(".woff2", "font/woff2")
+	mime.AddExtensionType(".woff", "font/woff")
+}
+
+// uiPolicy allows the page only its own scripts, styles, fonts and API.
+// Styles may be inline because the component library injects its CSS
+// variables at runtime; scripts may not. The page can't be framed, so it
+// can't be dressed up by another site to trick a click.
+const uiPolicy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; " +
+	"base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+
+// serveUI serves the built web interface. Paths that aren't files are
+// the interface's own pages, so they get index.html; missing assets are
+// 404s.
+func (s *Server) serveUI(w http.ResponseWriter, r *http.Request) {
+	h := w.Header()
+	h.Set("Content-Security-Policy", uiPolicy)
+	h.Set("X-Frame-Options", "DENY")
+	h.Set("Referrer-Policy", "no-referrer")
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		h.Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.ui == nil {
+		http.Error(w, "This OPF was built without its web interface. Build it with `make build`; the API is at /api/.", http.StatusNotFound)
+		return
+	}
+	name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+	if info, err := fs.Stat(s.ui, name); name == "" || err != nil || info.IsDir() {
+		if strings.HasPrefix(name, "assets/") {
+			http.NotFound(w, r)
+			return
+		}
+		name = "index.html"
+	}
+	if strings.HasPrefix(name, "assets/") {
+		// Asset names carry a hash of their contents.
+		h.Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		h.Set("Cache-Control", "no-cache")
+	}
+	http.ServeFileFS(w, r, s.ui, name)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

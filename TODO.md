@@ -105,6 +105,8 @@ compatibility.
     fixed RPC that takes models and commit ids, never paths or
     commands.
   - The parent validates everything it's given.
+- **The UI is embedded in the binary** (package `ui`, tag `embedui`,
+  set by `make build`) and served by the web process alongside the API.
 - **JSON API** (`internal/web`, documented in `docs/api.md`). Keep
   `docs/api.md` in step with every endpoint change.
   - Requests: strict decoding, JSON only, 4 MiB cap, cross-origin
@@ -220,8 +222,8 @@ diffs, whether confirmation is needed, and the server's objections.
   Leases, lease names, the ARP table and the routing table are live; the
   rest of the dashboard and diagnostics still show sample data from
   `ui/src/model/live.ts`.
-- **Missing:** authentication, serving the UI from the binary, importing
-  an existing system, removing generated files.
+- **Missing:** authentication, importing an existing system, removing
+  generated files.
 - **Never run on OpenBSD.**
 
 ## Roadmap
@@ -554,7 +556,6 @@ Network, VPN and logs:
 
 ## UI
 
-- [ ] Serve the built UI from the binary (`go:embed`, principle 3).
 - [ ] Responsive design: usable from phones to large monitors, since
       admins may need to check status or make an urgent change from a
       phone. Test at phone (375px), tablet (768px), laptop (1024px) and
@@ -772,6 +773,10 @@ Parser and generators:
 
 Commit engine and API:
 
+- [x] The binary serves the UI: `make build` embeds `ui/dist` (package
+      `ui`, tag `embedui`), served with a strict Content-Security-Policy,
+      no framing, no referrer, and long caching only for hashed assets.
+      Without the tag, `/` says the UI wasn't built.
 - [x] RPC messages from the web process are capped at 8 MiB each,
       checked from gob's length prefix before the decoder allocates
       anything; an oversized message drops the connection (the child is

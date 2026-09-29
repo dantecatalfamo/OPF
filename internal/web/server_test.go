@@ -14,6 +14,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
+	"testing/fstest"
 )
 
 func newServer(t *testing.T) *Server {
@@ -47,7 +48,7 @@ func newServer(t *testing.T) *Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(api)
+	return New(api, nil)
 }
 
 type client struct {
@@ -213,5 +214,73 @@ func TestLeaseNames(t *testing.T) {
 	}
 	if n.Registered == nil || n.Refused == nil {
 		t.Errorf("lists should be empty, not missing: %+v", n)
+	}
+}
+
+func TestUI(t *testing.T) {
+	api := newServer(t).api
+	files := fstest.MapFS{
+		"index.html":               {Data: []byte("<!doctype html><title>OPF</title>")},
+		"assets/index-abc123.js":   {Data: []byte("console.log(1)")},
+		"assets/index-abc123.css":  {Data: []byte("body{}")},
+		"assets/plex-abc123.woff2": {Data: []byte("wOF2")},
+	}
+	s := New(api, files)
+	get := func(method, p string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		s.ServeHTTP(rec, httptest.NewRequest(method, p, nil))
+		return rec
+	}
+	for _, c := range []struct {
+		path, body, ctype, cache string
+		status                   int
+	}{
+		{"/", "<!doctype html>", "text/html", "no-cache", 200},
+		{"/firewall/rules/lan", "<!doctype html>", "text/html", "no-cache", 200}, // the UI's own route
+		{"/etc/passwd", "<!doctype html>", "text/html", "no-cache", 200},         // only the UI's files, never the system's
+		{"/assets/index-abc123.js", "console.log", "text/javascript", "immutable", 200},
+		{"/assets/index-abc123.css", "body{}", "text/css", "immutable", 200},
+		{"/assets/plex-abc123.woff2", "wOF2", "font/woff2", "immutable", 200},
+		{"/assets/missing.js", "", "", "", 404},
+	} {
+		rec := get("GET", c.path)
+		if rec.Code != c.status {
+			t.Errorf("%s: status %d, want %d", c.path, rec.Code, c.status)
+			continue
+		}
+		h := rec.Header()
+		if !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors 'none'") || h.Get("X-Frame-Options") != "DENY" ||
+			h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Referrer-Policy") != "no-referrer" {
+			t.Errorf("%s: missing security headers: %v", c.path, h)
+		}
+		if c.status != 200 {
+			continue
+		}
+		if !strings.Contains(rec.Body.String(), c.body) || !strings.HasPrefix(h.Get("Content-Type"), c.ctype) || !strings.Contains(h.Get("Cache-Control"), c.cache) {
+			t.Errorf("%s: body %q, type %q, cache %q", c.path, rec.Body.String(), h.Get("Content-Type"), h.Get("Cache-Control"))
+		}
+	}
+	// Paths with dot-dot are cleaned by a redirect first.
+	if rec := get("GET", "/../../etc/passwd"); rec.Code != 307 || rec.Header().Get("Location") != "/etc/passwd" {
+		t.Errorf("dot-dot: %d, Location %q", rec.Code, rec.Header().Get("Location"))
+	}
+	if rec := get("HEAD", "/"); rec.Code != 200 || rec.Body.Len() != 0 {
+		t.Errorf("HEAD /: %d, %d bytes", rec.Code, rec.Body.Len())
+	}
+	if rec := get("POST", "/"); rec.Code != 405 || rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Errorf("POST /: %d, Allow %q", rec.Code, rec.Header().Get("Allow"))
+	}
+	// The API is unchanged, and not handed to the UI.
+	if rec := get("GET", "/api/nope"); rec.Code != 404 || !strings.Contains(rec.Body.String(), `"not_found"`) || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("/api/nope: %d %q %q", rec.Code, rec.Body.String(), rec.Header().Get("Cache-Control"))
+	}
+
+	// Built without the UI: a page that says so, and the API still works.
+	s = New(api, nil)
+	if rec := get("GET", "/"); rec.Code != 404 || !strings.Contains(rec.Body.String(), "make build") {
+		t.Errorf("no UI: %d %q", rec.Code, rec.Body.String())
+	}
+	if rec := get("GET", "/api/status"); rec.Code != 200 {
+		t.Errorf("no UI, /api/status: %d", rec.Code)
 	}
 }

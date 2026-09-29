@@ -1,9 +1,13 @@
 DEV := dev/run
 
-.PHONY: build test dev dev-reset mock openbsd
+.PHONY: build ui test dev dev-reset mock openbsd
 
-build:
-	go build -o opf ./cmd/opf
+# The binary with the web interface embedded (package ui, tag embedui).
+build: ui
+	go build -tags embedui -o opf ./cmd/opf
+
+ui:
+	cd ui && { [ -d node_modules ] || npm ci; } && npm run build
 
 test:
 	go vet ./...
@@ -27,5 +31,5 @@ mock:
 dev-reset:
 	rm -rf $(DEV)
 
-openbsd:
-	GOOS=openbsd GOARCH=amd64 go build -o opf.openbsd-amd64 ./cmd/opf
+openbsd: ui
+	GOOS=openbsd GOARCH=amd64 go build -tags embedui -o opf.openbsd-amd64 ./cmd/opf

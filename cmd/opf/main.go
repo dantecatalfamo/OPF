@@ -25,6 +25,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
+	"github.com/dantecatalfamo/OPF/ui"
 )
 
 func main() {
@@ -135,7 +136,7 @@ func serveWeb() {
 	log.SetPrefix("opf web: ")
 	err := privsep.RunChild(func(api appliance.API, ln net.Listener) error {
 		hs := &http.Server{
-			Handler:           http.NewCrossOriginProtection().Handler(web.New(api)),
+			Handler:           http.NewCrossOriginProtection().Handler(web.New(api, ui.Files())),
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 		return hs.Serve(ln)

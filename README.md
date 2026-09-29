@@ -118,6 +118,10 @@ an unconfirmed commit too.
 
 ## Installing
 
+`make build` (or `make openbsd` to cross-compile) builds the UI and
+embeds it in the binary, so the one file is the whole application.
+Plain `go build` leaves the UI out and serves only the API.
+
 ```sh
 useradd -s /sbin/nologin -d /var/empty -L daemon -c "OPF web" _opf
 install -m 555 opf /usr/local/sbin/opf
@@ -139,9 +143,8 @@ make dev-reset  # throw away the scratch copy
 `make dev` runs the real two-process server with `-dry`, which logs
 commands such as `pfctl` and `rcctl` instead of running them, and
 `-root`, which prefixes every managed path so nothing outside `dev/run`
-is touched. It serves only the API (the UI isn't embedded in the binary
-yet) and starts without a model; `make mock` is the way to work on the
-UI.
+is touched. It's built without the UI (serving only the API) and
+starts without a model; `make mock` is the way to work on the UI.
 
 ## Status
 
@@ -151,7 +154,6 @@ localhost only; reach it with `ssh -L 8080:127.0.0.1:8080`.
 Planned next:
 
 - Login against system accounts (`auth_userokay(3)`) and TLS
-- Serving the built UI from the binary
 - Importing an existing system's configuration into the model
 - Service management (`rcctl`), with enable/disable staged through
   `rc.conf.local`
