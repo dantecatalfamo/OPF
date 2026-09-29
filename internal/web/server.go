@@ -59,6 +59,8 @@ func New(api appliance.API) *Server {
 	s.mux.HandleFunc("GET /api/commits/{id}/config/{which}", s.getCommitConfig)
 	s.mux.HandleFunc("GET /api/dhcp/leases", s.dhcpLeases)
 	s.mux.HandleFunc("GET /api/dns/leases", s.leaseNames)
+	s.mux.HandleFunc("GET /api/network/arp", s.arpTable)
+	s.mux.HandleFunc("GET /api/network/routes", s.routingTable)
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
 	s.mux.HandleFunc("POST /api/pf/render", s.renderRule)
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -297,6 +299,24 @@ func (s *Server) leaseNames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, n)
+}
+
+func (s *Server) arpTable(w http.ResponseWriter, r *http.Request) {
+	t, err := s.api.ARPTable()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
+}
+
+func (s *Server) routingTable(w http.ResponseWriter, r *http.Request) {
+	t, err := s.api.RoutingTable()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
 }
 
 // ---------- pf helpers ----------

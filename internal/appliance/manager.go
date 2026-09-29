@@ -1,6 +1,7 @@
 package appliance
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -10,7 +11,9 @@ import (
 	"fmt"
 	"log"
 	"net/netip"
+	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +23,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
+	"github.com/dantecatalfamo/OPF/internal/run"
 )
 
 // apiError converts err for callers of API, keeping nil untyped: a nil
@@ -46,6 +50,17 @@ type Manager struct {
 
 	onChange func()
 	leases   *leases.Watcher
+
+	// Runner executes system commands for reading network state.
+	// If nil, run.Exec{} is used.
+	Runner run.Runner
+}
+
+func (m *Manager) runner() run.Runner {
+	if m.Runner != nil {
+		return m.Runner
+	}
+	return run.Exec{}
 }
 
 // SetLeaseWatcher gives LeaseNames the watcher to report on. Set it
@@ -692,4 +707,243 @@ func commitOf(e *config.Entry) *Commit {
 		c.Files = append(c.Files, CommitFile{Path: f.Path, Created: !f.Existed, NeedsConfirm: f.Confirm, Model: f.Name == modelFile})
 	}
 	return c
+}
+
+// ARPTable returns the system's ARP cache.
+func (m *Manager) ARPTable() (*ARPTable, error) {
+	// On non-OpenBSD platforms, return sample data for development.
+	if runtime.GOOS != "openbsd" {
+		return sampleARPTable(), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	out, err := m.runner().Run(ctx, "arp", "-an")
+	if err != nil {
+		return &ARPTable{Entries: []ARPEntry{}, Error: "couldn't read ARP table"}, nil
+	}
+
+	entries := parseARPOutput(string(out))
+	return &ARPTable{Entries: entries}, nil
+}
+
+func sampleARPTable() *ARPTable {
+	return &ARPTable{Entries: []ARPEntry{
+		{IP: "203.0.113.1", MAC: "00:0c:29:4a:12:8b", Iface: "em0", Expires: "permanent", Hostname: "gateway"},
+		{IP: "192.168.1.20", MAC: "00:1b:21:3a:4f:10", Iface: "em1", Expires: "1142s", Hostname: "files"},
+		{IP: "192.168.1.25", MAC: "00:1b:21:3a:4f:22", Iface: "em1", Expires: "892s", Hostname: "build"},
+		{IP: "192.168.1.40", MAC: "a4:5d:36:0c:81:9e", Iface: "em1", Expires: "445s", Hostname: "printer"},
+		{IP: "192.168.1.112", MAC: "3c:22:fb:91:04:7d", Iface: "em1", Expires: "1201s", Hostname: "priya-mbp"},
+		{IP: "192.168.1.118", MAC: "f0:18:98:2e:aa:13", Iface: "em1", Expires: "623s", Hostname: "sam-thinkpad"},
+		{IP: "192.168.20.101", MAC: "68:57:2d:10:e3:41", Iface: "vlan20", Expires: "312s", Hostname: "thermostat"},
+		{IP: "192.168.20.102", MAC: "50:02:91:7c:3a:0f", Iface: "vlan20", Expires: "518s"},
+		{IP: "10.8.0.2", MAC: "(incomplete)", Iface: "wg0", Expires: "60s"},
+	}}
+}
+
+// parseARPOutput parses OpenBSD's `arp -an` output.
+// Example line: "? (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 expires in 1198 seconds"
+// Or: "? (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 permanent"
+func parseARPOutput(output string) []ARPEntry {
+	var entries []ARPEntry
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip header or empty lines
+		if line == "" || strings.HasPrefix(line, "Host") {
+			continue
+		}
+
+		entry := parseARPLine(line)
+		if entry.IP != "" {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
+func parseARPLine(line string) ARPEntry {
+	var entry ARPEntry
+
+	// Parse: "? (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 expires in 1198 seconds"
+	// Or:   "host (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 permanent published"
+
+	// Extract IP from parentheses
+	start := strings.Index(line, "(")
+	end := strings.Index(line, ")")
+	if start < 0 || end < 0 || end <= start {
+		return entry
+	}
+	entry.IP = line[start+1 : end]
+
+	// Check for hostname before the IP
+	if start > 2 && line[0] != '?' {
+		entry.Hostname = strings.TrimSpace(line[:start])
+	}
+
+	rest := line[end+1:]
+
+	// Extract MAC after "at "
+	if idx := strings.Index(rest, " at "); idx >= 0 {
+		rest = rest[idx+4:]
+		fields := strings.Fields(rest)
+		if len(fields) >= 1 {
+			entry.MAC = fields[0]
+		}
+		// Extract interface after "on "
+		for i, f := range fields {
+			if f == "on" && i+1 < len(fields) {
+				entry.Iface = fields[i+1]
+			}
+			if f == "expires" && i+2 < len(fields) {
+				// "expires in 1198 seconds"
+				entry.Expires = fields[i+2] + "s"
+			}
+			if f == "permanent" {
+				entry.Expires = "permanent"
+			}
+			if f == "published" || f == "static" {
+				if entry.Flags != "" {
+					entry.Flags += " "
+				}
+				entry.Flags += f
+			}
+		}
+	}
+
+	return entry
+}
+
+// RoutingTable returns the system's routing table.
+func (m *Manager) RoutingTable() (*RoutingTable, error) {
+	// On non-OpenBSD platforms, return sample data for development.
+	if runtime.GOOS != "openbsd" {
+		return sampleRoutingTable(), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result := &RoutingTable{IPv4: []RouteEntry{}, IPv6: []RouteEntry{}}
+
+	// Get IPv4 routes
+	out, err := m.runner().Run(ctx, "netstat", "-rnf", "inet")
+	if err != nil {
+		result.Error = "couldn't read IPv4 routing table"
+	} else {
+		result.IPv4 = parseRoutingOutput(string(out))
+	}
+
+	// Get IPv6 routes
+	out6, err := m.runner().Run(ctx, "netstat", "-rnf", "inet6")
+	if err == nil {
+		result.IPv6 = parseRoutingOutput(string(out6))
+	}
+
+	return result, nil
+}
+
+func sampleRoutingTable() *RoutingTable {
+	return &RoutingTable{
+		IPv4: []RouteEntry{
+			{Destination: "default", Gateway: "203.0.113.1", Flags: "UGS", Iface: "em0", Priority: 12, Source: "static"},
+			{Destination: "127/8", Gateway: "127.0.0.1", Flags: "UGRS", Iface: "lo0", Priority: 8, Source: "system"},
+			{Destination: "127.0.0.1", Gateway: "127.0.0.1", Flags: "UH", Iface: "lo0", Priority: 1, Source: "system"},
+			{Destination: "192.168.1/24", Gateway: "link#2", Flags: "UCn", Iface: "em1", Priority: 4, Source: "connected"},
+			{Destination: "192.168.1.1", Gateway: "52:54:00:12:34:57", Flags: "UHLl", Iface: "em1", Priority: 3, Source: "connected"},
+			{Destination: "192.168.20/24", Gateway: "link#3", Flags: "UCn", Iface: "vlan20", Priority: 4, Source: "connected"},
+			{Destination: "192.168.20.1", Gateway: "52:54:00:12:34:58", Flags: "UHLl", Iface: "vlan20", Priority: 3, Source: "connected"},
+			{Destination: "203.0.113/24", Gateway: "link#1", Flags: "UCn", Iface: "em0", Priority: 4, Source: "connected"},
+			{Destination: "203.0.113.10", Gateway: "52:54:00:12:34:56", Flags: "UHLl", Iface: "em0", Priority: 3, Source: "connected"},
+			{Destination: "10.8.0/24", Gateway: "10.8.0.1", Flags: "UGS", Iface: "wg0", Priority: 8, Source: "connected"},
+		},
+		IPv6: []RouteEntry{
+			{Destination: "::1", Gateway: "::1", Flags: "UH", Iface: "lo0", Priority: 1, Source: "system"},
+			{Destination: "fe80::%em1/64", Gateway: "link#2", Flags: "UC", Iface: "em1", Priority: 4, Source: "connected"},
+			{Destination: "fe80::%lo0/64", Gateway: "link#4", Flags: "UC", Iface: "lo0", Priority: 4, Source: "system"},
+		},
+	}
+}
+
+// parseRoutingOutput parses OpenBSD's `netstat -rn` output.
+// Example:
+//
+//	Routing tables
+//	Internet:
+//	Destination        Gateway            Flags   Refs      Use   Mtu  Prio Iface
+//	default            203.0.113.1        UGS        2    12345     -    12 em0
+//	192.168.1/24       192.168.1.1        UCn        1        0     -     4 em1
+func parseRoutingOutput(output string) []RouteEntry {
+	var entries []RouteEntry
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	inTable := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip until we see the header
+		if strings.HasPrefix(line, "Destination") {
+			inTable = true
+			continue
+		}
+		if !inTable || line == "" {
+			continue
+		}
+		// Stop at section breaks
+		if strings.HasPrefix(line, "Internet") || strings.HasPrefix(line, "Routing") {
+			continue
+		}
+
+		entry := parseRouteLine(line)
+		if entry.Destination != "" {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
+func parseRouteLine(line string) RouteEntry {
+	fields := strings.Fields(line)
+	if len(fields) < 8 {
+		return RouteEntry{}
+	}
+
+	entry := RouteEntry{
+		Destination: fields[0],
+		Gateway:     fields[1],
+		Flags:       fields[2],
+		Iface:       fields[7],
+	}
+
+	// Parse priority (field 6, 0-indexed)
+	if prio, err := strconv.Atoi(fields[6]); err == nil {
+		entry.Priority = prio
+	}
+
+	// Determine source based on flags and gateway
+	entry.Source = classifyRoute(entry)
+
+	return entry
+}
+
+// classifyRoute guesses where a route came from based on its properties.
+func classifyRoute(r RouteEntry) string {
+	flags := r.Flags
+	// U = up, G = gateway, S = static, C = clone, H = host, D = dynamic
+	switch {
+	case strings.Contains(flags, "D"):
+		return "dynamic"
+	case r.Destination == "default":
+		if strings.Contains(flags, "S") {
+			return "static"
+		}
+		return "dhcp"
+	case strings.Contains(flags, "C"):
+		return "interface"
+	case strings.Contains(flags, "S") && !strings.Contains(flags, "C"):
+		return "static"
+	case strings.Contains(flags, "H"):
+		return "host"
+	default:
+		return ""
+	}
 }
