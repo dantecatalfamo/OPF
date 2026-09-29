@@ -650,7 +650,8 @@ call Stage and Commit directly, so accounts have to be enforced in the
 parent, and the web process must never be the one deciding who
 someone is.
 
-**Who can log in.** OpenBSD's own accounts, not a second user database:
+**Who can log in** (decided 2026-09-29: system accounts). OpenBSD's own
+accounts, not a second user database:
 the admin already has one, SSH and the UI share it, passwords are
 bcrypt and handled by the base system, and bsd_auth brings its other
 login styles (YubiKey, RADIUS) for free. Membership of a group decides
