@@ -98,6 +98,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
+	api.Runner = run.Dry{Log: log.Default()}
 	srv := web.New(api)
 
 	watcher := &leases.Watcher{
