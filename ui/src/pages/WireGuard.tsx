@@ -4,7 +4,7 @@ import {
   ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Code, CopyButton, Drawer, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, ThemeIcon, Timeline, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconArrowsSplit2, IconCheck, IconCopy, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
+import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import { ifaceStatus, peerStatus } from '../model/live';
 import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
@@ -403,8 +403,136 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   );
 }
 
+// The device's configuration after an edit. Its private key is the one
+// it already has: OPF never sees it again after creating the device.
+function deviceConfig(m: Model, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
+  const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
+  const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : localNetworks(m).join(', ');
+  return `[Interface]
+PrivateKey = <the device’s existing private key>
+Address = ${p.address}
+DNS = ${t.ipv4.address}
+
+[Peer]
+PublicKey = ${t.wireguard.publicKey}
+Endpoint = ${wan}:${t.wireguard.listenPort}
+AllowedIPs = ${allowed}
+PersistentKeepalive = 25`;
+}
+
+// Keeps a site-to-site peer's gateway and routes in step with it: the
+// gateway follows the peer's address, and its routes the networks behind
+// it. A peer that stops being a router loses its routes, and its gateway
+// unless a rule still routes through it.
+function syncPeerRouting(m: Model, t: Tunnel, before: Peer, after: Peer): Model {
+  const oldIP = before.address.split('/')[0];
+  const newIP = after.address.split('/')[0];
+  const gw = m.routing.gateways.find((g) => g.iface === t.id && g.address === oldIP);
+  const nets = after.clientRoutes === 'site' ? after.networks : [];
+  let gateways = m.routing.gateways;
+  let routes = m.routing.routes;
+  if (nets.length) {
+    const g = gw
+      ? { ...gw, address: newIP }
+      : { id: newId('gw'), name: after.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 32), iface: t.id, address: newIP, description: `${after.name} over WireGuard` };
+    gateways = gw ? gateways.map((x) => (x.id === gw.id ? g : x)) : [...gateways, g];
+    const kept = routes.filter((r) => r.gateway !== g.id || nets.includes(r.network));
+    const have = new Set(kept.filter((r) => r.gateway === g.id).map((r) => r.network));
+    routes = [...kept, ...nets.filter((n) => !have.has(n)).map((n) => ({ id: newId('rt'), enabled: true, network: n, gateway: g.id, description: after.name }))];
+  } else if (gw) {
+    routes = routes.filter((r) => r.gateway !== gw.id);
+    const used = m.routing.defaultGateway === gw.id || m.firewall.rules.some((r) => r.kind === 'form' && (r.gateway === gw.id || r.replyTo === gw.id));
+    gateways = used ? gateways.map((x) => (x.id === gw.id ? { ...gw, address: newIP } : x)) : gateways.filter((x) => x.id !== gw.id);
+  }
+  return { ...m, routing: { ...m.routing, gateways, routes } };
+}
+
+function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null; onClose: () => void }) {
+  const { staged, edit } = useStore();
+  const [saved, setSaved] = useState<Peer | null>(null);
+  const form = useForm({
+    initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
+    validate: {
+      name: (v) => (v.trim() ? null : 'Name the device'),
+      address: (v) => (isCIDR(v) ? null : 'An address in the tunnel, like 10.8.0.5/32'),
+      networks: (v, vals) => (vals.clientRoutes !== 'site' || (v.length && v.every(isCIDR)) ? null : 'Enter the networks behind this router, like 10.30.0.0/16'),
+      keepalive: (v) => (v === '' || (Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 65535) ? null : 'Seconds, 0 to 65535'),
+    },
+  });
+  useEffect(() => {
+    if (!peer) return;
+    setSaved(null);
+    form.setValues({ name: peer.name, address: peer.address, clientRoutes: peer.clientRoutes, networks: peer.networks, endpoint: peer.endpoint ?? '', keepalive: peer.keepalive ?? '' });
+    form.resetDirty();
+  }, [peer]); // form is stable
+
+  if (!peer) return null;
+  const v = form.values;
+  const save = form.onSubmit((x) => {
+    const after: Peer = {
+      ...peer, name: x.name.trim(), address: x.address, clientRoutes: x.clientRoutes,
+      networks: x.clientRoutes === 'site' ? x.networks : [],
+      ...(x.clientRoutes === 'site' && x.endpoint ? { endpoint: x.endpoint } : { endpoint: undefined }),
+      keepalive: x.keepalive === '' ? undefined : Number(x.keepalive),
+    };
+    edit('wireguard', `Edited VPN device “${after.name}” on ${tunnel.name}`, (m) =>
+      syncPeerRouting(withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.map((p) => (p.id === peer.id ? after : p)) } })), tunnel, peer, after));
+    // The device only needs a new configuration when what it's told changes.
+    if (after.address !== peer.address || after.clientRoutes !== peer.clientRoutes) setSaved(after);
+    else onClose();
+  });
+
+  return (
+    <Drawer opened onClose={onClose} size="xl" title={<Text fw={600} size="lg">Edit {peer.name}</Text>}>
+      {saved ? (
+        <Stack>
+          <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Update the device too">
+            Its address or what it sends through the VPN changed, so the device needs the new settings below. Keep the private key it already has.
+          </Alert>
+          <Code block>{deviceConfig(staged, tunnel, saved)}</Code>
+          <Group justify="flex-end">
+            <CopyButton value={deviceConfig(staged, tunnel, saved)}>
+              {({ copied, copy }) => (
+                <Button variant="light" leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />} onClick={copy}>{copied ? 'Copied' : 'Copy configuration'}</Button>
+              )}
+            </CopyButton>
+            <Button onClick={onClose}>Done</Button>
+          </Group>
+        </Stack>
+      ) : (
+        <form onSubmit={save}>
+          <Stack>
+            <TextInput label="Device name" {...form.getInputProps('name')} />
+            <TextInput label="VPN address" description={`In ${tunnelNet(tunnel)}.`} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
+            <Stack gap={6}>
+              <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
+              <SegmentedControl
+                data={[{ value: 'split', label: 'Only your networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
+                {...form.getInputProps('clientRoutes')}
+              />
+            </Stack>
+            {v.clientRoutes === 'site' && (
+              <>
+                <TagsInput label="Networks behind this router" placeholder="10.30.0.0/16" {...form.getInputProps('networks')} />
+                <TextInput label="Its public address" description="Optional. Lets OPF start the connection." placeholder="branch.example.net:51820" {...form.getInputProps('endpoint')} />
+              </>
+            )}
+            <NumberInput label="Keepalive" description="Seconds between keepalive packets; empty for none." min={0} max={65535} {...form.getInputProps('keepalive')} />
+            <Text size="xs" c="dimmed">The device’s key stays the same. To replace it, remove the device and add it again.</Text>
+            <Group justify="flex-end" mt="sm">
+              <Button variant="default" onClick={onClose}>Cancel</Button>
+              <Button type="submit" disabled={!form.isDirty()}>Save</Button>
+            </Group>
+          </Stack>
+        </form>
+      )}
+    </Drawer>
+  );
+}
+
 function Devices({ tunnel }: { tunnel: Tunnel }) {
   const { edit } = useStore();
+  const [editing, setEditing] = useState<Peer | null>(null);
   return (
     <Card padding={0}>
       <Group p="lg" pb="xs"><Text fw={600}>Devices</Text></Group>
@@ -442,16 +570,25 @@ function Devices({ tunnel }: { tunnel: Tunnel }) {
                     {s?.handshakeSecAgo != null ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeSecAgo)}</Text>) : <Text size="sm" c="dimmed">Never</Text>}
                   </Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.tx)} · ↑ ${formatBytes(s.rx)}` : '—'}</Text></Table.Td>
-                  <Table.Td w={44}>
+                  <Table.Td w={88}>
+                    <Group gap={4} wrap="nowrap">
+                    <Tooltip label="Edit device">
+                      <ActionIcon variant="subtle" color="gray" aria-label="Edit device" onClick={() => setEditing(p)}>
+                        <IconPencil size={16} />
+                      </ActionIcon>
+                    </Tooltip>
                     <Tooltip label="Remove device">
                       <ActionIcon
                         variant="subtle" color="gray" aria-label="Remove device"
-                        onClick={() => edit('wireguard', `Removed VPN device “${p.name}” from ${tunnel.name}`, (m) =>
-                          withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.filter((x) => x.id !== p.id) } })))}
+                        onClick={() => edit('wireguard', `Removed VPN device “${p.name}” from ${tunnel.name}${p.networks.length ? `, and its routes to ${p.networks.join(', ')}` : ''}`, (m) =>
+                          // A router's routes, and its gateway unless a rule still uses it, go with it.
+                          syncPeerRouting(withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.filter((x) => x.id !== p.id) } })),
+                            tunnel, p, { ...p, clientRoutes: 'split', networks: [] }))}
                       >
                         <IconTrash size={16} />
                       </ActionIcon>
                     </Tooltip>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               );
@@ -459,6 +596,7 @@ function Devices({ tunnel }: { tunnel: Tunnel }) {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
+      <EditPeer tunnel={tunnel} peer={editing} onClose={() => setEditing(null)} />
     </Card>
   );
 }
