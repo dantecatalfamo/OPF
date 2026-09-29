@@ -103,6 +103,7 @@ compatibility.
     fixed RPC that takes models and commit ids, never paths or
     commands.
   - The parent validates everything it's given.
+- **UI**: React + Mantine in `ui/`, served by the Go binary.
 - **JSON API** (`internal/web`, documented in `docs/api.md`). Keep
   `docs/api.md` in step with every endpoint change.
   - Requests: strict decoding, JSON only, 4 MiB cap, cross-origin
@@ -203,353 +204,166 @@ diffs, whether confirmation is needed, and the server's objections.
   the right section, with enough detail to act on. Mark finished items
   `[x]` with a line on what was done.
 
-## Where things stand (2026-09-28)
 
-- **Go, working and tested:** the model is the source of truth and lives
-  in the parent (`internal/appliance`). The web process sends a model
-  over RPC; the parent validates it (`pf.Validate`), generates every
-  file, and stages the model and the files as one unit, committed,
-  confirmed and reverted together, with auto-revert and history. There's
-  a JSON API (`internal/web`, `docs/api.md`) and privilege separation
-  with pledge/unveil.
+## Where things stand (2026-09-29)
+
+- **Working and tested in Go:** the model lives in the root parent
+  (`internal/appliance`), which validates it, generates every file, and
+  stages, commits, confirms and reverts the model and its files as one
+  unit, with history. JSON API and privilege separation with
+  pledge/unveil.
 - **UI:** every page exists. Review, apply, confirm, revert, history and
   undo go through the API (`make mock` runs it against the real engine).
-  The dashboard and diagnostics still show sample live data.
-- **Live data:** ARP table and routing table have real backend
-  implementations with `runtime.GOOS` checks for mock data on non-OpenBSD.
-  All other live data (system metrics, pf states, services, logs) still
-  uses frontend-only mock data. See "Live monitoring data" section below
-  for the full list of features to implement.
+- **Live data:** only the ARP and routing tables are real. The dashboard
+  and diagnostics still show sample data from `ui/src/model/live.ts`.
 - **Missing:** authentication, serving the UI from the binary, import
   from an existing system, removing generated files.
 - **Never run on OpenBSD.**
 
 ## Next up
 
-In order. Each step has details further down.
+In order. Each step has details in its section below.
 
-1. **Fix the remaining bugs found in review** (next section): outbound
-   rules never matching.
-2. ~~Move the model into the parent.~~ Done: `internal/appliance`.
-3. **Removing generated files.** Staging a model that no longer
-   generates a file (a deleted VLAN's `hostname.vlan30`) is refused as
-   `unsupported`; the commit engine needs deletion, with restore on
-   revert. Apply order is registry order: model, interfaces, pf,
-   services.
-4. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
+1. **Outbound rules never match** (Firewall rules).
+2. **Removing generated files** (Commit engine).
+3. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
    generated files and the annotated ruleset from the API. Keep the
    sample model as a shared JSON fixture for Go golden tests and for
    the UI's mock mode.
-5. **Authentication and TLS**, enforced in the parent (see Security).
-6. **Run on OpenBSD** (see Verify on real OpenBSD). The `openbsd-dev`
-   host in the SSH config is a candidate; ask before using it.
-7. **Import** (principle 4): `ParsePfConf` plus importers for
-   `hostname.if`, `dhcpd.conf` and `unbound.conf`, then the first-run
-   wizard.
-8. **Live data:** new parsers for pfctl, ifconfig, leases, WireGuard and
-   pflog behind the API.
+4. **Authentication and TLS**, enforced in the parent (Security).
+5. **Run on OpenBSD** (Verify on real OpenBSD).
+6. **Import** (Import).
+7. **Live data** (Live data).
 
-## Bugs found in review (2026-09-28)
+## Commit engine
 
-- [x] **Parser hangs.** Fuzzing found infinite loops in the tokenizer
-      (bytes treated as runes, so identifiers rewound past their start)
-      and in the interface, protocol and port list loops. Fixed; the
-      inputs are regression seeds in `internal/pf/testdata/fuzz` and in
-      `parser_termination_test.go`. All three targets now run 90 s clean.
-- [x] **The parser dropped what it didn't understand.** Anything
-      `tryParseFormRule` doesn't model now keeps the rule raw: unknown or
-      repeated options, unreadable arguments, `log (…)` other than
-      `(all)`, bare macros and hostnames, `:0`/`:broadcast`/`:peer`,
-      `! any`, interface groups and devices not in the model, host lists
-      and ranges, unmodelled state options, empty `{ }` lists, and ports,
-      flags or ICMP types on a protocol the generator won't write them
-      for. `route-to`/`reply-to` map to a model gateway by address, or
-      keep the rule raw. The tokenizer's keywords are case-sensitive and
-      its string escapes follow pf's parse.y; the generator quotes
-      strings the same way (Go's `%q` escapes reached pf as literal
-      text), always writes aliases as `<table>`, and no longer turns
-      `netbios-ssn` into `netbios:ssn`. `FuzzParseRuleRoundTrip`
-      checks parse → generate → parse gives the same rule.
-- [x] **Interface references.** One `iface` endpoint replaces `net` and
-      `ifaddr`: a model interface or a group (`egress`), with
-      `:network`/`:broadcast`/`:peer`, `:0`, and parentheses when it
-      should follow address changes (automatic: yes for DHCP/SLAAC and
-      groups). Combinations follow pfctl's `parse.y` and `host_if()`.
-      The `on` clause takes groups too, which make a rule floating. The
-      old generator always wrote `$if:network` unparenthesized, which
-      goes stale on a DHCP interface until pf reloads.
-- [x] `self` takes the same modifiers (`self:network`, `(self)`; in
-      the kernel `(self)` is the "all" group, `pf_if.c`). Left
-      automatic, it's in parentheses when any interface is addressed by
-      DHCP or SLAAC.
-- [x] Built-in rules (anti-lockout, port forwards, NAT reflection,
-      automatic outbound NAT) use `iface` endpoints like user rules.
-      Reflection and automatic NAT used to skip DHCP-addressed inside
-      networks entirely; now they include every enabled inside network
-      with IPv4. `nat-to` targets stay in parentheses always.
-- [ ] Still raw: bare names or `name:0` that aren't model interfaces
-      (pf treats them as interfaces only if one exists at load time,
-      else as hostnames).
-- [ ] Importing (principle 4) must build the model's interfaces first:
-      rules naming devices (`on em0`) only become guided rules when the
-      device is in the model, otherwise they stay raw.
-- [ ] Reject invalid UTF-8 on import with a clear error. `encoding/json`
-      replaces it with U+FFFD, so even raw rules would change when
-      `config.json` is saved.
-- [x] **No model validation.** `pf.Validate` now checks every field in
-      the parent before anything is generated, and on commit again.
-      Limits come from pf's source (label 63 bytes, table names 31,
-      `IFNAMSIZ`), interface ids can't be pf keywords
-      (`keywords_gen.go`, from parse.y), and ids that go into labels
-      are checked against pf's label rules.
-      It found two bugs in the sample model. Was: nothing checks the model before
-      generating. Alias names, interface ids and devices, hostnames,
-      domains, reservation names and addresses are written into pf.conf,
-      hostname.if, dhcpd.conf and unbound.conf unchecked, so a crafted
-      value can inject configuration. Validate every field in the parent
-      (characters, length, references to other objects); raw pf rules
-      are the only intended exception. Quoted strings in pf.conf can't
-      contain a newline, and pf's lexer eats a backslash before a space,
-      tab or quote, so those values must be rejected. The generator also
-      silently drops a port spec naming an unknown `alias:`.
-- [ ] **Outbound rules never match.** Both generators emit
-      `pass out quick inet` before user rules (`internal/pf/generate.go:602`,
-      `ui/src/model/generate.ts:265`), so outbound rules such as the
-      sample's floating `match out … set prio 6` are never reached. Use a
-      non-quick `pass out`.
-- [x] **`/api/model/apply` failed for any model with interfaces.** The
-      registry now has pattern entries: `hostname.*` resolves to
-      `hostname.em0` etc. (device names only), applied first with
-      `sh /etc/netstart <dev>`, mode 0640.
-- [x] **Apply isn't atomic.** The model is a managed file (0600)
-      staged with everything generated from it; a failure part-way
-      discards the lot.
-- [x] **The model lives in the web process.** It's in the parent now.
-- [x] **The mock UI couldn't apply.** `make mock` runs `opf -mock` with
-      Vite proxying `/api` to it; the preview build uses the TypeScript
-      generator offline.
-- [x] **Raw rules were rebuilt from tokens.** `parseAsRaw` joined
-      tokens with spaces (`$lan : network`, invalid pf) and re-quoted
-      strings with Go's `%q`. Tokens now carry byte offsets and raw text
-      is the source slice. Continuations are removed before tokenizing,
-      as pf's lexer does, even mid-word. `FuzzRawRuleText` checks raw
-      text always comes from the input.
-- [x] **Confirm is client-side only.** Keep and revert go to the
-      server, which also reverts on its own at the deadline; the UI polls
+The engine itself: stage → check → commit → confirm or auto-revert →
+history (`internal/config`).
+
+- [x] **Apply is atomic.** The model is a managed file (0600) staged
+      with everything generated from it; a failure part-way discards
+      the lot.
+- [x] **Confirm is server-side.** Keep and revert go to the server,
+      which also reverts on its own at the deadline; the UI polls
       `/api/status` to notice.
-- [x] **Unbounded request bodies.** 4 MiB limit, JSON only, strict
-      decoding.
-
-## Testing
-
-Every component must have extensive test coverage. Regressions in a
-firewall appliance can silently break network security. Tests are not
-optional—they are a blocking requirement for every feature.
-
-### Parsers (monitoring data from system commands)
-
-- [ ] Golden-file tests for every parser against real output captured
-      from multiple OpenBSD versions (7.4, 7.5, 7.6, 7.7, 7.8+).
-- [ ] Edge-case fixtures: empty output, single entry, maximum realistic
-      size, Unicode in hostnames/descriptions, IPv6 addresses, unusual
-      but valid formats.
-- [ ] Error-path tests: truncated output, garbage input, partial lines,
-      binary data. Parsers must return errors, never panic.
-- [ ] Fuzz testing with `go test -fuzz` for every parser. Run fuzzing
-      in CI for a minimum duration on each PR.
-- [ ] Regression tests: when a bug is found, add the failing input as
-      a permanent test case before fixing.
-
-### Generators (model → config files)
-
-- [ ] Golden-file tests for every generator (pf.conf, hostname.if,
-      dhcpd.conf, unbound.conf, ntpd.conf, myname, mygate, rc.conf.local).
-- [ ] Round-trip property tests where applicable: generate config,
-      validate with the real tool (`pfctl -nf`, `dhcpd -n`, etc.),
-      confirm no errors.
-- [ ] Boundary tests: empty model sections, maximum number of rules/
-      interfaces/aliases, special characters in names/descriptions,
-      every protocol and endpoint type combination.
-- [ ] Fuzz the model→generator path: random valid models must produce
-      valid config files (validated by the daemon's own checker).
-- [ ] Regression tests for every generator bug found in production.
-
-### Config importers (existing config files → model)
-
-- [ ] Golden-file tests against real-world hand-written configs
-      collected from production systems (anonymized).
-- [ ] Round-trip tests: import config → export config → diff must be
-      semantically equivalent (comments/whitespace may differ, but
-      behavior must be identical).
-- [ ] Preserve unsupported features: configs using pf features OPF
-      doesn't model (anchors, queues, etc.) must import as raw blocks
-      and re-export correctly.
-- [ ] Handle all valid syntax variations: macros, includes, multi-line
-      rules, comments, blank lines, mixed indentation.
-- [ ] Error handling: malformed configs should produce clear errors
-      pointing to the problem, not crash or silently drop rules.
-- [ ] Fuzz with valid configs: generate random valid pf.conf (etc.)
-      files, import, export, validate with `pfctl -nf`.
-
-### Config engine (staging, commit, confirm, history, revert)
-
-- [ ] Integration tests for the full commit workflow: stage → check →
-      apply → confirm, and stage → check → apply → timeout → revert.
-- [ ] Failure injection: check fails, apply fails, service restart
-      fails, disk full, permission denied. Verify correct rollback.
-- [ ] Concurrent access tests: multiple stages, commits racing, confirm
-      during revert. Verify no corruption or deadlocks.
-- [ ] History integrity: commits produce correct diffs, rollback stages
-      the exact previous content, history survives restart.
-- [ ] File drift detection: hand-edits between stage and commit must
-      block the commit and preserve the hand-edit.
-
-### Privilege separation (parent/child RPC)
-
-- [ ] Every RPC method must have explicit tests for success and error
-      paths, including sentinel errors crossing the process boundary.
-- [ ] Invalid/malicious RPC inputs: oversized messages, path traversal
-      attempts in file names, unknown method calls. Child must not be
-      able to escalate or crash parent.
-- [ ] Process lifecycle: child crash → parent restarts it, parent
-      shutdown → child terminates cleanly, unconfirmed commits revert.
-- [ ] Fuzz the RPC protocol: random bytes over the socketpair must not
-      crash either process.
-
-### Web server and API
-
-- [ ] HTTP endpoint tests for every route: valid requests, invalid
-      parameters, missing auth (once added), CSRF protection.
-- [ ] Input validation: oversized bodies, malformed JSON, path traversal
-      in URL parameters.
-- [ ] Error responses: every error code path must be tested and must
-      not leak internal details.
-
-### Frontend (React UI)
-
-- [ ] Component tests for every form: valid input accepted, invalid
-      input rejected with clear errors, edge cases (empty, max length).
-- [ ] Integration tests for critical workflows: add rule → commit →
-      confirm, edit interface → see generated config, revert from
-      history.
-- [ ] Visual regression tests for key pages (optional but recommended).
-
-### CI requirements
-
-- [ ] All tests run on every PR, blocking merge on failure.
-- [ ] `go test -race` to catch data races.
-- [ ] `go test -fuzz` with minimum duration (e.g., 30s per fuzz target).
-- [ ] Cross-compile and vet for GOOS=openbsd on every PR.
-- [ ] Coverage tracking: no decrease in coverage without justification.
-
-### OpenBSD version compatibility
-
-- [ ] Maintain test fixtures captured from each supported OpenBSD version
-      (currently 7.4+). Each new OpenBSD release requires:
-      1. Capture fresh output from all parsed commands (`pfctl -s states`,
-         `pfctl -s rules`, `ifconfig`, `rcctl ls all`, etc.)
-      2. Review man page changes for parsed commands and config files
-         (compare with previous version via `cvsweb.openbsd.org`)
-      3. Update parsers/generators if formats changed
-      4. Add new fixtures to the test suite
-      5. Document any version-specific behavior
-- [ ] Track minimum and maximum supported OpenBSD versions in README.
-- [ ] Parsers must degrade gracefully on older versions—missing fields
-      should result in zero/empty values, not crashes.
-
-### Live on-OpenBSD test suite
-
-Extensive testing that runs directly on OpenBSD to validate parsers against
-real system output. This ensures compatibility with the current OpenBSD
-version and catches any format changes that static fixtures might miss.
-
-- [ ] Test harness that runs on OpenBSD and collects live data from:
-      - `pfctl -s states` (connection states)
-      - `pfctl -s rules -v` (rules with counters)
-      - `pfctl -s info` (pf statistics)
-      - `pfctl -s Anchors -v` (anchor contents)
-      - `ifconfig -a` (interface configuration)
-      - `netstat -rn` (routing table)
-      - `rcctl ls all` / `rcctl get <service>` (service status)
-      - `dhcpleasectl show` (DHCP leases if server is running)
-      - `wg show` (WireGuard status if configured)
-      - `unbound-control stats` (DNS resolver stats if running)
-- [ ] Feed live output through each parser, verify no panics or errors
-      on valid data.
-- [ ] Compare parsed structures against expected values where deterministic
-      (e.g., interface names, IP addresses that can be verified).
-- [ ] Store captured output as new test fixtures for regression testing.
-- [ ] Run as part of a CI job on an OpenBSD VM (at minimum on each new
-      OpenBSD release, ideally on every PR).
-- [ ] Include edge cases triggered by real usage: busy state tables,
-      many interfaces, complex pf rulesets, IPv6-heavy configurations.
-- [ ] Test config generators by: generating config from current model,
-      validating with `pfctl -nf -`, comparing against actual system config.
-- [ ] Document any differences between test VM and production systems
-      (services not running, minimal config, etc.) that affect coverage.
-
-## Direction change (appliance UI)
-
-Decided: the user never edits config files. One model file
-(`/var/opf/config.json`) is the source of truth and every OpenBSD file
-is generated from it; the UI is React + Mantine (`ui/`), served by the
-Go binary. The staging/commit/confirm/history engine stays, with
-generated files as its outputs.
-
-- [x] Go: config model types matching `ui/src/model/types.ts`, and
-      generators for pf.conf, hostname.if, dhcpd.conf, unbound.conf,
-      myname and ntpd.conf (`internal/pf`). Golden files cover the pf
-      parser; the other generators still need golden tests, and
-      rc.conf.local isn't generated at all.
-- [x] Stage the model instead of raw files; the review dialog lists
-      readable change summaries, with generated-file diffs as detail.
-- [x] JSON API for the UI (`docs/api.md`); the htmx pages are gone.
-- [ ] Embed `ui/dist` in the binary.
+- [x] **Pattern entries.** `hostname.*` resolves to `hostname.em0` etc.
+      (device names only), applied first with `sh /etc/netstart <dev>`,
+      mode 0640. `/api/model/apply` used to fail for any model with
+      interfaces.
 - [x] Hand-edited generated files: staging refuses with
       `modified_outside` until the user chooses to replace them.
-- [ ] First-boot setup wizard (WAN, LAN, admin password).
-- [ ] **Config import parsers** (see principle 4): parse existing
-      `pf.conf`, `hostname.if`, `dhcpd.conf`, `unbound.conf`, etc. into
-      the OPF model. Must handle hand-written configs with comments,
-      includes, macros, and features OPF doesn't fully support (preserve
-      as raw blocks). Golden-file tests against real-world configs.
-- [ ] Live data (interface stats, states, leases, WireGuard peers, pf
-      log) from the parsers in `legacy/`.
+- [x] While a commit waits for confirmation, staging is refused with
+      `commit_pending` and the UI blocks edits and undo.
+- [x] Two browsers: staging requires the live version the edits started
+      from and committing requires the staged version, so neither undoes
+      the other's work silently (`conflict`).
+- [ ] **Removing generated files.** Staging a model that no longer
+      generates a file (a deleted VLAN's `hostname.vlan30`, a deleted
+      WireGuard tunnel's `hostname.wgN`) is refused as `unsupported`.
+      The engine needs deletion, with restore on revert; removed
+      interfaces also need `ifconfig <dev> destroy`. Blocks deleting
+      interfaces, VLANs and tunnels in the UI.
+- [ ] **Apply order by dependency.** Today it's registry order (model,
+      interfaces, pf, services), and within `hostname.*` path order:
+      netstart brings devices up in the order given, so
+      `hostname.bridge0` comes before its member `hostname.em1` (VLANs
+      only work because em1 sorts before vlan20). Order parents and
+      members before the interfaces built on them, the reverse on
+      removal, and interfaces before pf.
+- [ ] **Confirm and auto-revert for interface changes.** `hostname.if`
+      files are applied directly with no confirmation, because
+      `sh /etc/netstart <if>` can't load from another path. Moving the
+      LAN's address onto a bridge is the easiest way to lock yourself
+      out. Install, then restore the old files and re-run netstart on
+      timeout; that gives up pf.conf's "a reboot reverts it" guarantee,
+      so decide how to handle a reboot during the window. Needs a
+      design.
+- [ ] **rc.conf.local** isn't generated, and is only checked with
+      `sh -n`; nothing is applied. Enabling DHCP, DNS or WireGuard must
+      set `dhcpd_flags` (with the interface list), `unbound_flags` and
+      so on; service enable/disable/flags should be staged through it
+      and reconciled with rcctl on commit.
+- [ ] `myname` and `mygate` are generated but not in the registry: give
+      them managed file entries, or generate them outside the commit
+      flow. `mygate` is skipped when the default gateway is DHCP;
+      dhcpleased handles that differently.
+- [ ] `resolv.conf` isn't handled; DNS client config isn't generated or
+      managed (OpenBSD uses `/etc/resolv.conf.tail` with resolvd).
+- [ ] If OPF is killed with SIGKILL (or crashes) during the confirm
+      window, the staged pf rules stay loaded until reboot or the next
+      start. `Recover` only runs at startup.
+- [ ] Graceful shutdown: verify and document that SIGTERM waits for
+      pending operations and reverts unconfirmed commits.
+- [ ] File locking: no guard against two OPF instances running at once.
+- [ ] Decide whether a service that fails to reload or restart should
+      revert the whole commit (it does now).
+- [ ] A second browser's staging replaces the first's staged model
+      (there's one candidate). Fine for one admin; revisit with users.
+- [ ] When the UI loads a model someone else staged, it lists the
+      changes by section only ("Changed firewall settings"); the edit
+      descriptions aren't stored with the staged model.
+- [ ] History is never pruned.
+- [ ] Newly created parent directories get 0755; check what each managed
+      path expects.
+- [ ] Backup/restore: no way to export/import `config.json` for disaster
+      recovery or migration (the System page's backup buttons are
+      placeholders).
 
-### pf coverage still missing from the UI
+## Security
 
-Reachable today only through raw rules or custom pf blocks:
+- [x] **Model validation.** `pf.Validate` checks every field in the
+      parent before anything is generated, and again on commit (see
+      Rules we hold to). It found two bugs in the sample model. It also
+      had to reject quoted strings containing a newline, and a
+      backslash before a space, tab or quote, which pf's lexer eats.
+- [x] Requests: 4 MiB limit, JSON only, strict decoding. Cross-origin
+      state-changing requests are refused
+      (`http.CrossOriginProtection`); internal errors reach clients only
+      as "internal error".
+- [ ] **No authentication.** It has to be enforced in the parent, not
+      the web process: a compromised web process can currently call
+      Stage and Commit directly. Likely `auth_userokay(3)` (cgo) plus
+      sessions checked at the RPC boundary. The UI needs a sign-in page
+      and a working "change password".
+- [ ] TLS.
+- [ ] Record who made each commit in history once there are users.
+- [ ] Anyone who can commit can get root: rc.conf.local is sourced by
+      rc(8), and sshd_config/httpd.conf are powerful. That comes with
+      the product, but it's why auth and audit logging matter.
+- [ ] Cap RPC message sizes: gob decoding in the root process is
+      unbounded (HTTP bodies are capped, but a compromised web process
+      could send more).
+- [ ] `privsep.Client.Pending` drops RPC errors; the banner shows nothing
+      if the parent is unreachable.
+- [ ] Secret storage, needed for WireGuard private keys (one per tunnel;
+      today a placeholder in the `hostname.if` generator, and keys
+      aren't generated), PPPoE credentials and CARP passwords.
 
-- [ ] Traffic shaping: `queue` definitions (bandwidth, min/max, flows)
-      and assigning rules to queues.
-- [ ] Anchors, including a managed anchor per service.
-- [ ] Multi-WAN: gateway groups (`route-to` pools with failover driven
-      by gateway health), and `route-to` on a DHCP gateway, which the
-      generator currently resolves to the live address.
-- [ ] `binat-to` (1:1 NAT), `af-to` (NAT64), `divert-to`.
-- [ ] CARP and pfsync for high availability.
-- [ ] Parse pasted pf rules back into guided form where possible.
-- [ ] A packet tester: "what happens to tcp 192.168.20.5 → 192.168.1.20:445?"
-      evaluated against the ruleset.
-- [ ] IPv6: interfaces, NAT and rules are IPv4-first today.
-- [ ] rc.conf.local generation: enabling DHCP, DNS or WireGuard must set
-      `dhcpd_flags` (with the interface list), `unbound_flags` and so on,
-      applied with rcctl.
-- [ ] Anti-lockout ports (443, 22) are hard-coded; derive them from the
-      web UI and sshd settings.
-- [ ] NAT reflection is added on every inside interface; limit it to the
-      ones that need it.
-- [ ] Check whether reloading pf empties `persist` tables such as
-      `<bruteforce>`; if so, save and restore their contents.
-- [ ] Per-client traffic stats and graphs: pf only tracks bytes per
-      active connection (lost when closed) and per-interface aggregates.
-      Options: periodic state polling with aggregation by IP, pf rule
-      labels with accounting, or pflow(4) NetFlow export to a collector.
+## Import
+
+Principle 4: install on a configured system and keep its behaviour.
+
+- [ ] `ParsePfConf` for whole files (the rule parser exists), plus
+      importers for `hostname.if`, `dhcpd.conf` and `unbound.conf`.
+      Must handle hand-written configs: comments, includes, macros,
+      multi-line rules, and features OPF doesn't model (anchors, queues,
+      …), which stay raw blocks and re-export unchanged.
+- [ ] Build the model's interfaces first: rules naming devices
+      (`on em0`) only become guided rules when the device is in the
+      model, otherwise they stay raw.
+- [ ] Reject invalid UTF-8 with a clear error. `encoding/json` replaces
+      it with U+FFFD, so even raw rules would change when `config.json`
+      is saved.
+- [ ] Rules with their own label stay raw (the guided form's label is
+      its id). Offer to turn those labels into descriptions.
+- [ ] First-boot setup wizard (WAN, LAN, admin password) that detects
+      existing configs and offers import.
 
 ## Verify on real OpenBSD
 
 Everything below has only run on macOS, where pledge and unveil are
-skipped and the web process isn't dropped to another user.
+skipped and the web process isn't dropped to another user. The
+`openbsd-dev` SSH host is a candidate; ask before using it.
 
 - [ ] Run as root in `-dry` mode with scratch `-root`/`-state` to
       exercise pledge, unveil and the privilege drop.
@@ -569,6 +383,8 @@ skipped and the web process isn't dropped to another user.
       `httpd -n -f`, `ntpd -n -f`, `sshd -t -f` (host keys, `Include`).
 - [ ] Real commits, with and without confirmation, on a VM that can be
       locked out safely.
+- [ ] Check whether reloading pf empties `persist` tables such as
+      `<bruteforce>`; if so, save and restore their contents.
 - [ ] DHCP names in DNS (`internal/leases`): the lease file format
       matches what OpenBSD's dhcpd writes (`db.c`: time format, `UTC`,
       `client-hostname`); `unbound-control -c … list_local_data` output
@@ -576,413 +392,107 @@ skipped and the web process isn't dropped to another user.
       `/var/run/unbound.sock` works with unbound's chroot; the parent can
       read `/var/db/dhcpd.leases` under unveil, including after dhcpd
       replaces the file.
-- [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
-      in a `const` table (used for DHCP-addressed inside networks in
-      `<opf_local>`), and the block rule stops a split-tunnel device
-      that sets `AllowedIPs = 0.0.0.0/0` from reaching the internet.
 - [ ] Check how dhcpd writes a `client-hostname` containing `"`. If
       `db_printable` lets it through unescaped, a client can forge extra
       lease statements in the file. Records limits the damage (dynamic
       range only, reserved names, clashing names dropped), but the
       parser can't tell forged statements from real ones.
+- [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
+      in a `const` table (used for DHCP-addressed inside networks in
+      `<opf_local>`), and the block rule stops a split-tunnel device
+      that sets `AllowedIPs = 0.0.0.0/0` from reaching the internet.
 
-## Security
+## Firewall rules
 
-- [ ] **No authentication.** It has to be enforced in the parent, not
-      the web process: a compromised web process can currently call
-      Stage and Commit directly. Likely `auth_userokay(3)` (cgo) plus
-      sessions checked at the RPC boundary.
-- [ ] TLS.
-- [ ] Anyone who can commit can get root: rc.conf.local is sourced by
-      rc(8), and sshd_config/httpd.conf are powerful. That comes with
-      the product, but it's why auth and audit logging matter.
-- [ ] Cap RPC message sizes: gob decoding in the root process is
-      unbounded (HTTP bodies are capped at 4 MiB, but a compromised web
-      process could send more).
-- [x] Cross-origin state-changing requests are refused
-      (`http.CrossOriginProtection`); internal errors reach clients only
-      as "internal error".
-- [ ] Record who made each commit in history once there are users.
+### Generator and parser
 
-## Live monitoring data
+- [x] **Parser hangs.** Fuzzing found infinite loops in the tokenizer
+      (bytes treated as runes, so identifiers rewound past their start)
+      and in the interface, protocol and port list loops. The inputs are
+      regression seeds in `internal/pf/testdata/fuzz` and
+      `parser_termination_test.go`. All three targets run 90 s clean.
+- [x] **The parser dropped what it didn't understand.** Anything
+      `tryParseFormRule` doesn't model keeps the rule raw: unknown or
+      repeated options, unreadable arguments, `log (…)` other than
+      `(all)`, bare macros and hostnames, `:0`/`:broadcast`/`:peer`,
+      `! any`, interface groups and devices not in the model, host lists
+      and ranges, unmodelled state options, empty `{ }` lists, and ports,
+      flags or ICMP types on a protocol the generator won't write them
+      for. `route-to`/`reply-to` map to a model gateway by address, or
+      keep the rule raw. Keywords are case-sensitive and string escapes
+      follow pf's parse.y; the generator quotes strings the same way
+      (Go's `%q` escapes reached pf as literal text), always writes
+      aliases as `<table>`, and no longer turns `netbios-ssn` into
+      `netbios:ssn`.
+- [x] **Raw rules were rebuilt from tokens.** Tokens carry byte offsets
+      and raw text is the source slice (`parseAsRaw` used to produce
+      `$lan : network`). Continuations are removed before tokenizing, as
+      pf's lexer does, even mid-word. `FuzzRawRuleText` checks raw text
+      always comes from the input.
+- [x] **Interface references.** One `iface` endpoint replaces `net` and
+      `ifaddr`: a model interface or a group (`egress`), with
+      `:network`/`:broadcast`/`:peer`, `:0`, and parentheses when it
+      should follow address changes (automatic: yes for DHCP/SLAAC and
+      groups). Combinations follow pfctl's `parse.y` and `host_if()`.
+      The `on` clause takes groups too, which make a rule floating.
+      `self` takes the same modifiers (in the kernel `(self)` is the
+      "all" group, `pf_if.c`); left automatic, it's parenthesized when
+      any interface uses DHCP or SLAAC.
+- [x] Built-in rules (anti-lockout, port forwards, NAT reflection,
+      automatic outbound NAT) use `iface` endpoints like user rules, and
+      include every enabled inside network with IPv4, DHCP-addressed
+      ones too. `nat-to` targets stay in parentheses always.
+- [x] Pasted pf rules are parsed back into guided form where possible
+      (`POST /api/pf/parse`).
+- [ ] **Outbound rules never match.** Both generators emit
+      `pass out quick inet` before user rules (`internal/pf/generate.go`,
+      `ui/src/model/generate.ts`, the `self-out` builtin), so outbound
+      rules such as the sample's floating `match out … set prio 6` are
+      never reached. Use a non-quick `pass out`.
+- [ ] Still raw: bare names or `name:0` that aren't model interfaces
+      (pf treats them as interfaces only if one exists at load time,
+      else as hostnames).
+- [ ] Anti-lockout ports (443, 22) are hard-coded; derive them from the
+      web UI and sshd settings.
+- [ ] NAT reflection is added on every inside interface; limit it to the
+      ones that need it.
+- [ ] URL-type alias tables need a refresh mechanism (scheduled or on
+      demand) to re-fetch and reload the table files.
 
-The legacy server (`legacy/server/`) collected extensive runtime data
-that the new UI doesn't yet surface. Each feature needs:
-1. **Go backend**: Parser for command output, API endpoint, mock data for non-OpenBSD
-2. **Frontend**: UI page or component, TypeScript types, mock data in `live.ts`
+### pf labels
 
-### System metrics
+Generated rules are labelled `opf:<kind>:<id>` (see Rules we hold to),
+so counters and states map back to model objects.
 
-- [ ] **CPU usage** (`sysctl kern.cp_time`)
-      - Backend: Parser, `GET /api/system/cpu`, mock data
-      - Frontend: Dashboard meter (currently hardcoded 18%), history graph
-- [ ] **Load average** (`sysctl vm.loadavg`)
-      - Backend: Parser, `GET /api/system/loadavg`, mock data
-      - Frontend: Dashboard display, 1/5/15 minute values
-- [ ] **Memory details** (vmstat, `sysctl hw.physmem`)
-      - Backend: Parser, `GET /api/system/memory`, mock data
-      - Frontend: Dashboard meter with breakdown (active/free/wired/cached)
-- [ ] **Swap usage** (`swapctl -l`)
-      - Backend: Parser, `GET /api/system/swap`, mock data
-      - Frontend: Dashboard meter when swap is configured
-- [ ] **Disk usage** (`df -P`)
-      - Backend: Parser, `GET /api/system/disks`, mock data
-      - Frontend: Dashboard meter per mount, storage page
-- [ ] **Disk I/O** (vmstat disk transfers)
-      - Backend: Parser, `GET /api/system/diskio`, mock data
-      - Frontend: Per-disk read/write rates
-- [ ] **Boot time / uptime** (`sysctl kern.boottime`)
-      - Backend: Parser, `GET /api/system/uptime`, mock data
-      - Frontend: Dashboard (currently mock), System General page
-- [ ] **Hardware sensors** (`sysctl hw.sensors`)
-      - Backend: Parser, `GET /api/system/sensors`, mock data
-      - Frontend: Temperature, fan speed, voltage readings
-- [ ] **Hardware info** (`sysctl hw`)
-      - Backend: Parser, `GET /api/system/hardware`, mock data
-      - Frontend: System General page (CPU model, RAM, disks)
-- [ ] **Process list** (`ps aux`)
-      - Backend: Parser, `GET /api/system/processes`, mock data
-      - Frontend: New Diagnostics > Processes page with sorting/filtering
-
-### pf firewall diagnostics
-
-- [ ] **pf states** (`pfctl -vv -s states`)
-      - Backend: Parser, `GET /api/pf/states`, mock data
-      - Frontend: Connections page (currently mock only), kill state action
-- [ ] **pf rule statistics** (`pfctl -vv -s rules`)
-      - Backend: Parser, `GET /api/pf/rules`, mock data
-      - Frontend: Rules page per-rule counters (evaluations, packets, bytes)
-- [ ] **pf info/counters** (`pfctl -v -s info`)
-      - Backend: Parser, `GET /api/pf/info`, mock data
-      - Frontend: Firewall dashboard tile (state table size, match rate, drops)
-- [ ] **pf interface stats** (`pfctl -vv -s Interface`)
-      - Backend: Parser, `GET /api/pf/interfaces`, mock data
-      - Frontend: Per-interface packet/byte counters, cleared/referenced stats
-- [ ] **pf memory** (`pfctl -s memory`)
-      - Backend: Parser, `GET /api/pf/memory`, mock data
-      - Frontend: Firewall Settings or System page (state table limits)
-- [ ] **Kill state by ID** (`pfctl -k id -k <id>`)
-      - Backend: `POST /api/pf/kill`, action endpoint
-      - Frontend: Kill button in Connections page per-connection
-- [ ] **Kill states by criteria** (`pfctl -k <src> -k <dst>`)
-      - Backend: `POST /api/pf/kill`, action endpoint with filters
-      - Frontend: Bulk kill by IP/interface in Connections page
-
-### Network interfaces
-
-- [ ] **Interface statistics** (`netstat -i -n`)
-      - Backend: Parser, `GET /api/network/interfaces`, mock data
-      - Frontend: Interfaces page (rx/tx packets, errors, collisions)
-- [ ] **Interface status** (`ifconfig -a`)
-      - Backend: Parser, included in interfaces endpoint, mock data
-      - Frontend: Link state, media type, addresses, flags
-
-### WireGuard
-
-- [ ] **Peer status** (`ifconfig wgN` or `wg show`)
-      - Backend: Parser, `GET /api/wireguard/status`, mock data
-      - Frontend: WireGuard page peer list (handshake time, rx/tx bytes)
-      - Note: Parser must handle per-tunnel output
-
-### Services management
-
-- [ ] **Service list** (`rcctl ls all`)
-      - Backend: Parser, `GET /api/services`, mock data
-      - Frontend: New Services page listing all services
-- [ ] **Service status** (`rcctl ls on`, `rcctl ls started`)
-      - Backend: Combined in services endpoint, mock data
-      - Frontend: Enabled/running status per service
-- [ ] **Service details** (`rcctl get <service>`)
-      - Backend: Parser, `GET /api/services/:name`, mock data
-      - Frontend: Service detail view (flags, user, rtable, timeout)
-- [ ] **Start/stop service** (`rcctl start/stop <service>`)
-      - Backend: `POST /api/services/:name/start`, `POST /api/services/:name/stop`
-      - Frontend: Start/Stop buttons in Services page
-- [ ] **Enable/disable service** (`rcctl enable/disable <service>`)
-      - Backend: `POST /api/services/:name/enable`, `POST /api/services/:name/disable`
-      - Frontend: Enable/Disable toggle in Services page
-
-### System logs
-
-- [ ] **dmesg** (`dmesg`)
-      - Backend: Parser (or raw), `GET /api/logs/dmesg`, mock data
-      - Frontend: New Diagnostics > System Logs page, dmesg tab
-- [ ] **/var/log/messages**
-      - Backend: File reader with tail, `GET /api/logs/messages`, mock data
-      - Frontend: System Logs page, messages tab
-- [ ] **/var/log/daemon**
-      - Backend: File reader with tail, `GET /api/logs/daemon`, mock data
-      - Frontend: System Logs page, daemon tab
-- [ ] **/var/log/authlog**
-      - Backend: File reader with tail, `GET /api/logs/authlog`, mock data
-      - Frontend: System Logs page, auth tab (login attempts, sudo)
-- [ ] **Firewall log** (`tcpdump -n -e -ttt -r /var/log/pflog`)
-      - Backend: Parser, `GET /api/logs/firewall`, mock data
-      - Frontend: Diagnostics > Firewall log (currently mock only)
-
-### Traffic and bandwidth
-
-- [ ] **Interface traffic rates** (periodic `netstat -i` delta)
-      - Backend: Rate calculation from counter deltas, mock data
-      - Frontend: Dashboard traffic chart (currently simulated), per-interface sparklines
-- [ ] **Per-rule traffic** (`pfctl -s labels`)
-      - Backend: Parser, `GET /api/pf/labels`, mock data
-      - Frontend: Rules page with bytes/packets per rule
-
-### Implementation notes
-
-- All parsers go in `internal/appliance/` alongside existing `parseARPOutput`
-  and `parseRoutingOutput`
-- Each parser needs `runtime.GOOS` check to return mock data on non-OpenBSD
-- Mock data functions follow `sampleARPTable()` / `sampleRoutingTable()` pattern
-- Frontend types go in `ui/src/lib/api.ts` (API types) and `ui/src/model/live.ts` (mock)
-- Consider batching related endpoints (e.g., `/api/system/stats` combining CPU/memory/load)
-- Rate-limited polling in frontend (e.g., 5s for stats, 30s for logs)
-- WebSocket option for real-time updates (pflog, traffic) - future consideration
-
-## OpenBSD base system daemons
-
-Services from OpenBSD base that should be surfaced in the UI for a
-network appliance. Organized by priority. All are controlled via rcctl.
-
-### Design principle: full configuration through OPF
-
-Every service should be fully configurable through OPF, not just basic
-options. Users should never need to SSH in and edit config files manually.
-
-- [ ] **Basic config UI** for common options (ports, addresses, toggles)
-- [ ] **Advanced config UI** for all daemon options, even obscure ones
-- [ ] **Raw config option** as escape hatch for anything the UI doesn't
-      cover, similar to raw pf rules - include arbitrary config lines
-      that get appended to the generated config file
-- [ ] **Config file preview** showing exactly what will be written,
-      like the pf.conf preview in the Ruleset page
-- [ ] **Validation** using each daemon's own checker where available
-      (e.g., `httpd -n`, `smtpd -n`, `bgpd -n`, `ospfd -n`)
-
-The goal is an appliance where the UI is the complete interface. A user
-who only knows the UI should have access to every feature. Advanced
-users get the same power as editing files directly, with the safety of
-validation and atomic commits.
-
-For each daemon, the model should include:
-- All configuration options as structured fields where practical
-- A `raw` or `extra` field for arbitrary config lines
-- Generated config goes through the commit engine like other files
-
-### Core services (most users need)
-
-These should show status on the Services page and allow start/stop:
-
-- [ ] **sshd** - Remote SSH access
-      - Critical for administration
-      - Show: running status, connected sessions count
-      - Config: listen addresses, port, permit root login
-- [ ] **ntpd** - Time synchronization
-      - Critical for logs, certificates, DNSSEC
-      - Show: sync status, offset, peers
-      - Config: servers/pools, listen address, sensor
-- [ ] **pflogd** - Firewall logging to /var/log/pflog
-      - Critical for diagnostics
-      - Show: running status, log file size
-      - Config: log file, snaplen, interface
-- [ ] **syslogd** - System logging
-      - Important for all logs
-      - Show: running status
-      - Config: remote syslog destinations
-- [ ] **cron** - Scheduled tasks
-      - Important for blocklist updates, backups, maintenance
-      - Show: running status, next scheduled jobs
-      - Future: UI for managing cron jobs
-- [ ] **dhcpleased** - DHCP client for interfaces
-      - Essential for DHCP-configured WANs
-      - Show: running status, leases obtained
-      - Note: Automatically managed per-interface
-- [ ] **slaacd** - IPv6 SLAAC client
-      - Essential for IPv6 autoconfiguration
-      - Show: running status, addresses obtained
-      - Note: Automatically managed per-interface
-
-### Already configurable in OPF
-
-These have dedicated UI pages; the Services page should show their
-status and link to their config pages:
-
-- [x] **dhcpd** - DHCP server (Services > DHCP server)
-- [x] **unbound** - DNS resolver (Services > DNS resolver)
-- [x] **pf** - Packet filter (Firewall pages)
-
-### Useful additions (Tier 2)
-
-These warrant configuration UI beyond just start/stop:
-
-- [ ] **httpd** - Web server
-      - Use case: Captive portal, hosting blocklists, simple file serving
-      - Config: virtual hosts, TLS, document roots
-      - UI: Services > Web server page
-- [ ] **rad** - IPv6 router advertisement daemon
-      - Use case: IPv6 networks, announcing prefixes/DNS to clients
-      - Config: interfaces, prefixes, DNS servers, MTU
-      - UI: Part of interface config or Services > IPv6 RA
-- [ ] **relayd** - Load balancer, relay, health checks
-      - Use case: Multi-WAN health monitoring, reverse proxy, redirects
-      - Config: tables, protocols, relays, redirections
-      - UI: Services > Load Balancer or Network > Gateways health
-      - Note: Can replace custom gateway monitoring
-- [ ] **smtpd** - OpenSMTPD mail relay
-      - Use case: Send alert/notification emails from the appliance
-      - Config: relay host, authentication, local aliases
-      - UI: System > Notifications or Services > Mail relay
-- [ ] **snmpd** - SNMP monitoring agent
-      - Use case: Integration with monitoring systems (Nagios, Zabbix, etc.)
-      - Config: community strings, trap receivers, system info
-      - UI: Services > SNMP
-
-### Advanced networking (Tier 3)
-
-For advanced users; show in Services page but config may be complex:
-
-- [ ] **ospfd** - OSPFv2 dynamic routing
-      - Use case: Multi-router networks, automatic route failover
-      - Config: areas, interfaces, neighbors, redistribution
-      - UI: Network > Dynamic Routing > OSPF
-- [ ] **ospf6d** - OSPFv3 for IPv6
-      - Use case: IPv6 dynamic routing
-      - Config: areas, interfaces, redistribution
-      - UI: Network > Dynamic Routing > OSPFv3
-- [ ] **bgpd** - BGP routing
-      - Use case: Multi-homing, transit, route servers, advanced policy
-      - Config: AS number, neighbors, filters, communities
-      - UI: Network > Dynamic Routing > BGP
-      - Note: Complex; may need raw config option
-- [ ] **iked** - IKEv2 IPsec VPN
-      - Use case: Site-to-site IPsec, mobile IKEv2 clients
-      - Config: policies, flows, authentication, proposals
-      - UI: Services > IPsec VPN (alongside WireGuard)
-- [ ] **npppd** - PPP daemon (PPPoE, L2TP)
-      - Use case: DSL/PPPoE WANs, L2TP VPN server
-      - Config: interfaces, authentication, IP pools
-      - UI: Interface config for PPPoE; Services > L2TP for VPN
-- [ ] **ifstated** - Interface state daemon
-      - Use case: Automatic WAN failover, link monitoring
-      - Config: state definitions, interface triggers, actions
-      - UI: Network > Failover or integrated with multi-WAN
-      - Note: Works with carp, route changes
-- [ ] **eigrpd** - EIGRP routing
-      - Use case: Mixed Cisco environments
-      - Config: AS number, interfaces, redistribution
-      - UI: Network > Dynamic Routing > EIGRP
-- [ ] **ripd** - RIP routing (legacy)
-      - Use case: Simple/legacy dynamic routing
-      - Config: interfaces, redistribution
-      - UI: Network > Dynamic Routing > RIP
-
-### Niche services (Tier 4)
-
-Available but rarely needed; show in Services if enabled:
-
-- [ ] **nsd** - Authoritative DNS server
-      - Use case: Hosting DNS zones (not just resolving)
-      - Config: zones, primaries/secondaries
-      - UI: Services > Authoritative DNS
-- [ ] **tftpd** - TFTP server
-      - Use case: PXE boot, firmware upgrades for network devices
-      - Config: root directory, chroot
-      - UI: Services > TFTP
-- [ ] **tftpproxy** - TFTP proxy for pf
-      - Use case: TFTP through NAT
-      - Config: listen address
-- [ ] **radiusd** - RADIUS server
-      - Use case: Network authentication (802.1X, VPN auth)
-      - Config: clients, users, authentication backends
-      - UI: Services > RADIUS
-- [ ] **ldapd** - LDAP directory server
-      - Use case: Centralized authentication, directory services
-      - Config: schemas, ACLs, backends
-      - UI: Services > LDAP
-- [ ] **ftpd** - FTP server
-      - Use case: File transfers (legacy)
-      - Config: chroot, anonymous access
-      - UI: Services > FTP
-- [ ] **ftpproxy** - FTP proxy for pf
-      - Use case: FTP through NAT (active mode)
-      - Config: listen address
-- [ ] **isakmpd** - IKEv1 IPsec (legacy)
-      - Use case: Legacy IPsec peers that don't support IKEv2
-      - Note: Prefer iked for new deployments
-- [ ] **sasyncd** - IPsec SA synchronization
-      - Use case: IPsec failover between carp hosts
-      - Config: peer, interface, carp group
-- [ ] **ldpd** - MPLS LDP
-      - Use case: MPLS networks
-      - Config: interfaces, neighbors
-- [ ] **dvmrpd** - Multicast routing (DVMRP)
-      - Use case: Multicast across routers
-      - Config: interfaces, groups
-- [ ] **mrouted** - Multicast routing (legacy)
-      - Use case: Legacy multicast
-- [ ] **hostapd** - Wireless access point
-      - Use case: WiFi AP (if hardware supports it)
-      - Config: SSID, authentication, channel
-      - UI: Services > Wireless AP
-- [ ] **lpd** - Line printer daemon
-      - Use case: Print server (very legacy)
-
-### Services page implementation
-
-- [ ] Services page showing all base system daemons
-      - Group by category (Core, Network, Security, etc.)
-      - Show: name, description, enabled, running, actions
-      - Quick actions: start, stop, restart, enable, disable
-      - Link to config page for services with dedicated UI
-- [ ] Service detail view
-      - Status, uptime, resource usage
-      - Recent log entries for that service
-      - Configuration (where applicable)
-- [ ] Dependency awareness
-      - Some services depend on others (e.g., dhcpd needs interfaces up)
-      - Show warnings when disabling a dependency
-- [ ] Boot order
-      - Show/configure rc.d(8) order where relevant
-
-## pf labels
-
-Generated rules are labelled `opf:<kind>:<id>` (rule, forward, nat,
-auto-nat, builtin) and descriptions are `#` comments above them, so
-descriptions are free text and counters map back to model objects.
-
-- [ ] Show live counters per rule from `pfctl -s labels`, and kill a
-      rule's states with `pfctl -k label -k opf:rule:<id>`.
-- [ ] Map pflog entries (rule numbers) to model rules through
-      `pfctl -vvsr`'s labels.
 - [ ] Raw rules only have a label if their text has one. Offer to add
       OPF's when a raw rule has none.
-- [ ] Importing: rules with their own label stay raw (the guided form's
-      label is its id). Offer to turn those labels into descriptions.
+- [ ] Map pflog entries (rule numbers) to model rules through
+      `pfctl -vvsr`'s labels.
+- Live counters and killing a rule's states: see Live data.
 
-## Virtual interfaces (bridges, aggregation, tunnels)
+### pf features missing from the UI
 
-Creating virtual interfaces from the Interfaces page. Today there are
-physical ports, VLANs and WireGuard tunnels, each one hostname.<dev>
-file applied with `sh /etc/netstart <devs>`.
+Reachable today only through raw rules or custom pf blocks:
 
-Groundwork, needed by every type:
+- [ ] Traffic shaping: `queue` definitions (bandwidth, min/max, flows)
+      and assigning rules to queues.
+- [ ] Anchors, including a managed anchor per service.
+- [ ] Multi-WAN: gateway groups (`route-to` pools with failover driven
+      by gateway health, perhaps via relayd or ifstated), and `route-to`
+      on a DHCP gateway, which the generator currently resolves to the
+      live address.
+- [ ] `binat-to` (1:1 NAT), `af-to` (NAT64), `divert-to`.
+- [ ] pfsync, alongside CARP (Interfaces).
+- [ ] A packet tester: "what happens to tcp 192.168.20.5 → 192.168.1.20:445?"
+      evaluated against the ruleset.
 
-- [ ] **Removing interfaces**: delete hostname.<dev> and run
-      `ifconfig <dev> destroy`. The commit engine refuses file removals
-      today (same gap as deleting a tunnel).
-- [ ] **Apply order by dependency.** netstart brings up the devices it's
-      given in order, and OPF passes them in path order, so
-      hostname.bridge0 comes before its member hostname.em1 (VLANs only
-      work because em1 sorts before vlan20). Order parents and members
-      before the interfaces built on them, and the reverse on removal.
-- [ ] **Confirm and auto-revert for interface changes.** Moving the
-      LAN's address onto a bridge is the easiest way to lock yourself
-      out, and hostname.if files are applied directly with no
-      confirmation (netstart can't load a staged copy). Install, then
-      restore the old files and re-run netstart on timeout; that gives
-      up pf.conf's "a reboot reverts it" guarantee, so decide how to
-      handle a reboot during the window.
+## Interfaces
+
+Today there are physical ports, VLANs and WireGuard tunnels, each one
+`hostname.<dev>` file applied with `sh /etc/netstart <devs>`. Virtual
+interfaces also depend on removing files, apply order and interface
+confirmation (Commit engine).
+
 - [ ] **Model**: an interface kind (physical, vlan, wireguard, bridge,
       aggr, carp, gre, pppoe, …) with per-kind settings, replacing the
       vlan/wireguard special cases. Validation: members exist, have no
@@ -1019,29 +529,26 @@ Types, roughly in order of usefulness:
       inside their tunnel's network, peer addresses and networks
       (`wgaip`) not overlapping each other or local networks, and no two
       interfaces on overlapping networks.
-- [ ] Removing a tunnel: deleting its interface would remove
-      `hostname.wgN`, and removing generated files isn't supported yet
-      (see Next up). Until then a tunnel can only be turned off.
+- [ ] Removing a tunnel waits on removing generated files; until then a
+      tunnel can only be turned off.
 - [ ] Editing a peer: only adding and removing exist.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
       usually no NAT) and remote-access ones (clients NATed out) need
       different defaults for automatic NAT and generated rules. Today
       every tunnel's network gets automatic NAT.
-- [ ] Peer status (`wg show`, sample data in `live.ts`) comes per
-      interface; the parser must key it by tunnel and peer.
-- [ ] Key storage (see Code) has to hold one private key per tunnel.
+- Private keys: see secret storage (Security). Peer status: see Live
+  data.
 
-## DHCP names in DNS
+## DHCP and DNS
 
-- [ ] No PTR records for leases (or reservations): reverse lookups of
-      DHCP clients fail.
-- [ ] A commit reverted by the confirm timeout doesn't kick the watcher,
-      so names are missing for up to 15 s after unbound reloads.
-- [ ] IPv4 only; no names for SLAAC or DHCPv6 clients.
 - [x] Show registered and refused names in the UI: `GET /api/dns/leases`
       and "DHCP devices by name" on the DNS page.
 - [x] The DHCP page's leases table reads the leases file
       (`GET /api/dhcp/leases`) and says which name each device got.
+- [ ] No PTR records for leases (or reservations): reverse lookups of
+      DHCP clients fail.
+- [ ] A commit reverted by the confirm timeout doesn't kick the watcher,
+      so names are missing for up to 15 s after unbound reloads.
 - [ ] **Naming a device yourself.** A device asking for an invalid name
       ("Priya's iPad") or a taken one gets no DNS name. Options, best
       first:
@@ -1066,136 +573,308 @@ Types, roughly in order of usefulness:
       address, which is inside the dynamic range. dhcpd can then hand it
       to another device too; offer a free address outside the range.
 
-## Staging and commit
+## IPv6
 
-- [x] While a commit waits for confirmation, staging is refused with
-      `commit_pending` and the UI blocks edits and undo.
-- [ ] If OPF is killed with SIGKILL (or crashes) during the confirm
-      window, the staged pf rules stay loaded until reboot or the next
-      start. `Recover` only runs at startup.
-- [ ] `hostname.if(5)`: pattern entries handle the names;
-      `sh /etc/netstart <if>` can't load from another path. Confirmation will have to install, then restore a
-      backup on timeout, so the "reboot also reverts" guarantee is lost.
-      Needs a design. Interfaces must be applied before pf.
-- [ ] rc.conf.local is only checked with `sh -n`; nothing is applied.
-      Service enable/disable/flags should be staged through it and
-      reconciled with rcctl on commit.
-- [ ] Decide whether a service that fails to reload or restart should
-      revert the whole commit (it does now).
-- [ ] Deleting a managed file isn't supported (Next up, step 3).
-- [x] Two browsers: staging requires the live version the edits started
-      from and committing requires the staged version, so neither undoes
-      the other's work silently (`conflict`).
-- [ ] A second browser's staging replaces the first's staged model
-      (there's one candidate). Fine for one admin; revisit with users.
-- [ ] When the UI loads a model someone else staged, it lists the
-      changes by section only ("Changed firewall settings"); the edit
-      descriptions aren't stored with the staged model.
-- [ ] History is never pruned.
-- [ ] Newly created parent directories get 0755; check what each managed
-      path expects.
+Interfaces, NAT and rules are IPv4-first today.
 
-## Development and cross-platform testing
+- [ ] `ui/src/lib/ip.ts` is IPv4-only: needs `isIPv6()`, v6 CIDR
+      validation, and `network()`/`netmask()` equivalents.
+- [ ] `automaticNat()` only emits `inet` rules; `unboundConf()` only adds
+      IPv4 access-control entries.
+- [ ] DHCP names in DNS are IPv4 only; no names for SLAAC or DHCPv6
+      clients.
+- [ ] Router advertisements (rad, under Services).
 
-OPF targets OpenBSD exclusively, but development and testing should be
-possible on any platform. This requires mocking the OpenBSD-specific
-backends so the UI, API, and business logic can be tested without a
-real OpenBSD system.
+## Services
 
-### Mock backend for non-OpenBSD platforms
+Every OpenBSD base daemon an appliance needs should be fully
+configurable through OPF, so nobody has to SSH in and edit files. For
+each daemon:
 
-`make mock` (`scripts/mock.sh`) runs `opf -mock` on 127.0.0.1:18080 and
-the Vite dev server, which proxies `/api` to it. The mock is one
-process with the real generators, pf parser and staging engine,
-started from `ui/src/model/sample-model.json` (shared with the UI and
-checked against the Go model by `internal/pf/sample_model_test.go`). It
-keeps files in a scratch directory whose "live" files are what the
-sample model generates, logs commands instead of running them, and
-refuses non-loopback addresses.
+- A model with every option as structured fields where practical, plus
+  a `raw`/`extra` field for arbitrary lines appended to the generated
+  file (like raw pf rules).
+- A basic UI for common options and an advanced one for the rest.
+- A preview of the generated file, like the Ruleset page's pf.conf.
+- The generated file goes through the commit engine, checked with the
+  daemon's own validator (`httpd -n`, `smtpd -n`, `bgpd -n`,
+  `ospfd -n`, …).
+- Enabling and flags go through rc.conf.local (Commit engine).
+
+### Services page
+
+- [ ] List every base daemon, grouped by category (Core, Network,
+      Security, …): name, description, enabled, running, and start,
+      stop, restart, enable, disable. Link to the config page for
+      services that have one. Backend: see Live data > Services.
+- [ ] Detail view: status, uptime, resource usage, recent log entries,
+      rc.d flags/user/rtable/timeout, and configuration where
+      applicable.
+- [ ] Dependency awareness: some services depend on others (dhcpd needs
+      interfaces up); warn when disabling a dependency.
+- [ ] Show and configure rc.d(8) order where relevant.
+
+### Already configurable
+
+The Services page should show their status and link to their pages:
+
+- [x] **pf**: Firewall pages.
+- [x] **dhcpd**: Services > DHCP server.
+- [x] **unbound**: Services > DNS resolver.
+- [x] **ntpd**: `ntpd.conf` is generated; show sync status, offset and
+      peers too.
+
+`httpd.conf` and `sshd_config` are managed files in the registry but
+have no model or UI yet.
+
+### Core (most users need)
+
+- [ ] **sshd**: remote administration. Show running status and session
+      count. Config: listen addresses, port, root login.
+- [ ] **pflogd**: firewall logging to `/var/log/pflog`, needed for
+      diagnostics. Show status and log size. Config: log file, snaplen,
+      interface.
+- [ ] **syslogd**: show status. Config: remote syslog destinations.
+- [ ] **cron**: needed for blocklist updates, backups and maintenance.
+      Show status and next jobs; later, a UI for managing jobs.
+- [ ] **dhcpleased** and **slaacd**: DHCP and SLAAC clients for WANs,
+      managed per interface. Show status and the leases/addresses
+      obtained.
+
+### Tier 2 (worth a config UI)
+
+- [ ] **httpd**: captive portal, hosting blocklists, file serving.
+      Virtual hosts, TLS, document roots. Services > Web server.
+- [ ] **rad**: IPv6 router advertisements (prefixes, DNS, MTU per
+      interface). In interface config or Services > IPv6 RA.
+- [ ] **relayd**: multi-WAN health checks, reverse proxy, redirects;
+      could replace custom gateway monitoring. Tables, protocols,
+      relays, redirections.
+- [ ] **smtpd**: send alert emails. Relay host, authentication, aliases.
+      System > Notifications or Services > Mail relay.
+- [ ] **snmpd**: monitoring integration. Communities, trap receivers,
+      system info.
+
+### Tier 3 (advanced networking)
+
+- [ ] **ospfd** / **ospf6d**: OSPFv2/v3 dynamic routing (areas,
+      interfaces, neighbours, redistribution).
+- [ ] **bgpd**: multi-homing, transit, policy (AS, neighbours, filters,
+      communities). Complex; may need the raw config option.
+- [ ] **eigrpd**, **ripd**: EIGRP (mixed Cisco environments) and RIP
+      (legacy). All routing daemons go under Network > Dynamic
+      Routing.
+- [ ] **iked**: IKEv2 IPsec, site-to-site and mobile clients (policies,
+      flows, auth, proposals). Services > IPsec VPN, beside WireGuard.
+- [ ] **npppd**: PPPoE and L2TP (interfaces, auth, IP pools). PPPoE in
+      interface config, L2TP under Services.
+- [ ] **ifstated**: WAN failover and link monitoring with carp and
+      route changes. Network > Failover, or part of multi-WAN.
+
+### Tier 4 (niche; show if enabled)
+
+- [ ] **nsd** (authoritative DNS zones), **tftpd** (PXE, firmware) and
+      **tftpproxy**, **ftpd** and **ftpproxy** (FTP through NAT).
+- [ ] **radiusd** (802.1X, VPN auth), **ldapd** (directory).
+- [ ] **isakmpd** (IKEv1, legacy peers only; prefer iked), **sasyncd**
+      (IPsec SA sync between carp hosts).
+- [ ] **ldpd** (MPLS), **dvmrpd** and **mrouted** (multicast routing).
+- [ ] **hostapd** (Wi-Fi AP where hardware allows), **lpd** (printing).
+
+## Live data
+
+The dashboard and diagnostics read sample data from
+`ui/src/model/live.ts`. Each feature needs a Go parser behind an API
+endpoint with mock data on non-OpenBSD, and a UI page with TypeScript
+types.
+
+**Rewrite the parsers from scratch**, using `legacy/server` only as a
+reference: the legacy parsers index fields by position and crash on
+unexpected input. New parsers handle all valid output, return errors
+on anything else (never panic), and get golden-file and fuzz tests
+(Testing). Delete `legacy/` once they're done.
+
+Conventions:
+
+- Parsers go in `internal/appliance/` beside `parseARPOutput` and
+  `parseRoutingOutput`, with a `runtime.GOOS` check returning mock data
+  from `sample*()` functions like `sampleARPTable()`.
+- Types in `ui/src/lib/api.ts`; mock data in `ui/src/model/live.ts`.
+- Consider batching related endpoints (`/api/system/stats` for CPU,
+  memory and load).
+- Rate-limited polling (say 5 s for stats, 30 s for logs); WebSocket
+  for pflog and traffic later.
+
+### System
+
+- [ ] CPU (`sysctl kern.cp_time`): dashboard meter (hard-coded 18% now)
+      and history. `GET /api/system/cpu`.
+- [ ] Load average (`sysctl vm.loadavg`): 1/5/15 min on the dashboard.
+- [ ] Memory (`vmstat`, `sysctl hw.physmem`): meter with
+      active/free/wired/cached.
+- [ ] Swap (`swapctl -l`), when configured.
+- [ ] Disks (`df -P`) per mount, and I/O rates from `vmstat`.
+- [ ] Uptime (`sysctl kern.boottime`): dashboard and System > General.
+- [ ] Sensors (`sysctl hw.sensors`): temperature, fans, voltage.
+- [ ] Hardware (`sysctl hw`): CPU model, RAM, disks on System > General.
+- [ ] Processes (`ps aux`): Diagnostics > Processes with sorting and
+      filtering.
+
+### pf
+
+- [ ] States (`pfctl -vv -s states`): Connections page, with kill by id
+      (`pfctl -k id -k <id>`) and by source, destination or interface.
+      `GET /api/pf/states`, `POST /api/pf/kill`.
+- [ ] Per-rule counters (`pfctl -s labels`, `pfctl -vv -s rules`):
+      evaluations, packets and bytes on the Rules page, and kill a
+      rule's states with `pfctl -k label -k opf:rule:<id>`.
+- [ ] Per-rule history: poll and store counters to graph them.
+- [ ] Info (`pfctl -v -s info`): firewall tile with state table size,
+      match rate, drops.
+- [ ] Interfaces (`pfctl -vv -s Interface`): per-interface packets and
+      bytes.
+- [ ] Memory limits (`pfctl -s memory`).
+- [ ] Firewall log (`tcpdump -n -e -ttt -r /var/log/pflog`): the
+      Firewall log page, mapped to rules through labels.
+- [ ] Per-client traffic and graphs: pf only tracks bytes per live
+      connection (lost when closed) and per interface. Options: poll
+      states and aggregate by IP, accounting rules with labels, or
+      pflow(4) export to a collector.
+
+### Network
+
+- [ ] Interface counters (`netstat -i -n`): rx/tx packets, errors,
+      collisions; rates from deltas for the dashboard traffic chart
+      (simulated now) and per-interface sparklines.
+- [ ] Interface status (`ifconfig -a`): link state, media, addresses,
+      flags.
+- [ ] WireGuard peers (`ifconfig wgN` or `wg show`): handshake time and
+      rx/tx per peer. Output comes per interface; key it by tunnel and
+      peer.
+- [ ] DHCP leases and unbound stats (`unbound-control stats`).
+
+### Services
+
+- [ ] `rcctl ls all`, `rcctl ls on`, `rcctl ls started`: list with
+      enabled and running state. `GET /api/services`.
+- [ ] `rcctl get <service>`: flags, user, rtable, timeout.
+      `GET /api/services/:name`.
+- [ ] `rcctl start|stop|enable|disable`:
+      `POST /api/services/:name/<action>`. Enabling should go through
+      rc.conf.local and a commit rather than bypass it.
+
+### Logs
+
+- [ ] `dmesg`, `/var/log/messages`, `/var/log/daemon`,
+      `/var/log/authlog` (tail): Diagnostics > System logs, a tab each.
+
+### Tools
+
+- [ ] Ping, traceroute and DNS lookup under Diagnostics.
+
+## UI
+
+- [ ] Embed `ui/dist` in the binary (principle 3).
+- [ ] Deleting VLANs and interfaces (waits on removing generated
+      files).
+- [ ] Real actions behind placeholders: change password, syspatch,
+      backup download/restore.
+- [ ] Split the 1.6 MB bundle by page.
+- [ ] Responsive design, from desktop monitors down to phones, since
+      admins may need to act from a phone:
+      - Test at 375, 768, 1024 and 1440+ px.
+      - Tables scroll horizontally or collapse to cards.
+      - Navigation collapses to a menu (already does).
+      - Forms stack on narrow screens; touch targets at least 44 px.
+      - Apply, confirm and revert work on mobile, and the dashboard is
+        still useful.
+- [ ] Storybook or similar for developing components in isolation.
+
+## Testing
+
+Tests are a blocking requirement for every feature: a regression here
+can silently break network security. When a bug is found, add the
+failing input as a permanent test case before fixing it.
+
+- [ ] **Parsers** (command output): golden files from real output
+      across supported versions; edge cases (empty, single entry,
+      largest realistic, Unicode names, IPv6, unusual but valid
+      formats); errors on truncated, garbage, partial or binary input,
+      never panics; fuzzing.
+- [ ] **Generators**: golden files for every generated file (only the
+      pf parser has them today); validate output with the real tool
+      (`pfctl -nf`, `dhcpd -n`, …); boundaries (empty sections, many
+      rules/interfaces/aliases, special characters, every protocol and
+      endpoint combination); fuzz random valid models through the
+      daemon's checker.
+- [ ] **Importers**: anonymized real-world configs; import → export is
+      behaviourally identical; unsupported features survive as raw;
+      syntax variations (macros, includes, continuations, comments);
+      clear errors on malformed input; fuzz random valid configs
+      through `pfctl -nf`.
+- [ ] **Commit engine**: stage → check → apply → confirm, and → timeout
+      → revert; failure injection (check, apply or restart fails, disk
+      full, permission denied) with correct rollback; races (concurrent
+      stages and commits, confirm during revert); history diffs,
+      rollback content and survival across restart; drift between stage
+      and commit blocks the commit and keeps the hand-edit.
+- [ ] **Privilege separation**: success and error paths of every RPC
+      method, sentinel errors across the boundary; oversized messages,
+      path traversal, unknown methods; child crash → restart, parent
+      shutdown → child exits, unconfirmed commits revert; random bytes
+      on the socketpair crash neither process.
+- [ ] **API**: every route with valid and invalid input, missing auth
+      (once added), cross-origin writes, oversized and malformed bodies,
+      path traversal in URLs; errors never leak internal details.
+- [ ] **UI**: none exist. Form tests (valid accepted, invalid rejected
+      clearly, empty and max length); workflow tests (add rule → commit
+      → confirm, edit interface → see generated file, revert from
+      history); optionally visual regression.
+- [ ] **CI**: `make test` (vet, `go test -race`), GOOS=openbsd vet and
+      build, UI type-check and builds, fuzzing for a fixed time per
+      target (say 30 s), on every PR and blocking merge; track coverage.
+
+### On OpenBSD
+
+- [ ] A harness on an OpenBSD VM that captures `pfctl -s states`,
+      `pfctl -s rules -v`, `pfctl -s info`, `pfctl -s Anchors -v`,
+      `ifconfig -a`, `netstat -rn`, `rcctl ls all`/`rcctl get`,
+      `dhcpleasectl show`, `wg show` and `unbound-control stats`, runs
+      each through its parser (no errors, known values match), and
+      keeps the output as fixtures. Include busy state tables, many
+      interfaces, complex rulesets and IPv6.
+- [ ] Validate generated files there (`pfctl -nf -` and so on) and
+      compare them with the system's.
+- [ ] Run it in CI on every release, ideally every PR, and note how the
+      VM differs from production (services not running, minimal config).
+- [ ] Support 7.4 and later; state the minimum and maximum in the
+      README. For each release: capture fresh output, review man page
+      and source changes (cvsweb.openbsd.org), update parsers and
+      generators, add fixtures, document version differences. Missing
+      fields on older versions become empty values, not errors.
+
+## Development
+
+`make mock` is described under Working on it. The mock is one process
+with the real generators, parser and engine, started from
+`ui/src/model/sample-model.json`; its "live" files are what the sample
+generates.
 
 - [x] Commit, confirm and revert through the API; a short
       `-confirm-timeout` makes the timeout testable.
-- [x] Pattern established for live data: `runtime.GOOS` check in each
-      method, `sample*()` functions return mock data on non-OpenBSD.
-      See ARP table and routing table implementations in `manager.go`.
-- [ ] Live data endpoints fed from fixtures (states, rules with
-      counters, interfaces, leases, WireGuard peers, pflog), so the
-      dashboard and diagnostics stop reading `ui/src/model/live.ts`.
-      See "Live monitoring data" section for the full feature list.
-- [ ] Recorded response mode: capture real OpenBSD command output
-      (`opf -record dir`) and replay it in the mock.
-- [ ] Simulated validator results: run the Go pf parser on staged
-      pf.conf so `pfctl -nf`-style errors can be exercised; today every
-      check passes.
-- [x] Load the model from the backend on startup (`GET /api/config`)
-      instead of the UI's bundled copy. The preview build uses an
-      in-browser stand-in (`ui/src/lib/localApi.ts`).
+- [x] The UI loads the model from `GET /api/config`; the preview build
+      uses `ui/src/lib/localApi.ts`.
+- [ ] Live data endpoints fed from fixtures, so the mock stops relying
+      on `live.ts`.
+- [ ] Recorded mode: capture real command output (`opf -record dir`)
+      and replay it in the mock.
+- [ ] Simulated validators: run the Go pf parser on staged pf.conf so
+      `pfctl -nf`-style errors can be exercised; today every check
+      passes.
 
-### Frontend development workflow
+## Housekeeping
 
-- [x] `npm run dev` proxies `/api/*` to the Go backend; `make mock`
-      starts one.
-- [ ] Storybook or similar for developing components in isolation.
-
-## Code
-
-- [ ] **Rewrite monitoring parsers** from scratch, using `legacy/server`
-      only as a reference. The legacy parsers index fields by position
-      and crash on unexpected input—they are not safe to port directly.
-      New parsers must:
-      - Handle all valid output from each command (`pfctl -s states`,
-        `pfctl -s rules`, `pfctl -s info`, `ifconfig`, `rcctl`, etc.)
-      - Return errors on malformed input, never panic or produce garbage
-      - Have golden-file tests against real captured output from multiple
-        OpenBSD versions
-      - Be fuzz-tested where practical
-      Delete `legacy/` only after the new parsers are complete and tested.
-- [ ] Per-rule stats over time: the UI shows live counters but there's
-      no historical data or graphing. Needs periodic polling and storage
-      to graph evaluations/packets/bytes per rule.
-- [ ] `privsep.Client.Pending` drops RPC errors; the banner shows nothing
-      if the parent is unreachable.
 - [ ] `golang.org/x/sys` is pinned to v0.44.0 to keep Go 1.25; revisit
       when OpenBSD packages Go 1.26.
-- [ ] CI running `make test`, plus GOOS=openbsd vet/build.
-- [ ] `myname` and `mygate` are generated but not in the registry—need
-      managed file entries or generate them outside the commit flow.
-- [ ] URL-type alias tables need a refresh mechanism (cron-like, or on
-      demand) to re-fetch and reload the table files.
-- [ ] WireGuard private key storage: currently a placeholder in the
-      hostname.if generator; needs secure storage and key generation.
-- [ ] `resolv.conf` not handled; DNS client config isn't generated or
-      managed (OpenBSD uses /etc/resolv.conf.tail with resolvd).
-- [ ] `lib/ip.ts` is IPv4-only—needs `isIPv6()`, v6 CIDR validation, and
-      `network()`/`netmask()` equivalents for IPv6.
-- [ ] Generators are IPv4-first: `automaticNat()` only emits `inet` rules,
-      `unboundConf()` only adds IPv4 access-control entries.
-- [ ] DHCP gateway handling in `mygate`: generator skips it when the
-      default gateway is DHCP; dhclient handles this differently.
-- [ ] Frontend tests: no UI test coverage exists.
-- [ ] UI gaps: deleting VLANs and interfaces (and their `hostname.*`
-      files); a Services page (rcctl status, start/stop); sign-in page;
-      real actions behind placeholders (change password, syspatch,
-      backup download/restore); diagnostics tools (ping, traceroute, DNS
-      lookup, `pfctl -k`); showing that editing is blocked while a
-      commit waits for confirmation; a version on the staged model so
-      two admins can't silently overwrite each other; splitting the
-      1.6 MB bundle by page.
-- [ ] Responsive design: the UI must be usable on all common screen
-      sizes, from large desktop monitors down to phones. Admins may need
-      to check status or make urgent changes from a mobile device.
-      - Test on common breakpoints: phone (375px), tablet (768px),
-        laptop (1024px), desktop (1440px+)
-      - Tables should scroll horizontally or collapse to cards on mobile
-      - Navigation should collapse to hamburger menu (already does)
-      - Forms should stack vertically on narrow screens
-      - Touch targets should be large enough (44px minimum)
-      - Critical actions (apply, confirm, revert) must work on mobile
-      - Dashboard should remain useful on phone screens
 - [ ] Delete the stale Dependabot branches on origin; they target the
       old `ui/`.
-- [ ] File locking: no guard against two OPF instances running at once.
-- [ ] Graceful shutdown: document/verify that SIGTERM waits for pending
-      operations and reverts unconfirmed commits.
-- [ ] Backup/restore: no way to export/import the config.json model for
-      disaster recovery or migration.
