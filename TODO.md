@@ -740,6 +740,186 @@ that the new UI doesn't yet surface. Each feature needs:
 - Rate-limited polling in frontend (e.g., 5s for stats, 30s for logs)
 - WebSocket option for real-time updates (pflog, traffic) - future consideration
 
+## OpenBSD base system daemons
+
+Services from OpenBSD base that should be surfaced in the UI for a
+network appliance. Organized by priority. All are controlled via rcctl.
+
+### Core services (most users need)
+
+These should show status on the Services page and allow start/stop:
+
+- [ ] **sshd** - Remote SSH access
+      - Critical for administration
+      - Show: running status, connected sessions count
+      - Config: listen addresses, port, permit root login
+- [ ] **ntpd** - Time synchronization
+      - Critical for logs, certificates, DNSSEC
+      - Show: sync status, offset, peers
+      - Config: servers/pools, listen address, sensor
+- [ ] **pflogd** - Firewall logging to /var/log/pflog
+      - Critical for diagnostics
+      - Show: running status, log file size
+      - Config: log file, snaplen, interface
+- [ ] **syslogd** - System logging
+      - Important for all logs
+      - Show: running status
+      - Config: remote syslog destinations
+- [ ] **cron** - Scheduled tasks
+      - Important for blocklist updates, backups, maintenance
+      - Show: running status, next scheduled jobs
+      - Future: UI for managing cron jobs
+- [ ] **dhcpleased** - DHCP client for interfaces
+      - Essential for DHCP-configured WANs
+      - Show: running status, leases obtained
+      - Note: Automatically managed per-interface
+- [ ] **slaacd** - IPv6 SLAAC client
+      - Essential for IPv6 autoconfiguration
+      - Show: running status, addresses obtained
+      - Note: Automatically managed per-interface
+
+### Already configurable in OPF
+
+These have dedicated UI pages; the Services page should show their
+status and link to their config pages:
+
+- [x] **dhcpd** - DHCP server (Services > DHCP server)
+- [x] **unbound** - DNS resolver (Services > DNS resolver)
+- [x] **pf** - Packet filter (Firewall pages)
+
+### Useful additions (Tier 2)
+
+These warrant configuration UI beyond just start/stop:
+
+- [ ] **httpd** - Web server
+      - Use case: Captive portal, hosting blocklists, simple file serving
+      - Config: virtual hosts, TLS, document roots
+      - UI: Services > Web server page
+- [ ] **rad** - IPv6 router advertisement daemon
+      - Use case: IPv6 networks, announcing prefixes/DNS to clients
+      - Config: interfaces, prefixes, DNS servers, MTU
+      - UI: Part of interface config or Services > IPv6 RA
+- [ ] **relayd** - Load balancer, relay, health checks
+      - Use case: Multi-WAN health monitoring, reverse proxy, redirects
+      - Config: tables, protocols, relays, redirections
+      - UI: Services > Load Balancer or Network > Gateways health
+      - Note: Can replace custom gateway monitoring
+- [ ] **smtpd** - OpenSMTPD mail relay
+      - Use case: Send alert/notification emails from the appliance
+      - Config: relay host, authentication, local aliases
+      - UI: System > Notifications or Services > Mail relay
+- [ ] **snmpd** - SNMP monitoring agent
+      - Use case: Integration with monitoring systems (Nagios, Zabbix, etc.)
+      - Config: community strings, trap receivers, system info
+      - UI: Services > SNMP
+
+### Advanced networking (Tier 3)
+
+For advanced users; show in Services page but config may be complex:
+
+- [ ] **ospfd** - OSPFv2 dynamic routing
+      - Use case: Multi-router networks, automatic route failover
+      - Config: areas, interfaces, neighbors, redistribution
+      - UI: Network > Dynamic Routing > OSPF
+- [ ] **ospf6d** - OSPFv3 for IPv6
+      - Use case: IPv6 dynamic routing
+      - Config: areas, interfaces, redistribution
+      - UI: Network > Dynamic Routing > OSPFv3
+- [ ] **bgpd** - BGP routing
+      - Use case: Multi-homing, transit, route servers, advanced policy
+      - Config: AS number, neighbors, filters, communities
+      - UI: Network > Dynamic Routing > BGP
+      - Note: Complex; may need raw config option
+- [ ] **iked** - IKEv2 IPsec VPN
+      - Use case: Site-to-site IPsec, mobile IKEv2 clients
+      - Config: policies, flows, authentication, proposals
+      - UI: Services > IPsec VPN (alongside WireGuard)
+- [ ] **npppd** - PPP daemon (PPPoE, L2TP)
+      - Use case: DSL/PPPoE WANs, L2TP VPN server
+      - Config: interfaces, authentication, IP pools
+      - UI: Interface config for PPPoE; Services > L2TP for VPN
+- [ ] **ifstated** - Interface state daemon
+      - Use case: Automatic WAN failover, link monitoring
+      - Config: state definitions, interface triggers, actions
+      - UI: Network > Failover or integrated with multi-WAN
+      - Note: Works with carp, route changes
+- [ ] **eigrpd** - EIGRP routing
+      - Use case: Mixed Cisco environments
+      - Config: AS number, interfaces, redistribution
+      - UI: Network > Dynamic Routing > EIGRP
+- [ ] **ripd** - RIP routing (legacy)
+      - Use case: Simple/legacy dynamic routing
+      - Config: interfaces, redistribution
+      - UI: Network > Dynamic Routing > RIP
+
+### Niche services (Tier 4)
+
+Available but rarely needed; show in Services if enabled:
+
+- [ ] **nsd** - Authoritative DNS server
+      - Use case: Hosting DNS zones (not just resolving)
+      - Config: zones, primaries/secondaries
+      - UI: Services > Authoritative DNS
+- [ ] **tftpd** - TFTP server
+      - Use case: PXE boot, firmware upgrades for network devices
+      - Config: root directory, chroot
+      - UI: Services > TFTP
+- [ ] **tftpproxy** - TFTP proxy for pf
+      - Use case: TFTP through NAT
+      - Config: listen address
+- [ ] **radiusd** - RADIUS server
+      - Use case: Network authentication (802.1X, VPN auth)
+      - Config: clients, users, authentication backends
+      - UI: Services > RADIUS
+- [ ] **ldapd** - LDAP directory server
+      - Use case: Centralized authentication, directory services
+      - Config: schemas, ACLs, backends
+      - UI: Services > LDAP
+- [ ] **ftpd** - FTP server
+      - Use case: File transfers (legacy)
+      - Config: chroot, anonymous access
+      - UI: Services > FTP
+- [ ] **ftpproxy** - FTP proxy for pf
+      - Use case: FTP through NAT (active mode)
+      - Config: listen address
+- [ ] **isakmpd** - IKEv1 IPsec (legacy)
+      - Use case: Legacy IPsec peers that don't support IKEv2
+      - Note: Prefer iked for new deployments
+- [ ] **sasyncd** - IPsec SA synchronization
+      - Use case: IPsec failover between carp hosts
+      - Config: peer, interface, carp group
+- [ ] **ldpd** - MPLS LDP
+      - Use case: MPLS networks
+      - Config: interfaces, neighbors
+- [ ] **dvmrpd** - Multicast routing (DVMRP)
+      - Use case: Multicast across routers
+      - Config: interfaces, groups
+- [ ] **mrouted** - Multicast routing (legacy)
+      - Use case: Legacy multicast
+- [ ] **hostapd** - Wireless access point
+      - Use case: WiFi AP (if hardware supports it)
+      - Config: SSID, authentication, channel
+      - UI: Services > Wireless AP
+- [ ] **lpd** - Line printer daemon
+      - Use case: Print server (very legacy)
+
+### Services page implementation
+
+- [ ] Services page showing all base system daemons
+      - Group by category (Core, Network, Security, etc.)
+      - Show: name, description, enabled, running, actions
+      - Quick actions: start, stop, restart, enable, disable
+      - Link to config page for services with dedicated UI
+- [ ] Service detail view
+      - Status, uptime, resource usage
+      - Recent log entries for that service
+      - Configuration (where applicable)
+- [ ] Dependency awareness
+      - Some services depend on others (e.g., dhcpd needs interfaces up)
+      - Show warnings when disabling a dependency
+- [ ] Boot order
+      - Show/configure rc.d(8) order where relevant
+
 ## pf labels
 
 Generated rules are labelled `opf:<kind>:<id>` (rule, forward, nat,
