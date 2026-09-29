@@ -18,6 +18,7 @@ import { SystemGeneral } from './pages/SystemGeneral';
 import { History } from './pages/History';
 import { Connections } from './pages/Connections';
 import { FirewallLog } from './pages/FirewallLog';
+import { ARP } from './pages/ARP';
 
 const preview = import.meta.env.MODE === 'preview';
 
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route path="system/general" element={<SystemGeneral />} />
         <Route path="system/history" element={<History />} />
         <Route path="diagnostics/connections" element={<Connections />} />
+        <Route path="diagnostics/arp" element={<ARP />} />
         <Route path="diagnostics/log" element={<FirewallLog />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

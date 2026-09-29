@@ -6,10 +6,11 @@ import type { Model } from '../model/types';
 import { generateFiles } from '../model/generate';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
-import { leases as sampleLeases } from '../model/live';
+import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
+  type ARPTableResource, type RoutingTableResource,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -185,5 +186,7 @@ export const localApi = {
     const model = which === 'before' ? r.before : r.after;
     return { version: version(model), model: clone(model) };
   },
+  arpTable: async (): Promise<ARPTableResource> => ({ entries: clone(sampleArpTable) }),
+  routingTable: async (): Promise<RoutingTableResource> => ({ ipv4: clone(sampleRoutingTable), ipv6: [] }),
 };
 

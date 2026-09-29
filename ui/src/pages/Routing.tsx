@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, Radio, Select, Stack, Switch, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Group, Menu, Modal, Radio, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconDots, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { newId, useStore } from '../model/store';
-import { gatewayStatus, routingTable } from '../model/live';
+import { IconAlertCircle, IconDots, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { backend, newId, useStore } from '../model/store';
+import { gatewayStatus } from '../model/live';
 import type { Gateway, StaticRoute } from '../model/types';
-import { ifaceName } from '../lib/labels';
+import type { RoutingTableResource } from '../lib/api';
+import { deviceName, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, StatusDot } from '../components/ui';
 
@@ -217,36 +218,138 @@ function Routes() {
   );
 }
 
+const POLL_MS = 30_000;
+
+function useRoutingTable() {
+  const [data, setData] = useState<RoutingTableResource | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      backend.routingTable().then(
+        (d) => { if (live) { setData(d); setError(null); } },
+        (e) => { if (live) setError(e instanceof Error ? e.message : String(e)); },
+      );
+    load();
+    const t = setInterval(load, POLL_MS);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+
+  return { data, error };
+}
+
+function sourceColor(source?: string): string {
+  switch (source) {
+    case 'static': return 'blue';
+    case 'dhcp': return 'green';
+    case 'interface': return 'gray';
+    case 'dynamic': return 'orange';
+    default: return 'gray';
+  }
+}
+
 function LiveRoutes() {
+  const { applied } = useStore();
+  const { data, error } = useRoutingTable();
+  const [q, setQ] = useState('');
+  const [family, setFamily] = useState<'ipv4' | 'ipv6'>('ipv4');
+
+  if (error) {
+    return (
+      <Alert color="red" icon={<IconAlertCircle size={16} />} title="Error">
+        {error}
+      </Alert>
+    );
+  }
+
+  if (!data) {
+    return <Text c="dimmed">Loading...</Text>;
+  }
+
+  if (data.error) {
+    return (
+      <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+        {data.error}
+      </Alert>
+    );
+  }
+
+  const routes = (family === 'ipv4' ? data.ipv4 : data.ipv6 ?? []).filter(
+    (r) => !q || `${r.destination} ${r.gateway} ${r.iface}`.toLowerCase().includes(q.toLowerCase().trim()),
+  );
+
+  const hasIPv6 = (data.ipv6?.length ?? 0) > 0;
+
   return (
     <>
-      <Text size="sm" c="dimmed" mb="md">What the kernel is using right now (netstat -rn).</Text>
+      <Group gap="sm" mb="md">
+        <Text size="sm" c="dimmed" style={{ flex: 1 }}>What the kernel is using right now (netstat -rn).</Text>
+        {hasIPv6 && (
+          <SegmentedControl
+            size="xs"
+            value={family}
+            onChange={(v) => setFamily(v as 'ipv4' | 'ipv6')}
+            data={[{ value: 'ipv4', label: 'IPv4' }, { value: 'ipv6', label: 'IPv6' }]}
+          />
+        )}
+      </Group>
+      <TextInput
+        placeholder="Filter by destination, gateway, or interface"
+        leftSection={<IconSearch size={16} />}
+        value={q}
+        onChange={(e) => setQ(e.currentTarget.value)}
+        maw={400}
+        mb="md"
+      />
       <Card padding={0}>
         <Table.ScrollContainer minWidth={620}>
-          <Table striped>
+          <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Destination</Table.Th>
                 <Table.Th>Gateway</Table.Th>
                 <Table.Th>Flags</Table.Th>
                 <Table.Th>Interface</Table.Th>
-                <Table.Th>From</Table.Th>
+                <Table.Th>Source</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {routingTable.map((r) => (
-                <Table.Tr key={r.destination}>
-                  <Table.Td><Mono>{r.destination}</Mono></Table.Td>
-                  <Table.Td><Mono>{r.gateway}</Mono></Table.Td>
-                  <Table.Td><Mono c="dimmed">{r.flags}</Mono></Table.Td>
-                  <Table.Td><Mono>{r.iface}</Mono></Table.Td>
-                  <Table.Td><Badge color="gray">{r.source}</Badge></Table.Td>
+              {routes.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={5}>
+                    <Text c="dimmed" ta="center" py="md">
+                      {q ? 'No matching routes' : 'No routes'}
+                    </Text>
+                  </Table.Td>
                 </Table.Tr>
-              ))}
+              ) : (
+                routes.map((r, i) => (
+                  <Table.Tr key={`${r.destination}-${i}`}>
+                    <Table.Td><Mono>{r.destination}</Mono></Table.Td>
+                    <Table.Td><Mono>{r.gateway}</Mono></Table.Td>
+                    <Table.Td><Mono c="dimmed">{r.flags}</Mono></Table.Td>
+                    <Table.Td><Text size="sm">{deviceName(applied, r.iface)}</Text></Table.Td>
+                    <Table.Td>
+                      {r.source ? (
+                        <Badge size="sm" color={sourceColor(r.source)}>{r.source}</Badge>
+                      ) : (
+                        <Text size="sm" c="dimmed">—</Text>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))
+              )}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
       </Card>
+      <Text size="xs" c="dimmed" mt="sm">
+        {routes.length} {routes.length === 1 ? 'route' : 'routes'}
+        {q && routes.length !== (family === 'ipv4' ? data.ipv4 : data.ipv6 ?? []).length
+          ? ` (${(family === 'ipv4' ? data.ipv4 : data.ipv6 ?? []).length} total)`
+          : ''}
+      </Text>
     </>
   );
 }
