@@ -753,8 +753,12 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	} else {
 		add("block all"+label(LabelBuiltin, "default-block"), &Origin{Label: "Default block", To: "/firewall/settings"})
 	}
-	add("pass out quick inet"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
-	add("pass out quick inet6"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
+	// Outbound traffic passes unless a later rule says otherwise. Not
+	// quick: a quick pass here would end evaluation before every user
+	// rule, so outbound blocks and match rules (set prio, tags) would
+	// never be reached.
+	add("pass out inet"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
+	add("pass out inet6"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
 	if lan != nil {
 		described("Anti-lockout: the web UI and SSH stay reachable from the LAN", &Origin{Label: "Anti-lockout", To: fmt.Sprintf("/interfaces/%s", lan.ID)},
 			fmt.Sprintf("pass in quick on $%s proto tcp to %s port { 443 22 }%s", lan.ID, endpoint(ifaceAddr(lan.ID), m), label(LabelBuiltin, "anti-lockout")))

@@ -228,18 +228,17 @@ diffs, whether confirmation is needed, and the server's objections.
 
 In order. Each step's details are in the section it points to.
 
-1. **Outbound rules never match** (Models and generators).
-2. **Removing generated files** (Commit engine), which deleting VLANs,
+1. **Removing generated files** (Commit engine), which deleting VLANs,
    tunnels and other interfaces waits on.
-3. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
+2. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
    generated files and the annotated ruleset from the API, and the
    offline preview build gets them from a stand-in. Keep the sample
    model as the shared fixture for Go tests and the mock.
-4. **Authentication and TLS**, enforced in the parent (Security).
-5. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
+3. **Authentication and TLS**, enforced in the parent (Security).
+4. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
    in the SSH config is a candidate; ask before using it.
-6. **Import** (Parser and import), then the first-run wizard.
-7. **Live data** (Live data and monitoring).
+5. **Import** (Parser and import), then the first-run wizard.
+6. **Live data** (Live data and monitoring).
 
 ## Commit engine and staging
 
@@ -283,11 +282,13 @@ In order. Each step's details are in the section it points to.
 
 ## Models and generators
 
-- [ ] **Outbound rules never match.** Both generators emit
-      `pass out quick inet` before user rules (`internal/pf/generate.go`,
-      `ui/src/model/generate.ts`), so outbound rules such as the
-      sample's floating `match out … set prio 6` are never reached. Use
-      a non-quick `pass out`.
+- [ ] **NAT exceptions skip outbound rules.** An outbound NAT rule with
+      no translation ("don't translate this host") is written as
+      `pass out quick` ahead of everything, so evaluation stops before a
+      `nat-to` can apply, and also before any outbound user rule. pf has
+      no `no nat` any more, so fixing it means keeping those addresses
+      out of the NAT rules instead (a table of exceptions the automatic
+      and manual `nat-to` rules exclude), then dropping the quick pass.
 - [ ] pf features only reachable through raw rules or custom pf blocks:
       traffic shaping (`queue` definitions and assigning rules to them);
       anchors, including a managed anchor per service; `binat-to` (1:1
@@ -737,6 +738,10 @@ Finished work, kept here for now. Git history has the details.
 
 Parser and generators:
 
+- [x] Outbound rules never matched: the built-in `pass out quick inet`
+      ended evaluation before every user rule. It's a non-quick
+      `pass out` now, with a test that nothing ahead of the user's rules
+      ends outbound evaluation except NAT exceptions.
 - [x] Parser hangs: fuzzing found infinite loops in the tokenizer (bytes
       treated as runes) and the interface, protocol and port list loops.
       The inputs are regression seeds in `internal/pf/testdata/fuzz` and

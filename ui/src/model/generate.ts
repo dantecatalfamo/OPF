@@ -333,8 +333,9 @@ export function pfRuleset(m: Model): PfLine[] {
 
   add('# Defaults');
   add((o.logDefaultBlock ? 'block log all' : 'block all') + pfLabel('builtin', 'default-block'), { label: 'Default block', to: '/firewall/settings' });
-  add('pass out quick inet' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
-  add('pass out quick inet6' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
+  // Not quick, so outbound user rules are still reached (see internal/pf).
+  add('pass out inet' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
+  add('pass out inet6' + pfLabel('builtin', 'self-out'), { label: 'This firewall’s own traffic', to: '/firewall/settings' });
   if (lan) described('Anti-lockout: the web UI and SSH stay reachable from the LAN', { label: 'Anti-lockout', to: `/interfaces/${lan.id}` },
     `pass in quick on $${lan.id} proto tcp to ${endpoint({ type: 'iface', iface: lan.id }, m)} port { 443 22 }${pfLabel('builtin', 'anti-lockout')}`);
   if (wan?.blockPrivate) described('Block private networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },

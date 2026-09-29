@@ -354,7 +354,7 @@ func TestDescriptionsAreComments(t *testing.T) {
 		"# No NAT\npass out quick on $wan inet from 192.168.1.9 to any label \"opf:nat:n1\"\n",
 		"# Automatic: LAN to WAN\nmatch out on $wan inet from $lan:network to any nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
 		"block all label \"opf:builtin:default-block\"\n",
-		"pass out quick inet label \"opf:builtin:self-out\"\n",
+		"pass out inet label \"opf:builtin:self-out\"\n",
 		"pass in quick on $lan proto tcp to $lan port { 443 22 } label \"opf:builtin:anti-lockout\"\n",
 	} {
 		if !strings.Contains(conf, want) {
@@ -526,7 +526,7 @@ func TestGeneratePfConf_SampleModel(t *testing.T) {
 		"set block-policy drop",
 		"set syncookies adaptive",
 		"block log all",
-		"pass out quick inet",
+		"pass out inet label",
 		"pass in quick on $lan proto tcp",
 		"Allow SSH",
 		"Allow LAN",
@@ -813,5 +813,37 @@ func TestSplitTunnelIsEnforced(t *testing.T) {
 	}
 	if got := LocalNetworks(m, false); slices.Contains(got, "$iot:network") {
 		t.Errorf("LocalNetworks(m, false) = %v, which a device configuration can't list", got)
+	}
+}
+
+// Nothing OPF adds ahead of the user's rules may end evaluation for
+// outbound traffic, or outbound user rules (blocks, match rules that set
+// priorities or tags) would never be reached. NAT exceptions are the one
+// deliberate exception: they must stop before a nat-to applies.
+func TestNoQuickOutboundPassBeforeUserRules(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	conf := GeneratePfConf(m)
+	for _, line := range strings.Split(conf, "\n") {
+		if strings.HasPrefix(line, "# Custom rules") || strings.Contains(line, `label "opf:rule:`) {
+			break // the user's own rules and pf text start here
+		}
+		f := strings.Fields(line)
+		if len(f) < 2 || f[0] != "pass" || strings.Contains(line, `label "opf:nat:`) {
+			continue
+		}
+		quick, out := false, false
+		for _, w := range f {
+			quick = quick || w == "quick"
+			out = out || w == "out"
+		}
+		inOnly := strings.Contains(line, "pass in ")
+		if quick && (out || !inOnly) {
+			t.Errorf("%q ends evaluation for outbound traffic before the user's rules", line)
+		}
+	}
+	for _, want := range []string{`pass out inet label "opf:builtin:self-out"`, `pass out inet6 label "opf:builtin:self-out"`} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q", want)
+		}
 	}
 }
