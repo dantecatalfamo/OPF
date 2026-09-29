@@ -351,8 +351,8 @@ func TestDescriptionsAreComments(t *testing.T) {
 		"# web\npass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
 			"pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
 			"match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan) label \"opf:forward:f1\"\n",
-		"# No NAT\npass out quick on $wan inet from 192.168.1.9 to any label \"opf:nat:n1\"\n",
-		"# Automatic: LAN to WAN\nmatch out on $wan inet from $lan:network to any nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
+		"# No NAT\nmatch out on $wan inet from 192.168.1.9 to any tag opf_nonat label \"opf:nat:n1\"\n",
+		"# Automatic: LAN to WAN\nmatch out on $wan inet from $lan:network to any ! tagged opf_nonat nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
 		"block all label \"opf:builtin:default-block\"\n",
 		"pass out inet label \"opf:builtin:self-out\"\n",
 		"pass in quick on $lan proto tcp to $lan port { 443 22 } label \"opf:builtin:anti-lockout\"\n",
@@ -442,8 +442,43 @@ func TestGenerateNATRule_Exception(t *testing.T) {
 		Description: "No NAT for this host",
 	}
 	got := GenerateNATRule(&rule, nil)
-	if !strings.Contains(got, "pass out quick") {
-		t.Errorf("Expected 'pass out quick' for NAT exception: %q", got)
+	if got != "match out on $wan inet from 192.168.1.100 to any tag opf_nonat" {
+		t.Errorf("GenerateNATRule = %q", got)
+	}
+}
+
+// An exception tags its traffic, and every nat-to rule on the same
+// interface leaves tagged traffic alone; rules on other interfaces, and
+// all of them when there are no exceptions, aren't touched.
+func TestNATExceptionsUseTags(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	m.Firewall.OutboundNAT.Mode = NATModeHybrid
+	m.Firewall.OutboundNAT.Rules = append(m.Firewall.OutboundNAT.Rules, NATRule{
+		ID: "n9", Enabled: true, Iface: "wan", Source: Endpoint{Type: EndpointHost, Value: "192.168.1.9"},
+		Destination: Endpoint{Type: EndpointNetwork, Value: "10.20.0.0/16"}, Translation: Translation{Type: TranslationNone}, Description: "Warehouse sees real addresses",
+	})
+	conf := GeneratePfConf(m)
+	exception := strings.Index(conf, `match out on $wan inet from 192.168.1.9 to 10.20.0.0/16 tag opf_nonat label "opf:nat:n9"`)
+	auto := strings.Index(conf, `match out on $wan inet from $lan:network to any ! tagged opf_nonat nat-to ($wan:0) label "opf:auto-nat:lan"`)
+	manual := strings.Index(conf, `match out on $wan inet from 192.168.1.60 to any ! tagged opf_nonat nat-to ($wan:0) static-port label "opf:nat:n1"`)
+	if exception < 0 || auto < 0 || manual < 0 {
+		t.Fatalf("exception %d, auto %d, manual %d in:\n%s", exception, auto, manual, conf)
+	}
+	if exception > auto || exception > manual {
+		t.Error("the exception must come before the nat-to rules")
+	}
+	// Reflection's nat-to is on the inside interface, not the exception's.
+	if strings.Contains(conf, "nat-to ($lan) ! tagged") || strings.Contains(conf, "! tagged opf_nonat nat-to ($lan)") {
+		t.Error("an exception on the WAN changed NAT on the LAN")
+	}
+	if strings.Contains(conf, "pass out quick") {
+		t.Error("an exception still ends evaluation")
+	}
+
+	// In automatic mode manual exceptions don't apply at all.
+	m.Firewall.OutboundNAT.Mode = NATModeAuto
+	if conf := GeneratePfConf(m); strings.Contains(conf, "opf_nonat") {
+		t.Errorf("automatic mode tagged something:\n%s", conf)
 	}
 }
 
@@ -818,8 +853,7 @@ func TestSplitTunnelIsEnforced(t *testing.T) {
 
 // Nothing OPF adds ahead of the user's rules may end evaluation for
 // outbound traffic, or outbound user rules (blocks, match rules that set
-// priorities or tags) would never be reached. NAT exceptions are the one
-// deliberate exception: they must stop before a nat-to applies.
+// priorities or tags) would never be reached.
 func TestNoQuickOutboundPassBeforeUserRules(t *testing.T) {
 	m, _ := loadSampleModel(t)
 	conf := GeneratePfConf(m)
@@ -828,7 +862,7 @@ func TestNoQuickOutboundPassBeforeUserRules(t *testing.T) {
 			break // the user's own rules and pf text start here
 		}
 		f := strings.Fields(line)
-		if len(f) < 2 || f[0] != "pass" || strings.Contains(line, `label "opf:nat:`) {
+		if len(f) < 2 || f[0] != "pass" {
 			continue
 		}
 		quick, out := false, false

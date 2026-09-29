@@ -467,16 +467,40 @@ func GenerateNATRule(n *NATRule, m *Model) string {
 	return natRule(n, m, label(LabelNAT, n.ID))
 }
 
+// NoNATTag marks traffic an outbound NAT exception keeps untranslated.
+// pf has no "no nat" any more, and ending evaluation early (pass out
+// quick) would also skip the user's outbound rules, so exceptions tag
+// the traffic and every nat-to rule on that interface leaves tagged
+// traffic alone. A packet has one tag, so the exception replaces a tag
+// an earlier rule set on the same traffic. Validate reserves the name.
+const NoNATTag = "opf_nonat"
+
+// natExceptions reports whether traffic out of iface can be excepted
+// from NAT: manual exceptions only apply outside automatic mode.
+func natExceptions(m *Model, iface string) bool {
+	if m == nil || m.Firewall.OutboundNAT.Mode == NATModeAuto {
+		return false
+	}
+	for _, n := range m.Firewall.OutboundNAT.Rules {
+		if n.Enabled && n.Iface == iface && n.Translation.Type == TranslationNone {
+			return true
+		}
+	}
+	return false
+}
+
 func natRule(n *NATRule, m *Model, label string) string {
 	hosts := fmt.Sprintf("on $%s inet from %s to %s",
 		n.Iface, endpoint(n.Source, m), endpoint(n.Destination, m))
 
-	// Exception rules need to stop evaluation before any nat-to applies
 	if n.Translation.Type == TranslationNone {
-		return "pass out quick " + hosts + label
+		return "match out " + hosts + " tag " + NoNATTag + label
 	}
 
 	s := "match out " + hosts
+	if natExceptions(m, n.Iface) {
+		s += " ! tagged " + NoNATTag
+	}
 	if n.Translation.Type == TranslationIfaddr {
 		s += fmt.Sprintf(" nat-to ($%s:0)", n.Iface)
 	} else {
@@ -728,7 +752,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		auto = AutomaticNAT(m)
 	}
 
-	// Exceptions first (they have pass out quick)
+	// Exceptions first, so their tag is set before any nat-to rule looks.
 	for _, n := range manual {
 		if n.Translation.Type == TranslationNone {
 			described(n.Description, natOrigin, GenerateNATRule(&n, m))

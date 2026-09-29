@@ -282,13 +282,12 @@ In order. Each step's details are in the section it points to.
 
 ## Models and generators
 
-- [ ] **NAT exceptions skip outbound rules.** An outbound NAT rule with
-      no translation ("don't translate this host") is written as
-      `pass out quick` ahead of everything, so evaluation stops before a
-      `nat-to` can apply, and also before any outbound user rule. pf has
-      no `no nat` any more, so fixing it means keeping those addresses
-      out of the NAT rules instead (a table of exceptions the automatic
-      and manual `nat-to` rules exclude), then dropping the quick pass.
+- [ ] A NAT exception retags its traffic `opf_nonat`, and a packet has
+      one tag, so an earlier rule's tag on the same traffic is replaced:
+      an outbound rule testing it (`pass out tagged WEB`) won't match
+      that traffic. If that matters, exceptions could be expressed
+      without tags (excluding their addresses from each nat-to rule
+      through tables with negated entries).
 - [ ] pf features only reachable through raw rules or custom pf blocks:
       traffic shaping (`queue` definitions and assigning rules to them);
       anchors, including a managed anchor per service; `binat-to` (1:1
@@ -712,6 +711,10 @@ skipped and the web process isn't dropped to another user.
       them; `rcctl check`, `start`, `restart` and `stop` behave as the
       reconcile expects; a newly enabled dhcpd starts with the new
       dhcpd.conf.
+- [ ] NAT exceptions: a tag set by an outbound `match` rule is seen by
+      later rules in the same evaluation (`! tagged opf_nonat` on the
+      nat-to rules), so excepted traffic leaves untranslated and still
+      reaches the outbound user rules.
 - [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
       in a `const` table (used for DHCP-addressed inside networks in
       `<opf_local>`), and the block rule stops a split-tunnel device
@@ -740,6 +743,10 @@ Finished work, kept here for now. Git history has the details.
 
 Parser and generators:
 
+- [x] NAT exceptions no longer skip outbound rules: instead of
+      `pass out quick`, an exception tags its traffic (`opf_nonat`,
+      reserved) and the nat-to rules on that interface skip tagged
+      traffic.
 - [x] Outbound rules never matched: the built-in `pass out quick inet`
       ended evaluation before every user rule. It's a non-quick
       `pass out` now, with a test that nothing ahead of the user's rules

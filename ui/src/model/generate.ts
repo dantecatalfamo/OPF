@@ -219,11 +219,17 @@ function formRuleText(r: FormRule, m: Model): string {
   return s + pfLabel('rule', r.id);
 }
 
+// Exceptions tag their traffic and nat-to rules on the same interface
+// skip it; see NoNATTag in internal/pf.
+const noNatTag = 'opf_nonat';
+const natExceptions = (m: Model, iface: string) =>
+  m.firewall.outboundNat.mode !== 'auto' && m.firewall.outboundNat.rules.some((n) => n.enabled && n.iface === iface && n.translation.type === 'none');
+
 export function natText(n: NatRule, m: Model, label = pfLabel('nat', n.id)): string {
   const hosts = `on $${n.iface} inet from ${endpoint(n.source, m)} to ${endpoint(n.destination, m)}`;
-  // An exception has to stop evaluation before any nat-to applies.
-  if (n.translation.type === 'none') return `pass out quick ${hosts}${label}`;
+  if (n.translation.type === 'none') return `match out ${hosts} tag ${noNatTag}${label}`;
   let s = `match out ${hosts}`;
+  if (natExceptions(m, n.iface)) s += ` ! tagged ${noNatTag}`;
   s += ` nat-to ${n.translation.type === 'ifaddr' ? `($${n.iface}:0)` : n.translation.value}`;
   if (n.pool) s += ` ${n.pool}`;
   if (n.staticPort) s += ' static-port';

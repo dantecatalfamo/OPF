@@ -636,6 +636,9 @@ func (v *validator) formRule(p string, r Rule) {
 	for _, t := range []struct{ path, val string }{{".tag", r.Tag}, {".tagged", r.Tagged}} {
 		if t.val != "" {
 			v.re(p+t.path, t.val, tagRE, "tag (letters, digits, _)")
+			if strings.HasPrefix(strings.ToLower(t.val), "opf_") {
+				v.fail(p+t.path, "tags starting with opf_ are OPF's own")
+			}
 		}
 	}
 	if r.OSFingerprint != "" {
