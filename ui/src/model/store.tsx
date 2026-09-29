@@ -305,6 +305,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  editing = staged;
   const value: Store = {
     applied, staged, changes, pendingSections, history, confirming,
     edit, discard, review, apply, keep, revert, restore,
@@ -318,5 +319,37 @@ export function useStore(): Store {
   return s;
 }
 
-let idCounter = 1000;
-export const newId = (prefix: string) => `${prefix}${idCounter++}`;
+// The model being edited, for newId. Set on every render of the store.
+let editing: Model | null = null;
+// The last number newId gave out for each prefix, so several ids made
+// before the model is updated (a peer and its routes, say) differ.
+const issued = new Map<string, number>();
+
+// Every string id anywhere in a model.
+function eachId(v: unknown, f: (id: string) => void) {
+  if (Array.isArray(v)) {
+    for (const x of v) eachId(x, f);
+  } else if (v && typeof v === 'object') {
+    for (const [k, x] of Object.entries(v)) {
+      if (k === 'id' && typeof x === 'string') f(x);
+      else eachId(x, f);
+    }
+  }
+}
+
+/**
+ * An id for a new object: the prefix and the next number not used by
+ * any id in the model being edited. Ids end up in pf labels and must be
+ * unique, so a counter alone won't do: it restarts with every page load
+ * while the model's ids persist.
+ */
+export function newId(prefix: string): string {
+  const re = new RegExp(`^${prefix.replace(/[^A-Za-z0-9]/g, '\\$&')}(\\d{1,15})$`); // exact as a number
+  let n = issued.get(prefix) ?? 0;
+  eachId(editing, (id) => {
+    const m = re.exec(id);
+    if (m) n = Math.max(n, Number(m[1]));
+  });
+  issued.set(prefix, n + 1);
+  return `${prefix}${n + 1}`;
+}

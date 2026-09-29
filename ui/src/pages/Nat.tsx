@@ -7,7 +7,7 @@ import { useForm } from '@mantine/form';
 import { IconArrowRight, IconDots, IconInfoCircle, IconLock, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import type { NatRule, PortForward } from '../model/types';
-import { automaticNat, forwardText, natText } from '../model/generate';
+import { automaticNat, forwardText, natText, pfComment } from '../model/generate';
 import { endpointLabel, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
@@ -36,7 +36,9 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
 
   const reservations = staged.dhcp.flatMap((d) => d.reservations).map((r) => ({ value: r.ip, label: `${r.hostname} · ${r.ip}` }));
   const v = form.values;
-  const preview = forwardText({ ...v, id: 'preview', targetPort: v.targetPort || v.externalPort, description: v.description || '…' }, staged).join('\n');
+  // With the forward's own id, so the preview shows its real label; a
+  // new one has none until it's saved.
+  const preview = [pfComment(v.description), ...forwardText({ ...v, id: forward?.id ?? '', targetPort: v.targetPort || v.externalPort }, staged)].filter(Boolean).join('\n');
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{forward ? 'Edit port forward' : 'Add port forward'}</Text>}>
@@ -187,7 +189,7 @@ function NatDrawer({ opened, onClose, rule, onSave }: { opened: boolean; onClose
     const translation = x.translation.type === 'address' ? { type: 'address' as const, value: translationAddress } : x.translation;
     return { ...rest, translation, pool: translation.type === 'address' && translationAddress.includes('/') ? x.pool ?? 'round-robin' : undefined };
   };
-  const preview = natText({ ...toRule(v), id: 'p', description: v.description || '…' }, staged);
+  const preview = [pfComment(v.description), natText({ ...toRule(v), id: rule?.id ?? '' }, staged)].filter(Boolean).join('\n');
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{rule ? 'Edit outbound NAT rule' : 'Add outbound NAT rule'}</Text>}>
