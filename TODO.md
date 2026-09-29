@@ -54,6 +54,155 @@ break connectivity. Every feature must be:
    - Link to authoritative sources in code comments where format details
      are non-obvious.
 
+## How we work
+
+The goal is a polished, OPNsense-style appliance: the user should never
+need to write a config file or know how OpenBSD works, yet keeps pf's
+full power (raw pf rules, custom pf blocks, the full rule grammar and
+interface modifiers). OPF runs as root on a firewall, so a bug can lock
+the admin out, open a network, or hand an attacker root.
+
+What follows is the approach behind the code: how it's organized, the
+rules it holds to, and how changes are made and tested. See README.md
+for the overview and docs/api.md for the API.
+
+### Priorities
+
+The principles above come before features and before backwards
+compatibility.
+
+- If a change is only safe with a guard, build the guard in the same
+  change. Don't leave it as a note.
+- When a feature only looks like it does something (a setting nothing
+  enforces, a label the firewall ignores), either make it real or say
+  plainly what it does.
+- Don't keep old formats or APIs working for their own sake: no
+  deployments exist yet. But never let a renamed field change its
+  meaning silently. Pick a new name, so an old model fails to load
+  loudly.
+
+### Architecture
+
+- **One model is the source of truth**: `/var/opf/config.json`,
+  `pf.Model` in `internal/pf/model.go`, `Model` in
+  `ui/src/model/types.ts`. Every OpenBSD file is generated from it.
+  Nothing is edited in place.
+- **Commit engine** (`internal/config`):
+  - Stage → check with each daemon's own validator → commit → confirm
+    within a deadline, or auto-revert → history.
+  - The model is a managed file, so it's staged and committed
+    atomically with the files generated from it.
+  - `pf.conf` loads from the staged copy and is only installed on
+    confirm.
+  - The registry (`registry.go`) lists every managed file with its
+    check and apply commands.
+- **Two processes** (`internal/privsep`):
+  - The root parent (`internal/appliance.Manager`) owns the model and
+    the engine.
+  - The web child runs as `_opf` under pledge/unveil. It speaks a
+    fixed RPC that takes models and commit ids, never paths or
+    commands.
+  - The parent validates everything it's given.
+- **JSON API** (`internal/web`, documented in `docs/api.md`). Keep
+  `docs/api.md` in step with every endpoint change.
+  - Requests: strict decoding, JSON only, 4 MiB cap, cross-origin
+    writes refused.
+  - Errors are `appliance.Error` codes mapped to HTTP statuses.
+    Internal errors reach clients only as "internal error".
+- **pf package**: model, generators for every file, a tokenizer and
+  parser (pf text back to guided rules), and `Validate`.
+- **Runtime helpers** in the parent, such as `internal/leases`, which
+  puts DHCP client names into unbound. They go through `run.Runner` so
+  `-dry` and the mock can log them instead.
+
+### Rules we hold to
+
+**Input and validation**
+- Everything from the web process, and anything a device on the
+  network chooses (DHCP hostnames, the leases file), is hostile.
+- Validate every model field in the parent (`pf.Validate`) before
+  generating anything, and again on commit. Raw pf rules are the only
+  free text, and even they must be a single line.
+- Take limits from OpenBSD's source and cite them: label 63 bytes,
+  table names 31, `IFNAMSIZ` 16. Interface ids can't be pf keywords
+  (`keywords_gen.go`, generated from `parse.y`).
+- Quote for the reader of the file: `quote()` escapes only `"` because
+  that's all pf's lexer understands. Watch for line continuations
+  (pf joins a line ending in `\`, even in comments) and shell reads
+  (`netstart`).
+- Show device-chosen text sanitized (non-printable characters and bidi
+  overrides become U+FFFD, lengths capped) and never as markup.
+- Build hostile test strings (bidi overrides, control characters) from
+  escapes, never as literal characters in source.
+
+**The parser never guesses.** If the guided form can't hold a rule
+exactly, it stays raw with its original source text. Unknown options,
+user labels, and anything else the form can't represent keep the rule
+raw. `FuzzParseRuleRoundTrip` checks that parse → generate → parse
+gives back the same rule.
+
+**pf labels are ids, not descriptions.** Generated rules are labelled
+`opf:<kind>:<id>` (rule, forward, nat, auto-nat, builtin,
+split-tunnel). Descriptions are `#` comments above the rules. IDs that
+end up in labels are at most 32 characters of `[A-Za-z0-9_-]`. Tables
+OPF makes use reserved names (`opf_*`, `private`, `bogons`).
+
+**Go and TypeScript mirror each other.** `ui/src/model/generate.ts`
+mirrors the Go generators for the offline preview build. Change both
+together.
+- `ui/src/model/sample-model.json` is shared by the UI, the mock and
+  the Go tests, which decode it strictly and validate it. Keep it
+  valid.
+- `ui/src/lib/localApi.ts` is the preview build's in-browser stand-in
+  for the API and follows the server's rules.
+
+**UI copy.** Say what a setting does in plain language: no OpenBSD
+jargon, and no assumption that OPF runs in an office. Show consequences
+before they happen: the review dialog gives changes in words, per-file
+diffs, whether confirmation is needed, and the server's objections.
+
+### Working on it
+
+- **Go 1.25.** Run `make test` (vet plus `go test -race ./...`) and
+  `GOOS=openbsd go vet ./...` before calling anything done. Fuzz
+  parsers after changing them:
+  `go test -run '^$' -fuzz <Target> -fuzztime 60s ./internal/<pkg>`.
+- **UI**:
+  - `cd ui && npx tsc`, `npm run build`, and `npm run build:preview`
+    (the single-file offline build).
+  - When a check is piped through `grep -v`, don't chain `&&` after it:
+    `grep -v` exits 1 when there's nothing left to print.
+- **`make mock`** runs `opf -mock` (the real engine on the sample
+  model, in a scratch directory, commands logged, loopback only) on
+  127.0.0.1:18080, plus Vite on 5173.
+  - **The user runs this themselves.** Never kill processes on those
+    ports, or anything else you didn't start.
+  - For your own tests, run
+    `opf -mock -listen 127.0.0.1:18081` and
+    `OPF_API=http://127.0.0.1:18081 npx vite --port 5174 --strictPort`.
+    Record the PIDs you start and stop exactly those. Never use broad
+    `pkill`.
+- **Test UI changes in a real browser.** `puppeteer-core` driving the
+  installed Chrome, headless, with scripts kept in the scratchpad.
+  Click through the actual flow (edit → review → apply → confirm) and
+  check the files the mock wrote, not just that the page renders.
+- **Nothing has run on real OpenBSD yet.** Things that need checking
+  there go in "Verify on real OpenBSD" below. Ask before using the
+  `openbsd-dev` SSH host.
+
+### Git
+
+- Commit in logical, self-contained commits that each build. Commit
+  locally only; the user pushes. Don't rewrite pushed history.
+- Commit messages:
+  - A short imperative subject.
+  - A body in plain prose explaining what was wrong or missing, what
+    changed and why, including security reasoning and trade-offs.
+  - No bullet dumps, no attribution trailers.
+- When something is found but not fixed, add it to this file under
+  the right section, with enough detail to act on. Mark finished items
+  `[x]` with a line on what was done.
+
 ## Where things stand (2026-09-28)
 
 - **Go, working and tested:** the model is the source of truth and lives
