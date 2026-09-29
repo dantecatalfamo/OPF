@@ -233,7 +233,8 @@ In order. Each step's details are in the section it points to.
    generated files and the annotated ruleset from the API, and the
    offline preview build gets them from a stand-in. Keep the sample
    model as the shared fixture for Go tests and the mock.
-2. **Authentication and TLS**, enforced in the parent (Security).
+2. **Authentication and TLS**, enforced in the parent (Security › User
+   accounts).
 3. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
    in the SSH config is a candidate; ask before using it.
 4. **Import** (Parser and import), then the first-run wizard.
@@ -641,15 +642,105 @@ them, so they can be graphed and compared):
 
 ## Security
 
-- [ ] **Authentication**, enforced in the parent, not the web process: a
-      compromised web process can call Stage and Commit today. Likely
-      `auth_userokay(3)` (cgo) with sessions checked at the RPC
-      boundary, and a sign-in page.
-- [ ] TLS.
+### User accounts (sketch)
+
+A first design, to argue with before building. Today anyone who can
+reach the port can do anything, and a compromised web process could
+call Stage and Commit directly, so accounts have to be enforced in the
+parent, and the web process must never be the one deciding who
+someone is.
+
+**Who can log in.** OpenBSD's own accounts, not a second user database:
+the admin already has one, SSH and the UI share it, passwords are
+bcrypt and handled by the base system, and bsd_auth brings its other
+login styles (YubiKey, RADIUS) for free. Membership of a group decides
+the role:
+
+- `_opfadmin`: everything.
+- `_opfoperator`: can see everything and confirm, revert or restore a
+  commit, but can't stage new changes (someone watching over an
+  appliance at night).
+- `_opfview`: read-only.
+
+Anyone else, including root and members of wheel, can't log in unless
+they're in one of these. A user in several gets the most powerful.
+Open question: whether `_opfoperator` is worth having from the start,
+or later with finer per-section permissions.
+
+**Checking a password** happens in the parent, which is root: either
+`auth_userokay(3)` through cgo (cross-compiling then needs an OpenBSD
+sysroot), or running bsd_auth's `login_<style>` helper directly with
+the password on its back channel, which keeps the build pure Go. Try
+the helper first, on OpenBSD. The parent then needs `/etc/group` and
+`/usr/libexec/auth` unveiled.
+
+**Sessions** live in the parent. Logging in is an RPC with the name and
+password; on success the parent makes a random 256-bit token and keeps
+it in memory with the user, role, and when it was last used. Every
+other RPC carries the token, and the parent checks it and the role
+before doing anything, so a compromised web process can't mint a
+session or raise one's role; it could at worst reuse the tokens of
+people logging in while it's compromised. Sessions end after 30
+minutes idle or 12 hours in all, on logout, when the parent restarts,
+and when the user leaves the group or their password changes. Users
+can see their sessions and end them; admins, anyone's.
+
+**In the browser** the token is a cookie: `__Host-` prefixed, `Secure`,
+`HttpOnly`, `SameSite=Strict`, alongside the cross-origin protection
+that's already there. The UI shows a sign-in page and nothing else
+until there's a session. The web process only passes the cookie on; it
+doesn't keep or check sessions itself.
+
+**TLS is required** once there are passwords: the parent generates a
+self-signed certificate on first run (the UI shows its fingerprint to
+compare, and it can be replaced), with HSTS. Plain HTTP only on
+loopback, for `ssh -L`. Later: ACME, where the box has a public name.
+
+**Brute force.** Failed logins back off per user and per source
+address (one second doubling to a few minutes), in the parent. The
+error never says whether the user exists, and every attempt goes to
+authlog and the event log (History over time).
+
+**Sensitive actions ask again.** Changing who can log in, disabling the
+firewall, skipping filtering on an interface, and restoring a backup
+ask for the password again, good for five minutes.
+
+**Audit.** Every commit records who made it and every confirm or revert
+who did that; history and the event log show them. Commits made by the
+confirm timeout are recorded as OPF's own.
+
+**Managing accounts from the UI** (admins only): add a user (useradd
+with a login class and the right group), set a password, change a
+role, lock or remove someone. These happen straight away, not through
+staging and confirm: accounts aren't part of the network configuration
+and don't belong in its history. They're guarded instead: the last
+admin can't be removed or demoted, and nobody can take away their own
+admin role. The first-run wizard creates the first admin. Forgotten
+passwords are reset from the console or SSH as root, which is the
+recovery path and should be documented.
+
+**API tokens** for scripts and monitoring: made by an admin with a role
+(often read-only) and an expiry, shown once, stored only as a hash in a
+root-only file in the parent's state directory, and sent as
+`Authorization: Bearer`. They're checked the same way as sessions, and
+listed and revoked like them.
+
+**Two-factor**: TOTP first, its secret per user in the same root-only
+file, asked for after the password; WebAuthn (passkeys, hardware keys)
+later. bsd_auth's YubiKey style already works through system logins.
+
+**Development.** The mock keeps working without accounts, loopback
+only, with a banner saying so; `-dry` on OpenBSD can use real accounts.
+
+- [ ] Build the above, starting with system accounts in `_opfadmin`,
+      sessions checked in the parent, the cookie, TLS and the sign-in
+      page; then roles, re-authentication, the account pages, API
+      tokens and two-factor.
+- [ ] Check the bsd_auth helper protocol and pledge/unveil needs on
+      OpenBSD before choosing it over cgo.
 - [ ] Anyone who can commit can get root: rc.conf.local is sourced by
       rc(8), and sshd_config and httpd.conf are powerful. That comes with
       the product, but it's why authentication and audit logging matter.
-- [ ] Record who made each commit once there are users.
 - [ ] **Secret storage** for WireGuard private keys (one per tunnel),
       PPPoE credentials and CARP passwords: kept out of the model and
       its history, readable only by root, and generated where possible.
