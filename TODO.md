@@ -461,6 +461,52 @@ descriptions are free text and counters map back to model objects.
 - [ ] Importing: rules with their own label stay raw (the guided form's
       label is its id). Offer to turn those labels into descriptions.
 
+## Virtual interfaces (bridges, aggregation, tunnels)
+
+Creating virtual interfaces from the Interfaces page. Today there are
+physical ports, VLANs and WireGuard tunnels, each one hostname.<dev>
+file applied with `sh /etc/netstart <devs>`.
+
+Groundwork, needed by every type:
+
+- [ ] **Removing interfaces**: delete hostname.<dev> and run
+      `ifconfig <dev> destroy`. The commit engine refuses file removals
+      today (same gap as deleting a tunnel).
+- [ ] **Apply order by dependency.** netstart brings up the devices it's
+      given in order, and OPF passes them in path order, so
+      hostname.bridge0 comes before its member hostname.em1 (VLANs only
+      work because em1 sorts before vlan20). Order parents and members
+      before the interfaces built on them, and the reverse on removal.
+- [ ] **Confirm and auto-revert for interface changes.** Moving the
+      LAN's address onto a bridge is the easiest way to lock yourself
+      out, and hostname.if files are applied directly with no
+      confirmation (netstart can't load a staged copy). Install, then
+      restore the old files and re-run netstart on timeout; that gives
+      up pf.conf's "a reboot reverts it" guarantee, so decide how to
+      handle a reboot during the window.
+- [ ] **Model**: an interface kind (physical, vlan, wireguard, bridge,
+      aggr, carp, gre, pppoe, …) with per-kind settings, replacing the
+      vlan/wireguard special cases. Validation: members exist, have no
+      address, belong to one bridge or aggregate, no loops, valid
+      device names (veb0, aggr0, carp1), and the pf macro names the
+      interface that carries the address.
+
+Types, roughly in order of usefulness:
+
+- [ ] `veb` + `vport` bridges (bridging LAN ports). The address and pf
+      filtering are on the vport, so the LAN macro follows it. The
+      older `bridge(4)` is similar.
+- [ ] `aggr` link aggregation: `trunkport` lines, members only `up`.
+- [ ] `pppoe` WANs: credentials need secret storage, and the default
+      route goes through the PPPoE link instead of mygate.
+- [ ] `carp` failover: a shared password (secret storage), only useful
+      with a second box, and wants pfsync alongside.
+- [ ] `gre`, `etherip`, `vxlan` tunnels: endpoints, and pf and routing
+      like WireGuard.
+- [ ] Niche: `tpmr`, `svlan`, `tap`.
+- [ ] Live status for each type (members, link state, carp state) in the
+      interface pages.
+
 ## WireGuard
 
 - [x] **Every VPN interface got the same tunnel.** Each VPN interface
