@@ -7,7 +7,7 @@ import { backend, newId, useStore } from '../model/store';
 import type { DhcpLeasesResource } from '../lib/api';
 import { useNow } from '../lib/useNow';
 import type { DhcpScope, Iface, Reservation } from '../model/types';
-import { inSubnet, isIPv4, isMAC, toInt } from '../lib/ip';
+import { fromInt, inSubnet, isIPv4, isMAC, network, toInt } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
@@ -69,6 +69,23 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
   );
 }
 
+// dhcpd could also hand out an address in the range to another device,
+// so reservations stay outside it (the server refuses them too).
+const inRange = (ip: string, scope: DhcpScope) => isIPv4(ip) && toInt(ip) >= toInt(scope.rangeStart) && toInt(ip) <= toInt(scope.rangeEnd);
+
+// The first address in the interface's network that isn't the
+// interface's, reserved, or in the DHCP range.
+function freeAddress(iface: Iface, scope: DhcpScope): string {
+  const base = toInt(network(iface.ipv4.address!, iface.ipv4.prefix!));
+  const size = 2 ** (32 - iface.ipv4.prefix!);
+  const taken = new Set([iface.ipv4.address!, ...scope.reservations.map((r) => r.ip)]);
+  for (let n = 1; n < size - 1; n++) {
+    const ip = fromInt(base + n);
+    if (!taken.has(ip) && !inRange(ip, scope)) return ip;
+  }
+  return '';
+}
+
 function ReservationModal({ opened, onClose, iface, scope, initial }: {
   opened: boolean; onClose: () => void; iface: Iface; scope: DhcpScope; initial: Partial<Reservation> | null;
 }) {
@@ -81,12 +98,16 @@ function ReservationModal({ opened, onClose, iface, scope, initial }: {
       ip: (v) => {
         if (!inSubnet(v, iface.ipv4.address!, iface.ipv4.prefix!)) return `Must be inside ${iface.name}’s network`;
         if (v === iface.ipv4.address) return 'That’s the firewall’s own address';
+        if (inRange(v, scope)) return `DHCP hands out ${scope.rangeStart} to ${scope.rangeEnd}; pick an address outside that, like ${freeAddress(iface, scope)}`;
         return scope.reservations.some((r) => r.ip === v) ? 'Already reserved' : null;
       },
     },
   });
+  // A device's current address is usually in the range; offer one that
+  // isn't, and say it moves there when it next renews.
+  const moves = !!initial?.ip && inRange(initial.ip, scope);
   useEffect(() => {
-    if (opened) form.setValues({ hostname: initial?.hostname ?? '', mac: initial?.mac ?? '', ip: initial?.ip ?? '' });
+    if (opened) form.setValues({ hostname: initial?.hostname ?? '', mac: initial?.mac ?? '', ip: moves ? freeAddress(iface, scope) : initial?.ip ?? '' });
   }, [opened, initial]); // form is stable
 
   return (
@@ -104,7 +125,13 @@ function ReservationModal({ opened, onClose, iface, scope, initial }: {
           <Text size="sm" c="dimmed">The device will always get the same address. Handy for printers, servers and anything you forward ports to.</Text>
           <TextInput label="Name" placeholder="printer" {...form.getInputProps('hostname')} />
           <TextInput label="Hardware (MAC) address" placeholder="00:11:22:33:44:55" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('mac')} />
-          <TextInput label="IP address" placeholder={iface.ipv4.address?.replace(/\d+$/, '50')} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('ip')} />
+          <TextInput
+            label="IP address"
+            description={moves ? `It has ${initial!.ip} now, from the range DHCP hands out; it moves to this address the next time it renews its lease.` : undefined}
+            placeholder={freeAddress(iface, scope)}
+            styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
+            {...form.getInputProps('ip')}
+          />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit">Reserve</Button>
@@ -245,7 +272,7 @@ export function Dhcp() {
                                 <Tooltip label="Reserved"><IconBookmark size={16} color="var(--mantine-color-harbor-6)" /></Tooltip>
                               ) : (
                                 <Tooltip label="Always give this device this address">
-                                  <ActionIcon variant="subtle" aria-label="Reserve" onClick={() => setModal({ open: true, initial: { hostname: l.hostname ?? '', mac: l.mac ?? '', ip: l.ip } })}>
+                                  <ActionIcon variant="subtle" aria-label="Reserve" onClick={() => setModal({ open: true, initial: { hostname: l.dnsName?.split('.')[0] ?? l.hostname ?? '', mac: l.mac ?? '', ip: l.ip } })}>
                                     <IconBookmark size={16} />
                                   </ActionIcon>
                                 </Tooltip>

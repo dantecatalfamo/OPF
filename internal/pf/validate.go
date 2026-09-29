@@ -733,8 +733,16 @@ func (v *validator) dhcp() {
 				v.fail(rp+".mac", "%q isn't a MAC address like 00:11:22:33:44:55", r.MAC)
 			}
 			v.unique(rp+".mac", macs, strings.ToLower(r.MAC), "MAC address")
-			inNet(rp+".ip", r.IP)
+			ip := inNet(rp+".ip", r.IP)
 			v.unique(rp+".ip", ips, r.IP, "address")
+			// dhcpd could hand an address in the range to another device
+			// as well, and the interface's own address is taken.
+			switch {
+			case ip.IsValid() && start.IsValid() && end.IsValid() && !ip.Less(start) && !end.Less(ip):
+				v.fail(rp+".ip", "%s is in the range DHCP hands out (%s to %s); pick one outside it", r.IP, s.RangeStart, s.RangeEnd)
+			case f != nil && ip.IsValid() && f.IPv4.Address == ip.String():
+				v.fail(rp+".ip", "%s is %s's own address", r.IP, f.Name)
+			}
 		}
 	}
 }

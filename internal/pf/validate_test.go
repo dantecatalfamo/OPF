@@ -65,6 +65,8 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"alias named like OPF's own table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "opf_local" }},
 		{"alias named like the bogons table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "bogons" }},
 		{"a user tag in OPF's namespace", "firewall.rules[2].tag", func(m *Model) { m.Firewall.Rules[2].Tag = "opf_nonat" }},
+		{"reservation inside the dynamic range", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.150" }},
+		{"reservation on the interface's own address", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.1" }},
 		// Several tunnels
 		{"two tunnels on one port", "interfaces[4].wireguard.listenPort", func(m *Model) { wg(m, 4).ListenPort = wg(m, 3).ListenPort }},
 		{"two tunnels with one key", "interfaces[4].wireguard.publicKey", func(m *Model) { wg(m, 4).PublicKey = wg(m, 3).PublicKey }},
