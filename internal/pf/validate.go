@@ -487,6 +487,9 @@ func (v *validator) firewall() {
 		v.re(p+".id", a.ID, idRE, "id")
 		v.re(p+".name", a.Name, tableRE, "alias name (letters, digits, _; up to 31)")
 		v.unique(p+".name", aliasNames, a.Name, "alias")
+		if a.Name == "private" || a.Name == "bogons" || strings.HasPrefix(a.Name, "opf_") {
+			v.fail(p+".name", "%q is a table OPF makes itself", a.Name)
+		}
 		v.text(p+".description", a.Description, 200, false)
 		for j, e := range a.Entries {
 			ep := at(p+".entries", j)

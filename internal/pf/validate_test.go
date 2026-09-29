@@ -62,6 +62,8 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"peer name with a quote (wgdescr)", "interfaces[3].wireguard.peers[0].name", func(m *Model) { wg(m, 3).Peers[0].Name = `Priya" wgpeer x` }},
 		{"peer key that isn't a key", "interfaces[3].wireguard.peers[0].publicKey", func(m *Model) { wg(m, 3).Peers[0].PublicKey = "x wgaip 0.0.0.0/0" }},
 		{"peer endpoint with extra words", "interfaces[4].wireguard.peers[0].endpoint", func(m *Model) { wg(m, 4).Peers[0].Endpoint = "a.example:51820 wgpka 1" }},
+		{"alias named like OPF's own table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "opf_local" }},
+		{"alias named like the bogons table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "bogons" }},
 		// Several tunnels
 		{"two tunnels on one port", "interfaces[4].wireguard.listenPort", func(m *Model) { wg(m, 4).ListenPort = wg(m, 3).ListenPort }},
 		{"two tunnels with one key", "interfaces[4].wireguard.publicKey", func(m *Model) { wg(m, 4).PublicKey = wg(m, 3).PublicKey }},

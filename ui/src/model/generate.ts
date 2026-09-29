@@ -1,7 +1,7 @@
 // Turns the model into the OpenBSD files it replaces. The Go backend
 // will own the real generators; these show the user exactly what Apply
 // writes and pin down the shape of the output.
-import type { Endpoint, FormRule, Iface, IfaceEndpoint, Model, NatRule, PortForward, Protocol, Rule, SelfEndpoint } from './types';
+import { tunnels, type Endpoint, type FormRule, type Iface, type IfaceEndpoint, type Model, type NatRule, type PortForward, type Protocol, type Rule, type SelfEndpoint } from './types';
 import { isFloating } from '../lib/rules';
 import { netmask, network } from '../lib/ip';
 import { gatewayStatus } from './live';
@@ -101,11 +101,38 @@ const quote = (s: string) => `"${s.replace(/"/g, '\\"')}"`;
 // "opf:<kind>:<id>", which is what pfctl reports counters by;
 // descriptions are comments above them (see internal/pf/generate.go).
 const labelId = /^[A-Za-z0-9_-]{1,32}$/;
-export const pfLabel = (kind: 'rule' | 'forward' | 'nat' | 'auto-nat' | 'builtin', id: string) =>
+export const pfLabel = (kind: 'rule' | 'forward' | 'nat' | 'auto-nat' | 'builtin' | 'split-tunnel', id: string) =>
   labelId.test(id) ? ` label ${quote(`opf:${kind}:${id}`)}` : '';
 
 // A description as a pf.conf comment. pf continues a comment that ends
 // in a backslash onto the next line.
+/**
+ * "Your networks" for a split-tunnel VPN device: every enabled inside
+ * interface's network, every network behind a site-to-site peer, and
+ * every static route's (internal/pf LocalNetworks). The device's
+ * configuration sends these into the tunnel, and pf lets it reach
+ * nothing else. With dynamic, a DHCP-addressed inside interface is
+ * included as $id:network for pf to resolve; a device configuration
+ * can only list fixed networks.
+ */
+export function localNetworks(m: Model, dynamic = false): string[] {
+  const out = new Set<string>();
+  for (const i of m.interfaces) {
+    if (!i.enabled || i.role === 'wan') continue;
+    if (i.ipv4.mode === 'static' && i.ipv4.address && i.ipv4.prefix !== undefined) out.add(`${network(i.ipv4.address, i.ipv4.prefix)}/${i.ipv4.prefix}`);
+    else if (dynamic && i.ipv4.mode === 'dhcp') out.add(`$${i.id}:network`);
+  }
+  for (const t of tunnels(m)) if (t.enabled) for (const p of t.wireguard.peers) for (const n of p.networks) out.add(n);
+  for (const r of m.routing.routes) if (r.enabled) out.add(r.network);
+  return [...out];
+}
+
+const localTable = 'opf_local';
+
+// Enabled tunnels with split-tunnel devices.
+const splitPeers = (m: Model) =>
+  tunnels(m).filter((t) => t.enabled).map((t) => ({ tunnel: t, peers: t.wireguard.peers.filter((p) => p.clientRoutes === 'split') })).filter((x) => x.peers.length);
+
 export function pfComment(s: string): string {
   const c = s.replace(/\p{Cc}/gu, ' ').replace(/[\\ ]+$/, '');
   return c ? `# ${c}` : '';
@@ -274,6 +301,8 @@ export function pfRuleset(m: Model): PfLine[] {
   }
   if (wan?.blockBogons) add('table <bogons> const { 0.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 192.0.0.0/24 198.18.0.0/15 224.0.0.0/3 }', { label: 'WAN protection', to: `/interfaces/${wan.id}` });
   if (wan?.blockPrivate) add('table <private> const { 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 }', { label: 'WAN protection', to: `/interfaces/${wan.id}` });
+  const split = splitPeers(m);
+  if (split.length) add(`table <${localTable}> const { ${localNetworks(m, true).join(' ')} }`, { label: 'WireGuard: your networks', to: '/services/wireguard' });
   blank();
 
   add('# Options');
@@ -313,6 +342,19 @@ export function pfRuleset(m: Model): PfLine[] {
   if (wan?.blockBogons) described('Block bogon networks', { label: 'WAN protection', to: `/interfaces/${wan.id}` },
     `block in log quick on $${wan.id} from <bogons>${pfLabel('builtin', 'block-bogons')}`);
   blank();
+
+  // Devices told to send only local traffic through their tunnel may
+  // only reach local networks, whatever their own configuration says;
+  // before every user rule, so no pass rule can widen it.
+  if (split.length) {
+    add('# WireGuard devices limited to your networks');
+    for (const { tunnel: t, peers } of split) {
+      const from = peers.length === 1 ? peers[0].address : `{ ${peers.map((p) => p.address).join(' ')} }`;
+      described(`${t.name}: ${peers.map((p) => p.name).join(', ')}`, { label: `WireGuard: ${t.name}`, to: `/services/wireguard/${t.id}` },
+        `block in log quick on $${t.id} inet from ${from} to ! <${localTable}>${pfLabel('split-tunnel', t.id)}`);
+    }
+    blank();
+  }
 
   const forwards = fw.forwards.filter((f) => f.enabled && ifaces.some((i) => i.id === f.iface));
   if (forwards.length) {

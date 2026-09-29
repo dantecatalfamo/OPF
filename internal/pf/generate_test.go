@@ -1,6 +1,7 @@
 package pf
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -366,7 +367,7 @@ func TestDescriptionsAreComments(t *testing.T) {
 }
 
 func TestLabels(t *testing.T) {
-	for _, l := range []string{"opf:rule:r1", "opf:forward:f_1", "opf:auto-nat:lan", "opf:builtin:anti-lockout", "opf:nat:" + strings.Repeat("n", 32)} {
+	for _, l := range []string{"opf:rule:r1", "opf:forward:f_1", "opf:auto-nat:lan", "opf:builtin:anti-lockout", "opf:split-tunnel:wg1", "opf:nat:" + strings.Repeat("n", 32), "opf:split-tunnel:" + strings.Repeat("w", 32)} {
 		kind, id, ok := ParseLabel(l)
 		if !ok || Label(kind, id) != l {
 			t.Errorf("ParseLabel(%q) = %q, %q, %v", l, kind, id, ok)
@@ -758,5 +759,59 @@ func TestTunnelsAreSeparate(t *testing.T) {
 	}
 	if len(m.Tunnels()) != 2 {
 		t.Errorf("Tunnels() = %d", len(m.Tunnels()))
+	}
+}
+
+// A device told to send only local traffic through its tunnel is held
+// to that by pf, ahead of any user rule that would let it out.
+func TestSplitTunnelIsEnforced(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	conf := GeneratePfConf(m)
+	table := "table <opf_local> const { 192.168.1.0/24 192.168.20.0/24 10.8.0.0/24 10.9.0.0/24 10.20.0.0/16 }"
+	block := `block in log quick on $wg inet from 10.8.0.3/32 to ! <opf_local> label "opf:split-tunnel:wg"`
+	for _, want := range []string{table, "# Remote access: Sam laptop\n" + block} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in:\n%s", want, conf)
+		}
+	}
+	// The sample's own rule lets the tunnel out to the internet; the
+	// block has to come first.
+	userPass := strings.Index(conf, `label "opf:rule:r13"`)
+	if i := strings.Index(conf, block); i < 0 || userPass < 0 || i > userPass {
+		t.Errorf("the split-tunnel block isn't before the tunnel's pass rule:\n%s", conf)
+	}
+	// Full-tunnel and site-to-site peers aren't limited.
+	for _, addr := range []string{"10.8.0.2/32", "10.9.0.2/32"} {
+		if strings.Contains(conf, "from "+addr+" to ! <opf_local>") {
+			t.Errorf("%s is limited but isn't a split-tunnel peer", addr)
+		}
+	}
+
+	// No split-tunnel peers, no table and no block.
+	for _, tun := range m.Tunnels() {
+		for i := range tun.WireGuard.Peers {
+			tun.WireGuard.Peers[i].ClientRoutes = ClientRoutesFull
+		}
+	}
+	if conf := GeneratePfConf(m); strings.Contains(conf, "opf_local") {
+		t.Errorf("opf_local without split-tunnel peers:\n%s", conf)
+	}
+
+	// Several split peers in one tunnel share one rule; a DHCP-addressed
+	// inside network is resolved by pf at load time.
+	m, _ = loadSampleModel(t)
+	tun := m.Tunnels()[0]
+	for i := range tun.WireGuard.Peers {
+		tun.WireGuard.Peers[i].ClientRoutes = ClientRoutesSplit
+	}
+	m.Interfaces[2].IPv4 = IPv4Config{Mode: IPv4DHCP}
+	conf = GeneratePfConf(m)
+	for _, want := range []string{"from { 10.8.0.2/32 10.8.0.3/32 } to ! <opf_local>", "$iot:network"} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in:\n%s", want, conf)
+		}
+	}
+	if got := LocalNetworks(m, false); slices.Contains(got, "$iot:network") {
+		t.Errorf("LocalNetworks(m, false) = %v, which a device configuration can't list", got)
 	}
 }

@@ -8,7 +8,7 @@ import { IconArrowsSplit2, IconCheck, IconCopy, IconPlugConnected, IconPlus, Ico
 import { newId, useStore } from '../model/store';
 import { ifaceStatus, peerStatus } from '../model/live';
 import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
-import { automaticNat } from '../model/generate';
+import { automaticNat, localNetworks } from '../model/generate';
 import { formRule } from '../model/sample';
 import { isFloating } from '../lib/rules';
 import { formatAgo, formatBytes } from '../lib/format';
@@ -73,15 +73,6 @@ function freeTunnelNetwork(m: Model): string {
     if (!used.some(([a, b]) => a <= lo + 255 && lo <= b)) return `10.${second}.0.1`;
   }
   return '';
-}
-
-// Networks a split-tunnel client sends into its tunnel: everything
-// reachable through this firewall that isn't the internet.
-function localNetworks(m: Model): string[] {
-  const nets = m.interfaces
-    .filter((i) => i.enabled && i.role !== 'wan' && i.ipv4.mode === 'static' && i.ipv4.address)
-    .map((i) => `${network(i.ipv4.address!, i.ipv4.prefix!)}/${i.ipv4.prefix}`);
-  return [...nets, ...tunnels(m).flatMap((t) => t.wireguard.peers.flatMap((p) => p.networks))];
 }
 
 const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Your networks', full: 'All traffic', site: 'Site-to-site' };
@@ -252,14 +243,14 @@ PersistentKeepalive = 25`;
             <TextInput label="Device name" placeholder="Alex phone" data-autofocus {...form.getInputProps('name')} />
             <TextInput label="VPN address" description={`Picked from ${tunnelNet(tunnel)}.`} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
             <Stack gap={6}>
-              <Text size="sm" fw={500}>What this device sends through the VPN</Text>
+              <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
               <SegmentedControl
                 data={[{ value: 'split', label: 'Only your networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
                 {...form.getInputProps('clientRoutes')}
               />
               <Text size="xs" c="dimmed">
-                {v.clientRoutes === 'split' && `Only traffic for ${localNetworks(staged).join(', ')} uses the tunnel. The device’s own internet stays as it is.`}
-                {v.clientRoutes === 'full' && 'Everything goes through OPF and out its internet connection, translated to the WAN address by outbound NAT.'}
+                {v.clientRoutes === 'split' && `The device’s configuration sends only traffic for ${localNetworks(staged).join(', ')} through the tunnel, and its own internet connection handles the rest. OPF also blocks anything else the device sends, so it can’t reach the internet through OPF even if its configuration is changed.`}
+                {v.clientRoutes === 'full' && `The device’s configuration sends everything through the tunnel and out OPF’s internet connection, translated to the WAN address by outbound NAT. Your ${tunnel.name} rules decide what it may reach.`}
                 {v.clientRoutes === 'site' && 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.'}
               </Text>
             </Stack>
@@ -290,6 +281,7 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const nat = staged.firewall.outboundNat;
   const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'iface' && n.source.iface === tunnel.id);
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
+  const splitPeers = wg.peers.filter((p) => p.clientRoutes === 'split');
 
   return (
     <Card>
@@ -327,6 +319,7 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
             Traffic arriving from the tunnel is checked by{' '}
             <Anchor component={Link} to={`/firewall/rules/${tunnel.id}`} size="sm">{tunnelRules.length} {tunnel.name} rule{tunnelRules.length === 1 ? '' : 's'}</Anchor>
             {tunnelRules.length ? `: ${tunnelRules.map((r) => r.description).join('; ')}.` : '. With none, everything from the tunnel is blocked.'}
+            {splitPeers.length > 0 && tunnel.enabled && ` Before those, OPF blocks ${splitPeers.map((p) => p.name).join(', ')} from reaching anything but your networks.`}
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Internet access</Text>}>

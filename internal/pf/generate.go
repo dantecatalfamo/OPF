@@ -401,11 +401,12 @@ func quote(s string) string {
 // at most 63 bytes, expands macros such as $if, and changes the loaded
 // ruleset whenever it's edited.
 const (
-	LabelRule    = "rule"     // a firewall rule, by id
-	LabelForward = "forward"  // a port forward and its reflection rules, by id
-	LabelNAT     = "nat"      // an outbound NAT rule, by id
-	LabelAutoNAT = "auto-nat" // automatic outbound NAT, by inside interface id
-	LabelBuiltin = "builtin"  // OPF's own rules, by name
+	LabelRule    = "rule"         // a firewall rule, by id
+	LabelForward = "forward"      // a port forward and its reflection rules, by id
+	LabelNAT     = "nat"          // an outbound NAT rule, by id
+	LabelAutoNAT = "auto-nat"     // automatic outbound NAT, by inside interface id
+	LabelBuiltin = "builtin"      // OPF's own rules, by name
+	LabelSplit   = "split-tunnel" // limits on a tunnel's split-tunnel peers, by interface id
 )
 
 const labelPrefix = "opf:"
@@ -426,7 +427,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit:
 	default:
 		return "", "", false
 	}
@@ -669,6 +670,11 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	if wan != nil && wan.BlockPrivate {
 		add("table <private> const { 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 }", &Origin{Label: "WAN protection", To: fmt.Sprintf("/interfaces/%s", wan.ID)})
 	}
+	split := splitPeers(m)
+	if len(split) > 0 {
+		add(fmt.Sprintf("table <%s> const { %s }", LocalTable, strings.Join(LocalNetworks(m, true), " ")),
+			&Origin{Label: "WireGuard: your networks", To: "/services/wireguard"})
+	}
 	blank()
 
 	// Options
@@ -762,6 +768,27 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			fmt.Sprintf("block in log quick on $%s from <bogons>%s", wan.ID, label(LabelBuiltin, "block-bogons")))
 	}
 	blank()
+
+	// Devices told to send only local traffic through their tunnel may
+	// only reach local networks, whatever their own configuration says.
+	// Before every user rule, so no pass rule can widen it.
+	if len(split) > 0 {
+		add("# WireGuard devices limited to your networks", nil)
+		for _, t := range split {
+			var names, addrs []string
+			for _, p := range t.peers {
+				names = append(names, p.Name)
+				addrs = append(addrs, p.Address)
+			}
+			from := addrs[0]
+			if len(addrs) > 1 {
+				from = "{ " + strings.Join(addrs, " ") + " }"
+			}
+			described(fmt.Sprintf("%s: %s", t.iface.Name, strings.Join(names, ", ")), &Origin{Label: "WireGuard: " + t.iface.Name, To: "/services/wireguard/" + t.iface.ID},
+				fmt.Sprintf("block in log quick on $%s inet from %s to ! <%s>%s", t.iface.ID, from, LocalTable, label(LabelSplit, t.iface.ID)))
+		}
+		blank()
+	}
 
 	// Port forwards
 	var forwards []PortForward
@@ -1077,4 +1104,79 @@ func networkAddr(address string, prefix int) string {
 func netmask(prefix int) string {
 	mask := net.CIDRMask(prefix, 32)
 	return net.IP(mask).String()
+}
+
+// LocalTable is the pf table of LocalNetworks, generated when a tunnel
+// has split-tunnel peers.
+const LocalTable = "opf_local"
+
+// LocalNetworks is what counts as "your networks" for a split-tunnel
+// peer: every enabled inside interface's network, every network behind
+// a site-to-site peer, and every static route's. A peer's configuration
+// sends these into its tunnel, and pf lets it reach nothing else. With
+// dynamic, an inside interface addressed by DHCP is included as
+// $id:network, which pf resolves when it loads the rules; a device's
+// configuration can only list fixed networks, so without it they're
+// left out.
+func LocalNetworks(m *Model, dynamic bool) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(n string) {
+		if !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	for i := range m.Interfaces {
+		f := &m.Interfaces[i]
+		if !f.Enabled || f.Role == RoleWAN {
+			continue
+		}
+		if n, ok := ifaceNet(f); ok {
+			add(n.String())
+		} else if dynamic && f.IPv4.Mode == IPv4DHCP {
+			add("$" + f.ID + ":network")
+		}
+	}
+	for _, t := range m.Tunnels() {
+		if !t.Enabled {
+			continue
+		}
+		for _, p := range t.WireGuard.Peers {
+			for _, n := range p.Networks {
+				add(n)
+			}
+		}
+	}
+	for _, r := range m.Routing.Routes {
+		if r.Enabled {
+			add(r.Network)
+		}
+	}
+	return out
+}
+
+type splitTunnel struct {
+	iface *Iface
+	peers []Peer
+}
+
+// splitPeers returns the enabled tunnels with split-tunnel peers.
+func splitPeers(m *Model) []splitTunnel {
+	var out []splitTunnel
+	for _, t := range m.Tunnels() {
+		if !t.Enabled {
+			continue
+		}
+		var peers []Peer
+		for _, p := range t.WireGuard.Peers {
+			if p.ClientRoutes == ClientRoutesSplit {
+				peers = append(peers, p)
+			}
+		}
+		if len(peers) > 0 {
+			out = append(out, splitTunnel{t, peers})
+		}
+	}
+	return out
 }

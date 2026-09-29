@@ -422,6 +422,10 @@ skipped and the web process isn't dropped to another user.
       `/var/run/unbound.sock` works with unbound's chroot; the parent can
       read `/var/db/dhcpd.leases` under unveil, including after dhcpd
       replaces the file.
+- [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
+      in a `const` table (used for DHCP-addressed inside networks in
+      `<opf_local>`), and the block rule stops a split-tunnel device
+      that sets `AllowedIPs = 0.0.0.0/0` from reaching the internet.
 - [ ] Check how dhcpd writes a `client-hostname` containing `"`. If
       `db_printable` lets it through unescaped, a client can forge extra
       lease statements in the file. Records limits the damage (dynamic
