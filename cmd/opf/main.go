@@ -102,6 +102,7 @@ func main() {
 	}
 	watcher := &leases.Watcher{File: leasesFile, Model: liveModel(api), Resolver: resolver, Log: log.Default()}
 	api.OnChange(watcher.Kick)
+	api.SetLeaseWatcher(watcher)
 	go watcher.Run(sigCtx)
 
 	log.Printf("listening on http://%s", ln.Addr())

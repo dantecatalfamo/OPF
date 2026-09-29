@@ -107,6 +107,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		Log:      log.Default(),
 	}
 	api.OnChange(watcher.Kick)
+	api.SetLeaseWatcher(watcher)
 	go watcher.Run(context.Background())
 
 	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)

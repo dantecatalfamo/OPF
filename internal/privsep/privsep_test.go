@@ -140,6 +140,9 @@ func TestRPCRoundTrip(t *testing.T) {
 	if err != nil || len(d.Diffs) != 2 {
 		t.Fatalf("GetCommit = %+v, %v", d, err)
 	}
+	if n, err := c.LeaseNames(); err != nil || n == nil || n.Registered == nil {
+		t.Fatalf("LeaseNames = %+v, %v", n, err)
+	}
 	back, err := c.CommitConfig(commit.ID, appliance.Before)
 	if err != nil || back.Model == nil {
 		t.Fatalf("CommitConfig = %+v, %v", back, err)

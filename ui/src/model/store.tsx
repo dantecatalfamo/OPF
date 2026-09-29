@@ -11,7 +11,8 @@ import { sectionLabel } from '../lib/sections';
 import { api, offline, type ChangeNote, type CommitResource, type FileChange } from '../lib/api';
 import { localApi } from '../lib/localApi';
 
-const backend = offline ? localApi : api;
+// The server, or the preview build's in-browser stand-in.
+export const backend = offline ? localApi : api;
 
 const sectionOf: Record<Section, (m: Model) => unknown> = {
   system: (m) => m.system,

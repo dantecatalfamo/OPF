@@ -162,6 +162,30 @@ This changes nothing. To restore it, stage it with `PUT
 /api/config/staged` and commit it, so it's validated and reviewed like
 any other change.
 
+### `GET /api/dns/leases`
+
+What the DHCP lease watcher last did: the names dynamic leases have in
+DNS, and the leases that weren't given the name they asked for.
+
+```json
+{
+  "enabled": true,
+  "checked": "2026-09-28T17:12:32-04:00",
+  "registered": [{"name": "priya-mbp.office.arpa", "ip": "192.168.1.112"}],
+  "refused": [{"ip": "192.168.1.150", "hostname": "wpad", "reason": "the name is taken by the configuration"}],
+  "error": "unbound isn’t answering on its control socket"
+}
+```
+
+`enabled` is false while "Add other DHCP devices by name" is off.
+`checked` is absent before the first pass. The watcher looks every 15 s
+and right after a commit. `error` describes a failed pass; the lists
+are then from the last pass that got that far, and OPF's log has the
+details. Hostnames are chosen by the devices: characters that aren't
+printable (including bidi overrides) become U+FFFD and they're cut to
+64 characters. Each list holds at most 1000 entries, in name or address
+order, with `truncated` set when there were more.
+
 ### `POST /api/pf/parse`
 
 `{"text": "pass in on $lan …", "model": {…}}` → `{"rule": {…}}`. The

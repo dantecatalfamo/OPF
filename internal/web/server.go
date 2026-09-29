@@ -14,6 +14,7 @@
 //	POST   /api/commits/{id}/confirm      keep a pending commit
 //	POST   /api/commits/{id}/revert       undo a pending commit now
 //	GET    /api/commits/{id}/config/{which}  the model before or after a commit
+//	GET    /api/dns/leases                names DHCP leases have in DNS, and refused ones
 //	POST   /api/pf/parse                  pf rule text to a rule
 //	POST   /api/pf/render                 a rule to pf rule text
 //
@@ -55,6 +56,7 @@ func New(api appliance.API) *Server {
 	s.mux.HandleFunc("POST /api/commits/{id}/confirm", s.confirm)
 	s.mux.HandleFunc("POST /api/commits/{id}/revert", s.revert)
 	s.mux.HandleFunc("GET /api/commits/{id}/config/{which}", s.getCommitConfig)
+	s.mux.HandleFunc("GET /api/dns/leases", s.leaseNames)
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
 	s.mux.HandleFunc("POST /api/pf/render", s.renderRule)
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +275,17 @@ func (s *Server) getCommitConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	setETag(w, c.Version)
 	writeJSON(w, http.StatusOK, c)
+}
+
+// ---------- DNS ----------
+
+func (s *Server) leaseNames(w http.ResponseWriter, r *http.Request) {
+	n, err := s.api.LeaseNames()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, n)
 }
 
 // ---------- pf helpers ----------

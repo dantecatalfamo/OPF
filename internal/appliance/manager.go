@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
@@ -42,6 +43,61 @@ type Manager struct {
 	mu sync.Mutex
 
 	onChange func()
+	leases   *leases.Watcher
+}
+
+// SetLeaseWatcher gives LeaseNames the watcher to report on. Set it
+// before serving.
+func (m *Manager) SetLeaseWatcher(w *leases.Watcher) { m.leases = w }
+
+// LeaseNames reports what the lease watcher last did. It doesn't take
+// the lock: the watcher has its own.
+func (m *Manager) LeaseNames() (*LeaseNames, error) {
+	out := &LeaseNames{Registered: []LeaseName{}, Refused: []RefusedName{}}
+	if m.leases == nil {
+		return out, nil
+	}
+	st := m.leases.State()
+	out.Enabled, out.Error = st.Enabled, st.Error
+	if !st.Checked.IsZero() {
+		out.Checked = &st.Checked
+	}
+	for _, r := range st.Registered {
+		if len(out.Registered) == MaxLeaseNames {
+			out.Truncated = true
+			break
+		}
+		out.Registered = append(out.Registered, LeaseName{strings.TrimSuffix(r.Name, "."), r.IP.String()})
+	}
+	for _, r := range st.Refused {
+		if len(out.Refused) == MaxLeaseNames {
+			out.Truncated = true
+			break
+		}
+		out.Refused = append(out.Refused, RefusedName{r.IP.String(), displayable(r.Hostname), r.Reason})
+	}
+	return out, nil
+}
+
+// displayable makes a client-chosen hostname safe to show: invalid
+// UTF-8 and anything not printable (control characters, and format
+// characters such as bidi overrides that could make it read as another
+// name) become U+FFFD, and it's cut to MaxHostnameRunes.
+func displayable(s string) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range s {
+		if n == MaxHostnameRunes {
+			b.WriteString("…")
+			break
+		}
+		if r == utf8.RuneError || !unicode.IsPrint(r) {
+			r = utf8.RuneError
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return b.String()
 }
 
 // OnChange sets a function called, without the lock held, after each

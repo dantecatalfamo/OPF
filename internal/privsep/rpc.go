@@ -69,6 +69,10 @@ type (
 		Result
 		Detail *appliance.CommitDetail
 	}
+	LeaseNamesReply struct {
+		Result
+		Names *appliance.LeaseNames
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -82,6 +86,13 @@ func (s *Service) Status(_ None, r *StatusReply) error {
 	var err error
 	r.Status, err = s.api.Status()
 	r.set("Status", err)
+	return nil
+}
+
+func (s *Service) LeaseNames(_ None, r *LeaseNamesReply) error {
+	var err error
+	r.Names, err = s.api.LeaseNames()
+	r.set("LeaseNames", err)
 	return nil
 }
 
@@ -200,6 +211,21 @@ func (c *Client) Status() (*appliance.Status, error) {
 	var r StatusReply
 	err := c.call("Status", None{}, &r)
 	return r.Status, err
+}
+
+func (c *Client) LeaseNames() (*appliance.LeaseNames, error) {
+	var r LeaseNamesReply
+	err := c.call("LeaseNames", None{}, &r)
+	// gob sends empty slices as nothing; keep them empty lists.
+	if r.Names != nil {
+		if r.Names.Registered == nil {
+			r.Names.Registered = []appliance.LeaseName{}
+		}
+		if r.Names.Refused == nil {
+			r.Names.Refused = []appliance.RefusedName{}
+		}
+	}
+	return r.Names, err
 }
 
 func (c *Client) Live() (*appliance.Config, error) {

@@ -1,13 +1,103 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Button, Card, Grid, Group, Modal, SegmentedControl, Stack, Switch, Table, TagsInput, Text, TextInput } from '@mantine/core';
+import { Accordion, ActionIcon, Alert, Button, Card, Grid, Group, Modal, SegmentedControl, Stack, Switch, Table, TagsInput, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { newId, useStore } from '../model/store';
+import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
+import { backend, newId, useStore } from '../model/store';
+import type { LeaseNamesResource } from '../lib/api';
+import { formatAgo } from '../lib/format';
+import { useNow } from '../lib/useNow';
 import type { Dns as DnsSettings } from '../model/types';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
+
+// How often the page asks what the lease watcher found; it looks every 15 s.
+const LEASE_POLL_MS = 15_000;
+
+// The names DHCP devices have in DNS right now, and the ones that were
+// refused. The server keeps them up to date; this only shows them.
+function LeaseNames() {
+  const { applied } = useStore();
+  const [data, setData] = useState<LeaseNamesResource | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const now = useNow(5000);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      backend.leaseNames().then(
+        (d) => { if (live) { setData(d); setFailed(null); } },
+        (e) => { if (live) setFailed(e instanceof Error ? e.message : String(e)); },
+      );
+    load();
+    const t = setInterval(load, LEASE_POLL_MS);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+
+  const domain = applied.system.domain;
+  if (!applied.dns.registerDynamicLeases && !data?.enabled) return null;
+  return (
+    <Card>
+      <SectionTitle right={data?.checked && <Text size="xs" c="dimmed">Checked {formatAgo((now - Date.parse(data.checked)) / 1000)}</Text>}>
+        DHCP devices by name
+      </SectionTitle>
+      <Stack gap="sm">
+        {failed && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
+        {data?.error && <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
+        {data && !data.enabled && <Text size="sm" c="dimmed">Starts once “Add other DHCP devices by name” is applied.</Text>}
+        {data?.enabled && (
+          <>
+            <Text size="sm" c="dimmed">
+              Names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
+            </Text>
+            {data.registered.length ? (
+              <Table.ScrollContainer minWidth={360}>
+                <Table>
+                  <Table.Tbody>
+                    {data.registered.map((r) => (
+                      <Table.Tr key={r.name}>
+                        <Table.Td><Mono>{r.name}</Mono></Table.Td>
+                        <Table.Td><Mono>{r.ip}</Mono></Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            ) : (
+              <Empty>No devices have names from their leases yet.</Empty>
+            )}
+            {data.refused.length > 0 && (
+              <Accordion variant="contained" radius="md">
+                <Accordion.Item value="refused">
+                  <Accordion.Control>
+                    <Text size="sm">{data.refused.length} device{data.refused.length === 1 ? '' : 's'} didn’t get the name {data.refused.length === 1 ? 'it' : 'they'} asked for</Text>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Table.ScrollContainer minWidth={420}>
+                      <Table>
+                        <Table.Tbody>
+                          {data.refused.map((r) => (
+                            <Table.Tr key={r.ip}>
+                              {/* Chosen by the device; shown as text, never markup. */}
+                              <Table.Td><Mono>“{r.hostname}”</Mono></Table.Td>
+                              <Table.Td><Mono>{r.ip}</Mono></Table.Td>
+                              <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+            )}
+            {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000 of each.</Text>}
+          </>
+        )}
+      </Stack>
+    </Card>
+  );
+}
 
 function OverrideModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const { staged, edit } = useStore();
@@ -109,35 +199,38 @@ export function Dns() {
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 7 }}>
-          <Card>
-            <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal(true)}>Add host name</Button>}>
-              Local host names
-            </SectionTitle>
-            {dns.overrides.length ? (
-              <Table.ScrollContainer minWidth={420}>
-                <Table>
-                  <Table.Tbody>
-                    {dns.overrides.map((o) => (
-                      <Table.Tr key={o.id}>
-                        <Table.Td>
-                          <Mono>{o.host}.{o.domain}</Mono>
-                          <Text size="xs" c="dimmed">{o.description}</Text>
-                        </Table.Td>
-                        <Table.Td><Mono>{o.ip}</Mono></Table.Td>
-                        <Table.Td w={40}>
-                          <ActionIcon variant="subtle" color="gray" aria-label="Remove" onClick={() => edit('dns', `Removed host name ${o.host}.${o.domain}`, (m) => ({ ...m, dns: { ...m.dns, overrides: m.dns.overrides.filter((x) => x.id !== o.id) } }))}>
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            ) : (
-              <Empty>No local host names.</Empty>
-            )}
-          </Card>
+          <Stack gap="md">
+            <Card>
+              <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal(true)}>Add host name</Button>}>
+                Local host names
+              </SectionTitle>
+              {dns.overrides.length ? (
+                <Table.ScrollContainer minWidth={420}>
+                  <Table>
+                    <Table.Tbody>
+                      {dns.overrides.map((o) => (
+                        <Table.Tr key={o.id}>
+                          <Table.Td>
+                            <Mono>{o.host}.{o.domain}</Mono>
+                            <Text size="xs" c="dimmed">{o.description}</Text>
+                          </Table.Td>
+                          <Table.Td><Mono>{o.ip}</Mono></Table.Td>
+                          <Table.Td w={40}>
+                            <ActionIcon variant="subtle" color="gray" aria-label="Remove" onClick={() => edit('dns', `Removed host name ${o.host}.${o.domain}`, (m) => ({ ...m, dns: { ...m.dns, overrides: m.dns.overrides.filter((x) => x.id !== o.id) } }))}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              ) : (
+                <Empty>No local host names.</Empty>
+              )}
+            </Card>
+            <LeaseNames />
+          </Stack>
         </Grid.Col>
       </Grid>
       <OverrideModal opened={modal} onClose={() => setModal(false)} />

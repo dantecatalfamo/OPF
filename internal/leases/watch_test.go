@@ -212,3 +212,35 @@ func TestKickDoesntBlock(t *testing.T) {
 		w.Kick()
 	}
 }
+
+func TestWatcherState(t *testing.T) {
+	e := newWatcher(t)
+	if st := e.w.State(); !st.Checked.IsZero() || st.Enabled {
+		t.Errorf("before the first pass: %+v", st)
+	}
+	e.leases("192.168.1.101", "laptop", "192.168.1.102", "wpad")
+	e.sync()
+	st := e.w.State()
+	if !st.Enabled || !st.Checked.Equal(now) || st.Error != "" ||
+		len(st.Registered) != 1 || st.Registered[0].Name != "laptop.office.arpa." ||
+		len(st.Refused) != 1 || st.Refused[0].Hostname != "wpad" {
+		t.Fatalf("state %+v", st)
+	}
+
+	// A failed pass says so for people, and keeps what's still true.
+	e.w.Resolver = Unbound{Runner: &fakeRunner{err: errors.New("exit status 1")}, Config: "unbound.conf"}
+	if err := e.w.Sync(context.Background()); err == nil {
+		t.Fatal("no error with unbound unreachable")
+	}
+	st = e.w.State()
+	if st.Error != "unbound isn’t answering on its control socket" || len(st.Registered) != 1 || strings.Contains(st.Error, "exit status") {
+		t.Errorf("after a failure: %+v", st)
+	}
+
+	// Turned off: nothing to report.
+	e.model.DNS.RegisterDynamicLeases = false
+	e.sync()
+	if st := e.w.State(); st.Enabled || st.Error != "" || len(st.Registered) != 0 || st.Checked.IsZero() {
+		t.Errorf("turned off: %+v", st)
+	}
+}

@@ -38,6 +38,43 @@ type Watcher struct {
 	// What was last logged, to report changes rather than every pass.
 	lastErr     string
 	lastSkipped string
+
+	mu    sync.Mutex
+	state State
+}
+
+// State is what the last pass found, for showing people.
+type State struct {
+	Enabled    bool      // registration is turned on in the live model
+	Checked    time.Time // when the last pass ran; zero before the first
+	Registered []Record  // names the leases have in unbound
+	Refused    []Skipped // leases whose names weren't registered, and why
+	// Error says, for people, what went wrong in the last pass; the
+	// log has the details. Registered and Refused are then from the
+	// last pass that got that far.
+	Error string
+}
+
+// State returns what the last pass found.
+func (w *Watcher) State() State {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	s := w.state
+	s.Registered = slices.Clone(s.Registered)
+	s.Refused = slices.Clone(s.Refused)
+	return s
+}
+
+func (w *Watcher) update(f func(*State)) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	f(&w.state)
+}
+
+// failed records a failed pass: msg for people, err for the log.
+func (w *Watcher) failed(now time.Time, msg string, err error) error {
+	w.update(func(s *State) { s.Checked, s.Error = now, msg })
+	return fmt.Errorf("%s: %w", msg, err)
 }
 
 func (w *Watcher) init() {
@@ -97,28 +134,34 @@ func (w *Watcher) logf(format string, args ...any) {
 // off: unbound's control socket only exists while it's on, and turning
 // it off reloads unbound, which drops the records.
 func (w *Watcher) Sync(ctx context.Context) error {
-	m, err := w.Model()
-	if err != nil {
-		return fmt.Errorf("reading the configuration: %w", err)
-	}
-	if m == nil || !Enabled(m) {
-		return nil
-	}
 	now := time.Now()
 	if w.Now != nil {
 		now = w.Now()
 	}
+	m, err := w.Model()
+	if err != nil {
+		return w.failed(now, "OPF couldn’t read its configuration", err)
+	}
+	if m == nil || !Enabled(m) {
+		w.update(func(s *State) { *s = State{Checked: now} })
+		return nil
+	}
+	w.update(func(s *State) { s.Enabled = true })
 	leases, err := w.read()
 	if err != nil {
-		return err
+		return w.failed(now, "dhcpd’s leases file couldn’t be read, so names are as they were", err)
 	}
 	want, skipped := Records(m, leases, now)
 	w.reportSkipped(skipped)
 	have, err := w.Resolver.List(ctx)
 	if err != nil {
-		return fmt.Errorf("reading unbound's local data: %w", err)
+		return w.failed(now, "unbound isn’t answering on its control socket", err)
 	}
-	return w.reconcile(ctx, Zone(m), Static(m), want, have)
+	if err := w.reconcile(ctx, Zone(m), Static(m), want, have); err != nil {
+		return w.failed(now, "some names couldn’t be updated in unbound", err)
+	}
+	w.update(func(s *State) { *s = State{Enabled: true, Checked: now, Registered: want, Refused: skipped} })
+	return nil
 }
 
 func (w *Watcher) read() ([]Lease, error) {

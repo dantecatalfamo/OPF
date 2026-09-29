@@ -543,8 +543,10 @@ Types, roughly in order of usefulness:
 - [ ] A commit reverted by the confirm timeout doesn't kick the watcher,
       so names are missing for up to 15 s after unbound reloads.
 - [ ] IPv4 only; no names for SLAAC or DHCPv6 clients.
-- [ ] Show registered and refused names in the UI (the DHCP leases page
-      still uses sample data).
+- [x] Show registered and refused names in the UI: `GET /api/dns/leases`
+      and "DHCP devices by name" on the DNS page.
+- [ ] The DHCP page's leases table still uses sample data; it could read
+      the leases file too and say which name each device got.
 
 ## Staging and commit
 

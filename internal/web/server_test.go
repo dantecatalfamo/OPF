@@ -201,3 +201,12 @@ func TestPfHelpers(t *testing.T) {
 	}
 	c.do("POST", "/api/pf/parse", `{"text":"not pf"}`, 422, nil)
 }
+
+func TestLeaseNames(t *testing.T) {
+	c := client{t, newServer(t)}
+	var n appliance.LeaseNames
+	c.do("GET", "/api/dns/leases", "", 200, &n)
+	if n.Registered == nil || n.Refused == nil {
+		t.Errorf("lists should be empty, not missing: %+v", n)
+	}
+}

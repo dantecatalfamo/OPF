@@ -30,6 +30,7 @@ type API interface {
 	Confirm(id string) (*Commit, error)
 	Revert(id string) (*Commit, error)
 	CommitConfig(id string, which Which) (*Config, error)
+	LeaseNames() (*LeaseNames, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -131,6 +132,36 @@ type Status struct {
 	Staged  string  `json:"staged,omitempty"`
 	Pending *Commit `json:"pending,omitempty"`
 }
+
+// LeaseNames is what the DHCP lease watcher last did: the names
+// dynamic leases have in DNS, and the leases that were refused one.
+// Hostnames come from the clients, so they're shown sanitized.
+type LeaseNames struct {
+	Enabled    bool          `json:"enabled"`
+	Checked    *time.Time    `json:"checked,omitempty"` // the last pass; absent before the first
+	Registered []LeaseName   `json:"registered"`
+	Refused    []RefusedName `json:"refused"`
+	// Truncated says the lists were cut to MaxLeaseNames entries.
+	Truncated bool   `json:"truncated,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+type LeaseName struct {
+	Name string `json:"name"` // fully qualified, without the trailing dot
+	IP   string `json:"ip"`
+}
+
+type RefusedName struct {
+	IP       string `json:"ip"`
+	Hostname string `json:"hostname"` // as the client sent it, sanitized
+	Reason   string `json:"reason"`
+}
+
+// Limits on what LeaseNames reports, whatever the leases file holds.
+const (
+	MaxLeaseNames    = 1000
+	MaxHostnameRunes = 64
+)
 
 // Which picks a side of a commit: the configuration before or after it.
 type Which string

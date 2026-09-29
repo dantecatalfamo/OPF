@@ -6,9 +6,10 @@ import type { Model } from '../model/types';
 import { generateFiles } from '../model/generate';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
+import { leases as sampleLeases } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
-  type StagedResource, type StatusResource,
+  type LeaseNamesResource, type StagedResource, type StatusResource,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -148,6 +149,21 @@ export const localApi = {
     const r = requirePending(id);
     finishRevert(r);
     return clone(r.resource);
+  },
+  // The sample's dynamic leases (ui/src/model/live.ts), named as the
+  // server would name them if nothing else claims the name.
+  leaseNames: async (): Promise<LeaseNamesResource> => {
+    const d = live.dns;
+    if (!d.enabled || !d.registerDynamicLeases) return { enabled: false, registered: [], refused: [] };
+    const reserved = live.dhcp.flatMap((s) => s.reservations);
+    const taken = new Set([live.system.hostname, ...reserved.map((r) => r.hostname), ...d.overrides.map((o) => o.host), 'wpad', 'isatap', 'localhost']);
+    const dynamic = sampleLeases.filter((l) => !reserved.some((r) => r.ip === l.ip));
+    return {
+      enabled: true,
+      checked: new Date().toISOString(),
+      registered: dynamic.filter((l) => !taken.has(l.hostname)).map((l) => ({ name: `${l.hostname}.${live.system.domain}`, ip: l.ip })),
+      refused: dynamic.filter((l) => taken.has(l.hostname)).map((l) => ({ ip: l.ip, hostname: l.hostname, reason: 'the name is taken by the configuration' })),
+    };
   },
   commitConfig: async (id: string, which: 'before' | 'after'): Promise<ConfigResource> => {
     const r = record(id);
