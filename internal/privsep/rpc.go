@@ -211,7 +211,9 @@ func Serve(api *appliance.Manager, conn io.ReadWriteCloser) {
 	if err := srv.RegisterName("OPF", svc); err != nil {
 		panic(err) // only fails if Service's method set is malformed
 	}
-	srv.ServeConn(conn)
+	// Reads are size-limited: the web process is untrusted, and gob
+	// would otherwise allocate whatever a message claims to need.
+	srv.ServeCodec(newServerCodec(conn))
 	close(svc.done)
 }
 

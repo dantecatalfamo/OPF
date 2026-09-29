@@ -577,9 +577,6 @@ Network, VPN and logs:
       rc(8), and sshd_config and httpd.conf are powerful. That comes with
       the product, but it's why authentication and audit logging matter.
 - [ ] Record who made each commit once there are users.
-- [ ] Cap RPC message sizes: gob decoding in the root process is
-      unbounded (HTTP bodies are capped at 4 MiB, but a compromised web
-      process could send more).
 - [ ] **Secret storage** for WireGuard private keys (one per tunnel),
       PPPoE credentials and CARP passwords: kept out of the model and
       its history, readable only by root, and generated where possible.
@@ -628,8 +625,9 @@ Engine, processes and API:
       exactly the old content, history survives a restart. Hand-edits
       between staging and commit block the commit and are kept.
 - [ ] RPC: every method's success and error paths, errors crossing the
-      process boundary, malicious input (oversized messages, unknown
-      methods) that can't crash or escalate the parent, random bytes on
+      process boundary, malicious input (unknown methods, malformed
+      requests; oversized messages are covered) that can't crash or
+      escalate the parent, random bytes on
       the socketpair, and the lifecycle (child crash → restart, parent
       shutdown → child exits, unconfirmed commits revert).
 - [ ] HTTP: every route with valid and invalid input, missing
@@ -774,6 +772,10 @@ Parser and generators:
 
 Commit engine and API:
 
+- [x] RPC messages from the web process are capped at 8 MiB each,
+      checked from gob's length prefix before the decoder allocates
+      anything; an oversized message drops the connection (the child is
+      restarted). Fuzzed (`FuzzLimitReader`).
 - [x] `hostname.*` pattern entries in the registry (device names only),
       applied first with `sh /etc/netstart <dev>`, mode 0640; `myname`
       and `mygate` are managed files too.
