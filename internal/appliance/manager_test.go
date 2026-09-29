@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -515,5 +516,58 @@ func TestRemoveInterface(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(e.root, "/etc/hostname.wg1")); err != nil {
 			t.Errorf("reverting didn't restore hostname.wg1: %v", err)
 		}
+	}
+}
+
+// rc.conf.local is shared: staging and committing keep its lines that
+// aren't OPF's (pkg_scripts, other daemons' flags), and only a hand
+// change to one of OPF's own lines counts as a change outside OPF.
+func TestRcConfLocalKeepsOtherLines(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	path := filepath.Join(e.root, pf.RcPath)
+	ours := pf.GenerateRcConfLocal(sample(t)) // what OPF wrote for the live model
+	other := "pkg_scripts=\"postgresql\"\npostgresql_flags=\"-D /var/postgresql/data\"\n"
+	if err := os.WriteFile(path, []byte(other+"\n"+ours), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// An admin enables another package with rcctl: not OPF's business.
+	if err := os.WriteFile(path, []byte(strings.Replace(other, `"postgresql"`, `"postgresql nginx"`, 1)+"\n"+ours), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	live := e.live()
+	m := live.Model
+	for i := range m.DHCP {
+		if m.DHCP[i].Iface == "iot" {
+			m.DHCP[i].Enabled = false
+		}
+	}
+	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	if err != nil {
+		t.Fatalf("stage: %v %+v", err, AsError(err).Details)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "no DHCP on IoT"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Status == StatusPending {
+		e.m.Confirm(c.ID)
+	}
+	got, _ := os.ReadFile(path)
+	for _, want := range []string{`pkg_scripts="postgresql nginx"`, `postgresql_flags="-D /var/postgresql/data"`, `dhcpd_flags="em1"`} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("missing %q in rc.conf.local:\n%s", want, got)
+		}
+	}
+
+	// Someone disables dhcpd by hand: that is OPF's line, so it's a
+	// change outside OPF.
+	os.WriteFile(path, []byte(strings.Replace(string(got), `dhcpd_flags="em1"`, `dhcpd_flags=NO`, 1)), 0644)
+	live = e.live()
+	m = live.Model
+	m.System.NTPServers = []string{"other.example"}
+	_, err = e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	if code(err) != CodeModifiedOutside || !strings.Contains(fmt.Sprint(AsError(err).Details), pf.RcPath) {
+		t.Errorf("hand-disabled dhcpd: %v", err)
 	}
 }

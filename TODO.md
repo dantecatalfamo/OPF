@@ -331,6 +331,12 @@ until the admin does.
       is saved.
 - [ ] Rules with their own label stay raw (the guided form's label is
       its id). Offer to turn those labels into descriptions.
+- [ ] `rc.conf.local`: nothing to import but OPF's own lines, since the
+      rest of the file is kept as it is. Import must derive DHCP and DNS
+      from their config files and check `dhcpd_flags` and
+      `unbound_flags` agree (dhcpd enabled on exactly the devices with
+      a scope, unbound on when DNS is), and ask the admin when they
+      don't rather than change what's running.
 - [ ] First-run wizard: detect existing configs and offer to import them;
       set up WAN, LAN and the admin password.
 - [ ] Still raw: bare names or `name:0` that aren't model interfaces (pf
@@ -429,12 +435,9 @@ checker (`httpd -n`, `smtpd -n`, `bgpd -n`, `ospfd -n`). Each daemon's
 model gets structured fields where practical plus a field for extra
 lines, all through the commit engine.
 
-- [ ] **OPF owns all of `rc.conf.local`.** It's generated whole, so an
-      existing system's lines (`pkg_scripts`, other daemons' flags) are
-      flagged as changed outside OPF and replaced if the user agrees.
-      Import should carry them into the model, and the Services page
-      will need the file to hold every service it manages
-      (`config.RcServices` and the generator grow together).
+- [ ] The Services page will manage more daemons through
+      `rc.conf.local`: `config.RcServices`, `pf.RcNames` and `RcVars`
+      grow together (a test holds them to the same list).
 - [ ] **A Services page** listing every base daemon, grouped by
       category, with name, description, enabled and running, quick
       actions (start, stop, restart, enable, disable) and links to the
@@ -773,6 +776,13 @@ Parser and generators:
 
 Commit engine and API:
 
+- [x] `rc.conf.local` is shared, not owned: OPF sets only `dhcpd_flags`
+      and `unbound_flags`, in a marked block at the end, and keeps every
+      other line (`pkg_scripts`, other daemons' flags, comments) where it
+      is, so `rcctl enable` for a package and an existing system's setup
+      survive. Only a hand change to OPF's own lines counts as a change
+      outside OPF, and the reconcile reads those lines instead of
+      sourcing the file.
 - [x] Removing generated files: a file the new model no longer generates
       is staged for removal (with the same modified-outside protection),
       committed by removing it and running its Remove command (`ifconfig

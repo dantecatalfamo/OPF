@@ -198,11 +198,13 @@ var RcServices = []string{"dhcpd", "unbound"}
 
 // RcReconcile brings RcServices in line with an rc.conf.local, $1: a
 // service it disables is stopped, one it enables is restarted if it's
-// running (so new flags take effect) or started if not. The file may be
-// gone after a revert, which leaves them all disabled, as they are by
-// default. Any failure fails the commit, which is then reverted.
+// running (so new flags take effect) or started if not. It reads only
+// those services' lines rather than sourcing the file, whose other
+// lines aren't OPF's. The file may be gone after a revert, which leaves
+// them all disabled, as they are by default. Any failure fails the
+// commit, which is then reverted.
 var RcReconcile = `set -e
-if [ -f "$1" ]; then . "$1"; fi
+if [ -f "$1" ]; then eval "$(grep -E '^[[:space:]]*(` + strings.Join(RcServices, "|") + `)_flags=' "$1" || true)"; fi
 for s in ` + strings.Join(RcServices, " ") + `; do
 	eval "f=\${${s}_flags-NO}"
 	if [ "$f" = NO ]; then

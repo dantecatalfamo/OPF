@@ -458,14 +458,15 @@ function unboundConf(m: Model): string {
   return lines.join('\n') + '\n';
 }
 
-// /etc/rc.conf.local: which daemons OPF runs, and their flags
-// (internal/pf GenerateRcConfLocal).
+// /etc/rc.conf.local: which daemons OPF runs, and their flags. On a
+// real system OPF sets only these lines and keeps the file's others
+// (internal/pf MergeRcConfLocal); the preview has no other lines.
 function rcConfLocal(m: Model): string {
   const devices = m.dhcp
     .filter((s) => s.enabled)
     .flatMap((s) => m.interfaces.filter((i) => i.id === s.iface && i.enabled && i.ipv4.mode === 'static' && i.ipv4.address && i.ipv4.prefix !== undefined))
     .map((i) => i.device);
-  return `${header}\ndhcpd_flags="${devices.length ? devices.join(' ') : 'NO'}"\nunbound_flags="${m.dns.enabled ? '' : 'NO'}"\n`;
+  return `# Set by OPF from its web interface; the lines above are kept as they are.\ndhcpd_flags="${devices.length ? devices.join(' ') : 'NO'}"\nunbound_flags="${m.dns.enabled ? '' : 'NO'}"\n`;
 }
 
 export function generateFiles(m: Model): GeneratedFile[] {

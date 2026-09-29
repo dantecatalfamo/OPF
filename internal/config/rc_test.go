@@ -62,10 +62,20 @@ exit 0
 		{"disabled ones stop", "dhcpd_flags=\"NO\"\nunbound_flags=\"NO\"\n", "dhcpd unbound", []string{"stop dhcpd", "stop unbound"}},
 		{"disabled and stopped: nothing", "dhcpd_flags=\"NO\"\nunbound_flags=\"NO\"\n", "", nil},
 		{"file removed by a revert: all off", "", "dhcpd", []string{"stop dhcpd"}},
+		{"other lines kept in the file", "pkg_scripts=\"postgresql\"\nntpd_flags=\"-s\"\ndhcpd_flags=\"em1\"\n", "", []string{"start dhcpd"}},
 	} {
 		if got := run(c.conf, c.running); !slices.Equal(got, c.want) {
 			t.Errorf("%s: rcctl %q, want %q", c.name, got, c.want)
 		}
+	}
+
+	// The file's other lines aren't run: it's read, not sourced.
+	mark := filepath.Join(dir, "sourced")
+	if got := run("touch \""+mark+"\"\ndhcpd_flags=\"NO\"\n", ""); got != nil {
+		t.Errorf("actions %q", got)
+	}
+	if _, err := os.Stat(mark); err == nil {
+		t.Error("the reconcile ran a line of rc.conf.local that isn't OPF's")
 	}
 
 	// A failing rcctl fails the commit.

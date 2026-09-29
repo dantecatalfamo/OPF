@@ -1059,38 +1059,6 @@ func GenerateUnboundConf(m *Model) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-// GenerateRcConfLocal generates /etc/rc.conf.local: whether each daemon
-// OPF runs is enabled, and its flags. dhcpd is given the devices it
-// serves explicitly, so it never answers on an interface without a
-// scope (the WAN). unbound's empty flags mean enabled with the rc.d
-// script's defaults, as `rcctl enable` writes it. The file is sourced by
-// rc(8) as root, so values are quoted; device names are validated.
-// config.RcServices lists the same daemons, for config.RcReconcile.
-func GenerateRcConfLocal(m *Model) string {
-	var devices []string
-	for _, s := range m.DHCP {
-		if !s.Enabled {
-			continue
-		}
-		for _, i := range m.Interfaces {
-			if i.ID == s.Iface && i.Enabled && i.IPv4.Mode == IPv4Static && i.IPv4.Address != "" && i.IPv4.Prefix != nil {
-				devices = append(devices, i.Device)
-			}
-		}
-	}
-	dhcpd := "NO"
-	if len(devices) > 0 {
-		dhcpd = strings.Join(devices, " ")
-	}
-	unbound := "NO"
-	if m.DNS.Enabled {
-		unbound = ""
-	}
-	// Plain double quotes: the values are device names (validated to
-	// letters and digits) and NO, so nothing in them is special to sh.
-	return fmt.Sprintf("%s\ndhcpd_flags=\"%s\"\nunbound_flags=\"%s\"\n", header, dhcpd, unbound)
-}
-
 // GenerateFiles generates all config files from the model.
 func GenerateFiles(m *Model) []GeneratedFile {
 	files := []GeneratedFile{

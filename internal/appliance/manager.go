@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"net/netip"
 	"runtime"
 	"slices"
@@ -207,6 +208,9 @@ func New(store *config.Store) (*Manager, error) {
 	if err != nil || f.Path != config.ModelPath {
 		return nil, fmt.Errorf("appliance: the file registry has no %s at %s", modelFile, config.ModelPath)
 	}
+	if _, err := store.LookupPath(pf.RcPath); err != nil {
+		return nil, fmt.Errorf("appliance: the file registry has no %s", pf.RcPath)
+	}
 	return &Manager{store: store}, nil
 }
 
@@ -386,7 +390,23 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 	if liveModel != nil {
 		liveGen = generated(liveModel)
 	}
+	// rc.conf.local is shared with the admin and rcctl: OPF's lines are
+	// set in the file as it is, and everything else in it is kept.
 	var problems []Detail
+	rcDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.RcPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	merged, err := pf.MergeRcConfLocal(string(rcDisk), req.Model)
+	if err != nil {
+		return nil, &Error{Code: CodeUnsupported, Message: "OPF can't set its lines in rc.conf.local", Details: []Detail{{Path: pf.RcPath, Message: err.Error()}}}
+	}
+	gen[pf.RcPath] = merged
+	if liveModel != nil {
+		if merged, err := pf.MergeRcConfLocal(string(rcDisk), liveModel); err == nil {
+			liveGen[pf.RcPath] = merged
+		}
+	}
 	var removed []config.File // generated before, not any more
 	type file struct {
 		f       config.File
@@ -410,6 +430,11 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		// What OPF last wrote there, if anything.
 		prev, known := liveGen[path]
 		outside := onDisk != known || (known && !bytes.Equal(disk, config.Normalize([]byte(prev))))
+		if path == pf.RcPath {
+			// Only OPF's own lines count; the rest isn't OPF's, and a
+			// missing file means rc.conf's defaults.
+			outside = known && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(prev))
+		}
 		if outside && !slices.Contains(req.Overwrite, path) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF; list it in overwrite to replace it"})
 		}
@@ -482,6 +507,14 @@ func generated(model *pf.Model) map[string]string {
 		out[f.Path] = f.Content
 	}
 	return out
+}
+
+func mustLookupPath(s *config.Store, path string) config.File {
+	f, err := s.LookupPath(path)
+	if err != nil {
+		panic(fmt.Sprintf("appliance: %s isn't in the registry", path)) // New checks the registry
+	}
+	return f
 }
 
 func mustLookup(s *config.Store, name string) config.File {
