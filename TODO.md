@@ -745,6 +745,31 @@ that the new UI doesn't yet surface. Each feature needs:
 Services from OpenBSD base that should be surfaced in the UI for a
 network appliance. Organized by priority. All are controlled via rcctl.
 
+### Design principle: full configuration through OPF
+
+Every service should be fully configurable through OPF, not just basic
+options. Users should never need to SSH in and edit config files manually.
+
+- [ ] **Basic config UI** for common options (ports, addresses, toggles)
+- [ ] **Advanced config UI** for all daemon options, even obscure ones
+- [ ] **Raw config option** as escape hatch for anything the UI doesn't
+      cover, similar to raw pf rules - include arbitrary config lines
+      that get appended to the generated config file
+- [ ] **Config file preview** showing exactly what will be written,
+      like the pf.conf preview in the Ruleset page
+- [ ] **Validation** using each daemon's own checker where available
+      (e.g., `httpd -n`, `smtpd -n`, `bgpd -n`, `ospfd -n`)
+
+The goal is an appliance where the UI is the complete interface. A user
+who only knows the UI should have access to every feature. Advanced
+users get the same power as editing files directly, with the safety of
+validation and atomic commits.
+
+For each daemon, the model should include:
+- All configuration options as structured fields where practical
+- A `raw` or `extra` field for arbitrary config lines
+- Generated config goes through the commit engine like other files
+
 ### Core services (most users need)
 
 These should show status on the Services page and allow start/stop:
