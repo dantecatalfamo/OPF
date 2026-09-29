@@ -217,7 +217,6 @@ export function Dns() {
                   label="Fix names that aren’t valid"
                   description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${staged.system.domain}. Turned off, devices with names like that get none.`}
                   disabled={!form.values.registerDynamicLeases}
-                  ml="lg"
                   {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
                 />
                 <Group justify="flex-end">
