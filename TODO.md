@@ -241,10 +241,6 @@ In order. Each step's details are in the section it points to.
 
 ## Commit engine and staging
 
-- [ ] Deleting an interface leaves things that mention it without
-      referring to it: a WAN rule that opened a deleted tunnel's port,
-      and alias entries with its network. List them in the delete
-      dialog too, and offer to remove them.
 - [ ] Removing a physical port's `hostname.if` only takes the port down
       (it can't be destroyed); its addresses stay until a reboot.
       Nothing in the UI removes physical ports yet.
@@ -384,7 +380,6 @@ Types, roughly in order of usefulness:
 
 ## WireGuard
 
-- [ ] Editing a peer: only adding and removing exist.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
       usually no NAT) and remote-access ones (clients NATed out) need
       different defaults for automatic NAT and generated rules. Today
@@ -412,9 +407,6 @@ Types, roughly in order of usefulness:
 - [ ] `rewriteInvalidLeaseNames` is meant to be on by default, but a
       model that leaves it out has it off. Import and the first-run
       wizard must set it.
-- [ ] Reserving an address from the leases table picks the lease's
-      address, which is inside the dynamic range, so dhcpd can hand it to
-      another device too. Offer a free address outside the range.
 - [ ] No PTR records for leases or reservations: reverse lookups of DHCP
       clients fail.
 - [ ] A commit reverted by the confirm timeout doesn't kick the lease
@@ -837,6 +829,16 @@ Commit engine and API:
 
 WireGuard, DHCP and DNS:
 
+- [x] Deleting a tunnel also deletes the WAN rule that opened its port,
+      and deleting an interface removes its network from aliases (or
+      flags an alias that would be left empty, or holds addresses in it).
+- [x] Editing a WireGuard device (name, address, routing, networks,
+      endpoint, keepalive), with its router gateway and routes kept in
+      step, and the device's new settings shown when it needs them.
+      Removing a router removes its routes too.
+- [x] Reservations can't be inside their scope's dynamic range or on the
+      interface's address; reserving from a lease suggests a free
+      address outside the range.
 - [x] Each VPN interface carries its own tunnel (port, public key,
       peers); several tunnels, with a tab each and "Add tunnel".
 - [x] Validation across tunnels: unique ports and keys, peer ids unique
