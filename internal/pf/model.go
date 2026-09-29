@@ -484,8 +484,14 @@ type DNS struct {
 	// RegisterDynamicLeases also registers the names clients ask for
 	// with dynamic leases (package leases), at runtime through
 	// unbound-control.
-	RegisterDynamicLeases bool           `json:"registerDynamicLeases"`
-	Overrides             []HostOverride `json:"overrides"`
+	RegisterDynamicLeases bool `json:"registerDynamicLeases"`
+	// RewriteInvalidLeaseNames turns a dynamic lease's hostname that
+	// isn't a valid DNS label into one ("Priya's iPad" → priyas-ipad);
+	// off, such leases get no name. It's meant to be on by default, but
+	// a model that leaves it out has it off, so anything that creates a
+	// model (the sample, import, the first-run wizard) must set it.
+	RewriteInvalidLeaseNames bool           `json:"rewriteInvalidLeaseNames"`
+	Overrides                []HostOverride `json:"overrides"`
 }
 
 type ClientRoutes string

@@ -198,8 +198,13 @@ func Records(m *pf.Model, leases []Lease, now time.Time) ([]Record, []Skipped) {
 		}
 		skip := func(reason string) { skipped = append(skipped, Skipped{l.IP, l.Hostname, reason}) }
 
-		// Try to get a valid label, sanitizing if needed
-		label, wasSanitized := sanitizeLabel(l.Hostname)
+		// Rewrite an invalid name into a valid label if the admin wants
+		// that; otherwise it's refused below. Either way the checks
+		// apply to the label that would be registered.
+		label, wasSanitized := strings.ToLower(l.Hostname), false
+		if m.DNS.RewriteInvalidLeaseNames {
+			label, wasSanitized = sanitizeLabel(l.Hostname)
+		}
 
 		switch {
 		case !labelRE.MatchString(label):

@@ -669,6 +669,7 @@
     "dnssec": true,
     "registerReservations": true,
     "registerDynamicLeases": true,
+    "rewriteInvalidLeaseNames": true,
     "overrides": [
       {
         "id": "h1",

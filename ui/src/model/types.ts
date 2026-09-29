@@ -261,6 +261,8 @@ export interface Dns {
   registerReservations: boolean;
   /** Also register the names devices ask for with dynamic leases. */
   registerDynamicLeases: boolean;
+  /** Turn names that aren't valid ("Priya's iPad") into valid ones instead of refusing them. */
+  rewriteInvalidLeaseNames: boolean;
   overrides: HostOverride[];
 }
 

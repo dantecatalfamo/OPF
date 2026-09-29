@@ -152,6 +152,9 @@ type LeaseNames struct {
 type LeaseName struct {
 	Name string `json:"name"` // fully qualified, without the trailing dot
 	IP   string `json:"ip"`
+	// From is the hostname the device sent, sanitized, when Name was
+	// rewritten from it.
+	From string `json:"from,omitempty"`
 }
 
 type RefusedName struct {
@@ -198,12 +201,12 @@ type ARPTable struct {
 }
 
 type ARPEntry struct {
-	IP        string `json:"ip"`
-	MAC       string `json:"mac"`
-	Iface     string `json:"iface"`
-	Expires   string `json:"expires,omitempty"`   // time until expiry, or "permanent"
-	Flags     string `json:"flags,omitempty"`     // published, static, etc.
-	Hostname  string `json:"hostname,omitempty"`  // reverse DNS if known
+	IP       string `json:"ip"`
+	MAC      string `json:"mac"`
+	Iface    string `json:"iface"`
+	Expires  string `json:"expires,omitempty"`  // time until expiry, or "permanent"
+	Flags    string `json:"flags,omitempty"`    // published, static, etc.
+	Hostname string `json:"hostname,omitempty"` // reverse DNS if known
 }
 
 // RoutingTable is the system's routing table, from `netstat -rn`.

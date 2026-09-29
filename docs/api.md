@@ -194,13 +194,19 @@ DNS, and the leases that weren't given the name they asked for.
 {
   "enabled": true,
   "checked": "2026-09-28T17:12:32-04:00",
-  "registered": [{"name": "priya-mbp.office.arpa", "ip": "192.168.1.112"}],
+  "registered": [
+    {"name": "priya-mbp.office.arpa", "ip": "192.168.1.112"},
+    {"name": "priyas-ipad.office.arpa", "ip": "192.168.20.142", "from": "Priya's iPad"}
+  ],
   "refused": [{"ip": "192.168.1.150", "hostname": "wpad", "reason": "the name is taken by the configuration"}],
   "error": "unbound isn’t answering on its control socket"
 }
 ```
 
 `enabled` is false while "Add other DHCP devices by name" is off.
+`from` is the hostname a device sent when its name was rewritten into a
+valid one (the model's `dns.rewriteInvalidLeaseNames`); with rewriting
+off, such devices are refused as "not a valid host name".
 `checked` is absent before the first pass. The watcher looks every 15 s
 and right after a commit. `error` describes a failed pass; the lists
 are then from the last pass that got that far, and OPF's log has the

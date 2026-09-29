@@ -84,7 +84,11 @@ func (m *Manager) LeaseNames() (*LeaseNames, error) {
 			out.Truncated = true
 			break
 		}
-		out.Registered = append(out.Registered, LeaseName{strings.TrimSuffix(r.Name, "."), r.IP.String()})
+		ln := LeaseName{Name: strings.TrimSuffix(r.Name, "."), IP: r.IP.String()}
+		if r.From != "" {
+			ln.From = displayable(r.From)
+		}
+		out.Registered = append(out.Registered, ln)
 	}
 	for _, r := range st.Refused {
 		if len(out.Refused) == MaxLeaseNames {

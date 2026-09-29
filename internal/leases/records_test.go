@@ -18,7 +18,7 @@ func testModel() *pf.Model {
 				Reservations: []pf.Reservation{{Hostname: "printer", IP: "192.168.1.40", MAC: "a4:5d:36:0c:81:9e"}, {Hostname: "nas", IP: "192.168.1.150"}}},
 			{Iface: "guest", Enabled: false, RangeStart: "192.168.30.100", RangeEnd: "192.168.30.199"},
 		},
-		DNS: pf.DNS{Enabled: true, RegisterDynamicLeases: true,
+		DNS: pf.DNS{Enabled: true, RegisterDynamicLeases: true, RewriteInvalidLeaseNames: true,
 			Overrides: []pf.HostOverride{{Host: "wiki", Domain: "office.arpa", IP: "192.168.1.25"}}},
 	}
 }
@@ -120,5 +120,36 @@ func TestRecordsDisabled(t *testing.T) {
 	m.DNS.Enabled = false
 	if got, _ := Records(m, []Lease{lease("192.168.1.101", "laptop")}, now); got != nil {
 		t.Errorf("registered with DNS off: %+v", got)
+	}
+}
+
+// With RewriteInvalidLeaseNames off, a name that isn't already a valid
+// label is refused rather than rewritten; valid names are unaffected.
+func TestRecordsWithoutRewrite(t *testing.T) {
+	m := testModel()
+	m.DNS.RewriteInvalidLeaseNames = false
+	got, skipped := Records(m, []Lease{
+		lease("192.168.1.101", "Laptop"),       // valid, only lower-cased
+		lease("192.168.1.102", "Priya's iPad"), // would be rewritten to priyas-ipad
+		lease("192.168.1.103", "x y"),
+	}, now)
+	if len(got) != 1 || got[0].Name != "laptop.office.arpa." || got[0].From != "" {
+		t.Errorf("records %+v", got)
+	}
+	reasons := map[string]string{}
+	for _, s := range skipped {
+		reasons[s.IP.String()] = s.Reason
+	}
+	for _, ip := range []string{"192.168.1.102", "192.168.1.103"} {
+		if reasons[ip] != "not a valid host name" {
+			t.Errorf("%s: reason %q, want it refused as invalid", ip, reasons[ip])
+		}
+	}
+
+	// On, the same lease is rewritten.
+	m.DNS.RewriteInvalidLeaseNames = true
+	got, _ = Records(m, []Lease{lease("192.168.1.102", "Priya's iPad")}, now)
+	if len(got) != 1 || got[0].Name != "priyas-ipad.office.arpa." || got[0].From != "Priya's iPad" {
+		t.Errorf("default: %+v", got)
 	}
 }

@@ -60,10 +60,10 @@ func TestLeaseNames(t *testing.T) {
 	}
 	for ip, want := range map[string]string{
 		"192.168.1.101": "laptop.office.arpa",
-		"192.168.1.102": "gpjexe.office.arpa",                                           // bidi char stripped
-		"192.168.1.103": "bell.office.arpa",                                             // control char stripped
-		"192.168.1.104": "caf.office.arpa",                                              // invalid UTF-8 stripped
-		"192.168.1.105": strings.Repeat("x", 63) + ".office.arpa",                       // truncated to 63
+		"192.168.1.102": "gpjexe.office.arpa",                     // bidi char stripped
+		"192.168.1.103": "bell.office.arpa",                       // control char stripped
+		"192.168.1.104": "caf.office.arpa",                        // invalid UTF-8 stripped
+		"192.168.1.105": strings.Repeat("x", 63) + ".office.arpa", // truncated to 63
 	} {
 		if regByIP[ip] != want {
 			t.Errorf("%s: registered %q, want %q", ip, regByIP[ip], want)
@@ -152,5 +152,31 @@ lease 10.99.0.1 { ends %[2]s; client-hostname "%[4]s"; }
 	write(`lease 192.168.1.112 { client-hostname "unterminated`)
 	if l, err := e.m.DHCPLeases(); err != nil || l.Error != "dhcpd’s leases file couldn’t be read" || len(l.Leases) != 0 {
 		t.Errorf("damaged file: %+v, %v", l, err)
+	}
+}
+
+// A rewritten name reports the hostname it came from, sanitized for
+// showing.
+func TestLeaseNamesFrom(t *testing.T) {
+	model := sample(t)
+	ends := time.Now().Add(time.Hour).UTC()
+	file := filepath.Join(t.TempDir(), "dhcpd.leases")
+	lease := fmt.Sprintf("lease 192.168.1.120 {\n\tends %d %s UTC;\n\tclient-hostname \"%s\";\n}\n",
+		ends.Weekday(), ends.Format("2006/01/02 15:04:05"), "Priya's iPad\u202e")
+	if err := os.WriteFile(file, []byte(lease), 0644); err != nil {
+		t.Fatal(err)
+	}
+	w := &leases.Watcher{File: file, Model: func() (*pf.Model, error) { return model, nil }, Resolver: &leases.Memory{}}
+	if err := w.Sync(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	m := &Manager{}
+	m.SetLeaseWatcher(w)
+	n, err := m.LeaseNames()
+	if err != nil || len(n.Registered) != 1 {
+		t.Fatalf("%+v, %v", n, err)
+	}
+	if r := n.Registered[0]; r.Name != "priyas-ipad.office.arpa" || r.From != "Priya's iPad\ufffd" {
+		t.Errorf("registered %+v", r)
 	}
 }

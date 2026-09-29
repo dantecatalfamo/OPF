@@ -79,7 +79,8 @@ export interface CommitDetail extends CommitResource {
 export interface LeaseNamesResource {
   enabled: boolean;
   checked?: string;
-  registered: { name: string; ip: string }[];
+  /** from: what the device asked for, when the name was rewritten from it (sanitized). */
+  registered: { name: string; ip: string; from?: string }[];
   /** Hostnames are chosen by the devices; the server has sanitized them. */
   refused: { ip: string; hostname: string; reason: string }[];
   truncated?: boolean;

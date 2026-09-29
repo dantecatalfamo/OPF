@@ -12,6 +12,26 @@ import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
+// What changed in the resolver settings, for review and history.
+const switches: [keyof Settings, string][] = [
+  ['enabled', 'the DNS resolver'],
+  ['forwardTls', 'encrypted lookups'],
+  ['dnssec', 'DNSSEC checking'],
+  ['registerReservations', 'names for reserved devices'],
+  ['registerDynamicLeases', 'names for other DHCP devices'],
+  ['rewriteInvalidLeaseNames', 'fixing invalid device names'],
+];
+
+function describeSettings(before: Settings, after: Settings): string {
+  const parts: string[] = [];
+  if (after.mode !== before.mode) parts.push(after.mode === 'forward' ? `DNS now forwards to ${after.forwarders.join(', ')}` : 'DNS now resolves directly (recursive)');
+  else if (after.mode === 'forward' && after.forwarders.join() !== before.forwarders.join()) parts.push(`DNS now forwards to ${after.forwarders.join(', ')}`);
+  for (const [key, what] of switches) {
+    if (after[key] !== before[key]) parts.push(`${after[key] ? 'Turned on' : 'Turned off'} ${what}`);
+  }
+  return parts.length ? parts.join('; ') : 'Updated DNS resolver settings';
+}
+
 // How often the page asks what the lease watcher found; it looks every 15 s.
 const LEASE_POLL_MS = 15_000;
 
@@ -56,7 +76,11 @@ function LeaseNames() {
                   <Table.Tbody>
                     {data.registered.map((r) => (
                       <Table.Tr key={r.name}>
-                        <Table.Td><Mono>{r.name}</Mono></Table.Td>
+                        <Table.Td>
+                          <Mono>{r.name}</Mono>
+                          {/* Chosen by the device; shown as text, never markup. */}
+                          {r.from && <Text size="xs" c="dimmed">from “{r.from}”</Text>}
+                        </Table.Td>
                         <Table.Td><Mono>{r.ip}</Mono></Table.Td>
                       </Table.Tr>
                     ))}
@@ -142,7 +166,7 @@ export function Dns() {
   const { staged, edit } = useStore();
   const dns = staged.dns;
   const [modal, setModal] = useState(false);
-  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases });
+  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
   const form = useForm<Settings>({
     initialValues: pick(dns),
     validate: { forwarders: (v, vals) => (vals.mode === 'recursive' || (v.length && v.every(isIPv4)) ? null : 'Enter one or more IPv4 addresses') },
@@ -159,9 +183,7 @@ export function Dns() {
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <Card>
             <form
-              onSubmit={form.onSubmit((v) =>
-                edit('dns', v.mode !== dns.mode ? (v.mode === 'forward' ? `DNS now forwards to ${v.forwarders.join(', ')}` : 'DNS now resolves directly (recursive)') : 'Updated DNS resolver settings', (m) => ({ ...m, dns: { ...m.dns, ...v } })),
-              )}
+              onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}
             >
               <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Settings</SectionTitle>
               <Stack>
@@ -190,6 +212,13 @@ export function Dns() {
                   label="Add other DHCP devices by name"
                   description={`Devices can be reached by the name they give themselves, as name.${staged.system.domain}. Any device can pick any name, so names used by this configuration, and names claimed by two devices, are never added.`}
                   {...form.getInputProps('registerDynamicLeases', { type: 'checkbox' })}
+                />
+                <Switch
+                  label="Fix names that aren’t valid"
+                  description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${staged.system.domain}. Turned off, devices with names like that get none.`}
+                  disabled={!form.values.registerDynamicLeases}
+                  ml="lg"
+                  {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
                 />
                 <Group justify="flex-end">
                   <Button type="submit" disabled={!form.isDirty()}>Save</Button>
