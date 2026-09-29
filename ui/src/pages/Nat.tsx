@@ -249,7 +249,7 @@ function Outbound() {
   const [drawer, setDrawer] = useState<{ open: boolean; rule: NatRule | null }>({ open: false, rule: null });
   const set = (summary: string, fn: (n: typeof nat) => typeof nat) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, outboundNat: fn(m.firewall.outboundNat) } }));
   const modeLabel = { auto: 'Automatic', hybrid: 'Automatic plus manual rules', manual: 'Manual only' };
-  // Tunnels with devices sending everything through the office, and no
+  // Tunnels with devices sending everything through OPF, and no
   // manual rule to translate them.
   const uncovered = nat.mode !== 'manual' ? [] : tunnels(staged).filter((t) =>
     t.wireguard.peers.some((p) => p.clientRoutes === 'full') &&
@@ -272,7 +272,7 @@ function Outbound() {
           </Text>
           {uncovered.length > 0 && (
             <Alert color="yellow" variant="light" icon={<IconInfoCircle size={18} />} p="sm">
-              No rule translates {uncovered.map((t) => t.name).join(' or ')}, so VPN devices there sending all traffic through the office can’t reach the internet.
+              No rule translates {uncovered.map((t) => t.name).join(' or ')}, so VPN devices there sending all their traffic through OPF can’t reach the internet.
             </Alert>
           )}
         </Stack>

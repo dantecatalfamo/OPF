@@ -75,15 +75,16 @@ function freeTunnelNetwork(m: Model): string {
   return '';
 }
 
-// Networks a client should send into its tunnel for "office only".
-function officeNetworks(m: Model): string[] {
+// Networks a split-tunnel client sends into its tunnel: everything
+// reachable through this firewall that isn't the internet.
+function localNetworks(m: Model): string[] {
   const nets = m.interfaces
     .filter((i) => i.enabled && i.role !== 'wan' && i.ipv4.mode === 'static' && i.ipv4.address)
     .map((i) => `${network(i.ipv4.address!, i.ipv4.prefix!)}/${i.ipv4.prefix}`);
   return [...nets, ...tunnels(m).flatMap((t) => t.wireguard.peers.flatMap((p) => p.networks))];
 }
 
-const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Office networks', full: 'All traffic', site: 'Site-to-site' };
+const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Your networks', full: 'All traffic', site: 'Site-to-site' };
 
 // Replaces one tunnel's settings in the model.
 const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
@@ -194,7 +195,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
 
   const v = form.values;
   const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
-  const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : officeNetworks(staged).join(', ');
+  const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : localNetworks(staged).join(', ');
   const clientConfig = `[Interface]
 PrivateKey = ${keys.priv}
 Address = ${v.address}
@@ -253,12 +254,12 @@ PersistentKeepalive = 25`;
             <Stack gap={6}>
               <Text size="sm" fw={500}>What this device sends through the VPN</Text>
               <SegmentedControl
-                data={[{ value: 'split', label: 'Office networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
+                data={[{ value: 'split', label: 'Only your networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
                 {...form.getInputProps('clientRoutes')}
               />
               <Text size="xs" c="dimmed">
-                {v.clientRoutes === 'split' && `Only traffic for ${officeNetworks(staged).join(', ')} uses the tunnel. The device’s own internet stays as it is.`}
-                {v.clientRoutes === 'full' && 'Everything goes through the office and out its internet connection, translated to the WAN address by outbound NAT.'}
+                {v.clientRoutes === 'split' && `Only traffic for ${localNetworks(staged).join(', ')} uses the tunnel. The device’s own internet stays as it is.`}
+                {v.clientRoutes === 'full' && 'Everything goes through OPF and out its internet connection, translated to the WAN address by outbound NAT.'}
                 {v.clientRoutes === 'site' && 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.'}
               </Text>
             </Stack>
@@ -330,7 +331,7 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Internet access</Text>}>
           <Text size="sm" c="dimmed">
-            {fullPeers.length ? `${fullPeers.map((p) => p.name).join(', ')} send${fullPeers.length === 1 ? 's' : ''} all traffic through the office. ` : 'No device sends all its traffic through the office. '}
+            {fullPeers.length ? `${fullPeers.map((p) => p.name).join(', ')} send${fullPeers.length === 1 ? 's' : ''} all traffic through OPF. ` : 'No device sends all its traffic through OPF. '}
             {natAuto ? (
               <>It leaves through {wan?.name}, translated to the WAN address by <Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>.</>
             ) : (
