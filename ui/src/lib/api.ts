@@ -104,6 +104,40 @@ export interface DhcpLeasesResource {
   error?: string;
 }
 
+/** System ARP table (GET /api/network/arp). */
+export interface ARPTableResource {
+  entries: {
+    ip: string;
+    mac: string;
+    iface: string;
+    expires?: string;
+    flags?: string;
+    hostname?: string;
+  }[];
+  error?: string;
+}
+
+/** System routing table (GET /api/network/routes). */
+export interface RoutingTableResource {
+  ipv4: {
+    destination: string;
+    gateway: string;
+    flags: string;
+    iface: string;
+    priority?: number;
+    source?: string;
+  }[];
+  ipv6?: {
+    destination: string;
+    gateway: string;
+    flags: string;
+    iface: string;
+    priority?: number;
+    source?: string;
+  }[];
+  error?: string;
+}
+
 export interface StatusResource {
   live: string;
   staged?: string;
@@ -158,6 +192,8 @@ export const api = {
   commitConfig: (id: string, which: 'before' | 'after') => request<ConfigResource>('GET', `/commits/${enc(id)}/config/${which}`),
   leaseNames: () => request<LeaseNamesResource>('GET', '/dns/leases'),
   dhcpLeases: () => request<DhcpLeasesResource>('GET', '/dhcp/leases'),
+  arpTable: () => request<ARPTableResource>('GET', '/network/arp'),
+  routingTable: () => request<RoutingTableResource>('GET', '/network/routes'),
 
   /** pf rule text for a rule. */
   renderRule: async (rule: Rule, model?: Model): Promise<string> => {

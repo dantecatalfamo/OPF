@@ -4,6 +4,11 @@ export function ifaceName(m: Model, id: string): string {
   return m.interfaces.find((i) => i.id === id)?.name ?? id;
 }
 
+/** Maps a kernel device name (em0, vlan20) to its user-friendly name. */
+export function deviceName(m: Model, device: string): string {
+  return m.interfaces.find((i) => i.device === device)?.name ?? device;
+}
+
 export function endpointLabel(e: Endpoint, m: Model): string {
   const not = e.not ? 'Not ' : '';
   switch (e.type) {

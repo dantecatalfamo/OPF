@@ -214,11 +214,35 @@ export interface RouteEntry {
 
 // As `netstat -rn -f inet` would show it.
 export const routingTable: RouteEntry[] = [
-  { destination: 'default', gateway: '203.0.113.1', flags: 'UGS', iface: 'em0', source: 'DHCP' },
-  { destination: '10.8.0/24', gateway: '10.8.0.1', flags: 'UCn', iface: 'wg0', source: 'Interface' },
-  { destination: '10.20/16', gateway: '10.8.0.10', flags: 'UGS', iface: 'wg0', source: 'Static route' },
-  { destination: '127/8', gateway: '127.0.0.1', flags: 'UGRS', iface: 'lo0', source: 'System' },
-  { destination: '192.168.1/24', gateway: '192.168.1.1', flags: 'UCn', iface: 'em1', source: 'Interface' },
-  { destination: '192.168.20/24', gateway: '192.168.20.1', flags: 'UCn', iface: 'vlan20', source: 'Interface' },
-  { destination: '203.0.113/24', gateway: '203.0.113.24', flags: 'UCn', iface: 'em0', source: 'Interface' },
+  { destination: 'default', gateway: '203.0.113.1', flags: 'UGS', iface: 'em0', source: 'dhcp' },
+  { destination: '10.8.0/24', gateway: '10.8.0.1', flags: 'UCn', iface: 'wg0', source: 'interface' },
+  { destination: '10.20/16', gateway: '10.8.0.10', flags: 'UGS', iface: 'wg0', source: 'static' },
+  { destination: '127/8', gateway: '127.0.0.1', flags: 'UGRS', iface: 'lo0', source: 'interface' },
+  { destination: '192.168.1/24', gateway: '192.168.1.1', flags: 'UCn', iface: 'em1', source: 'interface' },
+  { destination: '192.168.20/24', gateway: '192.168.20.1', flags: 'UCn', iface: 'vlan20', source: 'interface' },
+  { destination: '203.0.113/24', gateway: '203.0.113.24', flags: 'UCn', iface: 'em0', source: 'interface' },
+];
+
+export interface ARPEntry {
+  ip: string;
+  mac: string;
+  iface: string;
+  expires?: string;
+  flags?: string;
+  hostname?: string;
+}
+
+// As `arp -an` would show it.
+export const arpTable: ARPEntry[] = [
+  { ip: '203.0.113.1', mac: '00:0c:29:4a:12:8b', iface: 'em0', expires: 'permanent', hostname: 'gateway' },
+  { ip: '192.168.1.20', mac: '00:1b:21:3a:4f:10', iface: 'em1', expires: '1142s', hostname: 'files' },
+  { ip: '192.168.1.25', mac: '00:1b:21:3a:4f:22', iface: 'em1', expires: '892s', hostname: 'build' },
+  { ip: '192.168.1.40', mac: 'a4:5d:36:0c:81:9e', iface: 'em1', expires: '445s', hostname: 'printer' },
+  { ip: '192.168.1.112', mac: '3c:22:fb:91:04:7d', iface: 'em1', expires: '1201s', hostname: 'priya-mbp' },
+  { ip: '192.168.1.118', mac: 'f0:18:98:2e:aa:13', iface: 'em1', expires: '623s', hostname: 'sam-thinkpad' },
+  { ip: '192.168.1.131', mac: '8c:85:90:4b:77:02', iface: 'em1', expires: '95s', hostname: 'reception-pc' },
+  { ip: '192.168.20.101', mac: '68:57:2d:10:e3:41', iface: 'vlan20', expires: '312s', hostname: 'thermostat' },
+  { ip: '192.168.20.102', mac: '50:02:91:7c:3a:0f', iface: 'vlan20', expires: '518s' },
+  { ip: '192.168.20.103', mac: '50:02:91:7c:3a:1a', iface: 'vlan20', expires: '412s' },
+  { ip: '10.8.0.2', mac: '(incomplete)', iface: 'wg0', expires: '60s' },
 ];
