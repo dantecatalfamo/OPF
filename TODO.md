@@ -549,25 +549,80 @@ them, so they can be graphed and compared):
       gives a series over a time range at the resolution asked for.
 - [ ] What to collect:
       - **Interface traffic**: bytes, packets, errors and drops in and
-        out per interface (`netstat -in`, or the kernel's counters):
-        the dashboard chart (simulated today) and per-interface graphs.
-      - **pf as a whole** (`pfctl -si`): state table size against its
-        limit, state inserts and removals, searches, matches, and drops
-        by reason (memory, fragment, state mismatch…); syncookies
-        active; table-entries use against its limit.
+        out per interface (`netstat -in`, queue drops from
+        `netstat -id`): the dashboard chart (simulated today) and
+        per-interface graphs. Also pf's own view per interface and
+        group (`pfctl -vvsI`: passed and blocked, in and out).
+      - **pf as a whole** (`pfctl -si`, `pfctl -sm`): state table size
+        against its limit, state inserts and removals, searches,
+        matches, drops by reason (memory, fragment, state mismatch…),
+        syncookies active, and every memory pool's use against its
+        limit (states, source nodes, fragments, table entries), so the
+        UI can warn before one fills.
+      - **New connections per second** by protocol, and how old states
+        are.
       - **Per rule** (`pfctl -s labels`, by OPF's labels): evaluations,
         packets, bytes and states per model rule, on the Rules page and
-        a rule's own graph.
+        a rule's own graph. That includes OPF's own blocking rules by
+        label: the default block, antispoof, split-tunnel limits, WAN
+        protection.
+      - **Tables**: how many addresses `<bruteforce>` and other
+        overload tables hold over time (attacks as they happen), and
+        hits per blocklist alias for tables with `counters`
+        (`pfctl -t … -T show -v`).
+      - **NAT**: source ports in use on each WAN address against what's
+        available; they can run out on a busy network.
+      - **Queues**, once traffic shaping exists: bandwidth and drops per
+        queue (`pfctl -vsq`).
       - **Per host**: states and traffic per inside address. pf only
         keeps bytes per live connection (lost when it closes) and per
         interface, so: periodic state polling aggregated by address,
         rule labels with accounting, or pflow(4) export to a collector.
         Top talkers over time, and a host's own history.
-      - **WireGuard**: bytes per peer, and handshake age.
-      - **Gateways**: latency and loss, once gateway monitoring exists.
-      - **DNS and DHCP**: queries and cache hits (`unbound-control
-        stats`), leases in use per scope against the range's size.
-      - **System**: CPU, load, memory, swap, disk use, temperatures.
+      - **From the firewall log** (pflog): top blocked sources, targeted
+        ports and blocks per interface over time (scans, noisy
+        devices), and outbound traffic blocked per inside host (a
+        device trying to reach what it shouldn't).
+      - **Network stack** (`netstat -s`, `netstat -m`): TCP
+        retransmits and resets, IP and ICMP errors, mbuf and cluster
+        use; routing table size and changes (dynamic routing).
+      - **WireGuard**: bytes per peer, handshake age (a site link that's
+        silently down), and endpoint changes (a device roaming).
+      - **The WAN and gateways**: latency, jitter and loss to each
+        gateway and to a public address, DNS lookup latency, and the
+        WAN address changing. The "is it my ISP?" graphs.
+      - **DNS** (`unbound-control stats`): queries by type and by
+        response code (a rising NXDOMAIN rate often means malware or a
+        misconfiguration), cache hit rate, recursion time, DNSSEC
+        validation failures. Top domains and queries per client too,
+        but only opt-in (see privacy below).
+      - **DHCP**: leases given, renewed and released, how full each
+        pool is, and pools running out.
+      - **Time** (`ntpctl -s all`): clock offset and usable peers.
+      - **Services**: each managed daemon up or down, and restarts
+        (`rcctl check`).
+      - **Logins**: failed and successful SSH logins (authlog), and
+        OPF's own once it has authentication.
+      - **OPF itself**: commits, confirms, automatic reverts, failed
+        validator checks, how long commits take, API errors and
+        latency.
+      - **System**: CPU, load, memory, swap, disk use and I/O,
+        interrupts per device (`vmstat -i`), sensors (temperatures,
+        fans, voltages from `sysctl hw.sensors`), uptime and reboots.
+- [ ] **An event log** beside the series, for things that happen rather
+      than values that vary: a device seen for the first time (a new
+      MAC in the ARP table or DHCP, both an inventory and a security
+      signal), links going up or down and media changes, CARP state
+      changes, the WAN address changing, WireGuard endpoints moving,
+      daemons stopping, logins, commits and reverts. Graphs mark them
+      ("the WAN went down here"), and they can be filtered and searched.
+      Bounded like the series.
+- [ ] **Privacy**: per-host traffic, DNS names, new-device tracking and
+      logins are personal data. Each gets a retention limit, shorter
+      than the rest, and the most sensitive (DNS queries per client and
+      top domains) are off unless the admin turns them on, saying what
+      is kept and for how long. Deleting a device's history should be
+      possible.
 - [ ] Graphs in the UI: time range picker, per-interface, per-rule and
       per-host views, and the dashboard's charts from real data.
 
