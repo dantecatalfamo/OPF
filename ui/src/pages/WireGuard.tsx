@@ -1,25 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
-  ActionIcon, Alert, Anchor, Badge, Button, Card, Code, CopyButton, Drawer, Grid, Group, NumberInput, SegmentedControl, Stack, Switch, Table, TagsInput, Text, TextInput, ThemeIcon, Timeline, Tooltip,
+  ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Code, CopyButton, Drawer, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, ThemeIcon, Timeline, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconArrowsSplit2, IconCheck, IconCopy, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import { ifaceStatus, peerStatus } from '../model/live';
-import type { Model, Peer } from '../model/types';
+import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
 import { automaticNat } from '../model/generate';
+import { formRule } from '../model/sample';
 import { isFloating } from '../lib/rules';
 import { formatAgo, formatBytes } from '../lib/format';
-import { isCIDR } from '../lib/ip';
+import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 
 // Stand-in for a real key pair; the appliance generates these like wg(8).
 function fakeKey(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let s = '';
-  for (let i = 0; i < 43; i++) s += chars[Math.floor(Math.random() * 64)];
-  return s + '=';
+  for (let i = 0; i < 42; i++) s += chars[Math.floor(Math.random() * 64)];
+  // The 43rd character carries only 4 bits of the 32-byte key.
+  return s + 'AEIMQUYcgkosw048'[Math.floor(Math.random() * 16)] + '=';
 }
 
 function Copyable({ value }: { value: string }) {
@@ -39,29 +41,141 @@ function Copyable({ value }: { value: string }) {
   );
 }
 
-function nextAddress(peers: Peer[], tunnel: string): string {
-  const [base] = tunnel.split('/');
-  const prefix = base.split('.').slice(0, 3).join('.');
-  const used = new Set(peers.map((p) => Number(p.address.split('/')[0].split('.')[3])));
-  used.add(Number(base.split('.')[3]));
-  let n = 2;
-  while (used.has(n)) n++;
-  return `${prefix}.${n}/32`;
+const tunnelNet = (t: Iface) => `${network(t.ipv4.address!, t.ipv4.prefix!)}/${t.ipv4.prefix}`;
+
+// The first free address in the tunnel's network, as a /32.
+function nextAddress(t: Tunnel): string {
+  const base = toInt(network(t.ipv4.address!, t.ipv4.prefix!));
+  const size = 2 ** (32 - t.ipv4.prefix!);
+  const used = new Set([toInt(t.ipv4.address!), ...t.wireguard.peers.map((p) => toInt(p.address.split('/')[0]))]);
+  for (let n = 1; n < size - 1; n++) if (!used.has(base + n)) return `${fromInt(base + n)}/32`;
+  return '';
 }
 
-// Networks a client should send into the tunnel for "office only".
+// Networks already used here: interfaces, and everything behind peers.
+function usedNetworks(m: Model): [number, number][] {
+  const spans: [number, number][] = [];
+  const add = (addr: string, prefix: number) => {
+    const lo = toInt(network(addr, prefix));
+    spans.push([lo, lo + 2 ** (32 - prefix) - 1]);
+  };
+  for (const i of m.interfaces) if (i.ipv4.mode === 'static' && i.ipv4.address && i.ipv4.prefix !== undefined) add(i.ipv4.address, i.ipv4.prefix);
+  for (const t of tunnels(m)) for (const p of t.wireguard.peers) for (const n of p.networks) add(n.split('/')[0], Number(n.split('/')[1]));
+  for (const r of m.routing.routes) add(r.network.split('/')[0], Number(r.network.split('/')[1]));
+  return spans;
+}
+
+// A /24 for a new tunnel that nothing here uses yet: 10.8.0.0, 10.9.0.0…
+function freeTunnelNetwork(m: Model): string {
+  const used = usedNetworks(m);
+  for (let second = 8; second < 255; second++) {
+    const lo = toInt(`10.${second}.0.0`);
+    if (!used.some(([a, b]) => a <= lo + 255 && lo <= b)) return `10.${second}.0.1`;
+  }
+  return '';
+}
+
+// Networks a client should send into its tunnel for "office only".
 function officeNetworks(m: Model): string[] {
   const nets = m.interfaces
     .filter((i) => i.enabled && i.role !== 'wan' && i.ipv4.mode === 'static' && i.ipv4.address)
-    .map((i) => `${i.ipv4.address!.replace(/\.\d+$/, '.0')}/${i.ipv4.prefix}`);
-  return [...nets, ...m.wireguard.peers.flatMap((p) => p.networks)];
+    .map((i) => `${network(i.ipv4.address!, i.ipv4.prefix!)}/${i.ipv4.prefix}`);
+  return [...nets, ...tunnels(m).flatMap((t) => t.wireguard.peers.flatMap((p) => p.networks))];
 }
 
 const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Office networks', full: 'All traffic', site: 'Site-to-site' };
 
-function AddPeer({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+// Replaces one tunnel's settings in the model.
+const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
+  ...m,
+  interfaces: m.interfaces.map((i) => (i.id === id && i.wireguard ? f(i as Tunnel) : i)),
+});
+
+function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () => void; onAdded: (id: string) => void }) {
   const { staged, edit } = useStore();
-  const wg = staged.wireguard;
+  const wan = staged.interfaces.find((i) => i.role === 'wan');
+  const vpns = tunnels(staged);
+  const form = useForm({
+    initialValues: { name: '', listenPort: 51820 as number | string, address: '', prefix: 24 as number | string, allow: true },
+    validate: {
+      name: (v) => (v.trim() && /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Name the tunnel, like “Remote access” (letters, digits, spaces)'),
+      listenPort: (v) => {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 1 || n > 65535) return 'A port from 1 to 65535';
+        const other = vpns.find((t) => t.wireguard.listenPort === n);
+        return other ? `${other.name} already uses port ${n}` : null;
+      },
+      address: (v) => (isIPv4(v) ? null : 'The tunnel’s own address, like 10.9.0.1'),
+      prefix: (v, vals) => {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 8 || n > 30) return 'A prefix from 8 to 30';
+        if (!isIPv4(vals.address)) return null;
+        const lo = toInt(network(vals.address, n));
+        const clash = usedNetworks(staged).some(([a, b]) => a <= lo + 2 ** (32 - n) - 1 && lo <= b);
+        return clash ? 'This network overlaps one that’s already in use' : null;
+      },
+    },
+  });
+  useEffect(() => {
+    if (!opened) return;
+    const ports = new Set(vpns.map((t) => t.wireguard.listenPort));
+    let port = 51820;
+    while (ports.has(port)) port++;
+    form.setValues({ name: '', listenPort: port, address: freeTunnelNetwork(staged), prefix: 24, allow: !!wan });
+    form.clearErrors();
+  }, [opened]); // form is stable
+
+  const submit = form.onSubmit((v) => {
+    const devices = new Set(staged.interfaces.map((i) => i.device));
+    let n = 0;
+    while (devices.has(`wg${n}`)) n++;
+    const device = `wg${n}`;
+    const id = staged.interfaces.some((i) => i.id === device) ? newId('wg') : device;
+    const port = Number(v.listenPort);
+    const tunnel: Tunnel = {
+      id, name: v.name.trim(), device, role: 'vpn', enabled: true,
+      ipv4: { mode: 'static', address: v.address, prefix: Number(v.prefix) }, ipv6: 'none',
+      wireguard: { listenPort: port, publicKey: fakeKey(), peers: [] },
+    };
+    edit('interfaces', `Added WireGuard tunnel “${tunnel.name}” (${device}, ${tunnelNet(tunnel)}, port ${port})`, (m) => ({ ...m, interfaces: [...m.interfaces, tunnel] }));
+    if (v.allow && wan) {
+      const rule = formRule({
+        id: newId('r'), interfaces: [wan.id], description: `Allow ${tunnel.name} VPN`, protocol: 'udp', destination: { type: 'self' }, port: String(port),
+      });
+      edit('firewall', `Added ${wan.name} rule “${rule.description}” (UDP port ${port})`, (m) => ({ ...m, firewall: { ...m.firewall, rules: [...m.firewall.rules, rule] } }));
+    }
+    onClose();
+    onAdded(id);
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Add a WireGuard tunnel</Text>} size="md">
+      <form onSubmit={submit}>
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Each tunnel is its own interface with its own port, network and devices, and its own firewall rules. Use separate tunnels
+            to keep groups apart, like staff laptops and other offices.
+          </Text>
+          <TextInput label="Name" placeholder="Branch offices" data-autofocus {...form.getInputProps('name')} />
+          <NumberInput label="Port" description="The UDP port devices connect to." min={1} max={65535} {...form.getInputProps('listenPort')} />
+          <Group grow align="flex-start">
+            <TextInput label="Tunnel address" description="OPF’s address inside the tunnel." styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
+            <NumberInput label="Prefix" description="Size of the tunnel network." min={8} max={30} {...form.getInputProps('prefix')} />
+          </Group>
+          {wan && <Checkbox label={`Allow connections to this port from ${wan.name}`} {...form.getInputProps('allow', { type: 'checkbox' })} />}
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Add tunnel</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; onClose: () => void }) {
+  const { staged, edit } = useStore();
+  const wg = tunnel.wireguard;
   const [keys, setKeys] = useState({ priv: '', pub: '' });
   const [created, setCreated] = useState<Peer | null>(null);
   const form = useForm({
@@ -75,7 +189,7 @@ function AddPeer({ opened, onClose }: { opened: boolean; onClose: () => void }) 
     if (!opened) return;
     setKeys({ priv: fakeKey(), pub: fakeKey() });
     setCreated(null);
-    form.setValues({ name: '', address: nextAddress(wg.peers, wg.address), clientRoutes: 'split', networks: [], endpoint: '' });
+    form.setValues({ name: '', address: nextAddress(tunnel), clientRoutes: 'split', networks: [], endpoint: '' });
   }, [opened]); // form is stable
 
   const v = form.values;
@@ -84,7 +198,7 @@ function AddPeer({ opened, onClose }: { opened: boolean; onClose: () => void }) 
   const clientConfig = `[Interface]
 PrivateKey = ${keys.priv}
 Address = ${v.address}
-DNS = ${wg.address.split('/')[0]}
+DNS = ${tunnel.ipv4.address}
 
 [Peer]
 PublicKey = ${wg.publicKey}
@@ -93,7 +207,7 @@ AllowedIPs = ${allowed}
 PersistentKeepalive = 25`;
 
   return (
-    <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">Add a device</Text>}>
+    <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">Add a device to {tunnel.name}</Text>}>
       {created ? (
         <Stack>
           <Alert color="teal" variant="light" icon={<IconCheck size={18} />} title={`${created.name} is ready`}>
@@ -116,14 +230,11 @@ PersistentKeepalive = 25`;
               id: newId('p'), name: x.name.trim(), publicKey: keys.pub, address: x.address, keepalive: 25, clientRoutes: x.clientRoutes,
               networks: x.clientRoutes === 'site' ? x.networks : [], ...(x.endpoint ? { endpoint: x.endpoint } : {}),
             };
-            edit('wireguard', `Added VPN device “${peer.name}” (${peer.address}${peer.networks.length ? `, routes ${peer.networks.join(', ')}` : ''})`, (m) => ({
-              ...m,
-              wireguard: { ...m.wireguard, peers: [...m.wireguard.peers, peer] },
-            }));
+            edit('wireguard', `Added VPN device “${peer.name}” to ${tunnel.name} (${peer.address}${peer.networks.length ? `, routes ${peer.networks.join(', ')}` : ''})`, (m) =>
+              withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: [...t.wireguard.peers, peer] } })));
             if (peer.networks.length) {
-              // The networks behind a router peer need routes into the tunnel.
-              const wgIface = staged.interfaces.find((i) => i.role === 'vpn')?.id ?? 'wg';
-              const gw = { id: newId('gw'), name: peer.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 32), iface: wgIface, address: peer.address.split('/')[0], description: `${peer.name} over WireGuard` };
+              // The networks behind a router peer need routes into its tunnel.
+              const gw = { id: newId('gw'), name: peer.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 32), iface: tunnel.id, address: peer.address.split('/')[0], description: `${peer.name} over WireGuard` };
               edit('routing', `Added gateway ${gw.name} and route${peer.networks.length === 1 ? '' : 's'} ${peer.networks.join(', ')} through it`, (m) => ({
                 ...m,
                 routing: {
@@ -138,7 +249,7 @@ PersistentKeepalive = 25`;
         >
           <Stack>
             <TextInput label="Device name" placeholder="Alex phone" data-autofocus {...form.getInputProps('name')} />
-            <TextInput label="VPN address" description="Picked from the tunnel network." styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
+            <TextInput label="VPN address" description={`Picked from ${tunnelNet(tunnel)}.`} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
             <Stack gap={6}>
               <Text size="sm" fw={500}>What this device sends through the VPN</Text>
               <SegmentedControl
@@ -168,16 +279,15 @@ PersistentKeepalive = 25`;
   );
 }
 
-function TrafficFlow() {
+function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const { staged } = useStore();
-  const wg = staged.wireguard;
-  const wgIface = staged.interfaces.find((i) => i.role === 'vpn');
+  const wg = tunnel.wireguard;
   const wan = staged.interfaces.find((i) => i.role === 'wan');
   const wanRule = staged.firewall.rules.find((r) => r.enabled && r.kind === 'form' && r.interfaces.includes(wan?.id ?? '') && r.protocol === 'udp' && r.port === String(wg.listenPort));
-  const wgRules = staged.firewall.rules.filter((r) => r.enabled && wgIface && !isFloating(r) && r.interfaces[0] === wgIface.id);
-  const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === wgIface?.id);
+  const tunnelRules = staged.firewall.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === tunnel.id);
+  const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === tunnel.id);
   const nat = staged.firewall.outboundNat;
-  const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'iface' && n.source.iface === wgIface?.id);
+  const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'iface' && n.source.iface === tunnel.id);
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
 
   return (
@@ -196,7 +306,7 @@ function TrafficFlow() {
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconArrowsSplit2 size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Routing</Text>}>
           <Text size="sm" c="dimmed">
-            Each device gets an address in <Mono>{wg.address.replace(/\.\d+\//, '.0/')}</Mono> on <Mono>{wgIface?.device}</Mono>.
+            Each device gets an address in <Mono>{tunnelNet(tunnel)}</Mono> on <Mono>{tunnel.device}</Mono>.
             {routes.length > 0 && (
               <>
                 {' '}Routes into the tunnel:{' '}
@@ -214,8 +324,8 @@ function TrafficFlow() {
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconShieldHalf size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Firewall</Text>}>
           <Text size="sm" c="dimmed">
             Traffic arriving from the tunnel is checked by{' '}
-            <Anchor component={Link} to={`/firewall/rules/${wgIface?.id}`} size="sm">{wgRules.length} {wgIface?.name} rule{wgRules.length === 1 ? '' : 's'}</Anchor>
-            {wgRules.length ? `: ${wgRules.map((r) => r.description).join('; ')}.` : '. With none, everything from the tunnel is blocked.'}
+            <Anchor component={Link} to={`/firewall/rules/${tunnel.id}`} size="sm">{tunnelRules.length} {tunnel.name} rule{tunnelRules.length === 1 ? '' : 's'}</Anchor>
+            {tunnelRules.length ? `: ${tunnelRules.map((r) => r.description).join('; ')}.` : '. With none, everything from the tunnel is blocked.'}
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Internet access</Text>}>
@@ -235,108 +345,182 @@ function TrafficFlow() {
   );
 }
 
-export function WireGuardPage() {
+function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   const { staged, edit } = useStore();
-  const wg = staged.wireguard;
-  const [adding, setAdding] = useState(false);
-  const form = useForm({ initialValues: { enabled: wg.enabled, listenPort: wg.listenPort as number | string } });
+  const vpns = tunnels(staged);
+  const form = useForm({
+    initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string },
+    validate: {
+      name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Letters, digits and spaces'),
+      listenPort: (v) => {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 1 || n > 65535) return 'A port from 1 to 65535';
+        const other = vpns.find((t) => t.id !== tunnel.id && t.wireguard.listenPort === n);
+        return other ? `${other.name} already uses port ${n}` : null;
+      },
+    },
+  });
   useEffect(() => {
-    form.setValues({ enabled: wg.enabled, listenPort: wg.listenPort });
+    form.setValues({ name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort });
     form.resetDirty();
-  }, [wg.enabled, wg.listenPort]); // form is stable
+  }, [tunnel.id, tunnel.name, tunnel.enabled, tunnel.wireguard.listenPort]); // form is stable
+
+  const save = form.onSubmit((x) => {
+    const name = x.name.trim();
+    if (name !== tunnel.name || x.enabled !== tunnel.enabled) {
+      const what = x.enabled !== tunnel.enabled ? `${x.enabled ? 'Turned on' : 'Turned off'} WireGuard tunnel “${name}”` : `Renamed WireGuard tunnel “${tunnel.name}” to “${name}”`;
+      edit('interfaces', what, (m) => withTunnel(m, tunnel.id, (t) => ({ ...t, name, enabled: x.enabled })));
+    }
+    const port = Number(x.listenPort);
+    if (port !== tunnel.wireguard.listenPort) {
+      edit('wireguard', `${name} now listens on port ${port}`, (m) => withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, listenPort: port } })));
+    }
+  });
+
+  return (
+    <Card>
+      <form onSubmit={save}>
+        <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Tunnel</SectionTitle>
+        <Stack gap="md">
+          <TextInput label="Name" {...form.getInputProps('name')} />
+          <NumberInput label="Port" min={1} max={65535} {...form.getInputProps('listenPort')} />
+          <Stack gap={2}>
+            <Text size="sm" fw={500}>Tunnel address</Text>
+            <Group gap="xs">
+              <Mono>{tunnel.ipv4.address}/{tunnel.ipv4.prefix}</Mono>
+              <Text size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono> · <Anchor component={Link} to={`/interfaces/${tunnel.id}`} size="xs">change</Anchor></Text>
+            </Group>
+          </Stack>
+          <Stack gap={2}>
+            <Text size="sm" fw={500}>Public key</Text>
+            <Copyable value={tunnel.wireguard.publicKey} />
+          </Stack>
+          <Group justify="flex-end">
+            <Button type="submit" disabled={!form.isDirty()}>Save</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Card>
+  );
+}
+
+function Devices({ tunnel }: { tunnel: Tunnel }) {
+  const { edit } = useStore();
+  return (
+    <Card padding={0}>
+      <Group p="lg" pb="xs"><Text fw={600}>Devices</Text></Group>
+      <Table.ScrollContainer minWidth={820}>
+        <Table highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Device</Table.Th>
+              <Table.Th>VPN address</Table.Th>
+              <Table.Th>Uses the tunnel for</Table.Th>
+              <Table.Th>Last seen</Table.Th>
+              <Table.Th ta="right">Transferred</Table.Th>
+              <Table.Th />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {tunnel.wireguard.peers.length === 0 && (
+              <Table.Tr><Table.Td colSpan={6}><Text size="sm" c="dimmed" ta="center" py="md">No devices yet.</Text></Table.Td></Table.Tr>
+            )}
+            {tunnel.wireguard.peers.map((p) => {
+              const s = peerStatus[p.id];
+              const online = s?.handshakeSecAgo != null && s.handshakeSecAgo < 180;
+              return (
+                <Table.Tr key={p.id}>
+                  <Table.Td>
+                    <StatusDot ok={online ? true : s ? 'warn' : false} label={p.name} />
+                    <Text size="xs" c="dimmed" ml={16}>{s?.endpoint ?? p.endpoint ?? 'Not connected yet'}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Mono>{p.address}</Mono>
+                    {p.networks.length > 0 && <Text size="xs" c="dimmed">routes {p.networks.join(', ')}</Text>}
+                  </Table.Td>
+                  <Table.Td><Badge color={p.clientRoutes === 'full' ? 'amber' : 'gray'}>{routesLabel[p.clientRoutes]}</Badge></Table.Td>
+                  <Table.Td>
+                    {s?.handshakeSecAgo != null ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeSecAgo)}</Text>) : <Text size="sm" c="dimmed">Never</Text>}
+                  </Table.Td>
+                  <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.tx)} · ↑ ${formatBytes(s.rx)}` : '—'}</Text></Table.Td>
+                  <Table.Td w={44}>
+                    <Tooltip label="Remove device">
+                      <ActionIcon
+                        variant="subtle" color="gray" aria-label="Remove device"
+                        onClick={() => edit('wireguard', `Removed VPN device “${p.name}” from ${tunnel.name}`, (m) =>
+                          withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.filter((x) => x.id !== p.id) } })))}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Card>
+  );
+}
+
+export function WireGuardPage() {
+  const { staged } = useStore();
+  const { tunnel: param } = useParams();
+  const navigate = useNavigate();
+  const vpns = tunnels(staged);
+  const tunnel = vpns.find((t) => t.id === param) ?? vpns[0];
+  const [adding, setAdding] = useState(false);
+  const [addingTunnel, setAddingTunnel] = useState(false);
 
   return (
     <>
       <PageHeader
         title="WireGuard VPN"
         description="Lets phones, laptops and other sites reach your networks securely from anywhere."
-        actions={<Button leftSection={<IconPlus size={16} />} onClick={() => setAdding(true)}>Add device</Button>}
+        actions={
+          <Group gap="sm">
+            <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
+            {tunnel && <Button leftSection={<IconPlus size={16} />} onClick={() => setAdding(true)}>Add device</Button>}
+          </Group>
+        }
       />
-      <Grid gutter="md">
-        <Grid.Col span={{ base: 12, lg: 5 }}>
-          <Stack gap="md">
-            <Card>
-              <form
-                onSubmit={form.onSubmit((x) =>
-                  edit('wireguard', x.enabled !== wg.enabled ? `${x.enabled ? 'Turned on' : 'Turned off'} WireGuard VPN` : `WireGuard now listens on port ${x.listenPort}`, (m) => ({
-                    ...m,
-                    wireguard: { ...m.wireguard, enabled: x.enabled, listenPort: Number(x.listenPort) },
-                  })),
-                )}
-              >
-                <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Tunnel</SectionTitle>
-                <Stack gap="md">
-                  <NumberInput label="Port" min={1} max={65535} {...form.getInputProps('listenPort')} />
-                  <Stack gap={2}>
-                    <Text size="sm" fw={500}>Tunnel address</Text>
-                    <Mono>{wg.address}</Mono>
-                  </Stack>
-                  <Stack gap={2}>
-                    <Text size="sm" fw={500}>Public key</Text>
-                    <Copyable value={wg.publicKey} />
-                  </Stack>
-                  <Group justify="flex-end">
-                    <Button type="submit" disabled={!form.isDirty()}>Save</Button>
-                  </Group>
-                </Stack>
-              </form>
-            </Card>
+      {!tunnel ? (
+        <Card>
+          <Stack align="center" py="xl" gap="sm">
+            <Text fw={600}>No tunnels yet</Text>
+            <Text size="sm" c="dimmed" ta="center" maw={420}>A tunnel is a VPN network devices connect to. Add one, then add the devices that may use it.</Text>
+            <Button leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
           </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 7 }}>
-          <TrafficFlow />
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Card padding={0}>
-            <Group p="lg" pb="xs"><Text fw={600}>Devices</Text></Group>
-            <Table.ScrollContainer minWidth={820}>
-              <Table highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Device</Table.Th>
-                    <Table.Th>VPN address</Table.Th>
-                    <Table.Th>Uses the tunnel for</Table.Th>
-                    <Table.Th>Last seen</Table.Th>
-                    <Table.Th ta="right">Transferred</Table.Th>
-                    <Table.Th />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {wg.peers.map((p) => {
-                    const s = peerStatus[p.id];
-                    const online = s?.handshakeSecAgo != null && s.handshakeSecAgo < 180;
-                    return (
-                      <Table.Tr key={p.id}>
-                        <Table.Td>
-                          <StatusDot ok={online ? true : s ? 'warn' : false} label={p.name} />
-                          <Text size="xs" c="dimmed" ml={16}>{s?.endpoint ?? p.endpoint ?? 'Not connected yet'}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Mono>{p.address}</Mono>
-                          {p.networks.length > 0 && <Text size="xs" c="dimmed">routes {p.networks.join(', ')}</Text>}
-                        </Table.Td>
-                        <Table.Td><Badge color={p.clientRoutes === 'full' ? 'amber' : 'gray'}>{routesLabel[p.clientRoutes]}</Badge></Table.Td>
-                        <Table.Td>
-                          {s?.handshakeSecAgo != null ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeSecAgo)}</Text>) : <Text size="sm" c="dimmed">Never</Text>}
-                        </Table.Td>
-                        <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.tx)} · ↑ ${formatBytes(s.rx)}` : '—'}</Text></Table.Td>
-                        <Table.Td w={44}>
-                          <Tooltip label="Remove device">
-                            <ActionIcon variant="subtle" color="gray" aria-label="Remove device" onClick={() => edit('wireguard', `Removed VPN device “${p.name}”`, (m) => ({ ...m, wireguard: { ...m.wireguard, peers: m.wireguard.peers.filter((x) => x.id !== p.id) } }))}>
-                              <IconTrash size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  })}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          </Card>
-        </Grid.Col>
-      </Grid>
-      <AddPeer opened={adding} onClose={() => setAdding(false)} />
+        </Card>
+      ) : (
+        <>
+          {vpns.length > 1 && (
+            <Tabs value={tunnel.id} onChange={(v) => v && navigate(`/services/wireguard/${v}`)} mb="md">
+              <Tabs.List>
+                {vpns.map((t) => (
+                  <Tabs.Tab key={t.id} value={t.id} rightSection={<Badge size="sm" color="gray" circle>{t.wireguard.peers.length}</Badge>}>
+                    {t.name}{!t.enabled && <Text span size="xs" c="dimmed"> (off)</Text>}
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs>
+          )}
+          <Grid gutter="md">
+            <Grid.Col span={{ base: 12, lg: 5 }}>
+              <TunnelSettings tunnel={tunnel} />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, lg: 7 }}>
+              <TrafficFlow tunnel={tunnel} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <Devices tunnel={tunnel} />
+            </Grid.Col>
+          </Grid>
+          <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
+        </>
+      )}
+      <AddTunnel opened={addingTunnel} onClose={() => setAddingTunnel(false)} onAdded={(id) => navigate(`/services/wireguard/${id}`)} />
     </>
   );
 }

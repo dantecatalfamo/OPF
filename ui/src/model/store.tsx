@@ -15,12 +15,14 @@ const backend = offline ? localApi : api;
 
 const sectionOf: Record<Section, (m: Model) => unknown> = {
   system: (m) => m.system,
-  interfaces: (m) => m.interfaces,
+  // A tunnel's peers are on its interface, but they're WireGuard
+  // settings, not the interface's.
+  interfaces: (m) => m.interfaces.map(({ wireguard: _wg, ...i }) => i),
   routing: (m) => m.routing,
   firewall: (m) => m.firewall,
   dhcp: (m) => m.dhcp,
   dns: (m) => m.dns,
-  wireguard: (m) => m.wireguard,
+  wireguard: (m) => m.interfaces.filter((i) => i.wireguard).map((i) => [i.id, i.wireguard]),
 };
 
 export function changedSections(a: Model, b: Model): Section[] {

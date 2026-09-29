@@ -59,9 +59,32 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"route description with a newline (!route)", "routing.routes[0].description", func(m *Model) {
 			m.Routing.Routes[0].Description = "x\n!rm -rf /"
 		}},
-		{"peer name with a quote (wgdescr)", "wireguard.peers[0].name", func(m *Model) { m.WireGuard.Peers[0].Name = `Priya" wgpeer x` }},
-		{"peer key that isn't a key", "wireguard.peers[0].publicKey", func(m *Model) { m.WireGuard.Peers[0].PublicKey = "x wgaip 0.0.0.0/0" }},
-		{"peer endpoint with extra words", "wireguard.peers[2].endpoint", func(m *Model) { m.WireGuard.Peers[2].Endpoint = "a.example:51820 wgpka 1" }},
+		{"peer name with a quote (wgdescr)", "interfaces[3].wireguard.peers[0].name", func(m *Model) { wg(m, 3).Peers[0].Name = `Priya" wgpeer x` }},
+		{"peer key that isn't a key", "interfaces[3].wireguard.peers[0].publicKey", func(m *Model) { wg(m, 3).Peers[0].PublicKey = "x wgaip 0.0.0.0/0" }},
+		{"peer endpoint with extra words", "interfaces[4].wireguard.peers[0].endpoint", func(m *Model) { wg(m, 4).Peers[0].Endpoint = "a.example:51820 wgpka 1" }},
+		// Several tunnels
+		{"two tunnels on one port", "interfaces[4].wireguard.listenPort", func(m *Model) { wg(m, 4).ListenPort = wg(m, 3).ListenPort }},
+		{"two tunnels with one key", "interfaces[4].wireguard.publicKey", func(m *Model) { wg(m, 4).PublicKey = wg(m, 3).PublicKey }},
+		{"tunnels on overlapping networks", "interfaces[4].ipv4.address", func(m *Model) { m.Interfaces[4].IPv4.Address = "10.8.0.200" }},
+		{"peer id used in another tunnel", "interfaces[4].wireguard.peers[0].id", func(m *Model) { wg(m, 4).Peers[0].ID = wg(m, 3).Peers[0].ID }},
+		{"peer key twice in a tunnel", "interfaces[3].wireguard.peers[1].publicKey", func(m *Model) { wg(m, 3).Peers[1].PublicKey = wg(m, 3).Peers[0].PublicKey }},
+		{"peer address outside its tunnel", "interfaces[4].wireguard.peers[0].address", func(m *Model) { wg(m, 4).Peers[0].Address = "10.8.0.50/32" }},
+		{"peer address is the tunnel's", "interfaces[3].wireguard.peers[0].address", func(m *Model) { wg(m, 3).Peers[0].Address = "10.8.0.1/32" }},
+		{"two peers on one address", "interfaces[3].wireguard.peers[1].address", func(m *Model) { wg(m, 3).Peers[1].Address = wg(m, 3).Peers[0].Address }},
+		{"peer network that's a local one", "interfaces[4].wireguard.peers[0].networks[0]", func(m *Model) { wg(m, 4).Peers[0].Networks = []string{"192.168.0.0/16"} }},
+		{"peer network another tunnel's peer has", "interfaces[4].wireguard.peers[0].networks[1]", func(m *Model) {
+			wg(m, 3).Peers[0].Networks = []string{"10.30.0.0/16"}
+			wg(m, 4).Peers[0].Networks = append(wg(m, 4).Peers[0].Networks, "10.30.1.0/24")
+		}},
+		{"VPN interface that isn't WireGuard", "interfaces[4].device", func(m *Model) { m.Interfaces[4].Device = "tun0" }},
+		{"VPN interface without a tunnel", "interfaces[4].wireguard", func(m *Model) { m.Interfaces[4].WireGuard = nil }},
+		{"tunnel on a LAN interface", "interfaces[4].role", func(m *Model) { m.Interfaces[4].Role = RoleOPT }},
+		{"tunnel without a fixed address", "interfaces[4].ipv4.mode", func(m *Model) {
+			m.Interfaces[4].IPv4 = IPv4Config{Mode: IPv4DHCP}
+		}},
+		{"networks that overlap (LAN inside IoT)", "interfaces[2].ipv4.address", func(m *Model) {
+			m.Interfaces[2].IPv4.Address = "192.168.1.200"
+		}},
 		{"rule on a missing interface", "firewall.rules[2].interfaces[0]", func(m *Model) { m.Firewall.Rules[2].Interfaces = []string{"nope"} }},
 		{"rule using a missing alias", "firewall.rules[4].source.alias", func(m *Model) { m.Firewall.Rules[4].Source.Alias = "nope" }},
 		{"port that isn't a port", "firewall.rules[2].port", func(m *Model) { m.Firewall.Rules[2].Port = "51820 } pass all {" }},
@@ -98,3 +121,6 @@ func TestValidPortExpr(t *testing.T) {
 		}
 	}
 }
+
+// wg returns interface i's tunnel, for breaking it.
+func wg(m *Model, i int) *WireGuard { return m.Interfaces[i].WireGuard }

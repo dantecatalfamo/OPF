@@ -51,7 +51,7 @@ export function sampleHistory(now: number): SampleCommit[] {
         id: '20260922-161512.000', time: now - 3 * 24 * hour, status: 'applied', message: 'Connect the warehouse',
         changes: [
           { id: 3, section: 'routing', summary: 'Added route 10.20.0.0/16 via WAREHOUSE' },
-          { id: 4, section: 'wireguard', summary: 'Added VPN device “Warehouse router” (10.8.0.10/32)' },
+          { id: 4, section: 'wireguard', summary: 'Added VPN device “Warehouse router” on Sites (10.9.0.2/32)' },
         ],
       },
       before: prev, after: prev,

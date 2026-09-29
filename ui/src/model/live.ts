@@ -16,6 +16,7 @@ export const ifaceStatus: Record<string, IfaceStatus> = {
   lan: { up: true, mac: '00:0d:b9:5e:21:a1', media: '1000baseT full-duplex', rxBps: 5_900_000, txBps: 46_800_000 },
   iot: { up: true, mac: '00:0d:b9:5e:21:a1', media: 'VLAN 20 on em1', rxBps: 180_000, txBps: 420_000 },
   wg: { up: true, mac: '—', media: 'WireGuard tunnel', rxBps: 310_000, txBps: 1_200_000 },
+  wg1: { up: true, mac: '—', media: 'WireGuard tunnel', rxBps: 2_100_000, txBps: 900_000 },
 };
 
 export const systemInfo = {

@@ -727,3 +727,36 @@ func TestBuiltinRulesFollowAddressing(t *testing.T) {
 		}
 	}
 }
+
+// Each tunnel's hostname.wgN has its own port and peers, and nothing of
+// the others'.
+func TestTunnelsAreSeparate(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	files := map[string]string{}
+	for _, f := range GenerateFiles(m) {
+		files[f.Path] = f.Content
+	}
+	wg0, wg1 := files["/etc/hostname.wg0"], files["/etc/hostname.wg1"]
+	for _, c := range []struct {
+		file, text string
+		want       bool
+	}{
+		{wg0, "wgport 51820", true},
+		{wg0, `wgdescr "Priya phone"`, true},
+		{wg0, `wgdescr "Warehouse router"`, false},
+		{wg0, "inet 10.8.0.1/24", true},
+		{wg1, "wgport 51821", true},
+		{wg1, `wgdescr "Warehouse router"`, true},
+		{wg1, "wgaip 10.9.0.2/32 wgaip 10.20.0.0/16 wgendpoint warehouse.example.net 51820", true},
+		{wg1, `wgdescr "Priya phone"`, false},
+		{wg1, "inet 10.9.0.1/24", true},
+		{wg1, "!route -q add -net 10.20.0.0/16 10.9.0.2", true},
+	} {
+		if strings.Contains(c.file, c.text) != c.want {
+			t.Errorf("contains %q = %v, want %v, in:\n%s", c.text, !c.want, c.want, c.file)
+		}
+	}
+	if len(m.Tunnels()) != 2 {
+		t.Errorf("Tunnels() = %d", len(m.Tunnels()))
+	}
+}

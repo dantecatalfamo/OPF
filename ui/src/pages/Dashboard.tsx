@@ -4,6 +4,7 @@ import { Anchor, Badge, Button, Card, Grid, Group, Progress, SimpleGrid, Stack, 
 import { AreaChart } from '@mantine/charts';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
+import { tunnels } from '../model/types';
 import { ifaceStatus, logEntries, peerStatus, pfStats, stepTraffic, systemInfo, trafficSeries, type TrafficPoint } from '../model/live';
 import { formatBits, formatBytes, formatCount, formatDuration } from '../lib/format';
 import { ifaceName } from '../lib/labels';
@@ -76,7 +77,9 @@ export function Dashboard() {
   const last = traffic[traffic.length - 1];
   const wan = applied.interfaces.find((i) => i.role === 'wan');
   const wanStatus = wan ? ifaceStatus[wan.id] : undefined;
-  const connectedPeers = applied.wireguard.peers.filter((p) => (peerStatus[p.id]?.handshakeSecAgo ?? Infinity) < 180).length;
+  const vpns = tunnels(applied);
+  const peers = vpns.flatMap((t) => t.wireguard.peers);
+  const connectedPeers = peers.filter((p) => (peerStatus[p.id]?.handshakeSecAgo ?? Infinity) < 180).length;
   const blocked = logEntries().slice(0, 5);
   const uptime = formatDuration((Date.now() - systemInfo.bootedAt) / 1000);
 
@@ -105,8 +108,8 @@ export function Dashboard() {
         <Tile
           icon={IconServer2}
           label="VPN"
-          value={`${connectedPeers} of ${applied.wireguard.peers.length} connected`}
-          detail={`WireGuard on port ${applied.wireguard.listenPort}`}
+          value={`${connectedPeers} of ${peers.length} connected`}
+          detail={vpns.length ? `WireGuard on port${vpns.length === 1 ? '' : 's'} ${vpns.map((t) => t.wireguard.listenPort).join(', ')}` : 'No tunnels'}
           state={connectedPeers > 0 ? 'ok' : 'warn'}
         />
         <Tile
@@ -208,7 +211,7 @@ export function Dashboard() {
               {[
                 { name: 'DHCP server', ok: applied.dhcp.some((d) => d.enabled), note: `${applied.dhcp.filter((d) => d.enabled).length} networks` },
                 { name: 'DNS resolver', ok: applied.dns.enabled, note: applied.dns.mode === 'recursive' ? 'Recursive, DNSSEC' : 'Forwarding' },
-                { name: 'WireGuard VPN', ok: applied.wireguard.enabled, note: `${applied.wireguard.peers.length} peers` },
+                { name: 'WireGuard VPN', ok: vpns.some((t) => t.enabled), note: `${vpns.filter((t) => t.enabled).length} of ${vpns.length} tunnels, ${peers.length} peers` },
                 { name: 'Time sync', ok: true, note: 'Synced, offset 0.4 ms' },
                 { name: 'SSH', ok: true, note: 'LAN only' },
               ].map((s) => (

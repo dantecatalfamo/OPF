@@ -860,8 +860,7 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 		lines = append(lines, fmt.Sprintf("vnetid %d parent %s", i.VLAN.Tag, i.VLAN.Parent))
 	}
 
-	if i.Role == RoleVPN {
-		wg := m.WireGuard
+	if wg := i.WireGuard; i.Role == RoleVPN && wg != nil {
 		lines = append(lines, "wgkey <private key stored by OPF>", fmt.Sprintf("wgport %d", wg.ListenPort))
 		for _, p := range wg.Peers {
 			aips := []string{fmt.Sprintf("wgaip %s", p.Address)}
@@ -869,12 +868,8 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 				aips = append(aips, fmt.Sprintf("wgaip %s", net))
 			}
 			line := fmt.Sprintf("wgpeer %s %s", p.PublicKey, strings.Join(aips, " "))
-			if p.Endpoint != "" {
-				// Convert host:port to "host port"
-				parts := strings.SplitN(p.Endpoint, ":", 2)
-				if len(parts) == 2 {
-					line += fmt.Sprintf(" wgendpoint %s %s", parts[0], parts[1])
-				}
+			if host, port, err := net.SplitHostPort(p.Endpoint); err == nil {
+				line += fmt.Sprintf(" wgendpoint %s %s", host, port)
 			}
 			if p.Keepalive != nil {
 				line += fmt.Sprintf(" wgpka %d", *p.Keepalive)

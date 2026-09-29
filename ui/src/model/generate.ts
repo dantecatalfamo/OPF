@@ -354,8 +354,8 @@ export const pfConf = (m: Model) => pfRuleset(m).map((l) => l.text).join('\n');
 function hostnameIf(i: Iface, m: Model): string {
   const lines: string[] = [header];
   if (i.vlan) lines.push(`vnetid ${i.vlan.tag} parent ${i.vlan.parent}`);
-  if (i.role === 'vpn') {
-    const wg = m.wireguard;
+  const wg = i.wireguard;
+  if (i.role === 'vpn' && wg) {
     lines.push('wgkey <private key stored by OPF>', `wgport ${wg.listenPort}`);
     for (const p of wg.peers) {
       const aips = [p.address, ...p.networks].map((a) => `wgaip ${a}`).join(' ');

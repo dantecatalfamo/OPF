@@ -6,7 +6,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconArrowRight, IconDots, IconInfoCircle, IconLock, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
-import type { NatRule, PortForward } from '../model/types';
+import { tunnels, type NatRule, type PortForward } from '../model/types';
 import { automaticNat, forwardText, natText, pfComment } from '../model/generate';
 import { endpointLabel, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
@@ -249,7 +249,11 @@ function Outbound() {
   const [drawer, setDrawer] = useState<{ open: boolean; rule: NatRule | null }>({ open: false, rule: null });
   const set = (summary: string, fn: (n: typeof nat) => typeof nat) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, outboundNat: fn(m.firewall.outboundNat) } }));
   const modeLabel = { auto: 'Automatic', hybrid: 'Automatic plus manual rules', manual: 'Manual only' };
-  const vpnCovered = nat.mode !== 'manual' || nat.rules.some((r) => r.enabled && r.source.type === 'iface' && r.source.part === 'network' && r.source.iface === 'wg');
+  // Tunnels with devices sending everything through the office, and no
+  // manual rule to translate them.
+  const uncovered = nat.mode !== 'manual' ? [] : tunnels(staged).filter((t) =>
+    t.wireguard.peers.some((p) => p.clientRoutes === 'full') &&
+    !nat.rules.some((r) => r.enabled && r.source.type === 'iface' && r.source.part === 'network' && r.source.iface === t.id));
 
   return (
     <Stack gap="md">
@@ -266,9 +270,9 @@ function Outbound() {
             {nat.mode === 'hybrid' && 'The automatic rules still apply, and your manual rules below take priority over them.'}
             {nat.mode === 'manual' && 'Only your rules below apply. Networks without a rule can’t reach the internet.'}
           </Text>
-          {!vpnCovered && (
+          {uncovered.length > 0 && (
             <Alert color="yellow" variant="light" icon={<IconInfoCircle size={18} />} p="sm">
-              No rule translates the WireGuard network, so VPN devices sending all traffic through the office can’t reach the internet.
+              No rule translates {uncovered.map((t) => t.name).join(' or ')}, so VPN devices there sending all traffic through the office can’t reach the internet.
             </Alert>
           )}
         </Stack>

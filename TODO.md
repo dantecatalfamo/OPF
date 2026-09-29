@@ -463,26 +463,27 @@ descriptions are free text and counters map back to model objects.
 
 ## WireGuard
 
-- [ ] **Every VPN interface gets the same tunnel.** `Model.WireGuard` is
-      one block (listen port, address, peers), and `GenerateHostnameIf`
-      writes it into every interface with role `vpn`. A second one
-      (`wg1`) gets the same `wgport`, so it fails to come up, and the
-      same peers, so every peer is allowed on both. Nothing in
-      validation stops a second VPN interface. Until there can be
-      several tunnels, reject more than one.
-- [ ] Multiple tunnels. Move the WireGuard settings onto each VPN
-      interface (or make `wireguard` a list keyed by interface id), each
-      with its own listen port, address, private key and peers.
-- [ ] Validation across tunnels: unique listen ports and tunnel
-      subnets, peer keys unique within a tunnel, and allowed networks
-      (`wgaip`) that don't overlap between tunnels or with local
-      networks.
+- [x] **Every VPN interface got the same tunnel.** Each VPN interface
+      now carries its own `wireguard` settings (port, public key,
+      peers); its address and whether it's up are the interface's.
+- [x] Multiple tunnels, with a tab per tunnel and "Add tunnel" on the
+      WireGuard page (picks a free wgN, port and /24, and can add the
+      WAN rule for the port).
+- [x] Validation across tunnels: unique listen ports and keys, peer ids
+      unique everywhere and peer keys within a tunnel, peer addresses
+      inside their tunnel's network, peer addresses and networks
+      (`wgaip`) not overlapping each other or local networks, and no two
+      interfaces on overlapping networks.
+- [ ] Removing a tunnel: deleting its interface would remove
+      `hostname.wgN`, and removing generated files isn't supported yet
+      (see Next up). Until then a tunnel can only be turned off.
+- [ ] Editing a peer: only adding and removing exist.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
       usually no NAT) and remote-access ones (clients NATed out) need
-      different defaults for automatic NAT and generated rules.
-- [ ] UI: the WireGuard page becomes a list of tunnels with their own
-      peers, and peer status (`wg show`, sample data in `live.ts`) needs
-      to say which tunnel a peer is on.
+      different defaults for automatic NAT and generated rules. Today
+      every tunnel's network gets automatic NAT.
+- [ ] Peer status (`wg show`, sample data in `live.ts`) comes per
+      interface; the parser must key it by tunnel and peer.
 - [ ] Key storage (see Code) has to hold one private key per tunnel.
 
 ## DHCP names in DNS

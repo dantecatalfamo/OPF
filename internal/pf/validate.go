@@ -58,8 +58,9 @@ var (
 	// Interface ids become pf macros ($lan), so they follow macro rules.
 	ifaceIDRE = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 	// Other ids only link objects together inside the model.
-	idRE     = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
-	deviceRE = regexp.MustCompile(`^[a-z]+[0-9]+$`) // em0, vlan20, wg0
+	idRE       = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+	deviceRE   = regexp.MustCompile(`^[a-z]+[0-9]+$`) // em0, vlan20, wg0
+	wgDeviceRE = regexp.MustCompile(`^wg[0-9]+$`)
 	// Interface groups can't end in a digit (ifconfig(8)).
 	groupRE = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*[A-Za-z_]$|^[A-Za-z_]$`)
 	// pf table names (PF_TABLE_NAME_SIZE 32) and tags (PF_TAG_NAME_SIZE 64).
@@ -287,7 +288,52 @@ func (v *validator) interfaces() {
 				v.fail(p+".device", "a VLAN's device must be a vlan interface, like vlan%d", f.VLAN.Tag)
 			}
 		}
+		// A VPN interface is a WireGuard tunnel, and only one is.
+		isWG := wgDeviceRE.MatchString(f.Device)
+		switch {
+		case f.Role == RoleVPN && !isWG:
+			v.fail(p+".device", "a VPN interface's device must be a WireGuard interface, like wg0")
+		case f.Role == RoleVPN && f.WireGuard == nil:
+			v.fail(p+".wireguard", "a VPN interface needs WireGuard settings")
+		case f.Role == RoleVPN && f.IPv4.Mode != IPv4Static:
+			v.fail(p+".ipv4.mode", "a tunnel needs a fixed address")
+		case f.Role != RoleVPN && (isWG || f.WireGuard != nil):
+			v.fail(p+".role", "a WireGuard interface must have role vpn")
+		}
 	}
+
+	// Two interfaces on overlapping networks can't both be routed to.
+	type named struct {
+		name string
+		net  netip.Prefix
+	}
+	var seen []named
+	for i := range v.m.Interfaces {
+		f := &v.m.Interfaces[i]
+		n, ok := ifaceNet(f)
+		if !ok {
+			continue
+		}
+		for _, o := range seen {
+			if o.net.Overlaps(n) {
+				v.fail(at("interfaces", i)+".ipv4.address", "its network %s overlaps %s’s, %s", n, o.name, o.net)
+			}
+		}
+		seen = append(seen, named{f.Name, n})
+	}
+}
+
+// ifaceNet is the network of an interface with a fixed address.
+func ifaceNet(f *Iface) (netip.Prefix, bool) {
+	if f.IPv4.Mode != IPv4Static || f.IPv4.Prefix == nil {
+		return netip.Prefix{}, false
+	}
+	a, err := netip.ParseAddr(f.IPv4.Address)
+	if err != nil || !a.Is4() {
+		return netip.Prefix{}, false
+	}
+	n, err := a.Prefix(*f.IPv4.Prefix)
+	return n, err == nil
 }
 
 func (v *validator) routing() {
@@ -715,37 +761,105 @@ func (v *validator) wgKey(path, k string) {
 	}
 }
 
+// wireguard checks each tunnel, and the tunnels against each other and
+// the rest of the network.
 func (v *validator) wireguard() {
-	w := v.m.WireGuard
-	if !w.Enabled && len(w.Peers) == 0 && w.Address == "" {
-		return
+	// A peer's address and networks become its wgaip: traffic for them is
+	// sent to that peer, so each can only belong to one peer, in any
+	// tunnel, and can't be a network that's here.
+	type claim struct {
+		net        netip.Prefix
+		what, path string
 	}
-	v.intRange("wireguard.listenPort", w.ListenPort, 1, 65535)
-	v.prefix("wireguard.address", w.Address, false)
-	v.wgKey("wireguard.publicKey", w.PublicKey)
-	ids, keys := map[string]bool{}, map[string]bool{}
-	for i, pr := range w.Peers {
-		p := at("wireguard.peers", i)
-		v.re(p+".id", pr.ID, idRE, "id")
-		v.unique(p+".id", ids, pr.ID, "peer id")
-		v.re(p+".name", pr.Name, plainNameRE, "name (letters, digits, spaces, _ . -)")
-		v.wgKey(p+".publicKey", pr.PublicKey)
-		v.unique(p+".publicKey", keys, pr.PublicKey, "public key")
-		v.prefix(p+".address", pr.Address, false)
-		for j, n := range pr.Networks {
-			v.prefix(at(p+".networks", j), n, false)
+	var claims []claim
+	var local []claim
+	for i := range v.m.Interfaces {
+		if n, ok := ifaceNet(&v.m.Interfaces[i]); ok {
+			local = append(local, claim{n, v.m.Interfaces[i].Name, ""})
 		}
-		if pr.Endpoint != "" {
-			host, port, err := net.SplitHostPort(pr.Endpoint)
-			if err != nil || !validPort(port) || strings.Trim(port, "0123456789") != "" {
-				v.fail(p+".endpoint", "%q isn't host:port", pr.Endpoint)
+	}
+	ports := map[int]string{}
+	tunnelKeys, peerIDs := map[string]bool{}, map[string]bool{}
+
+	for idx := range v.m.Interfaces {
+		f := &v.m.Interfaces[idx]
+		w := f.WireGuard
+		if w == nil {
+			continue
+		}
+		base := at("interfaces", idx) + ".wireguard"
+		v.intRange(base+".listenPort", w.ListenPort, 1, 65535)
+		if other, dup := ports[w.ListenPort]; dup {
+			v.fail(base+".listenPort", "port %d is already used by %s", w.ListenPort, other)
+		}
+		ports[w.ListenPort] = f.Name
+		v.wgKey(base+".publicKey", w.PublicKey)
+		if tunnelKeys[w.PublicKey] {
+			v.fail(base+".publicKey", "each tunnel needs its own key")
+		}
+		tunnelKeys[w.PublicKey] = true
+		subnet, hasNet := ifaceNet(f)
+		own, _ := netip.ParseAddr(f.IPv4.Address)
+
+		peerKeys := map[string]bool{}
+		for i, pr := range w.Peers {
+			p := at(base+".peers", i)
+			who := fmt.Sprintf("%s on %s", pr.Name, f.Name)
+			v.re(p+".id", pr.ID, idRE, "id")
+			v.unique(p+".id", peerIDs, pr.ID, "peer id")
+			v.re(p+".name", pr.Name, plainNameRE, "name (letters, digits, spaces, _ . -)")
+			v.wgKey(p+".publicKey", pr.PublicKey)
+			v.unique(p+".publicKey", peerKeys, pr.PublicKey, "public key")
+
+			if a, err := netip.ParsePrefix(pr.Address); err != nil || !a.Addr().Is4() {
+				v.fail(p+".address", "%q isn't an IPv4 address with a prefix, like 10.8.0.2/32", pr.Address)
 			} else {
-				v.host(p+".endpoint", host)
+				a = a.Masked()
+				switch {
+				case hasNet && (!subnet.Contains(a.Addr()) || a.Bits() < subnet.Bits()):
+					v.fail(p+".address", "%s isn't inside the tunnel’s network, %s", a, subnet)
+				case a.Contains(own):
+					v.fail(p+".address", "%s includes the tunnel’s own address, %s", a, own)
+				default:
+					claims = append(claims, claim{a, who, p + ".address"})
+				}
+			}
+			for j, n := range pr.Networks {
+				np, err := netip.ParsePrefix(n)
+				if err != nil || !np.Addr().Is4() {
+					v.fail(at(p+".networks", j), "%q isn't an IPv4 network in CIDR form", n)
+					continue
+				}
+				np = np.Masked()
+				for _, l := range local {
+					if l.net.Overlaps(np) {
+						v.fail(at(p+".networks", j), "%s overlaps %s’s network, %s", np, l.what, l.net)
+					}
+				}
+				claims = append(claims, claim{np, who, at(p+".networks", j)})
+			}
+
+			if pr.Endpoint != "" {
+				host, port, err := net.SplitHostPort(pr.Endpoint)
+				if err != nil || !validPort(port) || strings.Trim(port, "0123456789") != "" {
+					v.fail(p+".endpoint", "%q isn't host:port", pr.Endpoint)
+				} else {
+					v.host(p+".endpoint", host)
+				}
+			}
+			if pr.Keepalive != nil {
+				v.intRange(p+".keepalive", *pr.Keepalive, 0, 65535)
+			}
+			v.oneOf(p+".clientRoutes", string(pr.ClientRoutes), string(ClientRoutesSplit), string(ClientRoutesFull), string(ClientRoutesSite))
+		}
+	}
+
+	for i := range claims {
+		for j := range i {
+			if claims[i].net.Overlaps(claims[j].net) {
+				v.fail(claims[i].path, "%s (%s) overlaps %s (%s): traffic for it can only go to one peer",
+					claims[i].net, claims[i].what, claims[j].net, claims[j].what)
 			}
 		}
-		if pr.Keepalive != nil {
-			v.intRange(p+".keepalive", *pr.Keepalive, 0, 65535)
-		}
-		v.oneOf(p+".clientRoutes", string(pr.ClientRoutes), string(ClientRoutesSplit), string(ClientRoutesFull), string(ClientRoutesSite))
 	}
 }

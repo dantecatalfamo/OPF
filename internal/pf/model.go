@@ -11,7 +11,6 @@ type Model struct {
 	Firewall   Firewall       `json:"firewall"`
 	DHCP       []DHCPScope    `json:"dhcp"`
 	DNS        DNS            `json:"dns"`
-	WireGuard  WireGuard      `json:"wireguard"`
 }
 
 type SystemSettings struct {
@@ -69,6 +68,9 @@ type Iface struct {
 	VLAN         *VLANConfig `json:"vlan,omitempty"`
 	BlockPrivate bool        `json:"blockPrivate,omitempty"`
 	BlockBogons  bool        `json:"blockBogons,omitempty"`
+	// WireGuard is set on every VPN interface (role vpn, device wgN):
+	// each is its own tunnel.
+	WireGuard *WireGuard `json:"wireguard,omitempty"`
 }
 
 // ---------- Firewall ----------
@@ -505,12 +507,23 @@ type Peer struct {
 	ClientRoutes ClientRoutes `json:"clientRoutes"`
 }
 
+// WireGuard is one tunnel, what its interface's hostname.wgN sets up.
+// The tunnel's address and whether it's up are the interface's.
 type WireGuard struct {
-	Enabled    bool   `json:"enabled"`
 	ListenPort int    `json:"listenPort"`
-	Address    string `json:"address"`
 	PublicKey  string `json:"publicKey"`
 	Peers      []Peer `json:"peers"`
+}
+
+// Tunnels returns the VPN interfaces, each with its WireGuard settings.
+func (m *Model) Tunnels() []*Iface {
+	var out []*Iface
+	for i := range m.Interfaces {
+		if m.Interfaces[i].Role == RoleVPN && m.Interfaces[i].WireGuard != nil {
+			out = append(out, &m.Interfaces[i])
+		}
+	}
+	return out
 }
 
 // ---------- Parse Results ----------

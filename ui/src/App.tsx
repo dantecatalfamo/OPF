@@ -57,6 +57,7 @@ function AppRoutes() {
         <Route path="services/dhcp" element={<Dhcp />} />
         <Route path="services/dns" element={<Dns />} />
         <Route path="services/wireguard" element={<WireGuardPage />} />
+        <Route path="services/wireguard/:tunnel" element={<WireGuardPage />} />
         <Route path="system/general" element={<SystemGeneral />} />
         <Route path="system/history" element={<History />} />
         <Route path="diagnostics/connections" element={<Connections />} />

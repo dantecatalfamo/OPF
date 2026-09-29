@@ -117,7 +117,7 @@ func TestRPCRoundTrip(t *testing.T) {
 	c := newClient(t, api)
 
 	live, err := c.Live()
-	if err != nil || live.Model == nil || len(live.Model.Interfaces) != 4 {
+	if err != nil || live.Model == nil || len(live.Model.Interfaces) != 5 {
 		t.Fatalf("Live = %+v, %v", live, err)
 	}
 	live.Model.System.NTPServers = []string{"rpc.example"}

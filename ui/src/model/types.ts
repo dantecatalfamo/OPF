@@ -17,7 +17,13 @@ export interface Iface {
   vlan?: { parent: string; tag: number };
   blockPrivate?: boolean; // WAN only
   blockBogons?: boolean; // WAN only
+  wireguard?: WireGuard; // VPN interfaces (wgN) only: each is its own tunnel
 }
+
+/** A VPN interface, with its tunnel. */
+export type Tunnel = Iface & { wireguard: WireGuard };
+
+export const tunnels = (m: Model): Tunnel[] => m.interfaces.filter((i): i is Tunnel => i.role === 'vpn' && !!i.wireguard);
 
 // ---------- Firewall ----------
 
@@ -269,10 +275,10 @@ export interface Peer {
   clientRoutes: 'split' | 'full' | 'site'; // what the peer sends through the tunnel
 }
 
+// A tunnel's settings. Its address and whether it's up are its
+// interface's.
 export interface WireGuard {
-  enabled: boolean;
   listenPort: number;
-  address: string; // tunnel address with prefix, e.g. 10.8.0.1/24
   publicKey: string;
   peers: Peer[];
 }
@@ -291,7 +297,6 @@ export interface Model {
   firewall: Firewall;
   dhcp: DhcpScope[];
   dns: Dns;
-  wireguard: WireGuard;
 }
 
 export interface Change {
