@@ -461,6 +461,30 @@ descriptions are free text and counters map back to model objects.
 - [ ] Importing: rules with their own label stay raw (the guided form's
       label is its id). Offer to turn those labels into descriptions.
 
+## WireGuard
+
+- [ ] **Every VPN interface gets the same tunnel.** `Model.WireGuard` is
+      one block (listen port, address, peers), and `GenerateHostnameIf`
+      writes it into every interface with role `vpn`. A second one
+      (`wg1`) gets the same `wgport`, so it fails to come up, and the
+      same peers, so every peer is allowed on both. Nothing in
+      validation stops a second VPN interface. Until there can be
+      several tunnels, reject more than one.
+- [ ] Multiple tunnels. Move the WireGuard settings onto each VPN
+      interface (or make `wireguard` a list keyed by interface id), each
+      with its own listen port, address, private key and peers.
+- [ ] Validation across tunnels: unique listen ports and tunnel
+      subnets, peer keys unique within a tunnel, and allowed networks
+      (`wgaip`) that don't overlap between tunnels or with local
+      networks.
+- [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
+      usually no NAT) and remote-access ones (clients NATed out) need
+      different defaults for automatic NAT and generated rules.
+- [ ] UI: the WireGuard page becomes a list of tunnels with their own
+      peers, and peer status (`wg show`, sample data in `live.ts`) needs
+      to say which tunnel a peer is on.
+- [ ] Key storage (see Code) has to hold one private key per tunnel.
+
 ## DHCP names in DNS
 
 - [ ] No PTR records for leases (or reservations): reverse lookups of
