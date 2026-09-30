@@ -8,7 +8,7 @@ import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, I
 import { newId, useStore } from '../model/store';
 import { ifaceStatus, peerStatus } from '../model/live';
 import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
-import { automaticNat, localNetworks } from '../model/generate';
+import { useDerived } from '../lib/generated';
 import { formRule } from '../model/sample';
 import { isFloating } from '../lib/rules';
 import { formatAgo, formatBytes } from '../lib/format';
@@ -187,7 +187,8 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
 
   const v = form.values;
   const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
-  const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : localNetworks(staged).join(', ');
+  const local = useDerived(staged).data?.localNetworks ?? [];
+  const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   const clientConfig = `[Interface]
 PrivateKey = ${keys.priv}
 Address = ${v.address}
@@ -250,7 +251,7 @@ PersistentKeepalive = 25`;
                 {...form.getInputProps('clientRoutes')}
               />
               <Text size="xs" c="dimmed">
-                {v.clientRoutes === 'split' && `The device’s configuration sends only traffic for ${localNetworks(staged).join(', ')} through the tunnel, and its own internet connection handles the rest. OPF also blocks anything else the device sends, so it can’t reach the internet through OPF even if its configuration is changed.`}
+                {v.clientRoutes === 'split' && `The device’s configuration sends only traffic for ${local.join(', ')} through the tunnel, and its own internet connection handles the rest. OPF also blocks anything else the device sends, so it can’t reach the internet through OPF even if its configuration is changed.`}
                 {v.clientRoutes === 'full' && `The device’s configuration sends everything through the tunnel and out OPF’s internet connection, translated to the WAN address by outbound NAT. Your ${tunnel.name} rules decide what it may reach.`}
                 {v.clientRoutes === 'site' && 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.'}
               </Text>
@@ -280,7 +281,8 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const tunnelRules = staged.firewall.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === tunnel.id);
   const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === tunnel.id);
   const nat = staged.firewall.outboundNat;
-  const natAuto = nat.mode !== 'manual' && automaticNat(staged).some((n) => n.source.type === 'iface' && n.source.iface === tunnel.id);
+  const automatic = useDerived(staged).data?.automaticNat ?? [];
+  const natAuto = nat.mode !== 'manual' && automatic.some((n) => n.source.type === 'iface' && n.source.iface === tunnel.id);
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
   const splitPeers = wg.peers.filter((p) => p.clientRoutes === 'split');
 
@@ -405,9 +407,9 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
 
 // The device's configuration after an edit. Its private key is the one
 // it already has: OPF never sees it again after creating the device.
-function deviceConfig(m: Model, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
+function deviceConfig(local: string[], t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
   const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
-  const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : localNetworks(m).join(', ');
+  const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   return `[Interface]
 PrivateKey = <the device’s existing private key>
 Address = ${p.address}
@@ -450,6 +452,7 @@ function syncPeerRouting(m: Model, t: Tunnel, before: Peer, after: Peer): Model 
 function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null; onClose: () => void }) {
   const { staged, edit } = useStore();
   const [saved, setSaved] = useState<Peer | null>(null);
+  const local = useDerived(staged).data?.localNetworks ?? [];
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
     validate: {
@@ -489,9 +492,9 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Update the device too">
             Its address or what it sends through the VPN changed, so the device needs the new settings below. Keep the private key it already has.
           </Alert>
-          <Code block>{deviceConfig(staged, tunnel, saved)}</Code>
+          <Code block>{deviceConfig(local, tunnel, saved)}</Code>
           <Group justify="flex-end">
-            <CopyButton value={deviceConfig(staged, tunnel, saved)}>
+            <CopyButton value={deviceConfig(local, tunnel, saved)}>
               {({ copied, copy }) => (
                 <Button variant="light" leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />} onClick={copy}>{copied ? 'Copied' : 'Copy configuration'}</Button>
               )}

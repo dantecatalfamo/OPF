@@ -151,9 +151,13 @@ split-tunnel). Descriptions are `#` comments above the rules. IDs that
 end up in labels are at most 32 characters of `[A-Za-z0-9_-]`. Tables
 OPF makes use reserved names (`opf_*`, `private`, `bogons`).
 
-**One generator, in Go.** `ui/src/model/generate.ts` duplicates the Go
-generators for the offline preview build and is to be deleted (see the
-roadmap). Until then, keep it in step with every Go generator change.
+**One generator, in Go.** The UI never generates config itself. It
+asks the API (`/api/pf/ruleset`, `/api/pf/derived`, `/api/pf/render`,
+through the hooks in `ui/src/lib/generated.ts`). The offline preview
+build runs the same Go code compiled to WebAssembly (`cmd/opfwasm`,
+about 5 MB, 1.4 MB gzipped, inlined only into the preview). Something
+new a page needs from the generators goes in `pf.Derive` or a new
+endpoint, and in `cmd/opfwasm` too.
 - `ui/src/model/sample-model.json` is shared by the UI, the mock and
   the Go tests, which decode it strictly and validate it. Keep it
   valid.
@@ -167,13 +171,14 @@ diffs, whether confirmation is needed, and the server's objections.
 
 ### Working on it
 
-- **Go 1.25.** Run `make test` (vet plus `go test -race ./...`) and
-  `GOOS=openbsd go vet ./...` before calling anything done. Fuzz
+- **Go 1.25.** Run `make test` (vet plus `go test -race ./...`),
+  `GOOS=openbsd go vet ./...` and `GOOS=js GOARCH=wasm go vet
+  ./cmd/opfwasm` before calling anything done. Fuzz
   parsers after changing them:
   `go test -run '^$' -fuzz <Target> -fuzztime 60s ./internal/<pkg>`.
 - **UI**:
   - `cd ui && npx tsc`, `npm run build`, and `npm run build:preview`
-    (the single-file offline build).
+    (the single-file offline build; it builds the wasm first).
   - When a check is piped through `grep -v`, don't chain `&&` after it:
     `grep -v` exits 1 when there's nothing left to print.
 - **`make mock`** runs `opf -mock` (the real engine on the sample
@@ -229,16 +234,12 @@ diffs, whether confirmation is needed, and the server's objections.
 
 In order. Each step's details are in the section it points to.
 
-1. **One generator.** Delete `ui/src/model/generate.ts`; the UI gets
-   generated files and the annotated ruleset from the API, and the
-   offline preview build gets them from a stand-in. Keep the sample
-   model as the shared fixture for Go tests and the mock.
-2. **Authentication and TLS**, enforced in the parent (Security › User
+1. **Authentication and TLS**, enforced in the parent (Security › User
    accounts).
-3. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
+2. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
    in the SSH config is a candidate; ask before using it.
-4. **Import** (Parser and import), then the first-run wizard.
-5. **Live data** (Live data and monitoring).
+3. **Import** (Parser and import), then the first-run wizard.
+4. **Live data** (Live data and monitoring).
 
 ## Commit engine and staging
 
@@ -915,6 +916,12 @@ Finished work, kept here for now. Git history has the details.
 
 Parser and generators:
 
+- [x] One generator: the TypeScript copy (`ui/src/model/generate.ts`)
+      is gone. Pages get the ruleset, previews and derived data
+      (automatic NAT, local networks, rule text, which interfaces are
+      dynamic) from the API, and the offline preview runs the Go
+      generators as WebAssembly. A half-finished model that makes a
+      generator panic is a 422, not a crash.
 - [x] Every pf.conf(5) option: `set limit` (all of them), `set timeout`
       (each key), adaptive syncookies' thresholds, `set state-defaults`,
       `set reassemble`, `set ruleset-optimization`, `set debug`,

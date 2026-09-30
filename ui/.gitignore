@@ -1,3 +1,5 @@
 node_modules/
 dist/
 dist-preview/
+src/wasm/opf.wasm
+src/wasm/wasm_exec.js

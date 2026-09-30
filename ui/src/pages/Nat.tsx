@@ -7,7 +7,7 @@ import { useForm } from '@mantine/form';
 import { IconArrowRight, IconDots, IconInfoCircle, IconLock, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import { tunnels, type NatRule, type PortForward } from '../model/types';
-import { automaticNat, forwardText, natText, pfComment } from '../model/generate';
+import { renderedText, useDerived, useRendered } from '../lib/generated';
 import { endpointLabel, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
@@ -38,7 +38,8 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
   const v = form.values;
   // With the forward's own id, so the preview shows its real label; a
   // new one has none until it's saved.
-  const preview = [pfComment(v.description), ...forwardText({ ...v, id: forward?.id ?? '', targetPort: v.targetPort || v.externalPort }, staged)].filter(Boolean).join('\n');
+  const rendered = useRendered(staged, opened ? { forward: { ...v, id: forward?.id ?? '', targetPort: v.targetPort || v.externalPort } } : null);
+  const preview = rendered.error ? `# Couldn’t render this yet: ${rendered.error}` : renderedText(rendered.data) || '# Loading…';
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{forward ? 'Edit port forward' : 'Add port forward'}</Text>}>
@@ -189,7 +190,8 @@ function NatDrawer({ opened, onClose, rule, onSave }: { opened: boolean; onClose
     const translation = x.translation.type === 'address' ? { type: 'address' as const, value: translationAddress } : x.translation;
     return { ...rest, translation, pool: translation.type === 'address' && translationAddress.includes('/') ? x.pool ?? 'round-robin' : undefined };
   };
-  const preview = [pfComment(v.description), natText({ ...toRule(v), id: rule?.id ?? '' }, staged)].filter(Boolean).join('\n');
+  const rendered = useRendered(staged, opened ? { nat: { ...toRule(v), id: rule?.id ?? '' } } : null);
+  const preview = rendered.error ? `# Couldn’t render this yet: ${rendered.error}` : renderedText(rendered.data) || '# Loading…';
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{rule ? 'Edit outbound NAT rule' : 'Add outbound NAT rule'}</Text>}>
@@ -245,7 +247,7 @@ function translationLabel(n: NatRule, iface: string) {
 function Outbound() {
   const { staged, edit } = useStore();
   const nat = staged.firewall.outboundNat;
-  const auto = automaticNat(staged);
+  const auto = useDerived(staged).data?.automaticNat ?? [];
   const [drawer, setDrawer] = useState<{ open: boolean; rule: NatRule | null }>({ open: false, rule: null });
   const set = (summary: string, fn: (n: typeof nat) => typeof nat) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, outboundNat: fn(m.firewall.outboundNat) } }));
   const modeLabel = { auto: 'Automatic', hybrid: 'Automatic plus manual rules', manual: 'Manual only' };

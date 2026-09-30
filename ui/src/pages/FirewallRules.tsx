@@ -9,7 +9,7 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { newId, useStore } from '../model/store';
 import { ruleCounters } from '../model/live';
-import { ruleText } from '../model/generate';
+import { useDerived } from '../lib/generated';
 import type { Model, Rule, RuleInput } from '../model/types';
 import { endpointLabel, ifaceName, portLabel, protocolLabel } from '../lib/labels';
 import { formatCount } from '../lib/format';
@@ -66,8 +66,8 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
   );
 }
 
-function RuleRow({ rule, model, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
-  rule: Rule; model: Model; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+function RuleRow({ rule, model, pfText, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
+  rule: Rule; model: Model; pfText?: string; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
   const c = ruleCounters[rule.id];
@@ -104,7 +104,7 @@ function RuleRow({ rule, model, showPf, floating, onEdit, onToggle, onDuplicate,
       {pf ? (
         <Table.Td colSpan={3}>
           <Text className="mono" size="xs" c={dim} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {ruleText(rule, model)}
+            {pfText ?? (rule.kind === 'raw' ? rule.text : '…')}
           </Text>
         </Table.Td>
       ) : (
@@ -178,6 +178,7 @@ export function FirewallRules() {
   const { iface: param } = useParams();
   const navigate = useNavigate();
   const { staged, edit } = useStore();
+  const derived = useDerived(staged).data;
   const [showPf, setShowPf] = usePref('opf.rules.showPf', false);
   const ifaces = staged.interfaces;
   const floating = param === FLOATING;
@@ -285,6 +286,7 @@ export function FirewallRules() {
                         key={r.id}
                         rule={r}
                         model={staged}
+                        pfText={derived?.rules[r.id]}
                         showPf={showPf}
                         floating={floating}
                         onEdit={() => setDrawer({ open: true, rule: r })}

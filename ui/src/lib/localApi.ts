@@ -1,16 +1,17 @@
 // An in-memory stand-in for the server, for the offline preview build.
 // It follows the server's rules (versions, pending commits that revert
-// on their own, changes staged again after a revert) using the
-// TypeScript generator, so the UI has one code path.
-import type { Model } from '../model/types';
-import { generateFiles } from '../model/generate';
+// on their own, changes staged again after a revert), and generates,
+// validates and parses with the Go code itself, compiled to WebAssembly
+// (cmd/opfwasm), so what the preview shows is what the appliance would.
+import type { Model, Rule } from '../model/types';
+import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
-  type ARPTableResource, type RoutingTableResource,
+  type ARPTableResource, type RoutingTableResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -30,14 +31,25 @@ function version(m: Model): string {
   return h.toString(16).padStart(8, '0');
 }
 
-function files(m: Model): Map<string, string> {
-  return new Map([[MODEL_PATH, JSON.stringify(m, null, 2) + '\n'], ...generateFiles(m).map((f) => [f.path, f.content] as [string, string])]);
+// Generator errors come back the way the server reports them.
+async function generate<T>(name: string, request: unknown): Promise<T> {
+  try {
+    return await call<T>(name, request);
+  } catch (e) {
+    if (e instanceof GeneratorError) throw new ApiError(422, 'invalid', e.message);
+    throw e;
+  }
 }
 
-function fileChanges(from: Model, to: Model): FileChange[] {
-  const a = files(from);
+async function files(m: Model): Promise<Map<string, string>> {
+  const gen = await generate<GeneratedFile[]>('files', { model: m });
+  return new Map([[MODEL_PATH, JSON.stringify(m, null, 2) + '\n'], ...gen.map((f) => [f.path, f.content] as [string, string])]);
+}
+
+async function fileChanges(from: Model, to: Model): Promise<FileChange[]> {
+  const a = await files(from);
   const out: FileChange[] = [];
-  const b = files(to);
+  const b = await files(to);
   for (const [path, content] of b) {
     const before = a.get(path);
     if (before === content) continue;
@@ -67,9 +79,9 @@ const records: Record[] = sampleHistory(Date.now()).map(({ entry, before, after 
   before, after, diffs: [],
 }));
 
-function stagedResource(): StagedResource {
+async function stagedResource(): Promise<StagedResource> {
   if (!staged) throw new ApiError(404, 'nothing_staged', 'nothing is staged');
-  return { version: version(staged), base: version(live), model: clone(staged), changes: fileChanges(live, staged) };
+  return { version: version(staged), base: version(live), model: clone(staged), changes: await fileChanges(live, staged) };
 }
 
 function record(id: string): Record {
@@ -100,6 +112,17 @@ function newID(): string {
 }
 
 export const localApi = {
+  pfRuleset: async (model: Model) => generate<PfLine[]>('ruleset', { model }),
+  pfDerived: async (model: Model) => generate<Derived>('derived', { model }),
+  pfRender: async (model: Model, target: RenderTarget) => generate<Rendered>('render', { model, ...target }),
+  parseRule: async (text: string, model?: Model): Promise<Rule | undefined> => {
+    try {
+      const rule = await call<Rule | null>('parse', { text, model });
+      return rule?.kind === 'form' ? rule : undefined;
+    } catch {
+      return undefined; // not a pf rule, like the server's 422
+    }
+  },
   status: async (): Promise<StatusResource> => ({
     live: version(live),
     staged: staged ? version(staged) : undefined,
@@ -110,6 +133,8 @@ export const localApi = {
   stage: async (base: string, model: Model, _overwrite?: string[]): Promise<StagedResource> => {
     if (pending) throw new ApiError(409, 'commit_pending', 'a commit is waiting for confirmation; confirm or revert it first');
     if (base !== version(live)) throw new ApiError(409, 'conflict', 'the configuration was changed; reload and redo your changes');
+    const problems = await generate<{ path: string; message: string }[]>('validate', { model });
+    if (problems.length) throw new ApiError(422, 'invalid', `the configuration has ${problems.length} problem(s)`, problems);
     staged = version(model) === version(live) ? null : clone(model);
     return staged ? stagedResource() : { version: version(live), base, model: clone(model), changes: [] };
   },
@@ -126,7 +151,7 @@ export const localApi = {
     if (!staged) throw new ApiError(409, 'nothing_staged', 'nothing is staged');
     if (version(staged) !== stagedVersion) throw new ApiError(409, 'conflict', 'the staged configuration changed; review it again');
     if (pending) throw new ApiError(409, 'commit_pending', 'a commit is already waiting for confirmation');
-    const changed = fileChanges(live, staged);
+    const changed = await fileChanges(live, staged);
     const needsConfirm = changed.some((c) => c.needsConfirm);
     const id = newID();
     const r: Record = {

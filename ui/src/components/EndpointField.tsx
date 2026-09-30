@@ -1,6 +1,6 @@
 import { Checkbox, Group, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import type { Endpoint, IfaceEndpoint, IfacePart, Model, SelfEndpoint } from '../model/types';
-import { ifaceDynamic } from '../model/generate';
+import { useDerived } from '../lib/generated';
 
 // The picker's value: 'any' | 'self' | 'iface:<id>' | 'group:<name>' |
 // 'group:' (a group typed in) | 'host' | 'network' | 'alias:<name>'
@@ -69,7 +69,11 @@ const partLabels: { value: IfacePart | 'address'; label: string }[] = [
 ];
 
 function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfEndpoint; onChange: (e: Endpoint) => void; model: Model }) {
-  const auto = ifaceDynamic({ ...value, dynamic: undefined }, model);
+  // Whether OPF writes the reference in parentheses when it isn't told:
+  // an interface whose address can change, or a group, which pf only
+  // knows at run time.
+  const derived = useDerived(model).data;
+  const auto = value.type === 'self' ? derived?.selfDynamic ?? false : value.group ? true : derived?.dynamicIfaces[value.iface ?? ''] ?? true;
   const help = {
     address: 'The addresses assigned to it.',
     network: 'The networks attached to it.',

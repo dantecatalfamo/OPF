@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { Anchor, Box, Button, Card, CopyButton, Drawer, Group, Stack, Text, Textarea, TextInput } from '@mantine/core';
+import { Alert, Anchor, Box, Button, Card, CopyButton, Drawer, Group, Loader, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconCopy, IconPencil, IconSearch } from '@tabler/icons-react';
 import { useStore } from '../model/store';
-import { pfRuleset } from '../model/generate';
+import { useRuleset } from '../lib/generated';
 import type { CustomPf } from '../model/types';
 import { checkPfLine } from '../lib/pfcheck';
 import { PageHeader } from '../components/ui';
@@ -55,7 +55,7 @@ function CustomDrawer({ opened, onClose }: { opened: boolean; onClose: () => voi
 
 export function Ruleset() {
   const { staged, pendingSections } = useStore();
-  const lines = useMemo(() => pfRuleset(staged), [staged]);
+  const { data: lines = [], error } = useRuleset(staged);
   const [q, setQ] = useState('');
   // ?edit=custom, from a custom pf line's link, opens the editor.
   const [params, setParams] = useSearchParams();
@@ -91,6 +91,8 @@ export function Ruleset() {
         }
       />
       <TextInput placeholder="Search rules" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} mb="md" maw={420} />
+      {error && <Alert color="red" variant="light" mb="md" title="Couldn’t generate the ruleset">{error}</Alert>}
+      {!lines.length && !error && <Loader size="sm" mb="md" />}
       <Card padding={0}>
         <Box style={{ overflowX: 'auto' }}>
           <Box className="mono" fz={12} lh={1.7} py="sm" style={{ minWidth: 760 }}>

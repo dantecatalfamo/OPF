@@ -1,14 +1,12 @@
 // Client for OPF's JSON API (docs/api.md). Every call either returns
 // the resource or throws an ApiError carrying the server's error code.
 
-import type { Model, Rule, Section } from '../model/types';
-import { ruleText } from '../model/generate';
+import type { Model, NatRule, PortForward, Rule, Section } from '../model/types';
 
 const API_BASE = '/api';
 
-// The shared preview build has no backend; the store simulates the
-// server there, and the pf helpers fall back to the TypeScript
-// generator.
+// The shared preview build has no backend; its stand-in API
+// (localApi.ts) runs the Go generators compiled to WebAssembly.
 export const offline = import.meta.env.MODE === 'preview';
 
 export type ErrorCode =
@@ -139,6 +137,42 @@ export interface RoutingTableResource {
   error?: string;
 }
 
+/** Where a pf.conf line came from, so the UI can link to it. */
+export interface Origin {
+  label: string;
+  to: string;
+}
+
+export interface PfLine {
+  text: string;
+  origin?: Origin;
+}
+
+export interface GeneratedFile {
+  path: string;
+  content: string;
+}
+
+/** What the pages show that the generators work out (internal/pf Derive). */
+export interface Derived {
+  automaticNat: NatRule[];
+  /** "Your networks" as a VPN device's configuration lists them. */
+  localNetworks: string[];
+  /** Each rule's pf text, by rule id. */
+  rules: Record<string, string>;
+  /** Whether a reference to each interface is in parentheses by default. */
+  dynamicIfaces: Record<string, boolean>;
+  selfDynamic: boolean;
+}
+
+/** One object's pf text: its description as a comment, and its rules. */
+export interface Rendered {
+  comment?: string;
+  lines: string[];
+}
+
+export type RenderTarget = { rule: Rule } | { nat: NatRule } | { forward: PortForward };
+
 export interface StatusResource {
   live: string;
   staged?: string;
@@ -196,14 +230,13 @@ export const api = {
   arpTable: () => request<ARPTableResource>('GET', '/network/arp'),
   routingTable: () => request<RoutingTableResource>('GET', '/network/routes'),
 
-  /** pf rule text for a rule. */
-  renderRule: async (rule: Rule, model?: Model): Promise<string> => {
-    if (offline && model) return ruleText(rule, model);
-    return (await request<{ text: string }>('POST', '/pf/render', { rule, model })).text;
-  },
+  /** A model's pf.conf, each line with where it came from. */
+  pfRuleset: async (model: Model) => (await request<{ lines: PfLine[] }>('POST', '/pf/ruleset', { model })).lines,
+  pfDerived: (model: Model) => request<Derived>('POST', '/pf/derived', { model }),
+  /** The pf text for one rule, NAT rule or port forward. */
+  pfRender: (model: Model, target: RenderTarget) => request<Rendered>('POST', '/pf/render', { model, ...target }),
   /** A guided rule parsed from pf text, or undefined if the form can't hold it. */
   parseRule: async (text: string, model?: Model): Promise<Rule | undefined> => {
-    if (offline) return undefined;
     try {
       const { rule } = await request<{ rule: Rule }>('POST', '/pf/parse', { text, model });
       return rule.kind === 'form' ? rule : undefined;

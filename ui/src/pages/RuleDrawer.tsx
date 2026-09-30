@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Accordion, Alert, Autocomplete, Badge, Button, Code, Drawer, Group, Loader, MultiSelect, NumberInput, SegmentedControl, Select, SimpleGrid,
   Stack, Switch, TagsInput, Text, Textarea, TextInput, Tooltip,
@@ -12,8 +12,8 @@ import { commonPorts } from '../lib/labels';
 import { checkPfLine } from '../lib/pfcheck';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
 import { getIcmpTypeOptions, getIcmpCodeOptions, returnIcmpCodes, returnIcmp6Codes } from '../lib/icmp';
-import { api } from '../lib/api';
-import { pfComment } from '../model/generate';
+import { renderedText, useRendered } from '../lib/generated';
+import { backend } from '../model/store';
 
 type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
 
@@ -114,37 +114,12 @@ export function RuleDrawer({
 
   const v = form.values;
 
-  // Use backend API for rule preview generation (debounced)
-  const [preview, setPreview] = useState('');
-  const [previewLoading, setPreviewLoading] = useState(false);
-  // Responses can arrive out of order; only the latest request's counts.
-  const previewSeq = useRef(0);
-
-  useEffect(() => {
-    if (v.mode !== 'form') {
-      setPreview('');
-      return;
-    }
-
-    // Debounce preview generation
-    const timer = setTimeout(async () => {
-      const seq = ++previewSeq.current;
-      setPreviewLoading(true);
-      let text: string;
-      try {
-        // With the rule's own id, so the preview shows its real label.
-        text = await api.renderRule({ ...toRule(v), id: rule?.id ?? '' } as Rule, model);
-      } catch (e) {
-        text = `# Couldn't render the rule: ${e instanceof Error ? e.message : e}`;
-      }
-      if (seq === previewSeq.current) {
-        setPreview(text);
-        setPreviewLoading(false);
-      }
-    }, 150); // 150ms debounce
-
-    return () => clearTimeout(timer);
-  }, [v, model, rule]);
+  // The rule's pf text from the server's generator, with the rule's own
+  // id so the preview shows its real label.
+  const target = v.mode === 'form' ? { rule: { ...toRule(v), id: rule?.id ?? '' } as Rule } : null;
+  const rendered = useRendered(model, target);
+  const preview = rendered.data?.lines[0] ?? '';
+  const previewLoading = !!target && !rendered.data && !rendered.error;
 
   const state: StateOptions = v.state ?? { mode: 'keep' };
   const setState = (patch: Partial<StateOptions>) => form.setFieldValue('state', { ...state, ...patch });
@@ -159,7 +134,7 @@ export function RuleDrawer({
     if (!v.rawText.trim()) return;
     setParseLoading(true);
     try {
-      const parsedRule = await api.parseRule(v.rawText, model);
+      const parsedRule = await backend.parseRule(v.rawText, model);
       if (parsedRule && parsedRule.kind === 'form') {
         // Successfully parsed - switch to form mode with populated values
         const { id: _id, kind: _kind, ...formValues } = parsedRule;
@@ -536,7 +511,7 @@ export function RuleDrawer({
           {v.mode === 'form' && (
             <Group gap="xs" align="flex-start">
               <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, flex: 1 }}>
-                {preview ? [pfComment(v.description), preview].filter(Boolean).join('\n') : '# Loading...'}
+                {rendered.error ? `# Couldn't render the rule: ${rendered.error}` : preview ? renderedText(rendered.data) : '# Loading...'}
               </Code>
               {previewLoading && <Loader size="xs" />}
             </Group>
