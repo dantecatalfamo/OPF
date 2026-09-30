@@ -1,0 +1,66 @@
+[
+  {
+    "number": 0,
+    "label": "opf:builtin:default-block",
+    "evaluations": 20411,
+    "packets": 1482,
+    "bytes": 97012,
+    "states": 0
+  },
+  {
+    "number": 1,
+    "label": "opf:builtin:self-out",
+    "evaluations": 20411,
+    "packets": 30120,
+    "bytes": 4512034,
+    "states": 3
+  },
+  {
+    "number": 2,
+    "label": "opf:builtin:anti-lockout",
+    "evaluations": 18320,
+    "packets": 5021,
+    "bytes": 612345,
+    "states": 2
+  },
+  {
+    "number": 3,
+    "label": "opf:builtin:anti-lockout",
+    "evaluations": 110,
+    "packets": 0,
+    "bytes": 0,
+    "states": 0
+  },
+  {
+    "number": 4,
+    "label": "opf:rule:r3",
+    "evaluations": 1204998,
+    "packets": 88120334,
+    "bytes": 99120334012,
+    "states": 241
+  },
+  {
+    "number": 5,
+    "label": "opf:builtin:block-bogons",
+    "evaluations": 22112,
+    "packets": 88,
+    "bytes": 5120,
+    "states": 0
+  },
+  {
+    "number": 6,
+    "label": "has no opf prefix",
+    "evaluations": 4120,
+    "packets": 9012,
+    "bytes": 1012345,
+    "states": 9
+  },
+  {
+    "number": 7,
+    "label": "opf:auto-nat:lan",
+    "evaluations": 99120,
+    "packets": 88120334,
+    "bytes": 99120334012,
+    "states": 0
+  }
+]

@@ -236,6 +236,11 @@ func FuzzParsers(f *testing.F) {
 		ParseNetstatIfaces(s, s)
 		ParsePing(s)
 		ParseNtpctl(s)
+		ParsePfInfo(s)
+		ParsePfMemory(s)
+		ParsePfStates(s, 10)
+		ParsePfRules(s)
+		ParsePflog(s, time.Now(), 10)
 	})
 }
 
@@ -257,4 +262,80 @@ func must[T any](v T, ok bool) T {
 		panic("not ok")
 	}
 	return v
+}
+
+func TestParsePfInfo(t *testing.T) {
+	eachFixture(t, "pfctl_-v_-s_info.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "pfctl_-v_-s_info", must(ParsePfInfo(out)))
+	})
+	p, ok := ParsePfInfo("Status: Disabled                               Debug: err\n")
+	if !ok || p.Enabled {
+		t.Errorf("disabled: %+v", p)
+	}
+	if _, ok := ParsePfInfo("pfctl: /dev/pf: Permission denied\n"); ok {
+		t.Error("an error message should be not ok")
+	}
+	if m := ParsePfMemory(fixtureOr(t, "pfctl_-s_memory.txt")); m["states"] != 100000 || m["table-entries"] != 200000 {
+		t.Errorf("memory: %v", m)
+	}
+}
+
+// fixtureOr returns the first fixture directory's copy of name.
+func fixtureOr(t *testing.T, name string) string {
+	for _, dir := range fixtureDirs {
+		if out, ok := fixture(t, dir, name); ok {
+			return out
+		}
+	}
+	t.Fatalf("no fixture %s", name)
+	return ""
+}
+
+func TestParsePfStates(t *testing.T) {
+	eachFixture(t, "pfctl_-vv_-s_states.txt", func(t *testing.T, dir, out string) {
+		s, trunc := ParsePfStates(out, 1000)
+		if trunc {
+			t.Error("truncated")
+		}
+		golden(t, dir, "pfctl_-vv_-s_states", s)
+	})
+	out := fixtureOr(t, "pfctl_-vv_-s_states.txt")
+	if s, trunc := ParsePfStates(out, 2); len(s) != 2 || !trunc {
+		t.Errorf("max 2: %d, %v", len(s), trunc)
+	}
+	// Without its id line a state can't be killed, so it's left out.
+	if s, _ := ParsePfStates("all tcp 1.2.3.4:1 -> 5.6.7.8:2       ESTABLISHED:ESTABLISHED\n   age 00:00:01, expires in 00:00:02, 1:1 pkts, 1:1 bytes, rule 1\n", 10); len(s) != 0 {
+		t.Errorf("no id: %+v", s)
+	}
+	for _, bad := range []string{"all tcp", "all tcp x -> y z", "all tcp 1.2.3.4:1 (5.6.7.8:2 -> 9.9.9.9:3 S", "all tcp 1.2.3.4:99999 -> 5.6.7.8:1 S"} {
+		if _, ok := parseStateLine(bad); ok {
+			t.Errorf("parseStateLine(%q) should fail", bad)
+		}
+	}
+}
+
+func TestParsePfRules(t *testing.T) {
+	eachFixture(t, "pfctl_-vv_-s_rules.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "pfctl_-vv_-s_rules", ParsePfRules(out))
+	})
+}
+
+func TestParsePflog(t *testing.T) {
+	now := time.Date(2026, 9, 29, 17, 0, 0, 0, time.UTC)
+	eachFixture(t, "tcpdump_pflog.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "tcpdump_pflog", ParsePflog(out, now, 100))
+	})
+	out := fixtureOr(t, "tcpdump_pflog.txt")
+	if es := ParsePflog(out, now, 2); len(es) != 2 || es[1].Reason != "short" {
+		t.Errorf("last 2: %+v", es)
+	}
+	// A December entry read in January is last year's.
+	e, ok := parsePflogLine("Dec 31 23:59:59.000000 rule 0/(match) block in on em0: 1.2.3.4.1 > 5.6.7.8.2: S 1:1(0) win 1", time.Date(2027, 1, 1, 0, 0, 5, 0, time.UTC))
+	if !ok || e.Time.Year() != 2026 {
+		t.Errorf("year: %v %v", e.Time, ok)
+	}
+	// Space-padded days.
+	if e, ok := parsePflogLine("Oct  1 01:02:03.000004 rule 1/(match) pass out on em0: 1.2.3.4 > 5.6.7.8: icmp: echo request", now); !ok || e.Time.Day() != 1 || e.Proto != "icmp" {
+		t.Errorf("padded day: %+v %v", e, ok)
+	}
 }

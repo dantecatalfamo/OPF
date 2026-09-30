@@ -256,6 +256,39 @@ request after a quiet minute takes a second longer, to measure one.
 
 `GET /api/status` also carries `release`, the running OpenBSD release.
 
+### pf's own state
+
+Rules are matched to the model by their labels (`opf:<kind>:<id>`),
+never by number: numbers change with every reload.
+
+- `GET /api/pf/status`: `info` (from `pfctl -v -s info`: `enabled`,
+  `enabledFor` in seconds, `states`, `halfOpenTcp`, `counters` by
+  pfctl's names, and `iface`, the statistics interface's bytes and
+  packets passed and blocked), `stateLimit`, and `blockedPerSec` on the
+  statistics interface lately.
+- `GET /api/pf/states`: `{"states": [...], "truncated"}`, at most 5000.
+  Each has `id` and `creatorId`, `iface` (or `all`), `proto`,
+  `direction`, `source` and `destination` as the device that opened
+  the connection sees them, `translated` (the NAT address it leaves
+  with, or the address it was sent to before a port forward), `state`,
+  `ageSec`, `expiresSec`, `packets`, `bytes`, `rule` (pf's number) and
+  `label` (the rule's).
+- `POST /api/pf/states/kill`: `{"id": "<16 hex digits>", "creatorId":
+  "<8 hex digits>"}` ends a connection (`pfctl -k id`). 204; 422 for
+  ids in any other form, which never reach pfctl. A state that has
+  already gone is not an error.
+- `GET /api/pf/rules/counters`: `{"labels": {"opf:rule:r3":
+  {"evaluations", "packets", "bytes", "states"}}}` since the rules were
+  loaded, added up over the rules pf expanded each one into. Only
+  OPF's labels are listed.
+- `GET /api/logs/firewall`: the latest 500 packets pf logged
+  (`/var/log/pflog`), newest first: `time`, `rule` (and `anchor`),
+  `reason`, `action`, `direction`, `iface` (the device), `proto`,
+  `source`, `destination`, `info` (the rest of tcpdump's line) and
+  `label`. `label` is only set for entries after `rulesSince`, the
+  last time OPF may have reloaded the rules, since a rule number only
+  means the same rule until then.
+
 ### `POST /api/pf/parse`
 
 `{"text": "pass in on $lan …", "model": {…}}` → `{"rule": {…}}`. The

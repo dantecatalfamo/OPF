@@ -22,6 +22,11 @@
 //	GET    /api/network/gateways          whether each gateway answers pings
 //	GET    /api/system                    the machine: release, uptime, CPU, memory, disks, sensors
 //	GET    /api/system/updates            security patches available
+//	GET    /api/pf/status                 pf on or off, its state table, blocked traffic
+//	GET    /api/pf/states                 the state table: open connections
+//	POST   /api/pf/states/kill            end a connection
+//	GET    /api/pf/rules/counters         each labelled rule's counters
+//	GET    /api/logs/firewall             packets pf logged, newest first
 //	POST   /api/pf/parse                  pf rule text to a rule
 //	POST   /api/pf/ruleset                a model's annotated pf.conf
 //	POST   /api/pf/derived                what the UI shows that depends on generation
@@ -79,6 +84,11 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/network/gateways", getter(s.api.Gateways))
 	s.mux.HandleFunc("GET /api/system", getter(s.api.System))
 	s.mux.HandleFunc("GET /api/system/updates", getter(s.api.Updates))
+	s.mux.HandleFunc("GET /api/pf/status", getter(s.api.PfStatus))
+	s.mux.HandleFunc("GET /api/pf/states", getter(s.api.PfStates))
+	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
+	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s.api.RuleCounters))
+	s.mux.HandleFunc("GET /api/logs/firewall", getter(s.api.FirewallLog))
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
 	s.mux.HandleFunc("POST /api/pf/render", s.render)
 	s.mux.HandleFunc("POST /api/pf/ruleset", s.ruleset)
@@ -369,6 +379,18 @@ func (s *Server) leaseNames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, n)
+}
+
+func (s *Server) killState(w http.ResponseWriter, r *http.Request) {
+	var req appliance.KillStateRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if err := s.api.KillState(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // getter serves what a read-only API call returns.

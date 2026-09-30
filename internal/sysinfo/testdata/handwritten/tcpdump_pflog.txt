@@ -1,0 +1,8 @@
+Sep 29 16:20:01.123456 rule 0/(match) block in on em0: 198.51.100.23.51234 > 203.0.113.24.22: S 3242389126:3242389126(0) win 1024
+Sep 29 16:20:03.500120 rule 5/(match) block in on em0: 192.0.2.66.40000 > 203.0.113.24.3389: S 11:11(0) win 64240 <mss 1460> (DF)
+Sep 29 16:20:07.000001 rule 0/(match) block in on vlan20: 192.168.20.103.40211 > 192.168.1.20.445: S 1:1(0) win 29200 <mss 1460,sackOK,timestamp 1 0,nop,wscale 7> (DF)
+Sep 29 16:21:00.250000 rule 0/(match) block in on em0: 185.220.101.4.5060 > 203.0.113.24.5060: udp 412
+Sep 29 16:21:02.750000 rule 0/(match) block in on em0: 162.142.125.9 > 203.0.113.24: icmp: echo request
+Sep 29 16:22:10.000000 rule 2.opf_anchor.1/(match) pass in on em1: 192.168.1.118.51000 > 192.168.1.1.443: S 5:5(0) win 65535 (DF)
+Sep 29 16:22:11.000000 rule 0/(match) block out on em0: 2001:db8::1.123 > 2001:db8::2.123: udp 48
+Sep 29 16:23:00.000000 rule 9/(short) block in on em0: truncated-ip - 20 bytes missing!

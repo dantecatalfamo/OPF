@@ -1,0 +1,24 @@
+@0 block return log all label "opf:builtin:default-block"
+  [ Evaluations: 20411     Packets: 1482      Bytes: 97012       States: 0     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 0     ]
+@1 pass out inet all flags S/SA label "opf:builtin:self-out"
+  [ Evaluations: 20411     Packets: 30120     Bytes: 4512034     States: 3     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 811   ]
+@2 pass in quick on em1 proto tcp from any to (em1:0) port = 443 flags S/SA label "opf:builtin:anti-lockout"
+  [ Evaluations: 18320     Packets: 5021      Bytes: 612345      States: 2     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 40    ]
+@3 pass in quick on em1 proto tcp from any to (em1:0) port = 22 flags S/SA label "opf:builtin:anti-lockout"
+  [ Evaluations: 110       Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 0     ]
+@4 pass in quick on em1 inet from 192.168.1.0/24 to any flags S/SA label "opf:rule:r3"
+  [ Evaluations: 1204998   Packets: 88120334  Bytes: 99120334012 States: 241   ]
+  [ Inserted: uid 0 pid 11234 State Creations: 402311]
+@5 block drop in log quick on em0 from <bogons> to any label "opf:builtin:block-bogons"
+  [ Evaluations: 22112     Packets: 88        Bytes: 5120        States: 0     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 0     ]
+@6 pass in quick on em0 proto udp from any to (em0:0) port = 51820 keep state label "has no opf prefix"
+  [ Evaluations: 4120      Packets: 9012      Bytes: 1012345     States: 9     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 12    ]
+@7 match out on em0 inet from 192.168.1.0/24 to any nat-to (em0:0) round-robin label "opf:auto-nat:lan"
+  [ Evaluations: 99120     Packets: 88120334  Bytes: 99120334012 States: 0     ]
+  [ Inserted: uid 0 pid 11234 State Creations: 0     ]

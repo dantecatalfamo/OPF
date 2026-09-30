@@ -39,6 +39,11 @@ type API interface {
 	Interfaces() (*InterfacesStatus, error)
 	Gateways() (*GatewaysStatus, error)
 	Updates() (*UpdatesStatus, error)
+	PfStatus() (*PfStatus, error)
+	PfStates() (*PfStates, error)
+	KillState(KillStateRequest) error
+	RuleCounters() (*RuleCounters, error)
+	FirewallLog() (*FirewallLog, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -298,6 +303,70 @@ type UpdatesStatus struct {
 	Checking  bool       `json:"checking"`
 	Patches   []string   `json:"patches"`
 	Error     string     `json:"error,omitempty"`
+}
+
+// PfStatus is pf's own state: on or off, the state table, and traffic
+// on the statistics interface.
+type PfStatus struct {
+	Info *sysinfo.PfInfo `json:"info,omitempty"`
+	// StateLimit is the state table's hard limit (pfctl -s memory).
+	StateLimit uint64 `json:"stateLimit,omitempty"`
+	// BlockedPerSec is packets blocked per second on the statistics
+	// interface over the last few seconds.
+	BlockedPerSec *float64 `json:"blockedPerSec,omitempty"`
+	Errors        []string `json:"errors"`
+}
+
+// PfStates is pf's state table: the connections through and to the
+// firewall. At most MaxStates, with Truncated set when there were more.
+type PfStates struct {
+	States    []PfStateEntry `json:"states"`
+	Truncated bool           `json:"truncated,omitempty"`
+	Error     string         `json:"error,omitempty"`
+}
+
+// PfStateEntry is a state and the label of the rule that created it.
+type PfStateEntry struct {
+	sysinfo.PfState
+	Label string `json:"label,omitempty"`
+}
+
+// KillStateRequest names a state by the ids pfctl -vv -s states prints.
+type KillStateRequest struct {
+	ID        string `json:"id"`
+	CreatorID string `json:"creatorId"`
+}
+
+// RuleCounters are the loaded rules' counters, by OPF label.
+type RuleCounters struct {
+	Labels map[string]RuleCounter `json:"labels"`
+	Error  string                 `json:"error,omitempty"`
+}
+
+// RuleCounter is how much a labelled rule has matched since it was
+// loaded, and the states it has now.
+type RuleCounter struct {
+	Evaluations uint64 `json:"evaluations"`
+	Packets     uint64 `json:"packets"`
+	Bytes       uint64 `json:"bytes"`
+	States      uint64 `json:"states"`
+}
+
+// FirewallLog is the latest packets pf logged, newest first, at most
+// MaxLogEntries.
+type FirewallLog struct {
+	Entries []FirewallLogEntry `json:"entries"`
+	// RulesSince is when the loaded ruleset may last have changed;
+	// entries before it have no label.
+	RulesSince *time.Time `json:"rulesSince,omitempty"`
+	Error      string     `json:"error,omitempty"`
+}
+
+// FirewallLogEntry is a logged packet and the label of the rule that
+// logged it, when that's known.
+type FirewallLogEntry struct {
+	sysinfo.PfLogEntry
+	Label string `json:"label,omitempty"`
 }
 
 // Which picks a side of a commit: the configuration before or after it.

@@ -21,6 +21,7 @@ import (
 type mockSystem struct {
 	start time.Time
 	model func() (*pf.Model, error)
+	pf    *mockPf
 	next  run.Runner
 }
 
@@ -51,6 +52,26 @@ peer
 		out = "Device      1K-blocks     Used    Avail Capacity  Priority\n/dev/sd0b     4194304        0  4194304     0%    0\n"
 	case cmd == "df -kPl":
 		out = mockDf
+	case cmd == "pfctl -v -s info", cmd == "pfctl -vv -s states", cmd == "pfctl -vv -s rules", strings.HasPrefix(cmd, "tcpdump -n -e -ttt -r "):
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		switch argv[0] + " " + argv[len(argv)-1] {
+		case "pfctl info":
+			out = s.pf.info(m, t, time.Now())
+		case "pfctl states":
+			out = s.pf.states(m, time.Now())
+		case "pfctl rules":
+			out = s.pf.rules(m, t)
+		default:
+			out = s.pf.pflog(m, time.Now())
+		}
+	case cmd == "pfctl -s memory":
+		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\ntables        hard limit     1000\ntable-entries hard limit   200000\n"
+	case len(argv) == 5 && strings.HasPrefix(cmd, "pfctl -k id -k "):
+		o, err := s.pf.kill(argv[4])
+		return []byte(o), err
 	case cmd == "ifconfig -A", cmd == "netstat -ibn", cmd == "netstat -in":
 		m, err := s.model()
 		if err != nil {

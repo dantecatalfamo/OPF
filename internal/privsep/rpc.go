@@ -101,6 +101,22 @@ type (
 		Result
 		Updates *appliance.UpdatesStatus
 	}
+	PfStatusReply struct {
+		Result
+		Status *appliance.PfStatus
+	}
+	PfStatesReply struct {
+		Result
+		States *appliance.PfStates
+	}
+	RuleCountersReply struct {
+		Result
+		Counters *appliance.RuleCounters
+	}
+	FirewallLogReply struct {
+		Result
+		Log *appliance.FirewallLog
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -170,6 +186,39 @@ func (s *Service) Updates(_ None, r *UpdatesReply) error {
 	var err error
 	r.Updates, err = s.api.Updates()
 	r.set("Updates", err)
+	return nil
+}
+
+func (s *Service) PfStatus(_ None, r *PfStatusReply) error {
+	var err error
+	r.Status, err = s.api.PfStatus()
+	r.set("PfStatus", err)
+	return nil
+}
+
+func (s *Service) PfStates(_ None, r *PfStatesReply) error {
+	var err error
+	r.States, err = s.api.PfStates()
+	r.set("PfStates", err)
+	return nil
+}
+
+func (s *Service) KillState(a appliance.KillStateRequest, r *EmptyReply) error {
+	r.set("KillState", s.api.KillState(a))
+	return nil
+}
+
+func (s *Service) RuleCounters(_ None, r *RuleCountersReply) error {
+	var err error
+	r.Counters, err = s.api.RuleCounters()
+	r.set("RuleCounters", err)
+	return nil
+}
+
+func (s *Service) FirewallLog(_ None, r *FirewallLogReply) error {
+	var err error
+	r.Log, err = s.api.FirewallLog()
+	r.set("FirewallLog", err)
 	return nil
 }
 
@@ -447,6 +496,49 @@ func (c *Client) Updates() (*appliance.UpdatesStatus, error) {
 		s.Patches = nonNil(s.Patches)
 	}
 	return r.Updates, err
+}
+
+func (c *Client) PfStatus() (*appliance.PfStatus, error) {
+	var r PfStatusReply
+	err := c.call("PfStatus", None{}, &r)
+	if s := r.Status; s != nil {
+		s.Errors = nonNil(s.Errors)
+		if s.Info != nil && s.Info.Counters == nil {
+			s.Info.Counters = map[string]uint64{}
+		}
+	}
+	return r.Status, err
+}
+
+func (c *Client) PfStates() (*appliance.PfStates, error) {
+	var r PfStatesReply
+	err := c.call("PfStates", None{}, &r)
+	if s := r.States; s != nil {
+		s.States = nonNil(s.States)
+	}
+	return r.States, err
+}
+
+func (c *Client) KillState(req appliance.KillStateRequest) error {
+	return c.call("KillState", req, &EmptyReply{})
+}
+
+func (c *Client) RuleCounters() (*appliance.RuleCounters, error) {
+	var r RuleCountersReply
+	err := c.call("RuleCounters", None{}, &r)
+	if s := r.Counters; s != nil && s.Labels == nil {
+		s.Labels = map[string]appliance.RuleCounter{}
+	}
+	return r.Counters, err
+}
+
+func (c *Client) FirewallLog() (*appliance.FirewallLog, error) {
+	var r FirewallLogReply
+	err := c.call("FirewallLog", None{}, &r)
+	if s := r.Log; s != nil {
+		s.Entries = nonNil(s.Entries)
+	}
+	return r.Log, err
 }
 
 func nonNil[T any](s []T) []T {

@@ -60,6 +60,7 @@ type Manager struct {
 	// Earlier readings, for rates (status.go).
 	cpu        rate[sysinfo.CPUTicks]
 	ifCounters rate[map[string]sysinfo.Counters]
+	pfInfo     rate[sysinfo.PfInfo]
 
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus

@@ -1,0 +1,96 @@
+[
+  {
+    "time": "2026-09-29T16:20:01.123456Z",
+    "rule": 0,
+    "reason": "match",
+    "action": "block",
+    "direction": "in",
+    "iface": "em0",
+    "proto": "tcp",
+    "source": "198.51.100.23:51234",
+    "destination": "203.0.113.24:22",
+    "info": "S 3242389126:3242389126(0) win 1024"
+  },
+  {
+    "time": "2026-09-29T16:20:03.50012Z",
+    "rule": 5,
+    "reason": "match",
+    "action": "block",
+    "direction": "in",
+    "iface": "em0",
+    "proto": "tcp",
+    "source": "192.0.2.66:40000",
+    "destination": "203.0.113.24:3389",
+    "info": "S 11:11(0) win 64240 \u003cmss 1460\u003e (DF)"
+  },
+  {
+    "time": "2026-09-29T16:20:07.000001Z",
+    "rule": 0,
+    "reason": "match",
+    "action": "block",
+    "direction": "in",
+    "iface": "vlan20",
+    "proto": "tcp",
+    "source": "192.168.20.103:40211",
+    "destination": "192.168.1.20:445",
+    "info": "S 1:1(0) win 29200 \u003cmss 1460,sackOK,timestamp 1 0,nop,wscale 7\u003e (DF)"
+  },
+  {
+    "time": "2026-09-29T16:21:00.25Z",
+    "rule": 0,
+    "reason": "match",
+    "action": "block",
+    "direction": "in",
+    "iface": "em0",
+    "proto": "udp",
+    "source": "185.220.101.4:5060",
+    "destination": "203.0.113.24:5060",
+    "info": "udp 412"
+  },
+  {
+    "time": "2026-09-29T16:21:02.75Z",
+    "rule": 0,
+    "reason": "match",
+    "action": "block",
+    "direction": "in",
+    "iface": "em0",
+    "proto": "icmp",
+    "source": "162.142.125.9",
+    "destination": "203.0.113.24",
+    "info": "icmp: echo request"
+  },
+  {
+    "time": "2026-09-29T16:22:10Z",
+    "rule": 1,
+    "anchor": "opf_anchor",
+    "reason": "match",
+    "action": "pass",
+    "direction": "in",
+    "iface": "em1",
+    "proto": "tcp",
+    "source": "192.168.1.118:51000",
+    "destination": "192.168.1.1:443",
+    "info": "S 5:5(0) win 65535 (DF)"
+  },
+  {
+    "time": "2026-09-29T16:22:11Z",
+    "rule": 0,
+    "reason": "match",
+    "action": "block",
+    "direction": "out",
+    "iface": "em0",
+    "proto": "udp",
+    "source": "[2001:db8::1]:123",
+    "destination": "[2001:db8::2]:123",
+    "info": "udp 48"
+  },
+  {
+    "time": "2026-09-29T16:23:00Z",
+    "rule": 9,
+    "reason": "short",
+    "action": "block",
+    "direction": "in",
+    "iface": "em0",
+    "info": "truncated-ip - 20 bytes missing!"
+  }
+]

@@ -1,0 +1,25 @@
+all tcp 140.82.112.4:443 <- 192.168.1.112:52344       ESTABLISHED:ESTABLISHED
+   [3456789012 + 131328] wscale 7  [1234567890 + 132096] wscale 6
+   age 00:12:34, expires in 23:59:58, 1234:5678 pkts, 123456:7890123 bytes, rule 7
+   id: 6505b0d400000001 creatorid: 1c9d3f2a
+all tcp 203.0.113.24:50001 (192.168.1.112:52344) -> 140.82.112.4:443       ESTABLISHED:ESTABLISHED
+   [1234567890 + 132096] wscale 6  [3456789012 + 131328] wscale 7
+   age 00:12:34, expires in 23:59:58, 1234:5678 pkts, 123456:7890123 bytes, rule 12
+   id: 6505b0d400000002 creatorid: 1c9d3f2a
+all udp 9.9.9.9:53 <- 192.168.20.101:41000       MULTIPLE:SINGLE
+   age 00:00:04, expires in 00:00:56, 1:1 pkts, 61:77 bytes, rule 9
+   id: 6505b0d400000003 creatorid: 1c9d3f2a
+all tcp 192.168.1.20:443 (203.0.113.24:8443) <- 198.51.100.9:61000       ESTABLISHED:ESTABLISHED
+   [987654321 + 64240] wscale 7  [123123123 + 65160] wscale 7
+   age 26:03:09, expires in 23:59:59, 88:90 pkts, 9123:81234 bytes, rule 4, source-track
+   id: 6505b0d400000004 creatorid: 1c9d3f2a
+all icmp 192.168.1.1:11 <- 192.168.1.118:11       0:0
+   age 00:00:01, expires in 00:00:09, 1:1 pkts, 84:84 bytes, rule 3
+   id: 6505b0d400000005 creatorid: 1c9d3f2a
+all ipv6-icmp fe80::1[128] <- fe80::be24:11ff:fef6:5ebd[128]       NO_TRAFFIC:NO_TRAFFIC
+   age 00:00:02, expires in 00:00:08, 1:0 pkts, 64:0 bytes, rule 1
+   id: 6505b0d400000006 creatorid: 1c9d3f2a
+em1 tcp 2001:db8::20[22] <- 2001:db8::118[51000]       FIN_WAIT_2:FIN_WAIT_2
+   [1 + 2] wscale 7  [3 + 4] wscale 7
+   age 00:01:00, expires in 00:00:30, 10:12 pkts, 1000:2000 bytes, rule 3
+   id: 6505b0d400000007 creatorid: 00000002
