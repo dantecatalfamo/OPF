@@ -25,6 +25,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
+	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
 
 // apiError converts err for callers of API, keeping nil untyped: a nil
@@ -55,6 +56,21 @@ type Manager struct {
 	// Runner executes system commands for reading network state.
 	// If nil, run.Exec{} is used.
 	Runner run.Runner
+
+	// Earlier readings, for rates (status.go).
+	cpu        rate[sysinfo.CPUTicks]
+	ifCounters rate[map[string]sysinfo.Counters]
+
+	gwMu    sync.Mutex
+	gwCache *GatewaysStatus
+	gwAt    time.Time
+
+	releaseOnce sync.Once
+	release     string
+
+	updMu      sync.Mutex
+	upd        *UpdatesStatus
+	updRunning bool
 }
 
 func (m *Manager) runner() run.Runner {
@@ -286,7 +302,7 @@ func (m *Manager) Status() (*Status, error) {
 	if err != nil {
 		return nil, apiError(err)
 	}
-	st := &Status{Live: live}
+	st := &Status{Live: live, Release: m.osRelease()}
 	if data, staged, err := m.stagedModel(); err != nil {
 		return nil, apiError(err)
 	} else if staged {

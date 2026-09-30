@@ -1,0 +1,6 @@
+hw.model=QEMU Virtual CPU version 2.5+
+hw.ncpu=4
+hw.ncpuonline=4
+hw.vendor=QEMU
+hw.product=Standard PC (i440FX + PIIX, 1996)
+hw.cpuspeed=3793

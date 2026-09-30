@@ -1,0 +1,10 @@
+Filesystem  1024-blocks       Used   Available Capacity Mounted on
+/dev/sd0a       1009422     132850      826102    14%   /
+/dev/sd0k      46901756     181130    44375540     1%   /home
+/dev/sd0d       4057454         14     3854568     1%   /tmp
+/dev/sd0f      10194254    3230814     6453728    34%   /usr
+/dev/sd0g       1009422     277758      681194    29%   /usr/X11R6
+/dev/sd0h      14071822     351214    13017018     3%   /usr/local
+/dev/sd0j      10153566       5290     9640598     1%   /usr/obj
+/dev/sd0i       3771422    1632366     1950486    46%   /usr/src
+/dev/sd0e       8088462      60154     7623886     1%   /var

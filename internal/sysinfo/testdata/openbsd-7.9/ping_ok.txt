@@ -1,0 +1,6 @@
+PING 192.168.14.1 (192.168.14.1): 56 data bytes
+
+--- 192.168.14.1 ping statistics ---
+3 packets transmitted, 3 packets received, 0.0% packet loss
+round-trip min/avg/max/std-dev = 0.134/0.188/0.230/0.040 ms
+exit 0

@@ -1,0 +1,27 @@
+[
+  {
+    "device": "pvclock0",
+    "type": "timedelta",
+    "index": 0,
+    "value": "-0.000008 secs",
+    "number": -0.000008,
+    "unit": "secs",
+    "status": "OK"
+  },
+  {
+    "device": "viomb0",
+    "type": "raw",
+    "index": 0,
+    "value": "0",
+    "number": 0,
+    "description": "desired"
+  },
+  {
+    "device": "viomb0",
+    "type": "raw",
+    "index": 1,
+    "value": "0",
+    "number": 0,
+    "description": "current"
+  }
+]

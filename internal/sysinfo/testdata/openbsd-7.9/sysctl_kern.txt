@@ -1,0 +1,5 @@
+kern.version=OpenBSD 7.9 (GENERIC.MP) #15: Sun Sep 27 02:47:36 MDT 2026
+    root@syspatch-79-amd64.openbsd.org:/usr/src/sys/arch/amd64/compile/GENERIC.MP
+
+kern.osrelease=7.9
+kern.hostname=openbsd-dev.my.domain

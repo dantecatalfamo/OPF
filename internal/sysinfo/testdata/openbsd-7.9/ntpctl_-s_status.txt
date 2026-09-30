@@ -1,0 +1,1 @@
+5/5 peers valid, 1/1 sensors valid, constraint offset -1s, clock synced, stratum 1

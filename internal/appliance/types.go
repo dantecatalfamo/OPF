@@ -14,6 +14,7 @@ import (
 
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/pf"
+	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
 
 // API is everything the web process may do. Manager implements it in
@@ -34,6 +35,10 @@ type API interface {
 	DHCPLeases() (*DHCPLeases, error)
 	ARPTable() (*ARPTable, error)
 	RoutingTable() (*RoutingTable, error)
+	System() (*SystemStatus, error)
+	Interfaces() (*InterfacesStatus, error)
+	Gateways() (*GatewaysStatus, error)
+	Updates() (*UpdatesStatus, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -135,6 +140,9 @@ type Status struct {
 	Live    string  `json:"live"`
 	Staged  string  `json:"staged,omitempty"`
 	Pending *Commit `json:"pending,omitempty"`
+	// Release is the running OpenBSD release (kern.osrelease), read
+	// once; empty if it couldn't be.
+	Release string `json:"release,omitempty"`
 }
 
 // LeaseNames is what the DHCP lease watcher last did: the names
@@ -225,6 +233,71 @@ type RouteEntry struct {
 	Priority    int    `json:"priority,omitempty"`
 	// Source describes where the route came from (e.g., "static", "dhcp", "interface").
 	Source string `json:"source,omitempty"`
+}
+
+// SystemStatus is the machine: what it is, how long it's been up, and
+// how busy it is. Parts that couldn't be read are nil or empty, with a
+// line in Errors each.
+type SystemStatus struct {
+	Hostname string `json:"hostname"`
+	Release  string `json:"release"` // 7.9
+	Version  string `json:"version"` // kern.version's first line
+	Machine  string `json:"machine"` // amd64
+	CPUModel string `json:"cpuModel"`
+	Vendor   string `json:"vendor,omitempty"`
+	Product  string `json:"product,omitempty"`
+	CPUs     int    `json:"cpus"`
+	// BootedAt is when the system started.
+	BootedAt *time.Time `json:"bootedAt,omitempty"`
+	// Load is the 1, 5 and 15 minute load averages.
+	Load    *[3]float64       `json:"load,omitempty"`
+	CPU     *sysinfo.CPUUsage `json:"cpu,omitempty"`
+	Memory  *sysinfo.Memory   `json:"memory,omitempty"`
+	Swap    *sysinfo.Swap     `json:"swap,omitempty"`
+	Disks   []sysinfo.Disk    `json:"disks"`
+	Sensors []sysinfo.Sensor  `json:"sensors"`
+	// Time is nil when ntpd isn't running.
+	Time   *sysinfo.TimeSync `json:"time,omitempty"`
+	Errors []string          `json:"errors"`
+}
+
+// InterfacesStatus is every interface on the system, configured by OPF
+// or not, by device name.
+type InterfacesStatus struct {
+	Interfaces []InterfaceState `json:"interfaces"`
+	Errors     []string         `json:"errors"`
+}
+
+// InterfaceState is an interface as ifconfig shows it, its counters
+// since it was created, and its traffic in bits per second over the
+// last few seconds (nil until there are two readings).
+type InterfaceState struct {
+	sysinfo.Interface
+	Counters *sysinfo.Counters `json:"counters,omitempty"`
+	RxBps    *float64          `json:"rxBps,omitempty"`
+	TxBps    *float64          `json:"txBps,omitempty"`
+}
+
+// GatewaysStatus is each model gateway's health, by gateway id.
+type GatewaysStatus struct {
+	Gateways map[string]GatewayHealth `json:"gateways"`
+}
+
+// GatewayHealth is the result of pinging a gateway.
+type GatewayHealth struct {
+	Address string   `json:"address,omitempty"` // what was pinged
+	Online  bool     `json:"online"`
+	LossPct float64  `json:"lossPct"`
+	RttMs   *float64 `json:"rttMs,omitempty"`
+	Error   string   `json:"error,omitempty"`
+}
+
+// UpdatesStatus is the last check for security patches.
+type UpdatesStatus struct {
+	CheckedAt *time.Time `json:"checkedAt,omitempty"` // nil until the first check finishes
+	Checking  bool       `json:"checking"`
+	Patches   []string   `json:"patches"`
+	Error     string     `json:"error,omitempty"`
 }
 
 // Which picks a side of a commit: the configuration before or after it.

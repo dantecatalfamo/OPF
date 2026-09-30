@@ -1,0 +1,10 @@
+Name    Mtu   Network     Address               Ibytes     Obytes
+lo0     32768 <Link>                                 0          0
+lo0     32768 ::1/128     ::1                        0          0
+lo0     32768 fe80::%lo0/ fe80::1%lo0                0          0
+lo0     32768 127/8       127.0.0.1                  0          0
+vio0    1500  <Link>      bc:24:11:f6:5e:bd     127363      58770
+vio0    1500  192.168.14/ 192.168.14.11         127363      58770
+vio0    1500  fe80::%vio0 fe80::be24:11ff:f     127363      58770
+enc0*   0     <Link>                                 0          0
+pflog0  33136 <Link>                                 0          0

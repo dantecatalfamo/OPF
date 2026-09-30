@@ -16,6 +16,12 @@
 //	GET    /api/commits/{id}/config/{which}  the model before or after a commit
 //	GET    /api/dhcp/leases               dhcpd's current leases
 //	GET    /api/dns/leases                names DHCP leases have in DNS, and refused ones
+//	GET    /api/network/arp               the ARP table
+//	GET    /api/network/routes            the routing table
+//	GET    /api/network/interfaces        every interface's state, counters and traffic
+//	GET    /api/network/gateways          whether each gateway answers pings
+//	GET    /api/system                    the machine: release, uptime, CPU, memory, disks, sensors
+//	GET    /api/system/updates            security patches available
 //	POST   /api/pf/parse                  pf rule text to a rule
 //	POST   /api/pf/ruleset                a model's annotated pf.conf
 //	POST   /api/pf/derived                what the UI shows that depends on generation
@@ -69,6 +75,10 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/leases", s.leaseNames)
 	s.mux.HandleFunc("GET /api/network/arp", s.arpTable)
 	s.mux.HandleFunc("GET /api/network/routes", s.routingTable)
+	s.mux.HandleFunc("GET /api/network/interfaces", getter(s.api.Interfaces))
+	s.mux.HandleFunc("GET /api/network/gateways", getter(s.api.Gateways))
+	s.mux.HandleFunc("GET /api/system", getter(s.api.System))
+	s.mux.HandleFunc("GET /api/system/updates", getter(s.api.Updates))
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
 	s.mux.HandleFunc("POST /api/pf/render", s.render)
 	s.mux.HandleFunc("POST /api/pf/ruleset", s.ruleset)
@@ -359,6 +369,18 @@ func (s *Server) leaseNames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, n)
+}
+
+// getter serves what a read-only API call returns.
+func getter[T any](get func() (T, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, err := get()
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, v)
+	}
 }
 
 func (s *Server) arpTable(w http.ResponseWriter, r *http.Request) {

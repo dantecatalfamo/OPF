@@ -85,6 +85,22 @@ type (
 		Result
 		Table *appliance.RoutingTable
 	}
+	SystemReply struct {
+		Result
+		System *appliance.SystemStatus
+	}
+	InterfacesReply struct {
+		Result
+		Interfaces *appliance.InterfacesStatus
+	}
+	GatewaysReply struct {
+		Result
+		Gateways *appliance.GatewaysStatus
+	}
+	UpdatesReply struct {
+		Result
+		Updates *appliance.UpdatesStatus
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -126,6 +142,34 @@ func (s *Service) RoutingTable(_ None, r *RoutingTableReply) error {
 	var err error
 	r.Table, err = s.api.RoutingTable()
 	r.set("RoutingTable", err)
+	return nil
+}
+
+func (s *Service) System(_ None, r *SystemReply) error {
+	var err error
+	r.System, err = s.api.System()
+	r.set("System", err)
+	return nil
+}
+
+func (s *Service) Interfaces(_ None, r *InterfacesReply) error {
+	var err error
+	r.Interfaces, err = s.api.Interfaces()
+	r.set("Interfaces", err)
+	return nil
+}
+
+func (s *Service) Gateways(_ None, r *GatewaysReply) error {
+	var err error
+	r.Gateways, err = s.api.Gateways()
+	r.set("Gateways", err)
+	return nil
+}
+
+func (s *Service) Updates(_ None, r *UpdatesReply) error {
+	var err error
+	r.Updates, err = s.api.Updates()
+	r.set("Updates", err)
 	return nil
 }
 
@@ -351,4 +395,63 @@ func (c *Client) RoutingTable() (*appliance.RoutingTable, error) {
 		}
 	}
 	return r.Table, err
+}
+
+// gob leaves out empty slices and maps, so the replies below restore
+// them: the JSON API promises [] and {}, never null.
+
+func (c *Client) System() (*appliance.SystemStatus, error) {
+	var r SystemReply
+	err := c.call("System", None{}, &r)
+	if s := r.System; s != nil {
+		s.Disks = nonNil(s.Disks)
+		s.Sensors = nonNil(s.Sensors)
+		s.Errors = nonNil(s.Errors)
+	}
+	return r.System, err
+}
+
+func (c *Client) Interfaces() (*appliance.InterfacesStatus, error) {
+	var r InterfacesReply
+	err := c.call("Interfaces", None{}, &r)
+	if s := r.Interfaces; s != nil {
+		s.Interfaces = nonNil(s.Interfaces)
+		s.Errors = nonNil(s.Errors)
+		for i := range s.Interfaces {
+			x := &s.Interfaces[i]
+			x.Flags, x.Groups, x.IPv4, x.IPv6 = nonNil(x.Flags), nonNil(x.Groups), nonNil(x.IPv4), nonNil(x.IPv6)
+			if w := x.WireGuard; w != nil {
+				w.Peers = nonNil(w.Peers)
+				for j := range w.Peers {
+					w.Peers[j].AllowedIPs = nonNil(w.Peers[j].AllowedIPs)
+				}
+			}
+		}
+	}
+	return r.Interfaces, err
+}
+
+func (c *Client) Gateways() (*appliance.GatewaysStatus, error) {
+	var r GatewaysReply
+	err := c.call("Gateways", None{}, &r)
+	if s := r.Gateways; s != nil && s.Gateways == nil {
+		s.Gateways = map[string]appliance.GatewayHealth{}
+	}
+	return r.Gateways, err
+}
+
+func (c *Client) Updates() (*appliance.UpdatesStatus, error) {
+	var r UpdatesReply
+	err := c.call("Updates", None{}, &r)
+	if s := r.Updates; s != nil {
+		s.Patches = nonNil(s.Patches)
+	}
+	return r.Updates, err
+}
+
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
 }

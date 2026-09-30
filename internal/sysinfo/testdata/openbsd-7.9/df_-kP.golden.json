@@ -1,0 +1,65 @@
+[
+  {
+    "device": "/dev/sd0a",
+    "mount": "/",
+    "total": 1033648128,
+    "used": 136038400,
+    "available": 845928448
+  },
+  {
+    "device": "/dev/sd0k",
+    "mount": "/home",
+    "total": 48027398144,
+    "used": 185477120,
+    "available": 45440552960
+  },
+  {
+    "device": "/dev/sd0d",
+    "mount": "/tmp",
+    "total": 4154832896,
+    "used": 14336,
+    "available": 3947077632
+  },
+  {
+    "device": "/dev/sd0f",
+    "mount": "/usr",
+    "total": 10438916096,
+    "used": 3308353536,
+    "available": 6608617472
+  },
+  {
+    "device": "/dev/sd0g",
+    "mount": "/usr/X11R6",
+    "total": 1033648128,
+    "used": 284424192,
+    "available": 697542656
+  },
+  {
+    "device": "/dev/sd0h",
+    "mount": "/usr/local",
+    "total": 14409545728,
+    "used": 359643136,
+    "available": 13329426432
+  },
+  {
+    "device": "/dev/sd0j",
+    "mount": "/usr/obj",
+    "total": 10397251584,
+    "used": 5416960,
+    "available": 9871972352
+  },
+  {
+    "device": "/dev/sd0i",
+    "mount": "/usr/src",
+    "total": 3861936128,
+    "used": 1671542784,
+    "available": 1997297664
+  },
+  {
+    "device": "/dev/sd0e",
+    "mount": "/var",
+    "total": 8282585088,
+    "used": 61597696,
+    "available": 7806859264
+  }
+]

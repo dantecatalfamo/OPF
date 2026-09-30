@@ -1,0 +1,81 @@
+[
+  {
+    "name": "lo0",
+    "flags": [
+      "UP",
+      "LOOPBACK",
+      "RUNNING",
+      "MULTICAST",
+      "LRO"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 32768,
+    "groups": [
+      "lo"
+    ],
+    "ipv4": [
+      "127.0.0.1/8"
+    ],
+    "ipv6": [
+      "::1/128",
+      "fe80::1/64"
+    ]
+  },
+  {
+    "name": "vio0",
+    "flags": [
+      "UP",
+      "BROADCAST",
+      "RUNNING",
+      "SIMPLEX",
+      "MULTICAST",
+      "AUTOCONF6TEMP",
+      "AUTOCONF6",
+      "LRO"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1500,
+    "mac": "bc:24:11:f6:5e:bd",
+    "media": "Ethernet autoselect",
+    "status": "active",
+    "groups": [
+      "egress"
+    ],
+    "ipv4": [
+      "192.168.14.11/24"
+    ],
+    "ipv6": [
+      "fe80::be24:11ff:fef6:5ebd/64"
+    ]
+  },
+  {
+    "name": "enc0",
+    "flags": [],
+    "up": false,
+    "running": false,
+    "status": "active",
+    "groups": [
+      "enc"
+    ],
+    "ipv4": [],
+    "ipv6": []
+  },
+  {
+    "name": "pflog0",
+    "flags": [
+      "UP",
+      "RUNNING",
+      "PROMISC"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 33136,
+    "groups": [
+      "pflog"
+    ],
+    "ipv4": [],
+    "ipv6": []
+  }
+]

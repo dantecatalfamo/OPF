@@ -1,0 +1,19 @@
+5/5 peers valid, 1/1 sensors valid, constraint offset -1s, clock synced, stratum 1
+
+peer
+   wt tl st  next  poll          offset       delay      jitter
+162.159.200.1 time.cloudflare.com
+    1 10  3   25s   31s         0.324ms     7.844ms     0.133ms
+198.50.127.72 from pool pool.ntp.org
+    1 10  2   30s   32s        -1.031ms     1.486ms     0.064ms
+162.159.200.1 from pool pool.ntp.org
+    1 10  3   12s   31s        -4.284ms     7.748ms     0.134ms
+54.39.23.64 from pool pool.ntp.org
+    1 10  3    3s   33s         0.008ms     0.495ms     0.085ms
+167.160.187.179 from pool pool.ntp.org
+    1 10  3   15s   32s         0.625ms     7.760ms     0.157ms
+
+sensor
+   wt gd st  next  poll          offset  correction
+pvclock0  
+ *  1  1  0    3s   15s         0.006ms     0.000ms

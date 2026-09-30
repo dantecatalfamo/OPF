@@ -218,6 +218,44 @@ printable (including bidi overrides) become U+FFFD and they're cut to
 64 characters. Each list holds at most 1000 entries, in name or address
 order, with `truncated` set when there were more.
 
+### The running system
+
+These read the system with OpenBSD's own tools (sysctl, vmstat, df,
+ifconfig, netstat, ping, ntpctl, syspatch) and change nothing. A
+command that fails leaves its part out and adds a sentence to `errors`
+(or `error`), so the rest still shows; the status is 200 either way.
+Rates are over the few seconds since the previous request: the first
+request after a quiet minute takes a second longer, to measure one.
+
+- `GET /api/system`: `hostname`, `release`, `version`, `machine`,
+  `cpuModel`, `vendor`, `product`, `cpus`, `bootedAt`, `load` (1, 5,
+  15 minutes), `cpu` (percent `user`, `nice`, `system`, `spin`,
+  `interrupt`, `idle`), `memory` and `swap` (bytes; in use is total
+  minus free), `disks` (local filesystems, bytes), `sensors` (as
+  `sysctl hw.sensors` reports them, with `number` and `unit` when the
+  value is a number) and `time` (OpenNTPD's state; absent when ntpd
+  isn't running).
+- `GET /api/system/updates`: `{"checkedAt", "checking", "patches",
+  "error"}`. `patches` are syspatch's names for what's available. The
+  check runs in the background at most every six hours (15 minutes
+  after a failure), so `checkedAt` is absent until the first finishes.
+- `GET /api/network/interfaces`: every interface on the system, by
+  device name, whether OPF configures it or not: flags, `up` and
+  `running`, `status` (the link: `active`, `no carrier`), `media`,
+  `mac`, `groups`, `ipv4` and `ipv6` as address/prefix, `vlan`, `carp`,
+  `wireguard` (port, public key, and each peer's endpoint, bytes, the
+  seconds since its last handshake and its allowed IPs), `counters`
+  since the interface was created, and `rxBps`/`txBps`.
+- `GET /api/network/gateways`: `{"gateways": {"<id>": {"address",
+  "online", "lossPct", "rttMs", "error"}}}` for each gateway in the live
+  model. It pings the gateway's monitor address if it has one, else its
+  address, else (DHCP) the default route on its interface. Answers are
+  reused for 10 seconds.
+- `GET /api/network/arp` and `GET /api/network/routes`: the ARP and
+  routing tables.
+
+`GET /api/status` also carries `release`, the running OpenBSD release.
+
 ### `POST /api/pf/parse`
 
 `{"text": "pass in on $lan …", "model": {…}}` → `{"rule": {…}}`. The

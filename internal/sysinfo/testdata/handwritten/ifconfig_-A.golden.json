@@ -1,0 +1,163 @@
+[
+  {
+    "name": "em0",
+    "flags": [
+      "UP",
+      "BROADCAST",
+      "RUNNING",
+      "SIMPLEX",
+      "MULTICAST"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1500,
+    "mac": "00:0d:b9:5e:21:a0",
+    "description": "Internet",
+    "media": "Ethernet autoselect (1000baseT full-duplex)",
+    "status": "active",
+    "groups": [
+      "egress"
+    ],
+    "ipv4": [
+      "203.0.113.24/24"
+    ],
+    "ipv6": []
+  },
+  {
+    "name": "em1",
+    "flags": [
+      "BROADCAST",
+      "SIMPLEX",
+      "MULTICAST"
+    ],
+    "up": false,
+    "running": false,
+    "mtu": 1500,
+    "mac": "00:0d:b9:5e:21:a1",
+    "media": "Ethernet autoselect (none)",
+    "status": "no carrier",
+    "groups": [],
+    "ipv4": [],
+    "ipv6": []
+  },
+  {
+    "name": "vlan20",
+    "flags": [
+      "UP",
+      "BROADCAST",
+      "RUNNING",
+      "SIMPLEX",
+      "MULTICAST"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1500,
+    "mac": "00:0d:b9:5e:21:a1",
+    "media": "Ethernet autoselect (1000baseT full-duplex)",
+    "status": "active",
+    "groups": [
+      "vlan"
+    ],
+    "ipv4": [
+      "192.168.20.1/24"
+    ],
+    "ipv6": [],
+    "vlan": {
+      "id": 20,
+      "parent": "em1"
+    }
+  },
+  {
+    "name": "carp0",
+    "flags": [
+      "UP",
+      "BROADCAST",
+      "RUNNING",
+      "SIMPLEX",
+      "MULTICAST"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1500,
+    "mac": "00:00:5e:00:01:01",
+    "status": "master",
+    "groups": [
+      "carp"
+    ],
+    "ipv4": [
+      "192.168.1.1/24"
+    ],
+    "ipv6": [],
+    "carp": {
+      "state": "MASTER",
+      "device": "em1",
+      "vhid": 1,
+      "advskew": 0
+    }
+  },
+  {
+    "name": "wg0",
+    "flags": [
+      "UP",
+      "BROADCAST",
+      "RUNNING",
+      "NOARP",
+      "MULTICAST"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1420,
+    "groups": [
+      "wg"
+    ],
+    "ipv4": [
+      "10.8.0.1/24"
+    ],
+    "ipv6": [],
+    "wireguard": {
+      "port": 51820,
+      "publicKey": "kq3Xw0pY6m2VhT8cQf1LzR5nB7dJ4sA9gE0uWiOyHl8=",
+      "peers": [
+        {
+          "publicKey": "7fN2cQ1sXbK9mV4pR8tY3wZ6hJ0dL5gE2aU9iO7yHk4=",
+          "description": "Priya phone",
+          "endpoint": "198.51.100.77:40212",
+          "txBytes": 1920000000,
+          "rxBytes": 184000000,
+          "handshakeAgo": 42,
+          "allowedIps": [
+            "10.8.0.2/32"
+          ]
+        },
+        {
+          "publicKey": "3kP8vR2nX6cM1qT9wY4zB7fH0jL5dG2sA8eU3iO6yNm0=",
+          "txBytes": 0,
+          "rxBytes": 0,
+          "allowedIps": [
+            "10.8.0.3/32",
+            "192.168.50.0/24"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "gif0",
+    "flags": [
+      "UP",
+      "POINTOPOINT",
+      "RUNNING",
+      "MULTICAST"
+    ],
+    "up": true,
+    "running": true,
+    "mtu": 1280,
+    "groups": [
+      "gif"
+    ],
+    "ipv4": [
+      "10.99.0.1/32"
+    ],
+    "ipv6": []
+  }
+]

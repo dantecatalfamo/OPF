@@ -1,0 +1,38 @@
+{
+  "enc0": {
+    "rxBytes": 0,
+    "txBytes": 0,
+    "rxPackets": 0,
+    "txPackets": 0,
+    "rxErrors": 0,
+    "txErrors": 0,
+    "collisions": 0
+  },
+  "lo0": {
+    "rxBytes": 0,
+    "txBytes": 0,
+    "rxPackets": 0,
+    "txPackets": 0,
+    "rxErrors": 0,
+    "txErrors": 0,
+    "collisions": 0
+  },
+  "pflog0": {
+    "rxBytes": 0,
+    "txBytes": 0,
+    "rxPackets": 0,
+    "txPackets": 0,
+    "rxErrors": 0,
+    "txErrors": 0,
+    "collisions": 0
+  },
+  "vio0": {
+    "rxBytes": 127363,
+    "txBytes": 58770,
+    "rxPackets": 477,
+    "txPackets": 474,
+    "rxErrors": 0,
+    "txErrors": 0,
+    "collisions": 0
+  }
+}

@@ -1,0 +1,3 @@
+hw.sensors.pvclock0.timedelta0=-0.000008 secs, OK, Tue Sep 29 16:16:56.753
+hw.sensors.viomb0.raw0=0 (desired)
+hw.sensors.viomb0.raw1=0 (current)
