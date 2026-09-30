@@ -139,6 +139,10 @@ type (
 		Result
 		List *appliance.DNSListStatus
 	}
+	EventsReply struct {
+		Result
+		Events *appliance.Events
+	}
 	MetricsReply struct {
 		Result
 		Metrics *appliance.Metrics
@@ -305,6 +309,13 @@ func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
 	var err error
 	r.Lists, err = s.api.DNSLists()
 	r.set("DNSLists", err)
+	return nil
+}
+
+func (s *Service) Events(a appliance.EventsRequest, r *EventsReply) error {
+	var err error
+	r.Events, err = s.api.Events(a)
+	r.set("Events", err)
 	return nil
 }
 
@@ -708,6 +719,15 @@ func (c *Client) RefreshDNSList(id string) (*appliance.DNSListStatus, error) {
 	var r DNSListReply
 	err := c.call("RefreshDNSList", IDArgs{id}, &r)
 	return r.List, err
+}
+
+func (c *Client) Events(req appliance.EventsRequest) (*appliance.Events, error) {
+	var r EventsReply
+	err := c.call("Events", req, &r)
+	if e := r.Events; e != nil {
+		e.Events = nonNil(e.Events)
+	}
+	return r.Events, err
 }
 
 func (c *Client) Metrics(req appliance.MetricsRequest) (*appliance.Metrics, error) {

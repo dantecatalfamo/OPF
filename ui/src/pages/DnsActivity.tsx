@@ -77,6 +77,7 @@ export function DnsStatsCard() {
               series={[{ key: 'dns.queries', label: 'Queries', color: 'harbor.6' }, ...(blocking ? [{ key: 'dns.blocked', label: 'Blocked', color: 'red.6' }] : [])]}
               format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)}/s`}
               h={150}
+              markSubjects={['unbound']}
             />
             {s.extended && answered > 0 && (
               <Group gap="lg">

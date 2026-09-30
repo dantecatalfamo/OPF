@@ -144,3 +144,31 @@ func jitter(key string, t time.Time) float64 {
 	h.Write([]byte(t.Format(time.RFC3339)))
 	return float64(h.Sum32()%1000) / 1000
 }
+
+// seedEvents gives the mock's event log what its graphs show: the
+// afternoon three days ago when the internet went down, and the odd
+// thing since.
+func seedEvents(api *appliance.Manager, m *pf.Model, now time.Time) {
+	down := now.Add(-3 * 24 * time.Hour).Truncate(24 * time.Hour).Add(15 * time.Hour)
+	var es []appliance.Event
+	add := func(t time.Time, kind, subject, msg string, warn bool) {
+		es = append(es, appliance.Event{Time: t, Kind: kind, Subject: subject, Message: msg, Warning: warn})
+	}
+	add(now.Add(-6*24*time.Hour), appliance.EventOPF, "", "OPF started", false)
+	for _, g := range m.Routing.Gateways {
+		if strings.HasPrefix(g.Address, "203.0.113.") || g.Address == "dhcp" {
+			add(down.Add(40*time.Second), appliance.EventGateway, g.ID, "Gateway "+g.Name+" stopped answering (9.9.9.9)", true)
+			add(down.Add(20*time.Minute+30*time.Second), appliance.EventGateway, g.ID, "Gateway "+g.Name+" is answering again", false)
+		}
+	}
+	for _, i := range m.Interfaces {
+		if i.Role == pf.RoleWAN {
+			add(down.Add(21*time.Minute), appliance.EventAddress, i.ID, i.Name+" ("+i.Device+") has a new address from DHCP: 203.0.113.24 (was 203.0.113.61)", false)
+		}
+	}
+	add(now.Add(-26*time.Hour), appliance.EventDevice, "8c:85:90:4b:77:02", "New device 8c:85:90:4b:77:02 at 192.168.1.131 on LAN (calls itself “reception-pc”)", false)
+	add(now.Add(-2*24*time.Hour-3*time.Hour), appliance.EventVPN, "p1", "Priya phone (Remote access) connected from 198.51.100.70 (was 192.0.2.44)", false)
+	add(now.Add(-9*time.Hour), appliance.EventList, "blocklist", "Couldn't download the list for alias blocklist: ftp: connect: Connection timed out", true)
+	add(now.Add(-9*time.Hour+time.Hour), appliance.EventList, "blocklist", "Downloaded the list for alias blocklist again", false)
+	api.SeedEvents(es)
+}

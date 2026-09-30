@@ -6,10 +6,11 @@
 // burst that filled the link.
 import { useState } from 'react';
 import { AreaChart, LineChart } from '@mantine/charts';
-import { Anchor, ColorSwatch, Group, SegmentedControl, Text } from '@mantine/core';
+import { Anchor, ColorSwatch, Group, SegmentedControl, Stack, Text } from '@mantine/core';
 import { Link } from 'react-router';
 import type { MetricsResource } from '../lib/api';
-import { ranges, timeLabel, useHistory } from '../lib/history';
+import { ranges, timeLabel, useEventMarks, useHistory, type Mark } from '../lib/history';
+import { formatLogTime } from '../lib/format';
 import { formatBits } from '../lib/format';
 import { SectionTitle } from './ui';
 
@@ -23,7 +24,7 @@ export interface ChartSeries {
 
 export const seriesKeys = (s: ChartSeries[]) => s.flatMap((x) => (x.plus ? [x.key, x.plus] : [x.key]));
 
-export function HistoryChart({ data, series, range, format, area, peaks, h = 200, empty }: {
+export function HistoryChart({ data, series, range, format, area, peaks, h = 200, empty, marks }: {
   data?: MetricsResource;
   series: ChartSeries[];
   range: number;
@@ -34,6 +35,8 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
   h?: number;
   /** What to say when there's nothing to show yet. */
   empty?: string;
+  /** Events to mark: a line where each happened, and what it was below. */
+  marks?: Mark[];
 }) {
   if (!data) return <Text size="sm" c="dimmed" h={h} pt="xl" ta="center">Loading…</Text>;
   const present = series.filter((s) => data.series[s.key]);
@@ -60,6 +63,14 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
     }
     return row;
   });
+  // An event's line goes on the point it happened in.
+  const end = first.start + first.step * first.avg.length;
+  const shown = (marks ?? []).filter((m) => m.time >= first.start && m.time < end).sort((a, b) => b.time - a.time);
+  const referenceLines = shown.map((m) => ({
+    x: rows[Math.min(rows.length - 1, Math.floor((m.time - first.start) / first.step))].time as string,
+    color: m.warning ? 'red.6' : 'gray.5',
+    strokeDasharray: '4 3',
+  }));
   const chartSeries = present.flatMap((s) => [
     { name: s.label, color: s.color },
     ...(withPeaks ? [{ name: `${s.label} peak`, color: s.color, strokeDasharray: '3 3' }] : []),
@@ -76,9 +87,12 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
     tickLine: 'none' as const,
     valueFormatter: format,
     strokeWidth: 1.5,
-    xAxisProps: { minTickGap: 48 },
+    // Labels are unique per range (timeLabel); saying so lets an event's
+    // line find its point on the axis.
+    xAxisProps: { minTickGap: 48, allowDuplicatedCategory: false },
     yAxisProps: { width: 88 },
     withLegend: false,
+    referenceLines,
   };
   return (
     <>
@@ -95,12 +109,25 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
           {withPeaks && <Text size="xs" c="dimmed">Dashed: the peak in each point</Text>}
         </Group>
       )}
+      {shown.length > 0 && (
+        // What the lines mark, newest first; the Events page has the rest.
+        <Stack gap={0} mt={4}>
+          {shown.slice(0, 3).map((m) => (
+            <Text key={`${m.time}-${m.label}`} size="xs" c={m.warning ? 'red' : 'dimmed'} lineClamp={1}>
+              {formatLogTime(new Date(m.time * 1000).toISOString())} · {m.label}
+            </Text>
+          ))}
+          {shown.length > 3 && (
+            <Anchor component={Link} to="/diagnostics/events" size="xs" c="dimmed">and {shown.length - 3} more</Anchor>
+          )}
+        </Stack>
+      )}
     </>
   );
 }
 
 /** A small graph with its own range, for pages that show a number now. */
-export function HistoryCard({ title, series, format, area, peaks, empty, h = 170 }: {
+export function HistoryCard({ title, series, format, area, peaks, empty, h = 170, markSubjects }: {
   title: string;
   series: ChartSeries[];
   format: (n: number) => string;
@@ -108,13 +135,17 @@ export function HistoryCard({ title, series, format, area, peaks, empty, h = 170
   peaks?: boolean;
   empty?: string;
   h?: number;
+  /** Whose events to mark: interface, gateway or VPN device ids, daemons. */
+  markSubjects?: string[];
 }) {
   const [range, setRange] = useState(ranges[1].value);
   const { data } = useHistory(seriesKeys(series), Number(range));
+  const allMarks = useEventMarks(Number(range), !!markSubjects?.length);
+  const marks = (markSubjects ?? []).flatMap((s) => allMarks.get(s) ?? []);
   return (
     <>
       <SectionTitle right={<Group gap="sm"><SegmentedControl size="xs" value={range} onChange={setRange} data={ranges} /></Group>}>{title}</SectionTitle>
-      <HistoryChart data={data} series={series} range={Number(range)} format={format} area={area} peaks={peaks} h={h} empty={empty} />
+      <HistoryChart data={data} series={series} range={Number(range)} format={format} area={area} peaks={peaks} h={h} empty={empty} marks={marks} />
       <Anchor component={Link} to={`/diagnostics/graphs${range === '86400' ? '' : `?range=${range}`}`} size="xs" c="dimmed" mt={6} display="inline-block">More graphs</Anchor>
     </>
   );

@@ -55,6 +55,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/diag"
@@ -112,6 +113,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("POST /api/dns/blocklists/{id}/refresh", s.refreshDNSList)
 	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
 	s.mux.HandleFunc("GET /api/metrics", s.metrics)
+	s.mux.HandleFunc("GET /api/events", s.events)
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s.api.DNSBlocked))
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
@@ -478,6 +480,37 @@ func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
+}
+
+// events answers ?kind=link,gateway&q=<search>&before=<RFC 3339 time>&limit=.
+func (s *Server) events(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := appliance.EventsRequest{Query: q.Get("q")}
+	if v := q.Get("kind"); v != "" {
+		req.Kinds = strings.Split(v, ",")
+	}
+	if v := q.Get("before"); v != "" {
+		t, err := time.Parse(time.RFC3339Nano, v)
+		if err != nil {
+			badRequest(w, http.StatusBadRequest, "before is a time like 2026-09-30T12:00:00Z")
+			return
+		}
+		req.Before = t
+	}
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			badRequest(w, http.StatusBadRequest, "limit is a number")
+			return
+		}
+		req.Limit = n
+	}
+	ev, err := s.api.Events(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ev)
 }
 
 // pfStates answers ?q=<part of an address>&proto=tcp|udp|icmp&offset=&limit=.

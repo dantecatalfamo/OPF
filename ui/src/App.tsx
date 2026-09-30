@@ -19,6 +19,7 @@ import { History } from './pages/History';
 import { Connections } from './pages/Connections';
 import { Tools } from './pages/Tools';
 import { Graphs } from './pages/Graphs';
+import { Events } from './pages/Events';
 import { FirewallLog } from './pages/FirewallLog';
 import { ARP } from './pages/ARP';
 
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route path="system/general" element={<SystemGeneral />} />
         <Route path="system/history" element={<History />} />
         <Route path="diagnostics/graphs" element={<Graphs />} />
+        <Route path="diagnostics/events" element={<Events />} />
         <Route path="diagnostics/tools" element={<Tools />} />
         <Route path="diagnostics/connections" element={<Connections />} />
         <Route path="diagnostics/arp" element={<ARP />} />

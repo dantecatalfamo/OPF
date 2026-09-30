@@ -167,6 +167,7 @@ type collector struct {
 	cpuAt time.Time
 	gwAt  time.Time
 	full  map[string]bool // groups the log has said are full
+	watch *watch          // what the last sample saw, for events (eventwatch.go)
 }
 
 // add stores a point, and says once a group in the log when something
@@ -190,7 +191,7 @@ type reading struct {
 
 func (m *Manager) metricsStore() *metrics.Store {
 	m.collectOnce.Do(func() {
-		m.collect = &collector{store: metrics.New(graphGroups()...), prev: map[string]reading{}, full: map[string]bool{}}
+		m.collect = &collector{store: metrics.New(graphGroups()...), prev: map[string]reading{}, full: map[string]bool{}, watch: newWatch()}
 	})
 	return m.collect.store
 }
@@ -231,6 +232,8 @@ func (m *Manager) RunCollector(ctx context.Context) {
 		}
 		f.Close()
 	}
+	m.loadEvents()
+	m.eventLog().record(Event{Time: time.Now(), Kind: EventOPF, Message: "OPF started"})
 	tick := time.NewTicker(CollectInterval)
 	defer tick.Stop()
 	lastSave := time.Now()
@@ -251,9 +254,12 @@ func (m *Manager) RunCollector(ctx context.Context) {
 	}
 }
 
-// SaveMetrics writes the series to the state directory, replacing the
-// last copy only once the new one is complete.
+// SaveMetrics writes the series and the event log to the state
+// directory, replacing each last copy only once the new one is complete.
 func (m *Manager) SaveMetrics() error {
+	if err := m.saveEvents(); err != nil {
+		log.Printf("saving the event log: %v", err)
+	}
 	path := m.store.StatePath(metricsFile)
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+metricsFile+".*")
 	if err != nil {
@@ -353,13 +359,16 @@ func (m *Manager) sample(now time.Time) {
 		}
 	}
 
-	// WireGuard peers, by the model's ids: traffic and how long since
-	// the last handshake (a site link that's quietly down).
-	if model != nil && len(tunnelPeers(model)) > 0 {
+	// Interfaces' links and addresses, for events, and WireGuard peers
+	// by the model's ids: traffic and how long since the last handshake
+	// (a site link that's quietly down).
+	if model != nil {
 		if out, err := m.read("ifconfig", "-A"); err == nil {
 			t := time.Now()
 			ids := tunnelPeers(model)
-			for _, i := range sysinfo.ParseIfconfig(out) {
+			ifs := sysinfo.ParseIfconfig(out)
+			m.watchInterfaces(model, ifs, t)
+			for _, i := range ifs {
 				if i.WireGuard == nil {
 					continue
 				}
@@ -384,6 +393,9 @@ func (m *Manager) sample(now time.Time) {
 		c.gwAt = now
 		m.sampleSlow(c)
 	}
+	// The first sample is how things are; from the next, changes are
+	// events.
+	c.watch.started = true
 }
 
 func (m *Manager) sampleSlow(c *collector) {
@@ -424,7 +436,8 @@ func (m *Manager) sampleSlow(c *collector) {
 			c.add(SeriesTimeOffset, time.Now(), *ts.OffsetMs)
 		}
 	}
-	if gws, err := m.Gateways(); err == nil {
+	gws, err := m.Gateways()
+	if err == nil {
 		t := time.Now()
 		for id, h := range gws.Gateways {
 			if h.Error != "" && h.Address == "" {
@@ -436,6 +449,8 @@ func (m *Manager) sampleSlow(c *collector) {
 			}
 		}
 	}
+	model, _, _ := m.live()
+	m.watchSlow(model, gws, time.Now())
 }
 
 // cpuPrev swaps in the latest CPU ticks and returns the previous ones,

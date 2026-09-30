@@ -134,6 +134,7 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 			}
 		}
 		seedHistory(api.MetricsStore(), m, leases, time.Now())
+		seedEvents(api, m, time.Now())
 	}
 	go api.RunCollector(context.Background())
 	go api.RunUpdateChecker(context.Background())

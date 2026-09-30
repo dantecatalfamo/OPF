@@ -7,7 +7,7 @@ import { tunnels } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
 import { rpzBlocked } from '../lib/api';
-import { ranges, useHistory } from '../lib/history';
+import { ranges, useEventMarks, useHistory } from '../lib/history';
 import { HistoryChart } from '../components/HistoryChart';
 import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import { deviceName } from '../lib/labels';
@@ -77,6 +77,8 @@ export function Dashboard() {
   const [range, setRange] = useState(ranges[1].value);
   const wanSeries = wan ? [{ key: `if.${wan.device}.rx`, label: 'Download', color: 'harbor.6' }, { key: `if.${wan.device}.tx`, label: 'Upload', color: 'amber.6' }] : [];
   const { data: history } = useHistory(wanSeries.map((x) => x.key), Number(range));
+  const events = useEventMarks(Number(range), !!wan);
+  const wanMarks = wan ? [wan.id, applied.routing.defaultGateway ?? ''].flatMap((s) => events.get(s) ?? []) : [];
   const wanStatus = wan ? ifaceState(ifs, wan) : undefined;
   const wanUp = !!wanStatus?.up && wanStatus.status !== 'no carrier' && wanStatus.ipv4.length > 0;
   const vpns = tunnels(applied);
@@ -168,7 +170,7 @@ export function Dashboard() {
               Internet traffic
             </SectionTitle>
             {wan ? (
-              <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area peaks h={250} />
+              <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area peaks h={250} marks={wanMarks} />
             ) : (
               <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No internet interface is set up.</Text>
             )}

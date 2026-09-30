@@ -84,8 +84,10 @@ func (m *Manager) checkUpdates() {
 		u.Patches = sysinfo.ParseSyspatch(string(out))
 	}
 	m.updMu.Lock()
+	before := m.upd
 	m.upd, m.updRunning = u, false
 	m.updMu.Unlock()
+	m.notePatches(before, u)
 	if err := m.saveUpdates(u); err != nil {
 		log.Printf("saving the patch check: %v", err)
 	}

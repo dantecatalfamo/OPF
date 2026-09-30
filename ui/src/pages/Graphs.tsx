@@ -7,7 +7,7 @@ import { useStore } from '../model/store';
 import { HistoryChart, seriesKeys, type ChartSeries } from '../components/HistoryChart';
 import { tunnels } from '../model/types';
 import { poolSize } from '../lib/ip';
-import { ranges, useHistory } from '../lib/history';
+import { ranges, useEventMarks, useHistory, type Mark } from '../lib/history';
 import { formatBits, formatBytes } from '../lib/format';
 import { PageHeader, SectionTitle } from '../components/ui';
 
@@ -64,6 +64,8 @@ export function Graphs() {
   const keys = seriesKeys(all);
   const { data, error } = useHistory(keys, range);
   const common = { data, range };
+  const events = useEventMarks(range);
+  const marksOf = (...subjects: string[]): Mark[] => subjects.flatMap((s) => events.get(s) ?? []);
 
   return (
     <>
@@ -76,7 +78,7 @@ export function Graphs() {
       <Text fw={600} mb="sm">Traffic</Text>
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">
         {ifaces.map((i) => (
-          <Graph key={i.id} title={`${i.name} (${i.device})`} series={traffic(i.device)} format={bits} area peaks {...common} />
+          <Graph key={i.id} title={`${i.name} (${i.device})`} series={traffic(i.device)} format={bits} area peaks marks={marksOf(i.id)} {...common} />
         ))}
       </SimpleGrid>
       <Text fw={600} mb="sm">System and firewall</Text>
@@ -93,7 +95,7 @@ export function Graphs() {
         <>
           <Text fw={600} mb="sm">DNS</Text>
           <Grid gutter="md" mb="lg">
-            <Grid.Col span={{ base: 12, md: 7 }}><Graph title="Queries" series={dns} format={perSec} {...common} /></Grid.Col>
+            <Grid.Col span={{ base: 12, md: 7 }}><Graph title="Queries" series={dns} format={perSec} marks={marksOf('unbound')} {...common} /></Grid.Col>
             <Grid.Col span={{ base: 12, md: 5 }}><Graph title="Answered from the cache" series={cache} format={pct} {...common} /></Grid.Col>
           </Grid>
         </>
@@ -102,8 +104,8 @@ export function Graphs() {
         <>
           <Text fw={600} mb="sm">Gateways</Text>
           <Grid gutter="md">
-            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Latency" series={rtt} format={ms} peaks note="Pinged every 30 seconds." {...common} /></Grid.Col>
-            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Packet loss" series={loss} format={pct} {...common} /></Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Latency" series={rtt} format={ms} peaks note="Pinged every 30 seconds." marks={marksOf(...gateways.map((g) => g.id))} {...common} /></Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Packet loss" series={loss} format={pct} marks={marksOf(...gateways.map((g) => g.id))} {...common} /></Grid.Col>
           </Grid>
         </>
       )}
@@ -112,7 +114,7 @@ export function Graphs() {
           <Text fw={600} mb="sm" mt="lg">VPN</Text>
           <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
             {vpns.map((t) => (
-              <Graph key={t.id} title={`${t.name}: traffic by device`} series={peerTraffic(t)} format={bits} {...common} />
+              <Graph key={t.id} title={`${t.name}: traffic by device`} series={peerTraffic(t)} format={bits} marks={marksOf(t.id, ...t.wireguard.peers.map((p) => p.id))} {...common} />
             ))}
           </SimpleGrid>
         </>

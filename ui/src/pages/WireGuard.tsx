@@ -542,6 +542,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
               format={formatBits}
               h={150}
               empty="Nothing recorded for this device yet."
+              markSubjects={[peer.id]}
             />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={onClose}>Cancel</Button>
@@ -640,7 +641,7 @@ function TunnelTraffic({ tunnel }: { tunnel: Tunnel }) {
   ];
   return (
     <Card>
-      <HistoryCard title="Traffic" series={series} format={formatBits} h={180} empty="Nothing recorded for this tunnel yet." />
+      <HistoryCard title="Traffic" series={series} format={formatBits} h={180} empty="Nothing recorded for this tunnel yet." markSubjects={[tunnel.id, ...tunnel.wireguard.peers.map((p) => p.id)]} />
     </Card>
   );
 }

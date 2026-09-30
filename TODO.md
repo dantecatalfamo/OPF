@@ -942,14 +942,20 @@ them, so they can be graphed and compared):
       - **System**: CPU, load, memory, swap, disk use and I/O,
         interrupts per device (`vmstat -i`), sensors (temperatures,
         fans, voltages from `sysctl hw.sensors`), uptime and reboots.
-- [ ] **An event log** beside the series, for things that happen rather
-      than values that vary: a device seen for the first time (a new
-      MAC in the ARP table or DHCP, both an inventory and a security
-      signal), links going up or down and media changes, CARP state
-      changes, the WAN address changing, WireGuard endpoints moving,
-      daemons stopping, logins, commits and reverts. Graphs mark them
-      ("the WAN went down here"), and they can be filtered and searched.
-      Bounded like the series.
+- The event log is built (`internal/appliance/events.go`,
+  `eventwatch.go`, Diagnostics › Events): links going down and up, a
+  DHCP address changing, gateways stopping and answering again, a
+  device seen for the first time (by MAC, named from its lease), a VPN
+  device connecting from a new address, dhcpd, unbound and ntpd
+  stopping, list downloads failing and recovering, new security patches,
+  OPF starting, and every commit (from history). The newest 5,000, none
+  older than 90 days, in the state directory; OPF's first look takes
+  what's there as known. Graphs mark the events about what they show.
+- [ ] More events: CARP state changes, media changes (a link falling to
+      100 Mbit/s), a pool running out of leases, a login once there are
+      accounts, a disk filling, a sensor too hot.
+- [ ] Say on the event log's page what devices a MAC address was seen
+      as since, from the leases and the ARP table (an inventory).
 - [ ] **Privacy**: per-host traffic, DNS names, new-device tracking and
       logins are personal data. Each gets a retention limit, shorter
       than the rest, and the most sensitive (DNS queries per client and

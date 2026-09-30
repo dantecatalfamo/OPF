@@ -46,12 +46,59 @@ export function useHistory(series: string[], range: number, step?: number): { da
 
 // One formatter each: toLocale*String makes a new one on every call,
 // which for every point of every chart is most of a render.
-const hourMinute = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' });
-const weekdayTime = new Intl.DateTimeFormat([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-const monthDay = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric' });
+// Each is precise enough that no two points of a range share a label,
+// the first and the last included (a day's are 24 hours apart, a
+// week's seven days), so an event's marker lands on its own point and
+// the axis never merges two points.
+const hms = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const dayTime = new Intl.DateTimeFormat([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+const dateTime = new Intl.DateTimeFormat([], { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const monthDayTime = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** A point's time on a chart's axis, as fits the range. */
 export function timeLabel(t: number, range: number): string {
-  const f = range <= 86400 ? hourMinute : range <= 7 * 86400 ? weekdayTime : monthDay;
+  const f = range <= 3600 ? hms : range <= 86400 ? dayTime : range <= 7 * 86400 ? dateTime : monthDayTime;
   return f.format(t * 1000);
+}
+
+/** An event to mark on a graph. */
+export interface Mark {
+  time: number; // unix seconds
+  label: string;
+  warning?: boolean;
+}
+
+// The events graphs mark: things that explain a change in a line.
+const markKinds = ['link', 'address', 'gateway', 'vpn', 'service'] as const;
+
+/**
+ * Events over the last range, for marking graphs; by subject (an
+ * interface, gateway or VPN device id, a daemon) with those about
+ * nothing in particular under ''.
+ */
+export function useEventMarks(range: number, enabled = true): Map<string, Mark[]> {
+  const [marks, setMarks] = useState<Map<string, Mark[]>>(new Map());
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    const load = () => {
+      if (document.hidden) return;
+      backend.events({ kinds: [...markKinds], limit: 500 }).then((r) => {
+        if (!live) return;
+        const from = Date.now() / 1000 - range;
+        const by = new Map<string, Mark[]>();
+        for (const e of r.events) {
+          const t = Date.parse(e.time) / 1000;
+          if (t < from) continue;
+          const k = e.subject ?? '';
+          by.set(k, [...(by.get(k) ?? []), { time: t, label: e.message, warning: e.warning }]);
+        }
+        setMarks(by);
+      }, () => {});
+    };
+    load();
+    const t = setInterval(load, 60_000);
+    return () => { live = false; clearInterval(t); };
+  }, [range, enabled]);
+  return marks;
 }

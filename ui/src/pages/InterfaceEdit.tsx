@@ -259,6 +259,7 @@ export function InterfaceEdit() {
             format={formatBits}
             area
             peaks
+            markSubjects={[iface.id]}
           />
         </Card>
       </Stack>

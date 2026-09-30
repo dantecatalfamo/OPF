@@ -403,6 +403,21 @@ every 10 minutes for a week and every hour for the month.
   because the group is full. Lowering a cap forgets the things updated
   least recently beyond it.
 
+### Events
+
+- `GET /api/events?kind=link,gateway&q=<search>&before=<RFC 3339 time>&limit=`:
+  `{"events": [{"time", "kind", "warning", "subject", "message"}], "more"}`,
+  newest first, at most `limit` (100 by default, 1000 at most);
+  `before` pages further back. Kinds: `link` (an interface's link down
+  or up), `address` (a DHCP address changed), `gateway` (stopped or
+  started answering), `device` (a MAC address seen for the first time),
+  `vpn` (a device connected from a new address), `service` (dhcpd,
+  unbound or ntpd stopped or running again), `list` (a download failed
+  or recovered), `updates` (new patches), `commit` (from history) and
+  `opf` (started). `subject` is what it's about: an interface, gateway,
+  VPN device or list id, a MAC address, a daemon or a commit id. The
+  newest 5,000 are kept, none older than 90 days.
+
 ### Diagnostic tools
 
 The tools run in the privileged process. A request is a form, never a

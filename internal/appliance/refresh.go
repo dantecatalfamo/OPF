@@ -44,7 +44,9 @@ func (m *Manager) noteRefresh(key string, err error) {
 	if err != nil {
 		r.err = err.Error()
 	}
+	before, seen := m.refs[key]
 	m.refs[key] = r
+	m.noteListEvent(key, before, r, seen)
 }
 
 func (m *Manager) refreshState(key string, fetched *time.Time, hours *int) RefreshState {

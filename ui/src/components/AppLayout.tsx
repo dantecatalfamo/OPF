@@ -59,6 +59,7 @@ const nav: NavGroup[] = [
   {
     label: 'Diagnostics', icon: IconActivity, items: [
       { label: 'Graphs', to: '/diagnostics/graphs' },
+      { label: 'Events', to: '/diagnostics/events' },
       { label: 'Tools', to: '/diagnostics/tools' },
       { label: 'Connections', to: '/diagnostics/connections' },
       { label: 'ARP table', to: '/diagnostics/arp' },

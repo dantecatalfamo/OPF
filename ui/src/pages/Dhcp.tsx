@@ -219,6 +219,7 @@ export function Dhcp() {
               series={[{ key: `dhcp.${iface.id}.leases`, label: 'Leases', color: 'harbor.6' }]}
               format={(n) => String(Math.round(n))}
               h={140}
+              markSubjects={['dhcpd']}
             />
           </Card>
           <Grid gutter="md">

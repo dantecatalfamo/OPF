@@ -3,7 +3,7 @@
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
 import type {
-  BlockedName, DnsBlockedResource, GraphGroup, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  BlockedName, DnsBlockedResource, GraphGroup, OpfEvent, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
   RuleCountersResource, SystemResource, UpdatesResource,
 } from '../lib/api';
 import type { Iface, Model } from './types';
@@ -345,4 +345,29 @@ export function sampleMetrics(m: Model, series: string[], range: number, step?: 
     { name: 'rules', items: m.firewall.rules.length, max: m.system.graphs?.rules ?? 500, series: m.firewall.rules.length, seriesBytes: coarse, itemBytes: coarse, default: 500 },
   ];
   return { series: out, known: Object.keys(out), groups };
+}
+
+// The preview's event log: the outage three days ago and the odd thing
+// since, newest first.
+export function sampleEvents(m: Model): OpfEvent[] {
+  const now = Date.now();
+  const day = 86400_000;
+  const down = new Date(now - 3 * day);
+  down.setHours(15, 0, 0, 0);
+  const wan = m.interfaces.find((i) => i.role === 'wan');
+  const gw = m.routing.gateways[0];
+  const at = (t: number) => new Date(t).toISOString();
+  const es: OpfEvent[] = [
+    { time: at(now - 9 * 3600_000 + 3600_000), kind: 'list', subject: 'blocklist', message: 'Downloaded the list for alias blocklist again' },
+    { time: at(now - 9 * 3600_000), kind: 'list', subject: 'blocklist', warning: true, message: 'Couldn’t download the list for alias blocklist: ftp: connect: Connection timed out' },
+    { time: at(now - 26 * 3600_000), kind: 'device', subject: '8c:85:90:4b:77:02', message: 'New device 8c:85:90:4b:77:02 at 192.168.1.131 on LAN (calls itself “reception-pc”)' },
+    { time: at(now - 2 * day - 3 * 3600_000), kind: 'vpn', subject: 'p1', message: 'Priya phone (Remote access) connected from 198.51.100.70 (was 192.0.2.44)' },
+    ...(wan ? [{ time: at(down.getTime() + 21 * 60_000), kind: 'address' as const, subject: wan.id, message: `${wan.name} (${wan.device}) has a new address from DHCP: 203.0.113.24 (was 203.0.113.61)` }] : []),
+    ...(gw ? [
+      { time: at(down.getTime() + 20 * 60_000 + 30_000), kind: 'gateway' as const, subject: gw.id, message: `Gateway ${gw.name} is answering again` },
+      { time: at(down.getTime() + 40_000), kind: 'gateway' as const, subject: gw.id, warning: true, message: `Gateway ${gw.name} stopped answering (9.9.9.9)` },
+    ] : []),
+    { time: at(now - 6 * day), kind: 'opf', message: 'OPF started' },
+  ];
+  return es.sort((a, b) => (a.time < b.time ? 1 : -1));
 }

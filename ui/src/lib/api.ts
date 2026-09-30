@@ -455,6 +455,33 @@ export interface MetricsResource {
   groups: GraphGroup[];
 }
 
+export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit';
+
+/** Something that happened (GET /api/events). */
+export interface OpfEvent {
+  time: string;
+  kind: EventKind;
+  /** Something went wrong: a link down, a gateway not answering. */
+  warning?: boolean;
+  /** What it's about: an interface, gateway, VPN device or list id, a MAC address, a commit id, a daemon. */
+  subject?: string;
+  message: string;
+}
+
+export interface EventsRequest {
+  kinds?: EventKind[];
+  query?: string;
+  /** Only events before this time (for the next page). */
+  before?: string;
+  limit?: number;
+}
+
+/** A page of the event log, newest first. */
+export interface EventsResource {
+  events: OpfEvent[];
+  more?: boolean;
+}
+
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
 export interface TableStatus {
   name: string;
@@ -609,6 +636,14 @@ export const api = {
   /** Downloads a DNS blocklist again and reloads it in the resolver. */
   refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),
   dnsStats: () => request<DnsStatsResource>('GET', '/dns/stats'),
+  events: (r: EventsRequest = {}) => {
+    const q = new URLSearchParams();
+    if (r.kinds?.length) q.set('kind', r.kinds.join(','));
+    if (r.query) q.set('q', r.query);
+    if (r.before) q.set('before', r.before);
+    if (r.limit) q.set('limit', String(r.limit));
+    return request<EventsResource>('GET', `/events${q.size ? `?${q}` : ''}`);
+  },
   /** Series over the last range seconds, points at least step apart. */
   metrics: (series: string[], range: number, step?: number) =>
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),

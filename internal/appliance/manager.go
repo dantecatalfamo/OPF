@@ -73,9 +73,11 @@ type Manager struct {
 	dnsCounters rate[sysinfo.UnboundStats]
 	reload      reloadRecord // the resolver's last full reload (dnsstats.go)
 
-	// History over time (collect.go).
+	// History over time (collect.go), and the event log (events.go).
 	collectOnce sync.Once
 	collect     *collector
+	eventsOnce  sync.Once
+	events      *eventLog
 
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus

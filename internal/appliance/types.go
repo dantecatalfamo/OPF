@@ -56,6 +56,7 @@ type API interface {
 	DNSStats() (*DNSStats, error)
 	DNSBlocked() (*DNSBlocked, error)
 	Metrics(MetricsRequest) (*Metrics, error)
+	Events(EventsRequest) (*Events, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

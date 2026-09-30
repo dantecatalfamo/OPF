@@ -111,6 +111,7 @@ function Gateways() {
             series={staged.routing.gateways.map((g, i) => ({ key: `gw.${g.id}.rtt`, label: g.name, color: ['harbor.6', 'amber.6', 'grape.6', 'teal.6'][i % 4] }))}
             format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)} ms`}
             peaks
+            markSubjects={staged.routing.gateways.map((g) => g.id)}
           />
         </Card>
       )}
