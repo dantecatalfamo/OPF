@@ -107,6 +107,16 @@ func TestCommitLifecycle(t *testing.T) {
 	if len(staged.Changes) != 2 {
 		t.Fatalf("changes %+v", staged.Changes)
 	}
+	// The answer leaves out the model the client just sent; reading the
+	// staged configuration has it.
+	if staged.Model != nil || staged.Base != live.Version {
+		t.Errorf("stage answered with its model, or without its base")
+	}
+	var again appliance.Staged
+	c.do("GET", "/api/config/staged", "", 200, &again)
+	if again.Model == nil || again.Version != staged.Version {
+		t.Errorf("staged: %+v", again)
+	}
 
 	var commit appliance.Commit
 	h = c.do("POST", "/api/commits", js(appliance.CommitRequest{

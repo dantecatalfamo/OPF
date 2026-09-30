@@ -235,3 +235,47 @@ func TestKillStateUsesActions(t *testing.T) {
 		t.Errorf("reads ran %q, actions ran %q", reads.ran, acts.ran)
 	}
 }
+
+func TestPfStatesPage(t *testing.T) {
+	c := &captured{dir: "handwritten", files: map[string]string{"pfctl -vv -s states": "pfctl_-vv_-s_states.txt", "pfctl -vv -s rules": "pfctl_-vv_-s_rules.txt"}}
+	m := &Manager{Runner: c}
+	all, err := m.PfStates(PfStatesRequest{})
+	if err != nil || all.Total != 7 || all.Read != 7 || len(all.States) != 7 {
+		t.Fatalf("all: %+v %v", all, err)
+	}
+	for i := 1; i < len(all.States); i++ {
+		if all.States[i].Bytes > all.States[i-1].Bytes {
+			t.Errorf("not busiest first at %d", i)
+		}
+	}
+	// A page, then the next one.
+	p1, _ := m.PfStates(PfStatesRequest{Limit: 3})
+	p2, _ := m.PfStates(PfStatesRequest{Limit: 3, Offset: 3})
+	if len(p1.States) != 3 || len(p2.States) != 3 || p1.Total != 7 || p1.States[0].ID != all.States[0].ID || p2.States[0].ID != all.States[3].ID {
+		t.Errorf("pages %d, %d", len(p1.States), len(p2.States))
+	}
+	if past, _ := m.PfStates(PfStatesRequest{Offset: 7}); len(past.States) != 0 || past.Total != 7 {
+		t.Errorf("past the end: %+v", past)
+	}
+	// Filters: protocol (ICMP counts ICMPv6), and part of an address,
+	// translated ones included.
+	for _, f := range []struct {
+		req  PfStatesRequest
+		want int
+	}{
+		{PfStatesRequest{Proto: "icmp"}, 2},
+		{PfStatesRequest{Proto: "udp"}, 1},
+		{PfStatesRequest{Query: "192.168.1.112"}, 2},
+		{PfStatesRequest{Query: "203.0.113.24"}, 2},
+		{PfStatesRequest{Query: " 2001:db8::118 ", Proto: "tcp"}, 1},
+	} {
+		if r, err := m.PfStates(f.req); err != nil || r.Total != f.want || len(r.States) != f.want {
+			t.Errorf("%+v: %d (%v)", f.req, r.Total, err)
+		}
+	}
+	for _, bad := range []PfStatesRequest{{Proto: "gre"}, {Limit: MaxStatesPage + 1}, {Offset: -1}, {Query: strings.Repeat("1", 101)}, {Query: "a\x00b"}} {
+		if _, err := m.PfStates(bad); err == nil {
+			t.Errorf("took %+v", bad)
+		}
+	}
+}

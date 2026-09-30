@@ -1,15 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ActionIcon, Alert, Anchor, Badge, Card, Group, SegmentedControl, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, SegmentedControl, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconSearch, IconX } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { formatBytes, formatDuration } from '../lib/format';
 import { deviceName } from '../lib/labels';
-import { refreshLive, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
-import type { PfState } from '../lib/api';
+import type { PfState, PfStatesRequest, PfStatesResource } from '../lib/api';
 import { Mono, PageHeader } from '../components/ui';
 
 const protoGroup = (p: string) => (p === 'ipv6-icmp' ? 'icmp' : p);
@@ -80,36 +79,56 @@ function Close({ c, onClose }: { c: PfState; onClose: (c: PfState) => void }) {
   );
 }
 
+// A page of connections, and how often it's asked for again.
+const PAGE = 200;
+const POLL_MS = 10_000;
+
 export function Connections() {
   // The table needs about 820 px beside the navigation.
   const wide = useMediaQuery('(min-width: 75em)') ?? true;
-  const { data, error } = useLive('pfStates');
-  const [closed, setClosed] = useState<Set<string>>(new Set());
+  // A page at a time, filtered on the firewall: a table of thousands of
+  // states would be too much to send every few seconds, and to read.
   const [q, setQ] = useState('');
+  const [query, setQuery] = useState(''); // q, once typing pauses
   const [proto, setProto] = useState('all');
-
-  const rows = useMemo(
-    () =>
-      (data?.states ?? [])
-        .filter((c) => !closed.has(c.id))
-        .filter((c) => proto === 'all' || protoGroup(c.proto) === proto)
-        .filter((c) => !q || `${c.source} ${c.destination} ${c.translated ?? ''}`.includes(q.trim()))
-        .sort((a, b) => b.bytes - a.bytes),
-    [data, closed, q, proto],
-  );
+  const [limit, setLimit] = useState(PAGE);
+  const [data, setData] = useState<PfStatesResource>();
+  const [error, setError] = useState<string>();
+  const [closed, setClosed] = useState<Set<string>>(new Set());
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+  useEffect(() => setLimit(PAGE), [query, proto]);
+  useEffect(() => {
+    let live = true;
+    const req: PfStatesRequest = { query: query || undefined, proto: proto === 'all' ? undefined : (proto as PfStatesRequest['proto']), limit };
+    const load = () => {
+      if (document.hidden) return;
+      backend.pfStates(req).then(
+        (d) => { if (live) { setData(d); setError(undefined); } },
+        (e) => live && setError(e instanceof Error ? e.message : String(e)),
+      );
+    };
+    load();
+    const t = setInterval(load, POLL_MS);
+    return () => { live = false; clearInterval(t); };
+  }, [query, proto, limit, tick]);
+  const rows = (data?.states ?? []).filter((c) => !closed.has(c.id));
 
   const close = async (c: PfState) => {
     try {
       await backend.killState(c);
       setClosed((s) => new Set(s).add(c.id));
       notifications.show({ message: `Closed ${c.source} → ${c.destination}` });
-      refreshLive('pfStates');
+      setTick((n) => n + 1);
     } catch (e) {
       notifications.show({ color: 'red', title: 'Couldn’t close the connection', message: e instanceof Error ? e.message : String(e) });
     }
   };
 
-  const count = data ? data.states.length : undefined;
+  const count = data?.read;
   return (
     <>
       <PageHeader
@@ -117,11 +136,11 @@ export function Connections() {
         description={
           count === undefined
             ? 'Reading pf’s state table…'
-            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table. A connection through the firewall has one on each side. Closing one ends it at once; the device can reconnect if the rules allow.`
+            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table, the busiest first. A connection through the firewall has one on each side. Closing one ends it at once; the device can reconnect if the rules allow.`
         }
       />
       {(error || data?.error) && <Alert color="red" variant="light" mb="md">{data?.error ?? error}</Alert>}
-      {data?.truncated && <Alert color="yellow" variant="light" mb="md">Showing the first {data.states.length.toLocaleString()}. Filter to find a particular one.</Alert>}
+      {data?.truncated && <Alert color="yellow" variant="light" mb="md">The table has more than {data.read.toLocaleString()} entries; OPF reads that many, so a filter may not find a newer one.</Alert>}
       <Group mb="md" gap="sm">
         <TextInput placeholder="Filter by address" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ flex: '1 1 240px' }} />
         <SegmentedControl
@@ -184,8 +203,18 @@ export function Connections() {
             ))}
           </Stack>
         )}
-        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{data.states.length ? 'No connections match.' : 'No connections.'}</Text>}
+        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{query || proto !== 'all' ? 'No connections match.' : 'No connections.'}</Text>}
       </Card>
+      {data && data.total > 0 && (
+        <Group justify="space-between" mt="sm">
+          <Text size="xs" c="dimmed">
+            Showing {rows.length.toLocaleString()} of {data.total.toLocaleString()}{query || proto !== 'all' ? ' that match' : ''}
+          </Text>
+          {data.total > data.states.length && limit < 1000 && (
+            <Button size="compact-sm" variant="subtle" onClick={() => setLimit((n) => Math.min(1000, n + PAGE))}>Show {Math.min(PAGE, data.total - data.states.length)} more</Button>
+          )}
+        </Group>
+      )}
     </>
   );
 }

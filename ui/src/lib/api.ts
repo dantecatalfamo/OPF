@@ -238,10 +238,23 @@ export interface PfState {
 }
 
 /** GET /api/pf/states */
+/** A page of the state table (GET /api/pf/states): the matching states, busiest first. */
 export interface PfStatesResource {
   states: PfState[];
+  /** How many of the states read match. */
+  total: number;
+  /** How many states were read; truncated when the table had more. */
+  read: number;
   truncated?: boolean;
   error?: string;
+}
+
+/** Which states to ask for: part of an address, a protocol, and a page. */
+export interface PfStatesRequest {
+  query?: string;
+  proto?: 'tcp' | 'udp' | 'icmp';
+  offset?: number;
+  limit?: number;
 }
 
 /** GET /api/pf/rules/counters: counters by OPF label. */
@@ -554,8 +567,9 @@ export const api = {
       throw e;
     }
   },
+  /** Stages a model; the answer leaves the model out, as the caller has it. */
   stage: (base: string, model: Model, overwrite?: string[]) =>
-    request<StagedResource>('PUT', '/config/staged', { base, model, ...(overwrite?.length ? { overwrite } : {}) }),
+    request<Omit<StagedResource, 'model'>>('PUT', '/config/staged', { base, model, ...(overwrite?.length ? { overwrite } : {}) }),
   discard: () => request<void>('DELETE', '/config/staged'),
   commits: () => request<CommitResource[]>('GET', '/commits'),
   commit: (id: string) => request<CommitDetail>('GET', `/commits/${enc(id)}`),
@@ -574,7 +588,14 @@ export const api = {
   interfaces: () => request<InterfacesResource>('GET', '/network/interfaces'),
   gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
   pfStatus: () => request<PfStatusResource>('GET', '/pf/status'),
-  pfStates: () => request<PfStatesResource>('GET', '/pf/states'),
+  pfStates: (r: PfStatesRequest = {}) => {
+    const q = new URLSearchParams();
+    if (r.query) q.set('q', r.query);
+    if (r.proto) q.set('proto', r.proto);
+    if (r.offset) q.set('offset', String(r.offset));
+    if (r.limit) q.set('limit', String(r.limit));
+    return request<PfStatesResource>('GET', `/pf/states${q.size ? `?${q}` : ''}`);
+  },
   /** Ends a connection. It's gone at once; the device can reconnect if the rules allow. */
   killState: (s: Pick<PfState, 'id' | 'creatorId'>) => request<void>('POST', '/pf/states/kill', { id: s.id, creatorId: s.creatorId }),
   ruleCounters: () => request<RuleCountersResource>('GET', '/pf/rules/counters'),

@@ -3,7 +3,7 @@
 // stops while the tab is hidden.
 import { useEffect, useState } from 'react';
 import { backend } from '../model/store';
-import type { DnsBlockedResource, DnsStatsResource, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfStatesResource, PfStatusResource, RoutingTableResource, RuleCountersResource, SystemResource, UpdatesResource, WgPeerState } from './api';
+import type { DnsBlockedResource, DnsStatsResource, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfStatusResource, RoutingTableResource, RuleCountersResource, SystemResource, UpdatesResource, WgPeerState } from './api';
 import type { Iface, Peer } from '../model/types';
 
 const sources = {
@@ -14,7 +14,6 @@ const sources = {
   updates: { load: () => backend.updates(), ms: (d?: UpdatesResource) => (d?.checking ? 3000 : 60_000) },
   routes: { load: () => backend.routingTable(), ms: 30_000 },
   pfStatus: { load: () => backend.pfStatus(), ms: 5000 },
-  pfStates: { load: () => backend.pfStates(), ms: 5000 },
   ruleCounters: { load: () => backend.ruleCounters(), ms: 10_000 },
   firewallLog: { load: () => backend.firewallLog(), ms: 10_000 },
   dnsStats: { load: () => backend.dnsStats(), ms: 5000 },
@@ -28,7 +27,6 @@ interface Types {
   updates: UpdatesResource;
   routes: RoutingTableResource;
   pfStatus: PfStatusResource;
-  pfStates: PfStatesResource;
   ruleCounters: RuleCountersResource;
   firewallLog: FirewallLogResource;
   dnsStats: DnsStatsResource;

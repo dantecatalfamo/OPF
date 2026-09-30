@@ -67,7 +67,8 @@ export function samplePfStates(m: Model, closed: Set<string>): PfStatesResource 
       rule: 7, label: rule && `opf:rule:${rule.id}`,
     });
   }
-  return { states: states.filter((x) => !closed.has(x.id)) };
+  const open = states.filter((x) => !closed.has(x.id));
+  return { states: open, total: open.length, read: open.length };
 }
 
 const attackers = ['198.51.100.23', '198.51.100.201', '185.220.101.4', '45.95.147.10', '162.142.125.9', '192.0.2.66'];

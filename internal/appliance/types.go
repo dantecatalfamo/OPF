@@ -41,7 +41,7 @@ type API interface {
 	Gateways() (*GatewaysStatus, error)
 	Updates() (*UpdatesStatus, error)
 	PfStatus() (*PfStatus, error)
-	PfStates() (*PfStates, error)
+	PfStates(PfStatesRequest) (*PfStates, error)
 	KillState(KillStateRequest) error
 	RuleCounters() (*RuleCounters, error)
 	FirewallLog() (*FirewallLog, error)
@@ -328,10 +328,24 @@ type PfStatus struct {
 	Errors        []string `json:"errors"`
 }
 
-// PfStates is pf's state table: the connections through and to the
-// firewall. At most MaxStates, with Truncated set when there were more.
+// PfStatesRequest asks for a page of the state table: the states whose
+// addresses contain Query, of one protocol (tcp, udp, icmp; empty for
+// all), busiest first, from Offset, at most Limit (StatesPage if 0).
+type PfStatesRequest struct {
+	Query  string `json:"query,omitempty"`
+	Proto  string `json:"proto,omitempty"`
+	Offset int    `json:"offset,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+}
+
+// PfStates is a page of pf's state table: the connections through and
+// to the firewall. Total is how many of the states read match; Read is
+// how many were read, at most MaxStatesRead, with Truncated set when the
+// table had more.
 type PfStates struct {
 	States    []PfStateEntry `json:"states"`
+	Total     int            `json:"total"`
+	Read      int            `json:"read"`
 	Truncated bool           `json:"truncated,omitempty"`
 	Error     string         `json:"error,omitempty"`
 }

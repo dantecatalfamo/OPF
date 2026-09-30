@@ -109,8 +109,10 @@ nothing_staged` when there's nothing staged.
 {"base": "6265311081b0c6acc983", "model": {…}, "overwrite": ["/etc/pf.conf"]}
 ```
 
-Returns the staged resource. `overwrite` is optional. Refused with
-`commit_pending` while a commit waits for confirmation.
+Returns `{"version", "base", "changes"}`: the staged resource without
+its model, which the client just sent (`GET /api/config/staged` has
+it). `overwrite` is optional. Refused with `commit_pending` while a
+commit waits for confirmation.
 
 ### `DELETE /api/config/staged`
 

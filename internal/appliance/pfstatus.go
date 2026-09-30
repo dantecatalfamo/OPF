@@ -3,8 +3,11 @@ package appliance
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -18,7 +21,12 @@ import (
 // Limits on what the pf calls return, whatever the kernel holds, so an
 // answer always fits in one RPC message.
 const (
-	MaxStates     = 5000
+	// MaxStatesRead is how many states a request reads: a filter
+	// searches all of them. MaxStatesPage is the most one answer holds,
+	// and StatesPage the number unless asked.
+	MaxStatesRead = 50000
+	MaxStatesPage = 1000
+	StatesPage    = 200
 	MaxLogEntries = 500
 )
 
@@ -63,22 +71,57 @@ func (m *Manager) PfStatus() (*PfStatus, error) {
 	return res, nil
 }
 
-// PfStates returns the state table, each state with the label of the
-// rule that created it.
-func (m *Manager) PfStates() (*PfStates, error) {
+// PfStates returns a page of the state table: the states matching the
+// request, busiest first, each with the label of the rule that created
+// it. Filtering and paging are done here, so a table of tens of
+// thousands of states doesn't cross the network every few seconds.
+func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
+	req.Query = strings.TrimSpace(req.Query)
+	switch {
+	case len(req.Query) > 100 || !utf8.ValidString(req.Query) || strings.ContainsFunc(req.Query, unicode.IsControl):
+		return nil, errorf(CodeInvalid, "the filter is an address, or part of one")
+	case req.Proto != "" && req.Proto != "tcp" && req.Proto != "udp" && req.Proto != "icmp":
+		return nil, errorf(CodeInvalid, "proto: tcp, udp or icmp")
+	case req.Offset < 0 || req.Offset > MaxStatesRead:
+		return nil, errorf(CodeInvalid, "offset: 0 to %d", MaxStatesRead)
+	case req.Limit < 0 || req.Limit > MaxStatesPage:
+		return nil, errorf(CodeInvalid, "limit: 1 to %d", MaxStatesPage)
+	}
+	if req.Limit == 0 {
+		req.Limit = StatesPage
+	}
 	res := &PfStates{States: []PfStateEntry{}}
 	out, err := m.read("pfctl", "-vv", "-s", "states")
 	if err != nil && out == "" {
 		res.Error = "couldn't read the state table (pfctl -s states)"
 		return res, nil
 	}
-	states, truncated := sysinfo.ParsePfStates(out, MaxStates)
-	res.Truncated = truncated
-	labels := m.ruleLabels()
+	states, truncated := sysinfo.ParsePfStates(out, MaxStatesRead)
+	res.Read, res.Truncated = len(states), truncated
+	var match []sysinfo.PfState
 	for _, s := range states {
+		if req.matches(s) {
+			match = append(match, s)
+		}
+	}
+	res.Total = len(match)
+	sort.SliceStable(match, func(i, j int) bool { return match[i].Bytes > match[j].Bytes })
+	labels := m.ruleLabels()
+	for _, s := range match[min(req.Offset, len(match)):min(req.Offset+req.Limit, len(match))] {
 		res.States = append(res.States, PfStateEntry{PfState: s, Label: labels[s.Rule]})
 	}
 	return res, nil
+}
+
+func (r PfStatesRequest) matches(s sysinfo.PfState) bool {
+	proto := s.Proto
+	if proto == "ipv6-icmp" {
+		proto = "icmp"
+	}
+	if r.Proto != "" && proto != r.Proto {
+		return false
+	}
+	return r.Query == "" || strings.Contains(s.Source+" "+s.Destination+" "+s.Translated, r.Query)
 }
 
 // ruleLabels maps the loaded rules' numbers to their labels.

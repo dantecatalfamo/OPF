@@ -235,9 +235,9 @@ func (s *Service) PfStatus(_ None, r *PfStatusReply) error {
 	return nil
 }
 
-func (s *Service) PfStates(_ None, r *PfStatesReply) error {
+func (s *Service) PfStates(a appliance.PfStatesRequest, r *PfStatesReply) error {
 	var err error
-	r.States, err = s.api.PfStates()
+	r.States, err = s.api.PfStates(a)
 	r.set("PfStates", err)
 	return nil
 }
@@ -617,9 +617,9 @@ func (c *Client) PfStatus() (*appliance.PfStatus, error) {
 	return r.Status, err
 }
 
-func (c *Client) PfStates() (*appliance.PfStates, error) {
+func (c *Client) PfStates(req appliance.PfStatesRequest) (*appliance.PfStates, error) {
 	var r PfStatesReply
-	err := c.call("PfStates", None{}, &r)
+	err := c.call("PfStates", req, &r)
 	if s := r.States; s != nil {
 		s.States = nonNil(s.States)
 	}

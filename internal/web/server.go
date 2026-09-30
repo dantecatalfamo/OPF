@@ -23,7 +23,7 @@
 //	GET    /api/system                    the machine: release, uptime, CPU, memory, disks, sensors
 //	GET    /api/system/updates            security patches available
 //	GET    /api/pf/status                 pf on or off, its state table, blocked traffic
-//	GET    /api/pf/states                 the state table: open connections
+//	GET    /api/pf/states                 the state table, a page: ?q=&proto=&offset=&limit=
 //	POST   /api/pf/states/kill            end a connection
 //	GET    /api/pf/rules/counters         each labelled rule's counters
 //	GET    /api/logs/firewall             packets pf logged, newest first
@@ -95,7 +95,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/system", getter(s.api.System))
 	s.mux.HandleFunc("GET /api/system/updates", getter(s.api.Updates))
 	s.mux.HandleFunc("GET /api/pf/status", getter(s.api.PfStatus))
-	s.mux.HandleFunc("GET /api/pf/states", getter(s.api.PfStates))
+	s.mux.HandleFunc("GET /api/pf/states", s.pfStates)
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
 	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s.api.RuleCounters))
 	s.mux.HandleFunc("GET /api/logs/firewall", getter(s.api.FirewallLog))
@@ -324,7 +324,17 @@ func (s *Server) putStaged(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setETag(w, st.Version)
-	writeJSON(w, http.StatusOK, st)
+	// Not the model: the client just sent it, and for a large firewall
+	// it's most of the response. GET /api/config/staged has it.
+	writeJSON(w, http.StatusOK, stageResult{st.Version, st.Base, st.Changes})
+}
+
+// stageResult is what staging answers: the staged version, the live
+// version it replaces, and the file changes it would make.
+type stageResult struct {
+	Version string                 `json:"version"`
+	Base    string                 `json:"base"`
+	Changes []appliance.FileChange `json:"changes"`
 }
 
 func (s *Server) deleteStaged(w http.ResponseWriter, r *http.Request) {
@@ -467,6 +477,28 @@ func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
+}
+
+// pfStates answers ?q=<part of an address>&proto=tcp|udp|icmp&offset=&limit=.
+func (s *Server) pfStates(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := appliance.PfStatesRequest{Query: q.Get("q"), Proto: q.Get("proto")}
+	for name, dst := range map[string]*int{"offset": &req.Offset, "limit": &req.Limit} {
+		if v := q.Get(name); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				badRequest(w, http.StatusBadRequest, "%s is a number", name)
+				return
+			}
+			*dst = n
+		}
+	}
+	st, err := s.api.PfStates(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, st)
 }
 
 // metrics answers ?series=a,b&range=<seconds>[&step=<seconds>].

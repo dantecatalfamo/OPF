@@ -13,7 +13,7 @@ import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type MetricsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type MetricsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -226,7 +226,16 @@ export const localApi = {
   interfaces: async (): Promise<InterfacesResource> => sampleInterfaces(live),
   gateways: async (): Promise<GatewaysResource> => sampleGateways(live),
   pfStatus: async (): Promise<PfStatusResource> => samplePfStatus(samplePfStates(live, closedStates).states.length),
-  pfStates: async (): Promise<PfStatesResource> => samplePfStates(live, closedStates),
+  pfStates: async (r: PfStatesRequest = {}): Promise<PfStatesResource> => {
+    // As the server pages it: filtered, busiest first.
+    const all = samplePfStates(live, closedStates).states;
+    const match = all
+      .filter((c) => !r.proto || (c.proto === 'ipv6-icmp' ? 'icmp' : c.proto) === r.proto)
+      .filter((c) => !r.query || `${c.source} ${c.destination} ${c.translated ?? ''}`.includes(r.query.trim()))
+      .sort((a, b) => b.bytes - a.bytes);
+    const from = r.offset ?? 0;
+    return { states: match.slice(from, from + (r.limit || 200)), total: match.length, read: all.length };
+  },
   killState: async (s: Pick<PfState, 'id' | 'creatorId'>): Promise<void> => {
     closedStates.add(s.id);
   },
