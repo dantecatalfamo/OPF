@@ -122,7 +122,7 @@ export function Interfaces() {
           const link = !i.enabled ? 'Disabled' : !ifs ? '…' : !s ? 'Not on this system' : !s.up ? 'Down' : s.status === 'no carrier' ? 'No link' : 'Up';
           const errors = (s?.counters?.rxErrors ?? 0) + (s?.counters?.txErrors ?? 0);
           return (
-            <Card key={i.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <Card key={i.id} style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
               <Group justify="space-between" mb="md" wrap="nowrap">
                 <Stack gap={2}>
                   <Group gap="sm">
@@ -167,7 +167,7 @@ export function Interfaces() {
                 )}
               </Stack>
               {i.enabled && (
-                <Card.Section mt="auto" pt="md">
+                <Card.Section mt="auto" pt="md" className="spark-bottom">
                   <Text size="xs" c="dimmed" px="lg" mb={2}>Last hour</Text>
                   <TrafficSpark data={history} dev={i.device} range={3600} />
                 </Card.Section>

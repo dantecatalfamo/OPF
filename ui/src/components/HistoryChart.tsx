@@ -120,7 +120,12 @@ export function HistoryCard({ title, series, format, area, peaks, empty, h = 170
   );
 }
 
-/** A small, bare graph of an interface's traffic for a card: no axes, a tooltip, in and out. */
+/**
+ * A small, bare graph of an interface's traffic for a card: no axes, a
+ * tooltip, in and out. The card has to let it overflow (so the tooltip
+ * isn't cut off); the drawing itself is clipped to the card's corners
+ * by the class spark-bottom.
+ */
 export function TrafficSpark({ data, dev, range, h = 56 }: { data?: MetricsResource; dev: string; range: number; h?: number }) {
   const rx = data?.series[`if.${dev}.rx`];
   const tx = data?.series[`if.${dev}.tx`];
@@ -149,6 +154,9 @@ export function TrafficSpark({ data, dev, range, h = 56 }: { data?: MetricsResou
       fillOpacity={0.2}
       valueFormatter={formatBits}
       tooltipAnimationDuration={0}
+      // Above the graph, over the card's own text, rather than hanging
+      // off the bottom over the next card.
+      tooltipProps={{ position: { y: -h - 44 }, allowEscapeViewBox: { x: false, y: true }, wrapperStyle: { zIndex: 20 } }}
     />
   );
 }

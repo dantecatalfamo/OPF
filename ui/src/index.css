@@ -72,3 +72,10 @@ body {
 .ruleset-line:hover .ruleset-origin {
   opacity: 1;
 }
+
+/* A graph along a card's bottom edge: its drawing follows the card's
+   rounded corners, while its tooltip (HTML beside the SVG) may spill
+   out of the card, which has overflow: visible for it. */
+.spark-bottom .recharts-surface {
+  clip-path: inset(0 round 0 0 var(--mantine-radius-md) var(--mantine-radius-md));
+}
