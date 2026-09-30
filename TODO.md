@@ -307,6 +307,36 @@ In order. Each step's details are in the section it points to.
       by gateway health; relayd or ifstated could drive it), and
       `route-to` on a DHCP gateway, which the generator resolves to the
       address it has at generation time.
+- [ ] **authpf** (authpf(8)): network access that opens when someone
+      logs in over SSH and closes when they log out, for contractors,
+      guests or anything that should need a person present. authpf is
+      the user's login shell; on login it loads rules for their address
+      (`$user_ip`) into the anchor `authpf/<user>(<pid>)` and adds it to
+      the `<authpf_users>` table, and on logout removes both.
+  - Generated: `anchor "authpf/*"` in pf.conf at a point the page shows
+    (before the interface rules, so an authenticated user's rules are
+    reached), `/etc/authpf/authpf.conf`, `authpf.rules` (for everyone)
+    and `users/<name>/authpf.rules` (for one), `authpf.allow`,
+    `banned/<name>` (with the message the user sees) and
+    `authpf.message`. The rules are ordinary OPF rules written with
+    `$user_ip` as the source, from the same form, and checked by
+    `pfctl -n` with the anchor loaded (`pfctl -a authpf/test -n -f`).
+  - Simpler still, for rules that only need to know "is this address
+    logged in": `<authpf_users>` in any rule's source, offered as an
+    endpoint ("any authenticated user").
+  - Accounts: authpf users are system accounts with `/usr/sbin/authpf`
+    as their shell, created and removed by OPF, apart from the admin
+    accounts (Security › User accounts) and never able to reach OPF's
+    interface. Their SSH keys are managed on the page; sshd needs
+    `AllowTcpForwarding no` and a `Match` for them, and
+    `ClientAliveInterval` so a dropped connection ends the session.
+  - Live: who's logged in, from where and since when (the anchors
+    under `authpf/*` and the table), their rules' counters and states
+    (`pfctl -a 'authpf/…' -s rules`), and a way to end a session
+    (kill that authpf process, which removes its rules). Logins and
+    logouts go in the event log.
+  - The firewall log, rule counters and the packet tester don't follow
+    anchors yet; they need to for authpf rules to show up in them.
 - [ ] A packet tester: "what happens to tcp 192.168.20.5 →
       192.168.1.20:445?", evaluated against the ruleset. A wrong
       "allowed" is worse than no answer, so it has to follow pf
