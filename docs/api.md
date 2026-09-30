@@ -365,7 +365,7 @@ for a month: every 10 s for the last hour, every minute for a day,
 every 10 minutes for a week and every hour for the month.
 
 - `GET /api/metrics?series=<name>,<name>&range=<seconds>[&step=<seconds>]`:
-  `{"series": {"<name>": {"start", "step", "avg", "max"}}, "known": [...]}`.
+  `{"series": {"<name>": {"start", "step", "avg", "max"}}, "known": [...], "groups": [...]}`.
   Point `i` is at `start + i*step` (unix seconds), `null` where nothing
   was recorded; `max` is the highest sample in each point. A range
   longer than an hour comes from a coarser ring, and at most 1500
@@ -381,6 +381,18 @@ every 10 minutes for a week and every hour for the month.
   second matched by the rule labelled `opf:<kind>:<id>`, as
   `pf.rule.r3`), `dhcp.<interface id>.leases` (leases in use) and
   `time.offset` (ms). Loopback, enc and pflog interfaces aren't kept.
+
+  Series belong to groups, each with its own cap on the things it keeps,
+  so a firewall with many rules never crowds out its interfaces:
+  `system` (the fixed series), `interfaces` (two series each),
+  `gateways` (two), `vpnDevices` (three), `dhcpNetworks` (one) and
+  `rules` (one each, kept at 10-minute and hourly detail only, half the
+  memory). The model's `system.graphs` sets the caps (0 to 10000; unset,
+  the defaults: 32, 16, 64, 32 and 500). `groups` reports each:
+  `{"name", "items", "max", "series", "seriesBytes", "itemBytes",
+  "default", "refused"}`; `refused` means something new was turned away
+  because the group is full. Lowering a cap forgets the things updated
+  least recently beyond it.
 
 ### Diagnostic tools
 

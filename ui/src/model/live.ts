@@ -3,7 +3,7 @@
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
 import type {
-  BlockedName, DnsBlockedResource, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  BlockedName, DnsBlockedResource, GraphGroup, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
   RuleCountersResource, SystemResource, UpdatesResource,
 } from '../lib/api';
 import type { Iface, Model } from './types';
@@ -332,5 +332,16 @@ export function sampleMetrics(m: Model, series: string[], range: number, step?: 
     }
     out[key] = { start, step: st, avg, max };
   }
-  return { series: out, known: Object.keys(out) };
+  // The graphs' groups at their defaults, with what the sample has.
+  const fine = (360 + 1440 + 1008 + 744) * 32;
+  const coarse = (1008 + 744) * 32;
+  const groups: GraphGroup[] = [
+    { name: 'system', items: 9, max: 9, series: 9, seriesBytes: fine, itemBytes: fine },
+    { name: 'interfaces', items: m.interfaces.length, max: m.system.graphs?.interfaces ?? 32, series: 2 * m.interfaces.length, seriesBytes: fine, itemBytes: 2 * fine, default: 32 },
+    { name: 'gateways', items: m.routing.gateways.length, max: m.system.graphs?.gateways ?? 16, series: 2 * m.routing.gateways.length, seriesBytes: fine, itemBytes: 2 * fine, default: 16 },
+    { name: 'vpnDevices', items: 3, max: m.system.graphs?.vpnDevices ?? 64, series: 9, seriesBytes: fine, itemBytes: 3 * fine, default: 64 },
+    { name: 'dhcpNetworks', items: m.dhcp.length, max: m.system.graphs?.dhcpNetworks ?? 32, series: m.dhcp.length, seriesBytes: fine, itemBytes: fine, default: 32 },
+    { name: 'rules', items: m.firewall.rules.length, max: m.system.graphs?.rules ?? 500, series: m.firewall.rules.length, seriesBytes: coarse, itemBytes: coarse, default: 500 },
+  ];
+  return { series: out, known: Object.keys(out), groups };
 }

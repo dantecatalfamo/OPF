@@ -243,6 +243,16 @@ func (v *validator) system() {
 	for i, n := range s.NTPServers {
 		v.host(at("system.ntpServers", i), n)
 	}
+	if g := s.Graphs; g != nil {
+		for _, f := range []struct {
+			name string
+			n    *int
+		}{{"interfaces", g.Interfaces}, {"gateways", g.Gateways}, {"vpnDevices", g.VPNDevices}, {"dhcpNetworks", g.DHCPNetworks}, {"rules", g.Rules}} {
+			if f.n != nil {
+				v.intRange("system.graphs."+f.name, *f.n, 0, MaxGraphItems)
+			}
+		}
+	}
 }
 
 func (v *validator) interfaces() {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/metrics"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
 func TestCollectorRate(t *testing.T) {
@@ -187,5 +188,53 @@ func TestPseudoIface(t *testing.T) {
 		if pseudoIface(name) != want {
 			t.Errorf("%s: %v", name, !want)
 		}
+	}
+}
+
+func TestGraphLimits(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	one := 1
+	m := e.live().Model
+	m.System.Graphs = &pf.GraphLimits{Rules: &one}
+	if err := stageCommit(t, e, m); err != nil {
+		t.Fatal(err)
+	}
+	e.m.Runner = &growing{calls: map[string]int{}}
+	for range 2 {
+		e.m.sample(time.Now())
+		e.m.sampleSlow(e.m.collect)
+		time.Sleep(1100 * time.Millisecond)
+	}
+	var rules, ifaces int
+	for _, k := range e.m.metricsStore().Keys() {
+		switch {
+		case strings.HasPrefix(k, "if."):
+			ifaces++
+		case strings.HasPrefix(k, "pf.") && strings.Count(k, ".") == 2:
+			rules++
+		}
+	}
+	// The handwritten ruleset has several labelled rules; one is kept,
+	// and the interfaces have their own room.
+	if rules != 1 || ifaces != 2 {
+		t.Errorf("%d rule series, %d interface series: %v", rules, ifaces, e.m.metricsStore().Keys())
+	}
+	res, err := e.m.Metrics(MetricsRequest{Range: 60})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range res.Groups {
+		if g.Name == GroupRules && (g.Max != 1 || g.Items != 1 || !g.Refused || g.Default != GraphDefaults[GroupRules] || g.ItemBytes <= 0) {
+			t.Errorf("rules group %+v", g)
+		}
+		if g.Name == GroupInterfaces && (g.Items != 1 || g.Refused || g.ItemBytes != 2*g.SeriesBytes) {
+			t.Errorf("interfaces group %+v", g)
+		}
+	}
+	// Out of range is refused when staged.
+	big := pf.MaxGraphItems + 1
+	m.System.Graphs = &pf.GraphLimits{Interfaces: &big}
+	if _, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: m}); err == nil {
+		t.Error("took a cap past the limit")
 	}
 }

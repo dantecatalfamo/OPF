@@ -27,9 +27,6 @@ import (
 const CollectInterval = 10 * time.Second
 
 const (
-	// maxSeries caps the series kept: about 110 KB each in memory,
-	// less on disk.
-	maxSeries = 256
 	// gatewayEvery: gateways are pinged less often than the rest.
 	gatewayEvery = 30 * time.Second
 	saveEvery    = 5 * time.Minute
@@ -71,6 +68,96 @@ func pseudoIface(name string) bool {
 	return false
 }
 
+// The graphs' groups: each kind of thing has its own cap, so a firewall
+// with a thousand rules doesn't crowd out its interfaces. Caps count
+// things (an interface is two series, in and out); the model can change
+// them (system.graphs), at the cost of memory, which Metrics reports.
+const (
+	GroupSystem     = "system"
+	GroupInterfaces = "interfaces"
+	GroupGateways   = "gateways"
+	GroupVPN        = "vpnDevices"
+	GroupDHCP       = "dhcpNetworks"
+	GroupRules      = "rules"
+)
+
+// groupWords are the groups as a sentence says them.
+var groupWords = map[string]string{
+	GroupSystem: "system graphs", GroupInterfaces: "interfaces", GroupGateways: "gateways",
+	GroupVPN: "VPN devices", GroupDHCP: "DHCP networks", GroupRules: "firewall rules",
+}
+
+// GraphDefaults are the caps when the model doesn't set them: at most
+// about 70 MB in all, and far less for a typical firewall.
+var GraphDefaults = map[string]int{
+	GroupInterfaces: 32,
+	GroupGateways:   16,
+	GroupVPN:        64,
+	GroupDHCP:       32,
+	GroupRules:      500,
+}
+
+// systemSeries are the fixed series: one of each, whatever the model.
+var systemSeries = map[string]bool{
+	SeriesCPU: true, SeriesMemory: true, SeriesLoad: true, SeriesPfStates: true, SeriesPfBlocked: true,
+	SeriesDNSQueries: true, SeriesDNSBlocked: true, SeriesDNSCacheHit: true, SeriesTimeOffset: true,
+}
+
+// under takes the keys "<prefix><id>.<what>" and says their thing is
+// "<prefix><id>".
+func under(prefix string) func(string) (string, bool) {
+	return func(k string) (string, bool) {
+		rest, ok := strings.CutPrefix(k, prefix)
+		i := strings.LastIndex(rest, ".")
+		if !ok || i <= 0 {
+			return "", false
+		}
+		return prefix + rest[:i], true
+	}
+}
+
+func graphGroups() []metrics.Group {
+	return []metrics.Group{
+		{Name: GroupSystem, Item: func(k string) (string, bool) { return k, systemSeries[k] }, Tiers: metrics.FineTiers, PerItem: 1, Max: len(systemSeries)},
+		{Name: GroupInterfaces, Item: under("if."), Tiers: metrics.FineTiers, PerItem: 2, Max: GraphDefaults[GroupInterfaces]},
+		{Name: GroupGateways, Item: under("gw."), Tiers: metrics.FineTiers, PerItem: 2, Max: GraphDefaults[GroupGateways]},
+		{Name: GroupVPN, Item: under("wg."), Tiers: metrics.FineTiers, PerItem: 3, Max: GraphDefaults[GroupVPN]},
+		{Name: GroupDHCP, Item: under("dhcp."), Tiers: metrics.FineTiers, PerItem: 1, Max: GraphDefaults[GroupDHCP]},
+		// Rules are many, sampled every 30 s and mostly graphed small:
+		// coarse rings, half the memory. pf.<kind>.<id>, one each.
+		{Name: GroupRules, Item: func(k string) (string, bool) {
+			rest, ok := strings.CutPrefix(k, "pf.")
+			return k, ok && strings.Count(rest, ".") == 1
+		}, Tiers: metrics.CoarseTiers, PerItem: 1, Max: GraphDefaults[GroupRules]},
+	}
+}
+
+// graphLimits are the caps the model asks for, the defaults for the
+// rest.
+func graphLimits(m *pf.Model) map[string]int {
+	out := map[string]int{}
+	for k, v := range GraphDefaults {
+		out[k] = v
+	}
+	if m == nil || m.System.Graphs == nil {
+		return out
+	}
+	g := m.System.Graphs
+	for name, n := range map[string]*int{GroupInterfaces: g.Interfaces, GroupGateways: g.Gateways, GroupVPN: g.VPNDevices, GroupDHCP: g.DHCPNetworks, GroupRules: g.Rules} {
+		if n != nil {
+			out[name] = *n
+		}
+	}
+	return out
+}
+
+func (m *Manager) applyGraphLimits(model *pf.Model) {
+	st := m.metricsStore()
+	for name, n := range graphLimits(model) {
+		st.SetMax(name, n)
+	}
+}
+
 // collector is the collector's state: the store and the last reading
 // of each counter.
 type collector struct {
@@ -79,15 +166,20 @@ type collector struct {
 	cpu   sysinfo.CPUTicks
 	cpuAt time.Time
 	gwAt  time.Time
-	full  bool // said once that the cap was reached
+	full  map[string]bool // groups the log has said are full
 }
 
-// add stores a point, and says once in the log when a new series was
-// turned away because there are as many as are kept.
+// add stores a point, and says once a group in the log when something
+// new was turned away because the group keeps as many as it may.
 func (c *collector) add(key string, t time.Time, v float64) {
-	if !c.store.Add(key, t, v) && metrics.KeyRE.MatchString(key) && !c.full {
-		c.full = true
-		log.Printf("graphs: %d series kept, the most there can be; %s and any after it aren't recorded", maxSeries, key)
+	if c.store.Add(key, t, v) {
+		return
+	}
+	for _, u := range c.store.Use() {
+		if u.Refused && !c.full[u.Name] {
+			c.full[u.Name] = true
+			log.Printf("graphs: the %s kept are at their cap (%d); %s and any more aren't recorded (System › General raises it)", groupWords[u.Name], u.Max, key)
+		}
 	}
 }
 
@@ -98,7 +190,7 @@ type reading struct {
 
 func (m *Manager) metricsStore() *metrics.Store {
 	m.collectOnce.Do(func() {
-		m.collect = &collector{store: metrics.New(maxSeries), prev: map[string]reading{}}
+		m.collect = &collector{store: metrics.New(graphGroups()...), prev: map[string]reading{}, full: map[string]bool{}}
 	})
 	return m.collect.store
 }
@@ -128,6 +220,10 @@ func (c *collector) addRate(key string, v float64, t time.Time, scale float64) {
 // first. SaveMetrics saves them; call it when OPF stops.
 func (m *Manager) RunCollector(ctx context.Context) {
 	st := m.metricsStore()
+	// The caps first, so loading keeps no more than they allow.
+	if model, _, err := m.live(); err == nil {
+		m.applyGraphLimits(model)
+	}
 	path := m.store.StatePath(metricsFile)
 	if f, err := os.Open(path); err == nil {
 		if err := st.Load(f); err != nil {
@@ -180,6 +276,7 @@ func (m *Manager) sample(now time.Time) {
 	m.metricsStore()
 	c := m.collect
 	model, _, _ := m.live()
+	m.applyGraphLimits(model) // a commit may have changed them
 
 	// Interfaces: bits a second in and out.
 	if b, err := m.read("netstat", "-ibn"); err == nil {
@@ -362,10 +459,32 @@ type MetricsRequest struct {
 const MaxMetricsSeries = 32
 
 // Metrics are the series asked for, by name (a series with nothing
-// recorded yet is left out), and the names of every series kept.
+// recorded yet is left out), the names of every series kept, and how
+// full each group is.
 type Metrics struct {
 	Series map[string]*metrics.Result `json:"series"`
 	Known  []string                   `json:"known"`
+	Groups []GraphGroup               `json:"groups"`
+}
+
+// GraphGroup is a group's use, its default cap, and what one of its
+// things takes in memory (ItemBytes: its series together).
+type GraphGroup struct {
+	metrics.GroupUse
+	Default   int `json:"default,omitempty"` // absent for the fixed system group
+	ItemBytes int `json:"itemBytes"`
+}
+
+func (m *Manager) graphUse() []GraphGroup {
+	per := map[string]int{}
+	for _, g := range graphGroups() {
+		per[g.Name] = g.PerItem
+	}
+	var out []GraphGroup
+	for _, u := range m.metricsStore().Use() {
+		out = append(out, GraphGroup{GroupUse: u, Default: GraphDefaults[u.Name], ItemBytes: u.SeriesBytes * per[u.Name]})
+	}
+	return out
 }
 
 // Metrics returns series over a time range.
@@ -373,15 +492,15 @@ func (m *Manager) Metrics(req MetricsRequest) (*Metrics, error) {
 	if len(req.Series) > MaxMetricsSeries {
 		return nil, errorf(CodeInvalid, "ask for at most %d series at once", MaxMetricsSeries)
 	}
-	span := metrics.Span()
+	st := m.metricsStore()
+	span := st.Span()
 	if req.Range <= 0 || time.Duration(req.Range)*time.Second > span {
 		return nil, errorf(CodeInvalid, "range: 1 to %d seconds", int(span.Seconds()))
 	}
 	if req.Step < 0 || req.Step > req.Range {
 		return nil, errorf(CodeInvalid, "step: 0 to the range")
 	}
-	st := m.metricsStore()
-	res := &Metrics{Series: map[string]*metrics.Result{}, Known: st.Keys()}
+	res := &Metrics{Series: map[string]*metrics.Result{}, Known: st.Keys(), Groups: m.graphUse()}
 	to := time.Now()
 	from := to.Add(-time.Duration(req.Range) * time.Second)
 	for _, k := range req.Series {

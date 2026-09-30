@@ -18,7 +18,25 @@ type SystemSettings struct {
 	Domain     string   `json:"domain"`
 	Timezone   string   `json:"timezone"`
 	NTPServers []string `json:"ntpServers"`
+	// Graphs caps how many of each thing the graphs keep a history of;
+	// unset, OPF's defaults (appliance.GraphDefaults).
+	Graphs *GraphLimits `json:"graphs,omitempty"`
 }
+
+// GraphLimits are how many interfaces, gateways, VPN devices, DHCP
+// networks and firewall rules the graphs keep; each unset one is the
+// default, and 0 keeps none. More costs memory, which System › General
+// shows.
+type GraphLimits struct {
+	Interfaces   *int `json:"interfaces,omitempty"`
+	Gateways     *int `json:"gateways,omitempty"`
+	VPNDevices   *int `json:"vpnDevices,omitempty"`
+	DHCPNetworks *int `json:"dhcpNetworks,omitempty"`
+	Rules        *int `json:"rules,omitempty"`
+}
+
+// MaxGraphItems bounds each of GraphLimits.
+const MaxGraphItems = 10000
 
 type IfaceRole string
 

@@ -2,7 +2,9 @@ package metrics
 
 import (
 	"bytes"
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,7 +22,7 @@ func vals(ps []*float64) []float64 {
 }
 
 func TestAddAndQuery(t *testing.T) {
-	s := New(10)
+	s := all(10)
 	now := time.Now().Truncate(time.Minute)
 	// Two samples a bucket for the last five minutes, 10 s apart: 1, 3.
 	start := now.Add(-5 * time.Minute)
@@ -68,11 +70,11 @@ func TestAddAndQuery(t *testing.T) {
 }
 
 func TestOldBucketsDontComeBack(t *testing.T) {
-	s := New(10)
+	s := all(10)
 	now := time.Now()
 	// A sample an hour and a bit ago lands in the slot the current one
 	// would use in the 10 s ring; it mustn't show up as now.
-	s.Add("cpu.busy", now.Add(-time.Duration(Tiers[0].Slots)*Tiers[0].Step), 50)
+	s.Add("cpu.busy", now.Add(-time.Duration(FineTiers[0].Slots)*FineTiers[0].Step), 50)
 	r, _ := s.Query("cpu.busy", now.Add(-time.Minute), now, 0)
 	for _, v := range vals(r.Avg) {
 		if v != -1 {
@@ -82,7 +84,7 @@ func TestOldBucketsDontComeBack(t *testing.T) {
 }
 
 func TestRefused(t *testing.T) {
-	s := New(2)
+	s := all(2)
 	now := time.Now()
 	for _, bad := range []string{"", "-dash", "a b", "a,b", "../x", "x\x00", string(make([]byte, 70))} {
 		if s.Add(bad, now, 1) {
@@ -101,15 +103,15 @@ func TestRefused(t *testing.T) {
 }
 
 func TestSaveLoad(t *testing.T) {
-	s := New(10)
+	s := all(10)
 	now := time.Now()
 	s.Add("pf.states", now, 42)
-	s.Add("dns.queries", now.Add(-2*Span()), 1) // older than every ring: not saved
+	s.Add("dns.queries", now.Add(-2*s.Span()), 1) // older than every ring: not saved
 	var buf bytes.Buffer
 	if err := s.Save(&buf); err != nil {
 		t.Fatal(err)
 	}
-	l := New(10)
+	l := all(10)
 	if err := l.Load(bytes.NewReader(buf.Bytes())); err != nil {
 		t.Fatal(err)
 	}
@@ -124,24 +126,24 @@ func TestSaveLoad(t *testing.T) {
 	s.Add("a.first", now, 1)
 	buf.Reset()
 	s.Save(&buf)
-	small := New(1)
+	small := all(1)
 	small.Load(bytes.NewReader(buf.Bytes()))
 	if k := small.Keys(); len(k) != 1 || k[0] != "a.first" {
 		t.Errorf("capped load: %v", k)
 	}
-	if err := New(1).Load(bytes.NewReader([]byte("not a gob"))); err == nil {
+	if err := all(1).Load(bytes.NewReader([]byte("not a gob"))); err == nil {
 		t.Error("read garbage")
 	}
 }
 
 func FuzzLoad(f *testing.F) {
-	s := New(4)
+	s := all(4)
 	s.Add("x", time.Now(), 1)
 	var buf bytes.Buffer
 	s.Save(&buf)
 	f.Add(buf.Bytes())
 	f.Fuzz(func(t *testing.T, b []byte) {
-		l := New(4)
+		l := all(4)
 		if l.Load(bytes.NewReader(b)) == nil {
 			for _, k := range l.Keys() {
 				l.Query(k, time.Now().Add(-time.Hour), time.Now(), 0)
@@ -149,4 +151,107 @@ func FuzzLoad(f *testing.F) {
 			}
 		}
 	})
+}
+
+// all is a store with one group that takes every key.
+func all(n int) *Store {
+	return New(Group{Name: "all", Item: func(k string) (string, bool) { return k, true }, Tiers: FineTiers, PerItem: 1, Max: n})
+}
+
+// grouped has interfaces (two series each, fine rings) and rules (one
+// each, coarse rings).
+func grouped(ifaces, rules int) *Store {
+	prefix := func(p string) func(string) (string, bool) {
+		return func(k string) (string, bool) {
+			if !strings.HasPrefix(k, p) {
+				return "", false
+			}
+			if i := strings.LastIndex(k, "."); i > len(p) && p == "if." {
+				return k[:i], true
+			}
+			return k, true
+		}
+	}
+	return New(
+		Group{Name: "interfaces", Item: prefix("if."), Tiers: FineTiers, PerItem: 2, Max: ifaces},
+		Group{Name: "rules", Item: prefix("pf.rule."), Tiers: CoarseTiers, PerItem: 1, Max: rules},
+	)
+}
+
+func TestGroups(t *testing.T) {
+	s := grouped(2, 3)
+	now := time.Now()
+	for _, k := range []string{"if.em0.rx", "if.em0.tx", "if.em1.rx", "if.em1.tx"} {
+		if !s.Add(k, now, 1) {
+			t.Errorf("refused %s", k)
+		}
+	}
+	// A third series for an interface, and a third interface: no room.
+	if s.Add("if.em0.extra", now, 1) || s.Add("if.em2.rx", now, 1) {
+		t.Error("past the interfaces' limits")
+	}
+	// Rules have their own room, whatever interfaces use.
+	for i := range 3 {
+		if !s.Add(fmt.Sprintf("pf.rule.r%d", i), now, 1) {
+			t.Errorf("refused rule %d", i)
+		}
+	}
+	if s.Add("pf.rule.r9", now, 1) || s.Add("other", now, 1) {
+		t.Error("past the rules' cap, or a key no group takes")
+	}
+	use := s.Use()
+	if use[0].Items != 2 || use[0].Series != 4 || !use[0].Refused || use[1].Items != 3 || use[1].SeriesBytes >= use[0].SeriesBytes {
+		t.Errorf("use %+v", use)
+	}
+	// Rules keep coarse rings: an hour comes back in 10-minute points.
+	if r, _ := s.Query("pf.rule.r0", now.Add(-time.Hour), now, 0); r.Step != 600 {
+		t.Errorf("rule step %d", r.Step)
+	}
+
+	// Lowering a cap forgets what was updated least recently.
+	s.Add("pf.rule.r0", now.Add(time.Minute), 2)
+	s.SetMax("rules", 1)
+	if k := s.Keys(); len(k) != 5 || k[4] != "pf.rule.r0" {
+		t.Errorf("after lowering: %v", k)
+	}
+	// Raising it lets new ones in again.
+	s.SetMax("rules", 5)
+	if !s.Add("pf.rule.r7", now, 1) || s.Use()[1].Refused {
+		t.Error("raised cap")
+	}
+}
+
+func TestLoadKeepsGroupsRings(t *testing.T) {
+	s := grouped(4, 4)
+	now := time.Now()
+	s.Add("if.em0.rx", now, 1)
+	s.Add("pf.rule.r1", now, 1)
+	var buf bytes.Buffer
+	if err := s.Save(&buf); err != nil {
+		t.Fatal(err)
+	}
+	// A newer OPF keeping rules in fine rings drops the old rule series,
+	// not the file.
+	l := New(
+		Group{Name: "interfaces", Item: func(k string) (string, bool) { return k[:7], strings.HasPrefix(k, "if.") }, Tiers: FineTiers, PerItem: 2, Max: 4},
+		Group{Name: "rules", Item: func(k string) (string, bool) { return k, strings.HasPrefix(k, "pf.rule.") }, Tiers: FineTiers, PerItem: 1, Max: 4},
+	)
+	if err := l.Load(bytes.NewReader(buf.Bytes())); err != nil {
+		t.Fatal(err)
+	}
+	if k := l.Keys(); len(k) != 1 || k[0] != "if.em0.rx" {
+		t.Errorf("keys %v", k)
+	}
+	if u := l.Use(); u[0].Items != 1 || u[1].Items != 0 {
+		t.Errorf("use %+v", u)
+	}
+	// And the cap holds when loading: one interface kept of two.
+	s.Add("if.em1.rx", now, 1)
+	buf.Reset()
+	s.Save(&buf)
+	one := grouped(1, 4)
+	one.Load(bytes.NewReader(buf.Bytes()))
+	if u := one.Use(); u[0].Items != 1 || u[0].Series != 1 {
+		t.Errorf("capped load %+v", u)
+	}
 }

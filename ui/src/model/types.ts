@@ -328,6 +328,16 @@ export interface SystemSettings {
   domain: string;
   timezone: string;
   ntpServers: string[];
+  /** How many of each thing the graphs keep a history of; unset, OPF's default, and 0 keeps none. */
+  graphs?: GraphLimits;
+}
+
+export interface GraphLimits {
+  interfaces?: number;
+  gateways?: number;
+  vpnDevices?: number;
+  dhcpNetworks?: number;
+  rules?: number;
 }
 
 export interface Model {

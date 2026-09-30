@@ -871,6 +871,13 @@ them, so they can be graphed and compared):
   device), with peaks dashed for traffic and latency. It ran on 7.9
   (`-dry`): every series, the file under unveil, about 1% of a CPU.
   Loopback, enc and pflog aren't kept.
+- Each kind of thing has its own cap (interfaces, gateways, VPN
+  devices, DHCP networks, rules, and the fixed system series), set on
+  System › General (`system.graphs`) with what each costs in memory at
+  most; rules keep only 10-minute and hourly rings. A group at its cap
+  says so in the log once, on System › General, and in a rule's tooltip.
+- [ ] Say where else a group is full: an interface card, a VPN device
+      or a DHCP network without a graph should say why, as a rule does.
 - [ ] What else to collect (what's above is collected):
       - **Interface traffic**: bytes, packets, errors and drops in and
         out per interface (`netstat -in`, queue drops from

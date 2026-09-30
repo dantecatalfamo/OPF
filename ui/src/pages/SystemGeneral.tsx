@@ -6,6 +6,7 @@ import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
+import { GraphSettings } from './GraphSettings';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -114,6 +115,7 @@ export function SystemGeneral() {
       <PageHeader title="General" description="The name, clock and software of this firewall." />
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 7 }}>
+          <Stack gap="md">
           <Card>
             <form
               onSubmit={form.onSubmit((v) => {
@@ -121,7 +123,7 @@ export function SystemGeneral() {
                 if (v.hostname !== sys.hostname || v.domain !== sys.domain) parts.push(`name set to ${v.hostname}.${v.domain}`);
                 if (v.timezone !== sys.timezone) parts.push(`time zone set to ${v.timezone}`);
                 if (v.ntpServers.join() !== sys.ntpServers.join()) parts.push(`time servers: ${v.ntpServers.join(', ')}`);
-                edit('system', parts.length ? `System ${parts.join(', ')}` : 'Updated system settings', (m) => ({ ...m, system: v }));
+                edit('system', parts.length ? `System ${parts.join(', ')}` : 'Updated system settings', (m) => ({ ...m, system: { ...m.system, hostname: v.hostname, domain: v.domain, timezone: v.timezone, ntpServers: v.ntpServers } }));
               })}
             >
               <SectionTitle>Identity and time</SectionTitle>
@@ -138,6 +140,8 @@ export function SystemGeneral() {
               </Stack>
             </form>
           </Card>
+          <GraphSettings />
+          </Stack>
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <Stack gap="md">

@@ -421,10 +421,25 @@ export interface MetricSeries {
   max: (number | null)[];
 }
 
-/** Series from the collector (GET /api/metrics), and the names of every series kept. */
+/** How full one of the graphs' groups is: its things (an interface, a rule), its cap, and what one thing takes in memory. */
+export interface GraphGroup {
+  name: 'system' | 'interfaces' | 'gateways' | 'vpnDevices' | 'dhcpNetworks' | 'rules';
+  items: number;
+  max: number;
+  series: number;
+  seriesBytes: number;
+  itemBytes: number;
+  /** The cap when the model doesn't set one; absent for the fixed system group. */
+  default?: number;
+  /** Something new was turned away because the group is full. */
+  refused?: boolean;
+}
+
+/** Series from the collector (GET /api/metrics), the names of every series kept, and how full each group is. */
 export interface MetricsResource {
   series: Record<string, MetricSeries>;
   known: string[];
+  groups: GraphGroup[];
 }
 
 /** A URL alias's downloaded list (GET /api/firewall/tables). */

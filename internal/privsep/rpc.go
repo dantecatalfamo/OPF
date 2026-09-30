@@ -699,6 +699,7 @@ func (c *Client) Metrics(req appliance.MetricsRequest) (*appliance.Metrics, erro
 	err := c.call("Metrics", req, &r)
 	if m := r.Metrics; m != nil {
 		m.Known = nonNil(m.Known)
+		m.Groups = nonNil(m.Groups)
 		if m.Series == nil {
 			m.Series = map[string]*metrics.Result{}
 		}

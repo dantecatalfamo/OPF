@@ -25,7 +25,7 @@ export function useHistory(series: string[], range: number, step?: number): { da
       const chunks: string[][] = [];
       for (let i = 0; i < series.length; i += 32) chunks.push(series.slice(i, i + 32));
       Promise.all(chunks.map((c) => backend.metrics(c, range, step))).then(
-        (all) => live && setState({ data: { series: Object.assign({}, ...all.map((d) => d.series)), known: all[0]?.known ?? [] } }),
+        (all) => live && setState({ data: { series: Object.assign({}, ...all.map((d) => d.series)), known: all[0]?.known ?? [], groups: all[0]?.groups ?? [] } }),
         (e) => live && setState((s) => ({ data: s.data, error: e instanceof Error ? e.message : String(e) })),
       );
     };

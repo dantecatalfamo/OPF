@@ -74,7 +74,14 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
 // minutes apart (rules' counters are sampled every 30 s).
 const SPARK_RANGE = 86400;
 const SPARK_STEP = 600;
-const sparkNote = ' The graph behind it is matches a second over the last day.';
+// What the count's tooltip says about the graph behind it: what it
+// shows, or why there isn't one.
+function sparkNote(history: MetricsResource | undefined, series: string | undefined): string {
+  if (!series || !history) return '';
+  if (history.known.includes(series)) return ' The graph behind it is matches a second over the last day.';
+  const rules = history.groups.find((g) => g.name === 'rules');
+  return rules?.refused ? ` Not graphed: the graphs keep ${rules.max.toLocaleString()} rules, and this firewall has more (System › General).` : '';
+}
 const sparkColor = (action: string) => (action === 'block' ? 'red.6' : 'harbor.5');
 
 // The Matches cell: the count, over its graph.
@@ -141,7 +148,7 @@ function RuleRow({ rule, model, pfText, counters, history, showPf, floating, onE
       )}
       <MatchesCell history={history} series={rule.enabled ? `pf.rule.${rule.id}` : undefined} action={action}>
         {c ? (
-          <Tooltip multiline w={260} label={`${c.packets.toLocaleString()} packets (${formatBytes(c.bytes)}) since the rules were loaded · ${c.states.toLocaleString()} open connections · checked ${c.evaluations.toLocaleString()} times.${sparkNote}`}>
+          <Tooltip multiline w={260} label={`${c.packets.toLocaleString()} packets (${formatBytes(c.bytes)}) since the rules were loaded · ${c.states.toLocaleString()} open connections · checked ${c.evaluations.toLocaleString()} times.${sparkNote(history, rule.enabled ? `pf.rule.${rule.id}` : undefined)}`}>
             <Text size="sm" c="dimmed" className="num">{formatCount(c.packets)}</Text>
           </Tooltip>
         ) : (
@@ -198,7 +205,7 @@ function SystemRow({ action, description, source, destination, port, pf, showPf,
       )}
       <MatchesCell history={history} series={series} action={action}>
         {counter && (
-          <Tooltip multiline w={260} label={`${counter.packets.toLocaleString()} packets (${formatBytes(counter.bytes)}) since the rules were loaded · ${counter.states.toLocaleString()} open connections.${series ? sparkNote : ''}`}>
+          <Tooltip multiline w={260} label={`${counter.packets.toLocaleString()} packets (${formatBytes(counter.bytes)}) since the rules were loaded · ${counter.states.toLocaleString()} open connections.${sparkNote(history, series)}`}>
             <Text size="sm" c="dimmed" className="num">{formatCount(counter.packets)}</Text>
           </Tooltip>
         )}
