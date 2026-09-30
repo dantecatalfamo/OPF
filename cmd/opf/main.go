@@ -134,6 +134,7 @@ func main() {
 	go watcher.Run(sigCtx)
 	go api.RunRefresher(sigCtx, time.Minute) // downloaded lists, as they fall due
 	go api.RunCollector(sigCtx)              // the graphs' history
+	go api.RunUpdateChecker(sigCtx)          // security patches, every couple of hours
 
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{

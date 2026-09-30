@@ -228,6 +228,13 @@ func (s *Service) Updates(_ None, r *UpdatesReply) error {
 	return nil
 }
 
+func (s *Service) CheckUpdates(_ None, r *UpdatesReply) error {
+	var err error
+	r.Updates, err = s.api.CheckUpdates()
+	r.set("CheckUpdates", err)
+	return nil
+}
+
 func (s *Service) PfStatus(_ None, r *PfStatusReply) error {
 	var err error
 	r.Status, err = s.api.PfStatus()
@@ -599,6 +606,15 @@ func (c *Client) Gateways() (*appliance.GatewaysStatus, error) {
 func (c *Client) Updates() (*appliance.UpdatesStatus, error) {
 	var r UpdatesReply
 	err := c.call("Updates", None{}, &r)
+	if s := r.Updates; s != nil {
+		s.Patches = nonNil(s.Patches)
+	}
+	return r.Updates, err
+}
+
+func (c *Client) CheckUpdates() (*appliance.UpdatesStatus, error) {
+	var r UpdatesReply
+	err := c.call("CheckUpdates", None{}, &r)
 	if s := r.Updates; s != nil {
 		s.Patches = nonNil(s.Patches)
 	}

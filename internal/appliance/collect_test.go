@@ -3,6 +3,7 @@ package appliance
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,7 +126,7 @@ func TestSample(t *testing.T) {
 	}
 	q, ok := lastPoint(t, st, SeriesDNSQueries)
 	hit, hok := lastPoint(t, st, SeriesDNSCacheHit)
-	if !ok || q < 70 || q > 100 || !hok || hit != 75 {
+	if !ok || q < 70 || q > 100 || !hok || math.Abs(hit-75) > 1e-9 {
 		t.Errorf("dns %v %v, cache hit %v %v", q, ok, hit, hok)
 	}
 	if b, ok := lastPoint(t, st, SeriesDNSBlocked); !ok || b <= 0 {

@@ -3,8 +3,8 @@ import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, T
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
-import { useStore } from '../model/store';
-import { useLive } from '../lib/live';
+import { backend, useStore } from '../model/store';
+import { refreshLive, useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { GraphSettings } from './GraphSettings';
 
@@ -47,7 +47,16 @@ function Updates() {
     <Card>
       <SectionTitle>Updates</SectionTitle>
       {body}
-      {upd?.checkedAt && <Text size="xs" c="dimmed" mt="sm">Checked {new Date(upd.checkedAt).toLocaleString()}.</Text>}
+      {upd?.checkedAt && (
+        <Group justify="space-between" mt="sm" gap="xs">
+          <Text size="xs" c="dimmed">
+            {upd.checking ? 'Checking again…' : `Checked ${new Date(upd.checkedAt).toLocaleString()}; again every 2 hours.`}
+          </Text>
+          <Button size="compact-xs" variant="subtle" disabled={upd.checking} onClick={() => backend.checkUpdates().then(() => refreshLive('updates'), () => refreshLive('updates'))}>
+            Check again
+          </Button>
+        </Group>
+      )}
     </Card>
   );
 }

@@ -94,6 +94,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/network/gateways", getter(s.api.Gateways))
 	s.mux.HandleFunc("GET /api/system", getter(s.api.System))
 	s.mux.HandleFunc("GET /api/system/updates", getter(s.api.Updates))
+	s.mux.HandleFunc("POST /api/system/updates/check", getter(s.api.CheckUpdates))
 	s.mux.HandleFunc("GET /api/pf/status", getter(s.api.PfStatus))
 	s.mux.HandleFunc("GET /api/pf/states", s.pfStates)
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)

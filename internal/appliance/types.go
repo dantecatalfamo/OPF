@@ -40,6 +40,7 @@ type API interface {
 	Interfaces() (*InterfacesStatus, error)
 	Gateways() (*GatewaysStatus, error)
 	Updates() (*UpdatesStatus, error)
+	CheckUpdates() (*UpdatesStatus, error)
 	PfStatus() (*PfStatus, error)
 	PfStates(PfStatesRequest) (*PfStates, error)
 	KillState(KillStateRequest) error

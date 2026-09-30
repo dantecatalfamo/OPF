@@ -239,8 +239,15 @@ request after a quiet minute takes a second longer, to measure one.
   isn't running).
 - `GET /api/system/updates`: `{"checkedAt", "checking", "patches",
   "error"}`. `patches` are syspatch's names for what's available. The
-  check runs in the background at most every six hours (15 minutes
-  after a failure), so `checkedAt` is absent until the first finishes.
+  check (`syspatch -c`, slow: it asks a mirror about every patch) runs
+  on a schedule in the background, when OPF starts if the last answer
+  is stale and then every two hours (15 minutes after a failure). The
+  answer is kept in the state directory, so a restart shows it at once;
+  `checkedAt` is absent only until the very first finishes, and
+  `checking` says one is running while the last answer is shown.
+- `POST /api/system/updates/check`: checks now, after installing
+  patches say, and answers as `GET` does. It does nothing while a check
+  runs or within a minute of the last one.
 - `GET /api/network/interfaces`: every interface on the system, by
   device name, whether OPF configures it or not: flags, `up` and
   `running`, `status` (the link: `active`, `no carrier`), `media`,

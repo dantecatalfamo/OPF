@@ -585,6 +585,8 @@ export const api = {
   routingTable: () => request<RoutingTableResource>('GET', '/network/routes'),
   system: () => request<SystemResource>('GET', '/system'),
   updates: () => request<UpdatesResource>('GET', '/system/updates'),
+  /** Checks for patches now (after installing some, say); ignored while one runs or just after one. */
+  checkUpdates: () => request<UpdatesResource>('POST', '/system/updates/check'),
   interfaces: () => request<InterfacesResource>('GET', '/network/interfaces'),
   gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
   pfStatus: () => request<PfStatusResource>('GET', '/pf/status'),

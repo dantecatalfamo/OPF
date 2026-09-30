@@ -433,18 +433,23 @@ func ParseNtpctl(out string) (TimeSync, bool) {
 func ParseSyspatch(out string) []string {
 	ps := []string{}
 	for _, l := range lines(out) {
-		l = strings.TrimSpace(l)
-		num, name, ok := strings.Cut(l, "_")
-		if !ok || len(num) != 3 || name == "" || len(l) > 64 {
-			continue
+		if l = strings.TrimSpace(l); IsPatchName(l) {
+			ps = append(ps, l)
 		}
-		if strings.IndexFunc(num, func(r rune) bool { return r < '0' || r > '9' }) >= 0 ||
-			strings.IndexFunc(name, func(r rune) bool {
-				return !(r == '_' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
-			}) >= 0 {
-			continue
-		}
-		ps = append(ps, l)
 	}
 	return ps
+}
+
+// IsPatchName says whether s is a syspatch name: three digits, an
+// underscore, then letters, digits, hyphens and underscores
+// ("015_smtpd").
+func IsPatchName(s string) bool {
+	num, name, ok := strings.Cut(s, "_")
+	if !ok || len(num) != 3 || name == "" || len(s) > 64 {
+		return false
+	}
+	return strings.IndexFunc(num, func(r rune) bool { return r < '0' || r > '9' }) < 0 &&
+		strings.IndexFunc(name, func(r rune) bool {
+			return !(r == '_' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+		}) < 0
 }

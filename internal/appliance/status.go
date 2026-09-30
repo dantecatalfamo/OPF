@@ -285,45 +285,6 @@ func (m *Manager) ping(a netip.Addr) GatewayHealth {
 	return h
 }
 
-// Updates reports the security patches syspatch(8) would install. The
-// check fetches from the mirror, so it runs in the background at most
-// every six hours (15 minutes after a failure) and the answer is the
-// last one it got.
-func (m *Manager) Updates() (*UpdatesStatus, error) {
-	m.updMu.Lock()
-	defer m.updMu.Unlock()
-	every := 6 * time.Hour
-	if m.upd != nil && m.upd.Error != "" {
-		every = 15 * time.Minute // no network yet, say
-	}
-	if !m.updRunning && (m.upd == nil || time.Since(*m.upd.CheckedAt) > every) {
-		m.updRunning = true
-		go m.checkUpdates()
-	}
-	if m.upd == nil {
-		return &UpdatesStatus{Checking: true, Patches: []string{}}, nil
-	}
-	u := *m.upd
-	u.Checking = m.updRunning
-	return &u, nil
-}
-
-func (m *Manager) checkUpdates() {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	out, err := m.runner().Run(ctx, "syspatch", "-c")
-	now := time.Now()
-	u := &UpdatesStatus{CheckedAt: &now, Patches: []string{}}
-	if err != nil {
-		u.Error = "couldn't check for patches: " + firstLine(string(out))
-	} else {
-		u.Patches = sysinfo.ParseSyspatch(string(out))
-	}
-	m.updMu.Lock()
-	m.upd, m.updRunning = u, false
-	m.updMu.Unlock()
-}
-
 func firstLine(s string) string {
 	l, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
 	return printable(l, maxMessageRunes)

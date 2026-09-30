@@ -223,6 +223,7 @@ export const localApi = {
   routingTable: async (): Promise<RoutingTableResource> => ({ ipv4: clone(sampleRoutingTable), ipv6: [] }),
   system: async (): Promise<SystemResource> => sampleSystem(),
   updates: async (): Promise<UpdatesResource> => sampleUpdates(),
+  checkUpdates: async (): Promise<UpdatesResource> => sampleUpdates(),
   interfaces: async (): Promise<InterfacesResource> => sampleInterfaces(live),
   gateways: async (): Promise<GatewaysResource> => sampleGateways(live),
   pfStatus: async (): Promise<PfStatusResource> => samplePfStatus(samplePfStates(live, closedStates).states.length),
