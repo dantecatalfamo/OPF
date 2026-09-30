@@ -96,23 +96,6 @@ export function DnsBlocklists() {
   const setDns = (summary: string, fn: (d: Model['dns']) => Model['dns']) => edit('dns', summary, (m) => ({ ...m, dns: fn(m.dns) }));
   const setLists = (summary: string, fn: (l: DnsBlocklist[]) => DnsBlocklist[]) => setDns(summary, (d) => ({ ...d, blocklists: fn(d.blocklists ?? []) }));
 
-  const own = useForm({
-    initialValues: { blocked: staged.dns.blocked ?? [], allowed: staged.dns.allowed ?? [] },
-    validate: {
-      blocked: (v) => v.find((n) => !blockNameRE.test(n)) ? `“${v.find((n) => !blockNameRE.test(n))}” isn’t a name` : null,
-      allowed: (v, all) => {
-        const bad = v.find((n) => !blockNameRE.test(n));
-        if (bad) return `“${bad}” isn’t a name`;
-        const both = v.find((n) => all.blocked.some((b) => b.toLowerCase() === n.toLowerCase()));
-        return both ? `${both} is blocked too` : null;
-      },
-    },
-  });
-  useEffect(() => {
-    own.setValues({ blocked: staged.dns.blocked ?? [], allowed: staged.dns.allowed ?? [] });
-    own.resetDirty();
-  }, [staged.dns.blocked, staged.dns.allowed]); // form is stable
-
   const refresh = async (l: DnsBlocklist) => {
     setRefreshing(l.id);
     try {
@@ -204,19 +187,6 @@ export function DnsBlocklists() {
         ) : (
           <Empty>No blocklists. Add one of the well-known lists to start.</Empty>
         )}
-        <form onSubmit={own.onSubmit((v) => setDns('Changed your own blocked and allowed names', (d) => ({ ...d, blocked: v.blocked, allowed: v.allowed })))}>
-          <Stack gap="sm">
-            <Text size="sm" fw={500}>Your own names</Text>
-            <TagsInput label="Always block" placeholder="ads.example.com or *.example.com" {...own.getInputProps('blocked')} />
-            <TagsInput label="Never block" description="Wins over every list: for a name a list blocks that you need." inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="cdn.example.com" {...own.getInputProps('allowed')} />
-            <Text size="xs" c="dimmed">
-              A name blocks just that name; *.example.com blocks example.com and everything under it. Patterns (regular expressions) aren’t possible: OpenBSD’s resolver only matches names and wildcards.
-            </Text>
-            <Group justify="flex-end">
-              <Button type="submit" size="xs" disabled={!own.isDirty()}>Save names</Button>
-            </Group>
-          </Stack>
-        </form>
       </Stack>
       <ListModal
         list={modal}
@@ -226,6 +196,46 @@ export function DnsBlocklists() {
           else setLists(`Added DNS blocklist ${v.name}`, (all) => [...all, { ...v, id: listId(v.name, staged) }]);
         }}
       />
+    </Card>
+  );
+}
+
+// Your own names, blocked or allowed whatever the lists say.
+export function DnsOwnNames() {
+  const { staged, edit } = useStore();
+  const setDns = (summary: string, fn: (d: Model['dns']) => Model['dns']) => edit('dns', summary, (m) => ({ ...m, dns: fn(m.dns) }));
+  const own = useForm({
+    initialValues: { blocked: staged.dns.blocked ?? [], allowed: staged.dns.allowed ?? [] },
+    validate: {
+      blocked: (v) => v.find((n) => !blockNameRE.test(n)) ? `“${v.find((n) => !blockNameRE.test(n))}” isn’t a name` : null,
+      allowed: (v, all) => {
+        const bad = v.find((n) => !blockNameRE.test(n));
+        if (bad) return `“${bad}” isn’t a name`;
+        const both = v.find((n) => all.blocked.some((b) => b.toLowerCase() === n.toLowerCase()));
+        return both ? `${both} is blocked too` : null;
+      },
+    },
+  });
+  useEffect(() => {
+    own.setValues({ blocked: staged.dns.blocked ?? [], allowed: staged.dns.allowed ?? [] });
+    own.resetDirty();
+  }, [staged.dns.blocked, staged.dns.allowed]); // form is stable
+
+  return (
+    <Card>
+      <SectionTitle>Your own names</SectionTitle>
+        <form onSubmit={own.onSubmit((v) => setDns('Changed your own blocked and allowed names', (d) => ({ ...d, blocked: v.blocked, allowed: v.allowed })))}>
+        <Stack gap="sm">
+          <TagsInput label="Always block" placeholder="ads.example.com or *.example.com" {...own.getInputProps('blocked')} />
+          <TagsInput label="Never block" description="Wins over every list: for a name a list blocks that you need." inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="cdn.example.com" {...own.getInputProps('allowed')} />
+          <Text size="xs" c="dimmed">
+            A name blocks just that name; *.example.com blocks example.com and everything under it. Patterns (regular expressions) aren’t possible: OpenBSD’s resolver only matches names and wildcards.
+          </Text>
+          <Group justify="flex-end">
+            <Button type="submit" size="xs" disabled={!own.isDirty()}>Save names</Button>
+          </Group>
+        </Stack>
+      </form>
     </Card>
   );
 }
