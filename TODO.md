@@ -247,8 +247,8 @@ In order. Each step's details are in the section it points to.
    accounts).
 2. **Run on OpenBSD** (Verify on real OpenBSD). Dry runs with the real
    validators work on 7.9 (`openbsd-dev`, user `opfdev`; ask before
-   using it); next are the two load failures found there, then real
-   commits on a VM that can be locked out safely.
+   using it); next are real commits on a VM that can be locked out
+   safely.
 3. **Import** (Parser and import), then the first-run wizard.
 4. **Live data** (Live data and monitoring): the pages read the real
    system now; what's left is history over time and the rest of the
@@ -324,8 +324,21 @@ In order. Each step's details are in the section it points to.
       ones that need it.
 - [ ] Check whether reloading pf empties `persist` tables such as
       `<bruteforce>`; if so, save and restore their contents.
-- [ ] URL-type alias tables need a refresh mechanism (scheduled or on
-      demand) to re-fetch and reload the table files.
+- [ ] Refresh URL aliases' lists on a schedule. A commit downloads a
+      list that isn't there and Aliases can download one again on
+      demand; the model's `refreshHours` (no longer shown on the page)
+      is for this. Keep the last good list when a scheduled download
+      fails, and say so on the Aliases page.
+- [ ] Run downloads as a dedicated `_opffetch` user created at install,
+      rather than the web process's user, so the fetcher can't signal
+      the web process or the other way round.
+- [ ] **Outside changes are judged against what the current generator
+      would write** for the applied model, so an OPF upgrade that
+      changes generated text (a comment, say) makes every such file look
+      hand-edited on the next change, and asks to overwrite it. Compare
+      with the copy OPF last wrote (the newest history entry's, or the
+      file as it was when OPF took over) instead. Found when the URL
+      table comment changed.
 - [ ] **IPv6.** Interfaces, NAT and rules are IPv4-first:
       `automaticNat()` only emits `inet` rules, unbound's access-control
       list only has IPv4 networks, lease names are IPv4 only (DHCP and
@@ -997,7 +1010,8 @@ Live on-OpenBSD suite:
 
 OPF has run as root on OpenBSD 7.9 (`openbsd-dev`, as `opfdev`, who
 has passwordless doas) with `-dry -checks`, a scratch `-root` and
-`-state`, and the web process as `opfdev`: pledge, unveil and the
+`-state`, and the web process as `opfdev` (downloads run as it too):
+pledge, unveil and the
 privilege drop hold; status, pf, the tools, commits, confirm, revert
 and the automatic revert all work; and the real `pfctl -n`, `dhcpd -n`,
 `unbound-checkconf` and `ntpd -n` judged the generated files. How:
@@ -1005,21 +1019,6 @@ and the automatic revert all work; and the real `pfctl -n`, `dhcpd -n`,
 mock's), start it with doas and nohup, and tunnel 127.0.0.1:18090.
 Stop it by the PID it wrote; never pkill.
 
-- [ ] **The generated pf.conf fails to load when a URL alias's table
-      file hasn't been downloaded yet**: `table <blocklist> persist
-      file "/var/opf/tables/blocklist"` makes pfctl refuse the whole
-      ruleset, so a commit with a URL alias can't pass its check.
-      Decide: download it at commit time (refusing the commit if that
-      fails, keeping the last good copy), or load the table empty and
-      say on the page that it hasn't been fetched. Tied to the refresh
-      mechanism (Models and generators).
-- [ ] **unbound-checkconf refuses unbound.conf on a system where
-      unbound has never run**: with DNSSEC on, `auto-trust-anchor-file:
-      /var/unbound/db/root.key` doesn't exist until rc.d's
-      `unbound-anchor` creates it. Run `unbound-anchor -a` before the
-      check (it falls back to its built-in anchor offline), or create
-      the file some other way, so turning on the DNS resolver works the
-      first time.
 - [ ] Test pf.conf with the real `pfctl -n` on a model whose interfaces
       exist on the test host (openbsd-dev has only vio0), so the only
       errors left are OPF's.
@@ -1093,6 +1092,11 @@ Stop it by the PID it wrote; never pkill.
 - [ ] The ARP and routing table parsers against real `arp -an` and
       `netstat -rnf inet`/`inet6` output.
 
+With `-root`, pf.conf still names `/var/opf/tables/<name>`, so
+`-checks` reads the real path, not the scratch copy; and `-dry` logs
+`unbound-anchor`, so with `-checks` and DNSSEC on, unbound-checkconf
+still refuses on a host without a root.key.
+
 Found and fixed by running on 7.9 (kept here as what to look for):
 the web user was looked up after unveil hid /etc/passwd; the parent
 took the listener's file, and built the RPC connection with
@@ -1100,7 +1104,9 @@ took the listener's file, and built the RPC connection with
 the child was started with `Dir: "/"`, which unveil hides; gob dropped
 every zero across the RPC, so exit status 0, 0 bps and a handshake 0
 seconds ago arrived as "unknown"; and `-dry` still closed connections
-for real.
+for real; a URL alias's list was never downloaded, so pfctl refused
+the ruleset; and unbound-checkconf refused until unbound-anchor had
+run.
 
 ## Development tooling
 
@@ -1125,6 +1131,13 @@ Finished work, kept here for now. Git history has the details.
 
 Live data:
 
+- [x] URL aliases' lists: a commit downloads a list that isn't there
+      yet (refusing the commit, with ftp's reason, if it can't) and uses
+      one that is; Aliases shows when each was downloaded and how many
+      entries it has, and downloads one again on demand, loading it into
+      pf. ftp runs as the unprivileged user, and only the lines that are
+      addresses are kept. A commit with DNSSEC on runs unbound-anchor
+      first when there's no root.key. Checked on 7.9.
 - [x] Diagnostics › Tools: ping (with don't-fragment sizes for the
       path MTU), traceroute (UDP or ICMP, AS numbers), DNS lookups (any
       type, another server, +trace, DNSSEC, reverse) and port tests,

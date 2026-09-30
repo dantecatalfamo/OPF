@@ -13,7 +13,7 @@ import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -232,10 +232,22 @@ export const localApi = {
   },
   ruleCounters: async (): Promise<RuleCountersResource> => sampleRuleCounters(live),
   firewallLog: async (): Promise<FirewallLogResource> => sampleFirewallLog(live),
+  tables: async (): Promise<TableStatus[]> =>
+    live.firewall.aliases.filter((a) => a.type === 'url').map((a) => ({ name: a.name, url: a.url ?? '', fetched: tableFetched.get(a.name) ?? new Date(Date.now() - 5 * 3600_000).toISOString(), entries: 1184 })),
+  refreshAlias: async (name: string): Promise<TableStatus> => {
+    const a = live.firewall.aliases.find((x) => x.name === name && x.type === 'url');
+    if (!a) throw new ApiError(404, 'not_found', `no downloaded list called "${name}" in the applied configuration`);
+    await new Promise((r) => setTimeout(r, 700));
+    tableFetched.set(name, new Date().toISOString());
+    return { name, url: a.url ?? '', fetched: tableFetched.get(name), entries: 1191 };
+  },
   startTool: async (req: ToolRequest): Promise<ToolRun> => startLocalTool(req),
   toolRun: async (id: string, from: number): Promise<ToolRun> => localToolRun(id, from),
   cancelTool: async (id: string): Promise<void> => cancelLocalTool(id),
 };
+
+// When the sample's lists were refreshed on the Aliases page.
+const tableFetched = new Map<string, string>();
 
 // Connections closed on the Connections page, gone from the sample.
 const closedStates = new Set<string>();

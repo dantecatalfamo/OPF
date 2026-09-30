@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
-import { IconDots, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { newId, useStore } from '../model/store';
+import { IconDots, IconDownload, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { backend, newId, useStore } from '../model/store';
+import { formatAgo } from '../lib/format';
+import type { TableStatus } from '../lib/api';
 import type { Alias, Model } from '../model/types';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { PageHeader } from '../components/ui';
@@ -22,7 +25,7 @@ const typeHelp: Record<Alias['type'], string> = {
   networks: 'A fixed list of networks in CIDR form.',
   ports: 'A fixed list of ports, for the port field of rules.',
   table: 'Starts empty (or with the entries below) and is filled at runtime, for example by a rule’s connection limits. Entries survive rule reloads.',
-  url: 'Fetched from a URL on a schedule and loaded into a pf table. One address or network per line.',
+  url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it; download it again from its menu whenever you want the latest.',
 };
 
 function usedBy(m: Model, name: string): number {
@@ -69,8 +72,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
           <Text size="xs" c="dimmed" mt={-8}>{typeHelp[t]}</Text>
           {t === 'url' ? (
             <>
-              <TextInput label="List URL" placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
-              <NumberInput label="Refresh every" suffix=" hours" min={1} max={168} {...form.getInputProps('refreshHours')} />
+              <TextInput label="List URL" description="One address or network a line; comments after # or ; are fine" inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
             </>
           ) : (
             <TagsInput label={t === 'table' ? 'Initial entries' : 'Entries'} description="Press Enter after each one" placeholder={placeholder} {...form.getInputProps('entries')} />
@@ -86,8 +88,42 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
   );
 }
 
+// The downloaded lists of the applied configuration's URL aliases,
+// read again after a refresh.
+function useTables(applied: Model) {
+  const [tables, setTables] = useState<TableStatus[]>();
+  const [refreshing, setRefreshing] = useState<string>();
+  const load = () => backend.tables().then(setTables, () => setTables([]));
+  useEffect(() => { load(); }, [applied]); // a commit may have downloaded one
+  const refresh = async (name: string) => {
+    setRefreshing(name);
+    try {
+      const t = await backend.refreshAlias(name);
+      notifications.show({ color: t.warning ? 'yellow' : 'teal', title: `Downloaded ${name}`, message: t.warning ?? `${t.entries.toLocaleString()} entries, loaded into pf.` });
+    } catch (e) {
+      notifications.show({ color: 'red', title: `Couldn’t download ${name}`, message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setRefreshing(undefined);
+      load();
+    }
+  };
+  return { tables, refreshing, refresh };
+}
+
+function ListState({ alias, tables, applied }: { alias: Alias; tables?: TableStatus[]; applied: Model }) {
+  const t = tables?.find((x) => x.name === alias.name);
+  const live = applied.firewall.aliases.find((a) => a.name === alias.name && a.type === 'url');
+  let state: string;
+  if (!tables) state = '…';
+  else if (!live) state = 'Downloaded when you apply it';
+  else if (!t?.fetched) state = 'Not downloaded yet; it will be with the next change you apply';
+  else state = `${t.entries.toLocaleString()} entries, downloaded ${formatAgo((Date.now() - Date.parse(t.fetched)) / 1000)}`;
+  return <Text size="xs" c="dimmed">{state}</Text>;
+}
+
 export function Aliases() {
-  const { staged, edit } = useStore();
+  const { staged, applied, edit } = useStore();
+  const { tables, refreshing, refresh } = useTables(applied);
   const [modal, setModal] = useState<{ open: boolean; alias: Alias | null }>({ open: false, alias: null });
   const set = (summary: string, fn: (a: Alias[]) => Alias[]) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, aliases: fn(m.firewall.aliases) } }));
 
@@ -122,7 +158,10 @@ export function Aliases() {
                     <Table.Td><Badge color={a.type === 'table' || a.type === 'url' ? 'harbor' : 'gray'}>{typeLabel[a.type]}</Badge></Table.Td>
                     <Table.Td>
                       {a.type === 'url' ? (
-                        <Text size="xs" className="mono" c="dimmed" truncate="end" maw={320}>{a.url} · every {a.refreshHours ?? 24} h</Text>
+                        <Stack gap={2}>
+                          <Text size="xs" className="mono" c="dimmed" truncate="end" maw={320}>{a.url}</Text>
+                          <ListState alias={a} tables={tables} applied={applied} />
+                        </Stack>
                       ) : a.type === 'table' && !a.entries.length ? (
                         <Text size="xs" c="dimmed">Filled at runtime</Text>
                       ) : (
@@ -138,6 +177,11 @@ export function Aliases() {
                         <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label="Actions"><IconDots size={16} /></ActionIcon></Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setModal({ open: true, alias: a })}>Edit</Menu.Item>
+                          {a.type === 'url' && tables?.some((t) => t.name === a.name) && (
+                            <Menu.Item leftSection={<IconDownload size={16} />} disabled={refreshing === a.name} onClick={() => refresh(a.name)}>
+                              {refreshing === a.name ? 'Downloading…' : 'Download again now'}
+                            </Menu.Item>
+                          )}
                           <Tooltip label="Remove it from rules first" disabled={n === 0} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={n > 0} onClick={() => set(`Deleted alias ${a.name}`, (all) => all.filter((x) => x.id !== a.id))}>Delete</Menu.Item>
                           </Tooltip>

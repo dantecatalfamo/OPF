@@ -315,6 +315,17 @@ export interface ToolRun {
   truncated?: boolean;
 }
 
+/** A URL alias's downloaded list (GET /api/firewall/tables). */
+export interface TableStatus {
+  name: string;
+  url: string;
+  /** When it was last downloaded; missing if it hasn't been yet. */
+  fetched?: string;
+  entries: number;
+  /** What went wrong after a refresh downloaded it. */
+  warning?: string;
+}
+
 /** System routing table (GET /api/network/routes). */
 export interface RoutingTableResource {
   ipv4: {
@@ -440,6 +451,9 @@ export const api = {
   killState: (s: Pick<PfState, 'id' | 'creatorId'>) => request<void>('POST', '/pf/states/kill', { id: s.id, creatorId: s.creatorId }),
   ruleCounters: () => request<RuleCountersResource>('GET', '/pf/rules/counters'),
   firewallLog: () => request<FirewallLogResource>('GET', '/logs/firewall'),
+  tables: async () => (await request<{ tables: TableStatus[] }>('GET', '/firewall/tables')).tables,
+  /** Downloads a URL alias's list again and loads it into pf. */
+  refreshAlias: (name: string) => request<TableStatus>('POST', `/firewall/aliases/${enc(name)}/refresh`),
   startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
   toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),
   cancelTool: (id: string) => request<void>('POST', `/diagnostics/runs/${enc(id)}/cancel`),
