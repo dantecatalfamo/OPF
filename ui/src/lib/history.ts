@@ -12,8 +12,16 @@ export const ranges = [
   { value: '2678400', label: 'Month' },
 ];
 
-/** Series over the last range seconds, points at least step apart (the server's finest, if not given). */
+// About how many points a line gets, whatever the range: a chart is a
+// few hundred pixels wide, and drawing a day at the firewall's finest
+// (1,440 points a line, twice with peaks, on every chart) froze the
+// Graphs page. The firewall merges its buckets exactly, so nothing is
+// lost but detail finer than a pixel.
+const POINTS = 300;
+
+/** Series over the last range seconds, points at least step apart (enough for about POINTS a line, if not given). */
 export function useHistory(series: string[], range: number, step?: number): { data?: MetricsResource; error?: string } {
+  step = Math.max(step ?? 0, Math.ceil(range / POINTS));
   const [state, setState] = useState<{ data?: MetricsResource; error?: string }>({});
   const key = series.join(',');
   useEffect(() => {
@@ -36,10 +44,14 @@ export function useHistory(series: string[], range: number, step?: number): { da
   return state;
 }
 
+// One formatter each: toLocale*String makes a new one on every call,
+// which for every point of every chart is most of a render.
+const hourMinute = new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' });
+const weekdayTime = new Intl.DateTimeFormat([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+const monthDay = new Intl.DateTimeFormat([], { month: 'short', day: 'numeric' });
+
 /** A point's time on a chart's axis, as fits the range. */
 export function timeLabel(t: number, range: number): string {
-  const d = new Date(t * 1000);
-  if (range <= 86400) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (range <= 7 * 86400) return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const f = range <= 86400 ? hourMinute : range <= 7 * 86400 ? weekdayTime : monthDay;
+  return f.format(t * 1000);
 }
