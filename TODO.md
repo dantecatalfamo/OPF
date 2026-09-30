@@ -448,8 +448,11 @@ DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
 in 7.9 has RPZ, response policy zones, through its respip module):
 
 - [ ] **One "DNS blocklists" list on the DNS resolver page**: a URL, the
-      format (detected), and how names on it are answered (NXDOMAIN by
-      default, or 0.0.0.0). Two ways in, chosen by format:
+      format (detected), and how names on it are answered: `0.0.0.0`
+      and `::` by default, as Pi-hole does (some apps retry harder, or
+      fall back to another resolver, on NXDOMAIN), or NXDOMAIN. Every
+      list a Pi-hole takes should work here, since its adlists are the
+      formats below. Two ways in, chosen by format:
   - **RPZ lists** (OISD, Hagezi and others publish them): an `rpz:`
     section with `url:`, and unbound downloads, refreshes (on the zone's
     SOA timers) and applies it itself, in its chroot as `_unbound`, so
@@ -471,8 +474,16 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       on the page how many rules were used and how many skipped, and
       why, and suggest the DNS-oriented lists built from the same
       sources (AdGuard DNS filter, OISD, Hagezi), which cover far more.
-- [ ] An allowlist that wins over every list, with a way to add a name
-      from the blocked-queries log ("this broke something").
+- [ ] Your own entries beside the lists, to block or to allow: exact
+      names (`ads.example.com`) and wildcards (`*.example.com`, the name
+      and everything under it). Allowed entries win over every list, and
+      a name can be allowed from the blocked-queries log ("this broke
+      something").
+  - Regex entries, which Pi-hole has, aren't possible with OpenBSD's
+    unbound: RPZ and local zones match exact names and wildcards only,
+    and it's built without the Python module (`--without-pythonmodule`)
+    that could match anything else. Say so on the page rather than
+    offer them.
 - [ ] Per network: apply lists only to some interfaces (the IoT VLAN
       but not the LAN, say) with unbound's views
       (`access-control-view`).
