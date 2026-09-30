@@ -683,14 +683,14 @@ export function WireGuardPage() {
             </Tabs>
           )}
           <Grid gutter="md">
-            <Grid.Col span={12}>
-              <TunnelTraffic tunnel={tunnel} />
-            </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <TunnelSettings tunnel={tunnel} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 7 }}>
               <TrafficFlow tunnel={tunnel} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <TunnelTraffic tunnel={tunnel} />
             </Grid.Col>
             <Grid.Col span={12}>
               <Devices tunnel={tunnel} />
