@@ -35,9 +35,18 @@ type File struct {
 	ApplyWhenRemoved bool
 
 	// Service, if set, is reloaded or restarted with rcctl after the
-	// file changes, but only when it is already running.
+	// file changes, but only when it is already running. A commit (or a
+	// revert) does this once per service, after its last changed file is
+	// in place.
 	Service       string
 	ServiceAction string // "reload" or "restart"
+
+	// ReloadWith, for a Service file, is a cheaper way to make the
+	// service take this file alone ("{}" is its path), such as reloading
+	// one zone. It's used instead of ServiceAction when every file of the
+	// service that changed has one; otherwise the service is reloaded or
+	// restarted as usual, which takes them all.
+	ReloadWith []string
 
 	// Confirm files are loaded from their staged copy without being
 	// written to Path. Unless the commit is confirmed before the
@@ -158,7 +167,11 @@ func DefaultFiles() []File {
 			Name: "opf-own.rpz", Path: "/var/unbound/db/opf-own.rpz",
 			Desc:    "DNS names you block or allow",
 			Service: "unbound", ServiceAction: "reload",
-			Mode: 0644,
+			// Alone, just this zone: reloading unbound whole loads every
+			// blocklist again (14 s with half a million names), and drops
+			// the names DHCP leases have.
+			ReloadWith: []string{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "auth_zone_reload", "opf-own."},
+			Mode:       0644,
 		},
 		{
 			Name: "unbound.conf", Path: "/var/unbound/etc/unbound.conf",
@@ -253,6 +266,9 @@ func validateFiles(files []File) error {
 		}
 		if f.Service != "" && f.ServiceAction != "reload" && f.ServiceAction != "restart" {
 			return fmt.Errorf("config: %s has invalid service action %q", f.Name, f.ServiceAction)
+		}
+		if f.ReloadWith != nil && f.Service == "" {
+			return fmt.Errorf("config: %s has ReloadWith but no Service", f.Name)
 		}
 	}
 	return nil

@@ -106,7 +106,17 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		return e, fmt.Errorf("commit failed and was reverted: %w", cause)
 	}
 
-	for _, ef := range e.Files {
+	// Each service is told once, after the last of its files changed
+	// here is in place (and before rc.conf.local, which comes last and
+	// starts services it enables).
+	last := map[string]int{}
+	for i, ef := range e.Files {
+		if f, _ := s.Lookup(ef.Name); !ef.Confirm && f.Service != "" {
+			last[f.Service] = i
+		}
+	}
+	batch := newServiceBatch()
+	for i, ef := range e.Files {
 		if ef.Confirm {
 			continue
 		}
@@ -115,18 +125,25 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			if err := s.remove(ctx, f, "commit "+e.ID, &logBuf); err != nil {
 				return fail(err)
 			}
-			continue
+			batch.add(f, true)
+		} else {
+			staged, _, err := s.staged(f)
+			if err != nil {
+				return fail(err)
+			}
+			fmt.Fprintf(&logBuf, "# install %s\n", f.Path)
+			if err := s.install(f, staged, "commit "+e.ID); err != nil {
+				return fail(err)
+			}
+			if err := s.applyFile(ctx, f, s.livePath(f), &logBuf); err != nil {
+				return fail(err)
+			}
+			batch.add(f, false)
 		}
-		staged, _, err := s.staged(f)
-		if err != nil {
-			return fail(err)
-		}
-		fmt.Fprintf(&logBuf, "# install %s\n", f.Path)
-		if err := s.install(f, staged, "commit "+e.ID); err != nil {
-			return fail(err)
-		}
-		if err := s.apply(ctx, f, s.livePath(f), &logBuf); err != nil {
-			return fail(err)
+		if f.Service != "" && last[f.Service] == i {
+			if err := s.tellService(ctx, batch, f.Service, &logBuf); err != nil {
+				return fail(err)
+			}
 		}
 	}
 	for _, ef := range e.Files {
@@ -135,7 +152,7 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		}
 		f, _ := s.Lookup(ef.Name)
 		fmt.Fprintf(&logBuf, "# load %s from staged copy\n", f.Path)
-		if err := s.apply(ctx, f, s.historyFile(e.ID, "new", f.Path), &logBuf); err != nil {
+		if err := s.applyFile(ctx, f, s.historyFile(e.ID, "new", f.Path), &logBuf); err != nil {
 			return fail(err)
 		}
 	}
@@ -281,6 +298,7 @@ func (s *Store) Recover(ctx context.Context) error {
 // It keeps going after errors so as much as possible is restored.
 func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer) error {
 	var errs []error
+	batch := newServiceBatch()
 	for i := len(e.Files) - 1; i >= 0; i-- {
 		ef := e.Files[i]
 		f, err := s.Lookup(ef.Name)
@@ -309,17 +327,25 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 				}
 				fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
 				if f.ApplyWhenRemoved {
-					if err := s.apply(ctx, f, live, logBuf); err != nil {
+					if err := s.applyFile(ctx, f, live, logBuf); err != nil {
 						errs = append(errs, err)
 					}
 				}
+				batch.add(f, true)
 				continue
 			}
 		}
 		if _, err := os.Stat(live); err != nil {
 			continue // nothing to reload
 		}
-		if err := s.apply(ctx, f, live, logBuf); err != nil {
+		if err := s.applyFile(ctx, f, live, logBuf); err != nil {
+			errs = append(errs, err)
+		}
+		batch.add(f, false)
+	}
+	// Services are told once, when every file is back.
+	for _, svc := range batch.order {
+		if err := s.tellService(ctx, batch, svc, logBuf); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -366,20 +392,69 @@ func (s *Store) remove(ctx context.Context, f File, why string, logBuf *bytes.Bu
 }
 
 // apply activates f, loading it from path.
-func (s *Store) apply(ctx context.Context, f File, path string, logBuf *bytes.Buffer) error {
+// applyFile runs a file's Apply command, if it has one; its service is
+// told separately (tellService).
+func (s *Store) applyFile(ctx context.Context, f File, path string, logBuf *bytes.Buffer) error {
 	if f.Apply != nil {
-		if err := s.logRun(ctx, logBuf, subst(f.Apply, path)...); err != nil {
-			return err
-		}
-	}
-	if f.Service != "" {
-		if _, err := s.run.Run(ctx, "rcctl", "check", f.Service); err != nil {
-			fmt.Fprintf(logBuf, "# %s is not running; not %sing\n", f.Service, f.ServiceAction)
-			return nil
-		}
-		return s.logRun(ctx, logBuf, "rcctl", f.ServiceAction, f.Service)
+		return s.logRun(ctx, logBuf, subst(f.Apply, path)...)
 	}
 	return nil
+}
+
+// serviceBatch collects the files of each service that a commit or a
+// revert changed, so each service is told once.
+type serviceBatch struct {
+	order []string
+	files map[string][]File
+	full  map[string]bool // a file without ReloadWith, or removed, changed
+	done  map[string]bool
+}
+
+func newServiceBatch() *serviceBatch {
+	return &serviceBatch{files: map[string][]File{}, full: map[string]bool{}, done: map[string]bool{}}
+}
+
+func (b *serviceBatch) add(f File, removed bool) {
+	if f.Service == "" {
+		return
+	}
+	if _, ok := b.files[f.Service]; !ok {
+		b.order = append(b.order, f.Service)
+	}
+	b.files[f.Service] = append(b.files[f.Service], f)
+	if removed || f.ReloadWith == nil {
+		b.full[f.Service] = true
+	}
+}
+
+// tellService makes a running service take its changed files: with
+// each one's ReloadWith when they all have one, else with the strongest
+// ServiceAction among them (restart over reload).
+func (s *Store) tellService(ctx context.Context, b *serviceBatch, svc string, logBuf *bytes.Buffer) error {
+	if b.done[svc] {
+		return nil
+	}
+	b.done[svc] = true
+	files := b.files[svc]
+	action := "reload"
+	for _, f := range files {
+		if f.ServiceAction == "restart" {
+			action = "restart"
+		}
+	}
+	if _, err := s.run.Run(ctx, "rcctl", "check", svc); err != nil {
+		fmt.Fprintf(logBuf, "# %s is not running; not %sing\n", svc, action)
+		return nil
+	}
+	if !b.full[svc] {
+		for _, f := range files {
+			if err := s.logRun(ctx, logBuf, subst(f.ReloadWith, s.livePath(f))...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return s.logRun(ctx, logBuf, "rcctl", action, svc)
 }
 
 func (s *Store) logRun(ctx context.Context, logBuf *bytes.Buffer, argv ...string) error {

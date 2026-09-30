@@ -260,3 +260,34 @@ func FuzzParseDomainList(f *testing.F) {
 		}
 	})
 }
+
+// Changing only your own names reloads just their zone; adding a list
+// (a new zone in unbound.conf) reloads unbound once.
+func TestOwnNamesReloadOnlyTheirZone(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	e.m.Fetcher = &fetch{body: "ads.example.com\n"}
+	if err := stageCommit(t, e, withDNSList(t, e, pf.BlockAnswerNull)); err != nil {
+		t.Fatal(err)
+	}
+	full := func() int {
+		n := 0
+		for _, c := range e.run.commands() {
+			if c == "rcctl reload unbound" {
+				n++
+			}
+		}
+		return n
+	}
+	if full() != 1 {
+		t.Fatalf("adding a list reloaded unbound %d times: %q", full(), e.run.commands())
+	}
+	m := e.live().Model
+	m.DNS.Blocked = append(m.DNS.Blocked, "more.example")
+	if err := stageCommit(t, e, m); err != nil {
+		t.Fatal(err)
+	}
+	cmds := e.run.commands()
+	if full() != 1 || cmds[len(cmds)-1] != "unbound-control -c /var/unbound/etc/unbound.conf auth_zone_reload opf-own." {
+		t.Errorf("own names alone: %q", cmds)
+	}
+}

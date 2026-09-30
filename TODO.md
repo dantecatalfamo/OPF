@@ -531,12 +531,13 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       warn against more than the machine's memory allows (check
       `hw.physmem`), and suggest a lighter list (Hagezi's Light or
       Normal) for small machines.
-- [ ] **Don't reload unbound whole for a change that doesn't need it**:
-      a commit that changes unbound.conf runs `rcctl reload unbound`,
-      which reloads every zone, so with big lists DNS stops answering
-      for as long as that load takes. Reload just the zones that changed
-      (`unbound-control auth_zone_reload`), and only reload the whole
-      server for settings that need it, saying so in the review.
+- [ ] Adding or removing a blocklist, or changing the answer, changes
+      unbound.conf, which still means one full reload (unbound-control
+      can't add a zone at run time), so DNS stops answering while every
+      list loads. Say so in the review, with how long it took last time.
+      Turning a list off could instead keep its zone loaded with
+      `rpz-action-override: disabled` and use `rpz_disable`, at the cost
+      of its memory; decide whether that's worth it.
 
 ## Services
 
@@ -1227,6 +1228,12 @@ Commit engine:
 
 Live data:
 
+- [x] A commit or revert tells each service once, after its last
+      changed file (unbound was reloaded once per changed file before),
+      and a file with a cheaper reload uses it when it changed alone:
+      your own blocked and allowed names reload just their zone
+      (`unbound-control auth_zone_reload opf-own.`), so editing them
+      doesn't reload every blocklist.
 - [x] DNS blocklists: hosts files, name lists, the domain rules of
       adblock lists (EasyList's rules for whole names, with the rest
       counted and explained) and RPZ zones, downloaded by OPF at commit

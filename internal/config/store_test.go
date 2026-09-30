@@ -545,3 +545,99 @@ func TestCheckRunner(t *testing.T) {
 		t.Errorf("checks ran %q, applies ran %q", checks.commands(), applies.commands())
 	}
 }
+
+// A service is told once per commit, and a file with ReloadWith that
+// changed alone uses it instead of reloading the whole service.
+func TestServiceToldOnce(t *testing.T) {
+	files := []File{
+		{Name: "zone", Path: "/var/db/zone", Service: "dns", ServiceAction: "reload", ReloadWith: []string{"dns-control", "reload-zone", "{}"}, Mode: 0644},
+		{Name: "dns.conf", Path: "/etc/dns.conf", Service: "dns", ServiceAction: "reload", Mode: 0644},
+	}
+	setup := func(t *testing.T, running bool) (*Store, *fakeRunner, string) {
+		root := t.TempDir()
+		r := &fakeRunner{}
+		if !running {
+			r.fail = []string{"rcctl check"}
+		}
+		s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: files, Runner: r, ConfirmTimeout: time.Minute})
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeLive(t, root, "/var/db/zone", "a\n")
+		writeLive(t, root, "/etc/dns.conf", "x\n")
+		return s, r, root
+	}
+	count := func(r *fakeRunner, prefix string) int {
+		n := 0
+		for _, c := range r.commands() {
+			if strings.HasPrefix(c, prefix) {
+				n++
+			}
+		}
+		return n
+	}
+
+	// Both files: one reload, which takes them both.
+	s, r, _ := setup(t, true)
+	stage(t, s, "zone", "b\n")
+	stage(t, s, "dns.conf", "y\n")
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if count(r, "rcctl reload dns") != 1 || count(r, "dns-control") != 0 {
+		t.Errorf("both changed: %q", r.commands())
+	}
+
+	// The zone alone: just the zone, for the commit and its revert.
+	s, r, root := setup(t, true)
+	stage(t, s, "zone", "b\n")
+	e, err := s.Commit(context.Background(), CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "dns-control reload-zone " + filepath.Join(root, "var/db/zone")
+	if count(r, "rcctl reload") != 0 || count(r, want) != 1 {
+		t.Errorf("zone alone: %q", r.commands())
+	}
+	if err := s.revertEntry(context.Background(), e, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if count(r, "rcctl reload") != 0 || count(r, want) != 2 || readLive(t, root, "/var/db/zone") != "a\n" {
+		t.Errorf("revert of the zone alone: %q", r.commands())
+	}
+
+	// A service that isn't running is left alone.
+	s, r, _ = setup(t, false)
+	stage(t, s, "zone", "b\n")
+	stage(t, s, "dns.conf", "y\n")
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if count(r, "rcctl reload") != 0 || count(r, "dns-control") != 0 {
+		t.Errorf("not running: %q", r.commands())
+	}
+}
+
+// Removing a file with ReloadWith reloads the whole service: the zone
+// alone can't be told it's gone.
+func TestRemovalReloadsWholeService(t *testing.T) {
+	files := []File{
+		{Name: "zone", Path: "/var/db/zone", Service: "dns", ServiceAction: "reload", ReloadWith: []string{"dns-control", "reload-zone", "{}"}, Mode: 0644},
+	}
+	root := t.TempDir()
+	r := &fakeRunner{}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: files, Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/var/db/zone", "a\n")
+	if err := s.StageRemoval("zone"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if !r.ran("rcctl reload dns") || r.ran("dns-control") {
+		t.Errorf("removal: %q", r.commands())
+	}
+}
