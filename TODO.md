@@ -981,6 +981,12 @@ them, so they can be graphed and compared):
 
 ## Security
 
+- Responses are gzipped (`internal/web/gzip.go`). None carries a secret
+  today; one that ever does (a private key to download, a CSRF token in
+  a body) must call `noCompression`, or its compressed size can leak it
+  next to text an attacker influences (BREACH). Sessions go in cookies,
+  which aren't compressed.
+
 ### User accounts (sketch)
 
 A first design, to argue with before building. Today anyone who can

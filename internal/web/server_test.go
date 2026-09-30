@@ -1,7 +1,9 @@
 package web
 
 import (
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -355,4 +357,82 @@ func TestTools(t *testing.T) {
 	c.do("POST", "/api/diagnostics/runs", `{"tool":"ping","host":"a","extra":1}`, http.StatusBadRequest, nil)
 	c.do("GET", "/api/diagnostics/runs/nope", "", http.StatusNotFound, nil)
 	c.do("GET", "/api/diagnostics/runs/"+r.ID+"?from=-1", "", http.StatusBadRequest, nil)
+}
+
+func TestGzip(t *testing.T) {
+	s := newServer(t)
+	get := func(p, enc string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", p, nil)
+		if enc != "" {
+			req.Header.Set("Accept-Encoding", enc)
+		}
+		s.ServeHTTP(rec, req)
+		return rec
+	}
+	plain := get("/api/config", "")
+	if plain.Header().Get("Content-Encoding") != "" || !strings.Contains(plain.Body.String(), `"model"`) {
+		t.Fatalf("plain: %v %q", plain.Header(), plain.Body.String()[:40])
+	}
+	for _, enc := range []string{"gzip", "gzip, deflate, br", "br;q=1, GZIP;q=0.8"} {
+		rec := get("/api/config", enc)
+		if rec.Header().Get("Content-Encoding") != "gzip" || rec.Header().Get("Vary") != "Accept-Encoding" {
+			t.Fatalf("%s: headers %v", enc, rec.Header())
+		}
+		zr, err := gzip.NewReader(rec.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(zr)
+		if string(body) != plain.Body.String() {
+			t.Errorf("%s: unzipped body differs", enc)
+		}
+	}
+	if rec := get("/api/config", "gzip;q=0"); rec.Header().Get("Content-Encoding") != "" {
+		t.Error("compressed for a client that refused gzip")
+	}
+	// A response that opts out (one carrying a secret) is sent as it is.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	withGzip(rec, req, func(w http.ResponseWriter, r *http.Request) {
+		noCompression(w)
+		writeJSON(w, 200, map[string]string{"key": "secret"})
+	})
+	if rec.Header().Get("Content-Encoding") != "" || !strings.Contains(rec.Body.String(), "secret") {
+		t.Errorf("opted out: %v %q", rec.Header(), rec.Body.String())
+	}
+
+	// The UI's files, compressed once.
+	js := strings.Repeat("console.log('opf');\n", 200)
+	ui := New(s.api, fstest.MapFS{"index.html": {Data: []byte("<!doctype html>")}, "assets/app-1.js": {Data: []byte(js)}})
+	for range 2 {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/assets/app-1.js", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		ui.ServeHTTP(rec, req)
+		zr, err := gzip.NewReader(rec.Body)
+		if err != nil || rec.Header().Get("Content-Encoding") != "gzip" || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/javascript") {
+			t.Fatalf("asset: %v %v", rec.Header(), err)
+		}
+		if b, _ := io.ReadAll(zr); string(b) != js {
+			t.Error("asset unzipped differs")
+		}
+	}
+	// Too small to be worth it: as it is. A range: from the file.
+	for _, h := range []map[string]string{{"Accept-Encoding": "gzip"}, {"Accept-Encoding": "gzip", "Range": "bytes=0-9"}} {
+		rec := httptest.NewRecorder()
+		p := "/"
+		if h["Range"] != "" {
+			p = "/assets/app-1.js"
+		}
+		req := httptest.NewRequest("GET", p, nil)
+		for k, v := range h {
+			req.Header.Set(k, v)
+		}
+		ui.ServeHTTP(rec, req)
+		if rec.Header().Get("Content-Encoding") != "" {
+			t.Errorf("%s %v: compressed", p, h)
+		}
+	}
 }

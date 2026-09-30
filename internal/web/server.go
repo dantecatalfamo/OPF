@@ -65,9 +65,10 @@ import (
 const maxBody = 4 << 20
 
 type Server struct {
-	api appliance.API
-	ui  fs.FS // the built web interface, or nil
-	mux *http.ServeMux
+	api  appliance.API
+	ui   fs.FS // the built web interface, or nil
+	mux  *http.ServeMux
+	uiGz uiGzip // the UI's files, compressed
 }
 
 // New returns a Server for the API and, unless ui is nil, the built web
@@ -171,6 +172,21 @@ func (s *Server) serveUI(w http.ResponseWriter, r *http.Request) {
 	} else {
 		h.Set("Cache-Control", "no-cache")
 	}
+	h.Add("Vary", "Accept-Encoding")
+	// Compressed from memory when the client takes it; a range of a
+	// file (rare for these) is served from the file as it is.
+	if ct := mime.TypeByExtension(path.Ext(name)); accepts(r) && r.Header.Get("Range") == "" && compressible(ct) {
+		if gz, ok := s.uiGz.get(s.ui, name); ok {
+			h.Set("Content-Type", ct)
+			h.Set("Content-Encoding", "gzip")
+			h.Set("Content-Length", strconv.Itoa(len(gz)))
+			w.WriteHeader(http.StatusOK)
+			if r.Method != http.MethodHead {
+				w.Write(gz)
+			}
+			return
+		}
+	}
 	http.ServeFileFS(w, r, s.ui, name)
 }
 
@@ -179,6 +195,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Configuration is sensitive and changes underneath any cache.
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		withGzip(w, r, s.mux.ServeHTTP)
+		return
+	}
 	s.mux.ServeHTTP(w, r)
 }
 
