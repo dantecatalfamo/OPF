@@ -7,12 +7,13 @@ import type { Model, Rule } from '../model/types';
 import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
+import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -231,6 +232,9 @@ export const localApi = {
   },
   ruleCounters: async (): Promise<RuleCountersResource> => sampleRuleCounters(live),
   firewallLog: async (): Promise<FirewallLogResource> => sampleFirewallLog(live),
+  startTool: async (req: ToolRequest): Promise<ToolRun> => startLocalTool(req),
+  toolRun: async (id: string, from: number): Promise<ToolRun> => localToolRun(id, from),
+  cancelTool: async (id: string): Promise<void> => cancelLocalTool(id),
 };
 
 // Connections closed on the Connections page, gone from the sample.

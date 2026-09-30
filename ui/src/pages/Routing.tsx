@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { ActionIcon, Alert, Badge, Button, Card, Group, Menu, Modal, Radio, SegmentedControl, Select, Stack, Switch, Table, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconAlertCircle, IconDots, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconActivity, IconAlertCircle, IconDots, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
 import { defaultGateway, useLive } from '../lib/live';
 import type { Gateway, StaticRoute } from '../model/types';
@@ -152,6 +152,9 @@ function Gateways() {
                         <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label="Actions"><IconDots size={16} /></ActionIcon></Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setModal({ open: true, gateway: g })}>Edit</Menu.Item>
+                          {(s?.address ?? address) && (
+                            <Menu.Item leftSection={<IconActivity size={16} />} component={Link} to={`/diagnostics/tools?tool=ping&host=${encodeURIComponent(s?.address ?? address ?? '')}`}>Ping</Menu.Item>
+                          )}
                           <Tooltip label="Still used by a route, rule or as the default" disabled={!inUse(g.id)} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={inUse(g.id)} onClick={() => edit('routing', `Deleted gateway ${g.name}`, (m) => ({ ...m, routing: { ...m.routing, gateways: m.routing.gateways.filter((x) => x.id !== g.id) } }))}>
                               Delete

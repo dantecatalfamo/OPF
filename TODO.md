@@ -295,7 +295,16 @@ In order. Each step's details are in the section it points to.
       `route-to` on a DHCP gateway, which the generator resolves to the
       address it has at generation time.
 - [ ] A packet tester: "what happens to tcp 192.168.20.5 →
-      192.168.1.20:445?", evaluated against the ruleset.
+      192.168.1.20:445?", evaluated against the ruleset. A wrong
+      "allowed" is worse than no answer, so it has to follow pf
+      exactly (quick and last match, floating before interface rules,
+      in and out passes, NAT, tags such as `opf_nonat`, tables and
+      aliases, dynamic interface addresses, the default block) and say
+      "can't tell" whenever a raw rule, custom pf, a URL table, an OS
+      fingerprint or probability could decide it. Build it on the
+      generated ruleset rather than the model, so it tests what pf
+      loads, and test it against pf itself on OpenBSD (`pfctl -nvf`
+      plus real packets) before trusting it.
 - [ ] Anti-lockout ports (443, 22) are hard-coded; derive them from the
       web UI and sshd settings.
 - [ ] NAT reflection is added on every inside interface; limit it to the
@@ -388,7 +397,6 @@ Types, roughly in order of usefulness:
       every tunnel's network gets automatic NAT.
 - [ ] Private keys: `hostname.wgN` gets a placeholder `wgkey` today; one
       key per tunnel needs generating and storing (Security).
-- [ ] Peer status per tunnel (Live data).
 
 ## DHCP and DNS
 
@@ -544,28 +552,26 @@ Network, VPN and logs:
 Diagnostics tools (everything in the base system that helps someone
 work out what's wrong, each with a form rather than a command line):
 
-- [ ] **How they run.** Only through the parent, as a fixed argv built
-      from validated fields (never a shell, never free-form flags), with
-      a time limit, an output cap, one run at a time per tool, and the
-      output streamed to the page. Addresses and names are checked like
-      the model's; interfaces come from a list. Tools that change
-      something (killing states, flushing a cache, waking a device) are
-      actions that say what they'll do, and later need the operator
-      role (Security › User accounts). Record each run in the event log.
-- [ ] Every tool page offers the next useful step: a ping that fails
-      offers a traceroute, a DNS answer offers a ping, a lookup of an
-      address offers "which rule allows this" (the packet tester).
+- How they run is built (`internal/diag`, Diagnostics › Tools): the
+  parent builds a fixed argv from checked fields, with `--` before the
+  host, a time limit, at most four at once, output capped and cleaned
+  and fetched by the page as it arrives. New tools go in
+  `diag.Tools`, with a streamed simulation in `cmd/opf/mockdiag.go`
+  and `ui/src/lib/localTools.ts`.
+- [ ] Tools that change something (flushing a cache, waking a device)
+      say what they'll do before they do it, and later need the
+      operator role (Security › User accounts).
+- [ ] Record each run in the event log once there's one.
+- [ ] A source address or interface for ping, traceroute and the port
+      test (`-I`, `-s`), chosen from the interfaces, so a test can
+      leave from the LAN side.
+- [ ] More links in: ping or trace from a DHCP lease, an ARP entry, a
+      connection or a log entry.
 
 Reachability:
 
-- [ ] Ping (`ping`, `ping6`): count, size, interval, source address or
-      interface, don't-fragment (`-D -s`) to find the path MTU. Show
-      loss and round-trip min/avg/max as they arrive.
-- [ ] Traceroute (`traceroute`, `traceroute6`): UDP, ICMP (`-P icmp`)
-      or TCP to a port, source interface, AS numbers (`-A`), each hop
-      with its name and times.
-- [ ] Port test (`nc -z -v`, `nc -u`): does a TCP or UDP port answer,
-      from a chosen source address, with a time limit.
+- [ ] Traceroute to a TCP port (`-P 6 -p <port>`), which gets through
+      where UDP and ICMP are dropped.
 - [ ] Fetch a URL (`ftp -o - -M`, headers only or the first bytes):
       proves DNS, routing, NAT and TLS together.
 - [ ] TLS check (`openssl s_client -connect -servername`): the
@@ -578,9 +584,6 @@ Reachability:
 
 DNS:
 
-- [ ] Lookup (`dig`, `host`): any record type, against unbound or a
-      chosen server, with `+trace` and DNSSEC (`+dnssec`) output, so
-      "is it the resolver or upstream?" can be answered.
 - [ ] unbound (`unbound-control`): statistics (`stats_noreset`), what
       it would answer (`lookup`), the cache for a name (`dump_cache`
       filtered), local data (`list_local_data`, the lease names), and
@@ -1001,6 +1004,12 @@ skipped and the web process isn't dropped to another user.
       `swapctl` with two devices, and a release other than 7.9.
 - [ ] `ping -6` for an IPv6 gateway, and `kern.boottime` read in the
       parent's time zone matching the system's.
+- [ ] The diagnostic tools' flags as `internal/diag` builds them:
+      `ping -4/-6 -c -s -w -D --`, `traceroute -4/-6 -I -A -n -m -q -w
+      --` (the 6.4 merge of traceroute6 is assumed), `dig @server -q
+      -t -x +time +tries +trace +dnssec`, `nc -4/-6 -z -v -w -u --`.
+      Written from the man pages; openbsd-dev stopped answering before
+      they could be checked.
 - [ ] `syspatch -c`'s error when the mirror can't be reached (its
       output with patches available is in
       `internal/sysinfo/testdata/openbsd-other/`).
@@ -1076,6 +1085,12 @@ Finished work, kept here for now. Git history has the details.
 
 Live data:
 
+- [x] Diagnostics › Tools: ping (with don't-fragment sizes for the
+      path MTU), traceroute (UDP or ICMP, AS numbers), DNS lookups (any
+      type, another server, +trace, DNSSEC, reverse) and port tests,
+      run by the parent from checked fields, output streamed to the
+      page, each result explained in words with the next useful step.
+      Gateways can be pinged from Routing.
 - [x] pf's own state: the dashboard's firewall tile (states, packets
       blocked a minute on the statistics interface) and recently
       blocked, Connections from the state table with closing a

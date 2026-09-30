@@ -11,7 +11,7 @@ export const offline = import.meta.env.MODE === 'preview';
 
 export type ErrorCode =
   | 'invalid' | 'conflict' | 'not_found' | 'nothing_staged' | 'commit_pending' | 'not_pending'
-  | 'modified_outside' | 'check_failed' | 'unsupported' | 'internal';
+  | 'modified_outside' | 'check_failed' | 'unsupported' | 'busy' | 'internal';
 
 export interface ErrorDetail {
   path: string;
@@ -277,6 +277,44 @@ export interface FirewallLogResource {
   error?: string;
 }
 
+/** A diagnostic tool and its fields (POST /api/diagnostics/runs). */
+export interface ToolRequest {
+  tool: 'ping' | 'traceroute' | 'dns' | 'port';
+  host?: string;
+  family?: '' | 'ipv4' | 'ipv6';
+  count?: number;
+  size?: number;
+  dontFragment?: boolean;
+  protocol?: string;
+  maxHops?: number;
+  asNumbers?: boolean;
+  names?: boolean;
+  port?: number;
+  name?: string;
+  type?: string;
+  server?: string;
+  trace?: boolean;
+  dnssec?: boolean;
+}
+
+/** A tool's run, with its output from line `from` on. */
+export interface ToolRun {
+  id: string;
+  tool: ToolRequest['tool'];
+  /** The command it runs, for showing. */
+  command: string;
+  started: string;
+  running: boolean;
+  finished?: string;
+  exitCode?: number;
+  /** Why it didn't run to the end: stopped, timed out, too much output. */
+  error?: string;
+  from: number;
+  lines: string[];
+  next: number;
+  truncated?: boolean;
+}
+
 /** System routing table (GET /api/network/routes). */
 export interface RoutingTableResource {
   ipv4: {
@@ -402,6 +440,9 @@ export const api = {
   killState: (s: Pick<PfState, 'id' | 'creatorId'>) => request<void>('POST', '/pf/states/kill', { id: s.id, creatorId: s.creatorId }),
   ruleCounters: () => request<RuleCountersResource>('GET', '/pf/rules/counters'),
   firewallLog: () => request<FirewallLogResource>('GET', '/logs/firewall'),
+  startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
+  toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),
+  cancelTool: (id: string) => request<void>('POST', `/diagnostics/runs/${enc(id)}/cancel`),
 
   /** A model's pf.conf, each line with where it came from. */
   pfRuleset: async (model: Model) => (await request<{ lines: PfLine[] }>('POST', '/pf/ruleset', { model })).lines,
