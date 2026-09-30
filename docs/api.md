@@ -289,6 +289,28 @@ never by number: numbers change with every reload.
   last time OPF may have reloaded the rules, since a rule number only
   means the same rule until then.
 
+### Downloaded lists
+
+A URL alias is a pf table loaded from a list OPF downloads to
+`/var/opf/tables/<name>`. A commit downloads each list that isn't there
+yet, before the checks; if a download fails, the commit is refused
+(`check_failed`, with ftp's reason) and nothing changes. A list that's
+already there is used as it is until it's refreshed. Downloads run
+ftp(1) as the unprivileged user; OPF keeps only the lines that are an
+address or network (comments after `#` or `;` are fine), at most 32 MB.
+
+- `GET /api/firewall/tables`: `{"tables": [{"name", "url", "fetched",
+  "entries", "warning"}]}` for the applied configuration's URL aliases;
+  `fetched` is absent until the list has been downloaded.
+- `POST /api/firewall/aliases/{name}/refresh`: downloads the list again
+  and loads it into pf (`pfctl -T replace`). 200 with its status; a
+  `warning` if pf didn't take it. If the download fails (422), the list
+  already there stays in use.
+
+A commit that turns on DNSSEC also creates unbound's trust anchor
+(`unbound-anchor`) when there isn't one, as rc.d/unbound does before
+unbound first starts.
+
 ### Diagnostic tools
 
 The tools run in the privileged process. A request is a form, never a

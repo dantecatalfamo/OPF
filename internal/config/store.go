@@ -189,7 +189,10 @@ func (s *Store) instances() ([]File, error) {
 	return out, nil
 }
 
-func (s *Store) livePath(f File) string      { return filepath.Join(s.root, f.Path) }
+func (s *Store) livePath(f File) string { return filepath.Join(s.root, f.Path) }
+
+// SystemPath is where a path on the system is, with the Root prefix.
+func (s *Store) SystemPath(p string) string  { return filepath.Join(s.root, p) }
 func (s *Store) candidatePath(f File) string { return filepath.Join(s.dir, "candidate", f.Path) }
 func (s *Store) basePath() string            { return filepath.Join(s.dir, "candidate", "base.json") }
 

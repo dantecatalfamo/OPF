@@ -122,6 +122,15 @@ type (
 		Result
 		Run *diag.Run
 	}
+	TablesReply struct {
+		Result
+		Tables []appliance.TableStatus
+	}
+	TableReply struct {
+		Result
+		Table *appliance.TableStatus
+	}
+	NameArgs    struct{ Name string }
 	ToolRunArgs struct {
 		ID   string
 		From int
@@ -247,6 +256,20 @@ func (s *Service) ToolRun(a ToolRunArgs, r *ToolRunReply) error {
 
 func (s *Service) CancelTool(a IDArgs, r *EmptyReply) error {
 	r.set("CancelTool", s.api.CancelTool(a.ID))
+	return nil
+}
+
+func (s *Service) Tables(_ None, r *TablesReply) error {
+	var err error
+	r.Tables, err = s.api.Tables()
+	r.set("Tables", err)
+	return nil
+}
+
+func (s *Service) RefreshAlias(a NameArgs, r *TableReply) error {
+	var err error
+	r.Table, err = s.api.RefreshAlias(a.Name)
+	r.set("RefreshAlias", err)
 	return nil
 }
 
@@ -589,6 +612,18 @@ func (c *Client) ToolRun(id string, from int) (*diag.Run, error) {
 
 func (c *Client) CancelTool(id string) error {
 	return c.call("CancelTool", IDArgs{id}, &EmptyReply{})
+}
+
+func (c *Client) Tables() ([]appliance.TableStatus, error) {
+	var r TablesReply
+	err := c.call("Tables", None{}, &r)
+	return nonNil(r.Tables), err
+}
+
+func (c *Client) RefreshAlias(name string) (*appliance.TableStatus, error) {
+	var r TableReply
+	err := c.call("RefreshAlias", NameArgs{name}, &r)
+	return r.Table, err
 }
 
 func nonNil[T any](s []T) []T {

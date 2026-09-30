@@ -106,6 +106,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Downloads handle what a server on the internet sends: run them as
+	// the unprivileged user too (a dedicated one is in TODO).
+	api.Fetcher = run.Exec{Credential: cred}
 	if err := privsep.SandboxParent(store.WritableDirs(), []string{leasesFile}, exe); err != nil {
 		log.Fatal(err)
 	}

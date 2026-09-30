@@ -57,6 +57,10 @@ type Manager struct {
 	// Runner executes system commands for reading state, and the
 	// diagnostic tools. If nil, run.Exec{} is used.
 	Runner run.Runner
+	// Fetcher runs downloads (the lists of URL aliases), as an
+	// unprivileged user: they handle what a server on the internet
+	// sends. If nil, Runner is used.
+	Fetcher run.Runner
 	// Actions executes commands that change the system outside a
 	// commit, such as ending a connection. If nil, Runner is used; -dry
 	// makes it log them instead.
@@ -203,11 +207,19 @@ func (m *Manager) DHCPLeases() (*DHCPLeases, error) {
 // UTF-8 and anything not printable (control characters, and format
 // characters such as bidi overrides that could make it read as another
 // name) become U+FFFD, and it's cut to MaxHostnameRunes.
-func displayable(s string) string {
+func displayable(s string) string { return printable(s, MaxHostnameRunes) }
+
+// maxMessageRunes bounds a command's error message passed on to the
+// page.
+const maxMessageRunes = 300
+
+// printable replaces what isn't printable (invalid UTF-8, control
+// characters, bidi overrides) with U+FFFD and cuts s at max runes.
+func printable(s string, max int) string {
 	var b strings.Builder
 	n := 0
 	for _, r := range s {
-		if n == MaxHostnameRunes {
+		if n == max {
 			b.WriteString("…")
 			break
 		}
@@ -629,6 +641,11 @@ func (m *Manager) commit(req CommitRequest) (*Commit, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
+	// Lists to download and a trust anchor to create, which the checks
+	// need to find.
+	if err := m.prepareCommit(ctx, model); err != nil {
+		return nil, err
+	}
 	e, err := m.store.Commit(ctx, config.CommitInfo{Message: req.Message, Changes: req.Changes})
 	var ce *config.CheckError
 	var de *config.DriftError

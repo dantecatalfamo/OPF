@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -21,13 +22,26 @@ type Runner interface {
 }
 
 // Exec runs commands for real.
-type Exec struct{}
+type Exec struct {
+	// Credential, when set, runs commands as that user: for a command
+	// that handles untrusted input, such as a download, so a bug in it
+	// isn't a bug running as root.
+	Credential *syscall.Credential
+}
 
-func (Exec) Run(ctx context.Context, argv ...string) ([]byte, error) {
+func (e Exec) command(ctx context.Context, argv []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	if e.Credential != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: e.Credential}
+	}
+	return cmd
+}
+
+func (e Exec) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	if len(argv) == 0 {
 		return nil, fmt.Errorf("run: empty command")
 	}
-	out, err := exec.CommandContext(ctx, argv[0], argv[1:]...).CombinedOutput()
+	out, err := e.command(ctx, argv).CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("%s: %w", strings.Join(argv, " "), err)
 	}
@@ -59,7 +73,7 @@ type Streamer interface {
 // one is dropped.
 const maxLine = 4096
 
-func (Exec) Stream(ctx context.Context, line func(string), argv ...string) error {
+func (e Exec) Stream(ctx context.Context, line func(string), argv ...string) error {
 	if len(argv) == 0 {
 		return fmt.Errorf("run: empty command")
 	}
@@ -68,7 +82,7 @@ func (Exec) Stream(ctx context.Context, line func(string), argv ...string) error
 		return err
 	}
 	defer r.Close()
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd := e.command(ctx, argv)
 	cmd.Stdout, cmd.Stderr = w, w
 	// A command's children can keep the pipe open after it exits.
 	cmd.WaitDelay = 2 * time.Second

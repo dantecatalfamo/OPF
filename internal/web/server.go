@@ -27,6 +27,8 @@
 //	POST   /api/pf/states/kill            end a connection
 //	GET    /api/pf/rules/counters         each labelled rule's counters
 //	GET    /api/logs/firewall             packets pf logged, newest first
+//	GET    /api/firewall/tables           URL aliases' downloaded lists
+//	POST   /api/firewall/aliases/{name}/refresh  download one again and load it
 //	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
 //	GET    /api/diagnostics/runs/{id}     a run and its output, from ?from=N on
 //	POST   /api/diagnostics/runs/{id}/cancel  stop it
@@ -94,6 +96,11 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
 	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s.api.RuleCounters))
 	s.mux.HandleFunc("GET /api/logs/firewall", getter(s.api.FirewallLog))
+	s.mux.HandleFunc("GET /api/firewall/tables", getter(func() (tablesBody, error) {
+		t, err := s.api.Tables()
+		return tablesBody{t}, err
+	}))
+	s.mux.HandleFunc("POST /api/firewall/aliases/{name}/refresh", s.refreshAlias)
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
@@ -401,6 +408,19 @@ func (s *Server) killState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type tablesBody struct {
+	Tables []appliance.TableStatus `json:"tables"`
+}
+
+func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
+	t, err := s.api.RefreshAlias(r.PathValue("name"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
 }
 
 func (s *Server) startTool(w http.ResponseWriter, r *http.Request) {

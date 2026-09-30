@@ -85,6 +85,14 @@ func newEnv(t *testing.T, timeout time.Duration) *env {
 		t.Fatal(err)
 	}
 	write(config.ModelPath, data)
+	// A system that has run a while: the URL alias's list downloaded and
+	// unbound's trust anchor made.
+	for _, a := range model.Firewall.Aliases {
+		if a.Type == pf.AliasURL {
+			write(pf.TablePath(a.Name), []byte("192.0.2.0/24\n"))
+		}
+	}
+	write(pf.RootKeyPath, []byte(". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"))
 
 	r := &runner{}
 	store, err := config.New(config.Options{Root: root, StateDir: t.TempDir(), Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: timeout})
@@ -95,6 +103,7 @@ func newEnv(t *testing.T, timeout time.Duration) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.Runner = r // nothing runs for real
 	return &env{t: t, root: root, m: m, run: r}
 }
 

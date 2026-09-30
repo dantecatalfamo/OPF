@@ -48,6 +48,8 @@ type API interface {
 	StartTool(diag.Request) (*diag.Run, error)
 	ToolRun(id string, from int) (*diag.Run, error)
 	CancelTool(id string) error
+	Tables() ([]TableStatus, error)
+	RefreshAlias(name string) (*TableStatus, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

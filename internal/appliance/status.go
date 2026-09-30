@@ -326,5 +326,5 @@ func (m *Manager) checkUpdates() {
 
 func firstLine(s string) string {
 	l, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
-	return displayable(l)
+	return printable(l, maxMessageRunes)
 }

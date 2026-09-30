@@ -67,6 +67,21 @@ peer
 		default:
 			out = s.pf.pflog(m, time.Now())
 		}
+	case argv[0] == "ftp":
+		// A URL alias's list, as a blocklist publisher serves it.
+		select {
+		case <-time.After(700 * time.Millisecond):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		var b strings.Builder
+		b.WriteString("; Sample DROP list\n; Last-Modified: " + time.Now().UTC().Format(time.RFC1123) + "\n")
+		for i := range 40 {
+			fmt.Fprintf(&b, "%d.%d.%d.0/24 ; SBL%d\n", 45+i%7, 90+i, (i*37)%250, 100000+i)
+		}
+		out = b.String()
+	case len(argv) == 7 && argv[0] == "pfctl" && argv[1] == "-t" && argv[3] == "-T" && argv[4] == "replace":
+		out = "40 addresses added.\n"
 	case cmd == "pfctl -s memory":
 		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\ntables        hard limit     1000\ntable-entries hard limit   200000\n"
 	case len(argv) == 5 && strings.HasPrefix(cmd, "pfctl -k id -k "):

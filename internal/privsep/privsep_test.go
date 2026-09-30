@@ -83,6 +83,13 @@ func newAPIRunner(t *testing.T) (*appliance.Manager, *failRunner) {
 	}
 	enc, _ := appliance.EncodeModel(&model)
 	write(config.ModelPath, enc)
+	// A system that has run a while: lists downloaded, trust anchor made.
+	for _, a := range model.Firewall.Aliases {
+		if a.Type == pf.AliasURL {
+			write(pf.TablePath(a.Name), []byte("192.0.2.0/24\n"))
+		}
+	}
+	write(pf.RootKeyPath, []byte(". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"))
 	r := &failRunner{}
 	store, err := config.New(config.Options{Root: root, StateDir: t.TempDir(), Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
 	if err != nil {
@@ -92,6 +99,7 @@ func newAPIRunner(t *testing.T) (*appliance.Manager, *failRunner) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	api.Runner = r // nothing runs for real
 	return api, r
 }
 
