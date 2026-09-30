@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Accordion, Alert, Button, Card, Checkbox, Grid, Group, NumberInput, Select, SimpleGrid, Stack, Switch, TagsInput, Text, TextInput } from '@mantine/core';
+import { useEffect, type ReactNode } from 'react';
+import { Accordion, Alert, Button, Card, Checkbox, Divider, Grid, Group, NumberInput, Select, SimpleGrid, Stack, Switch, TagsInput, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useStore } from '../model/store';
@@ -82,6 +82,34 @@ function describe(before: FirewallOptions, after: FirewallOptions): string {
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]) as Set<keyof FirewallOptions>;
   const changed = [...new Set([...keys].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map((k) => fieldNames[k] ?? k))];
   return changed.length ? `Changed firewall settings: ${changed.join(', ')}` : 'Changed firewall settings';
+}
+
+// Descriptions go under the input, so inputs in a row line up however
+// long their descriptions are.
+const below: ('label' | 'input' | 'description' | 'error')[] = ['label', 'input', 'description', 'error'];
+
+// The timeouts by what they apply to, labelled without the prefix.
+const timeoutGroups = [
+  { label: 'TCP', prefix: 'tcp.' },
+  { label: 'UDP', prefix: 'udp.' },
+  { label: 'ICMP', prefix: 'icmp.' },
+  { label: 'Other protocols', prefix: 'other.' },
+  { label: 'Adaptive (states)', prefix: 'adaptive.' },
+  { label: 'Fragments and tracking', prefix: '' },
+].map((g, _, all) => ({
+  ...g,
+  names: timeoutNames.filter((k) => (g.prefix ? k.startsWith(g.prefix) : !all.some((o) => o.prefix && k.startsWith(o.prefix)))),
+}));
+
+// A titled part of Advanced.
+function Part({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <Stack gap="sm">
+      <Divider label={<Text size="sm" fw={600} c="var(--mantine-color-text)">{title}</Text>} labelPosition="left" />
+      {description && <Text size="xs" c="dimmed" mt={-4}>{description}</Text>}
+      {children}
+    </Stack>
+  );
 }
 
 export function FirewallSettings() {
@@ -184,9 +212,9 @@ export function FirewallSettings() {
         <Grid.Col span={12}>
           <Card>
             <SectionTitle>Limits</SectionTitle>
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} verticalSpacing="lg">
               {limitFields.map((f) => (
-                <NumberInput key={f.key} label={f.label} description={f.description} placeholder={`pf default (${f.pf})`} min={1} thousandSeparator="," {...form.getInputProps(`limits.${f.key}`)} />
+                <NumberInput key={f.key} label={f.label} description={f.description} inputWrapperOrder={below} placeholder={`pf default (${f.pf})`} min={1} thousandSeparator="," {...form.getInputProps(`limits.${f.key}`)} />
               ))}
             </SimpleGrid>
             {hasBlocklists && v.limits.tableEntries === '' && (
@@ -199,51 +227,79 @@ export function FirewallSettings() {
             <Accordion.Item value="advanced">
               <Accordion.Control><Text fw={600}>Advanced</Text></Accordion.Control>
               <Accordion.Panel>
-                <Stack gap="lg">
-                  <Stack gap="xs">
-                    <Text size="sm" fw={500}>Individual timeouts</Text>
-                    <Text size="xs" c="dimmed">In seconds, except the adaptive values, which count states: timeouts shrink as the table fills past the start and reach zero at the end. Empty keeps the “Timeouts” preset’s value.</Text>
-                    <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
-                      {timeoutNames.map((k) => (
-                        <NumberInput key={k} label={k} min={0} size="xs" styles={{ label: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps(`timeouts.${formKey(k)}`)} />
+                <Stack gap="xl">
+                  <Part title="Individual timeouts" description="In seconds, except the adaptive values, which count states: timeouts shrink as the table fills past the start and reach zero at the end. Empty keeps the “Timeouts” preset’s value.">
+                    <Stack gap="sm">
+                      {timeoutGroups.map((g) => (
+                        <Grid key={g.label} gutter="sm" align="flex-end">
+                          <Grid.Col span={{ base: 12, sm: 2 }}>
+                            <Text size="sm" c="dimmed" pb={{ sm: 6 }}>{g.label}</Text>
+                          </Grid.Col>
+                          <Grid.Col span={{ base: 12, sm: 10 }}>
+                            <SimpleGrid cols={{ base: 3, sm: 4, lg: 7 }} spacing="sm">
+                              {g.names.map((k) => (
+                                <NumberInput key={k} label={k.slice(g.prefix.length)} min={0} size="xs" hideControls styles={{ label: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps(`timeouts.${formKey(k)}`)} />
+                              ))}
+                            </SimpleGrid>
+                          </Grid.Col>
+                        </Grid>
                       ))}
-                    </SimpleGrid>
-                  </Stack>
-                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-                    <Checkbox.Group label="Every connection’s state" description="Applies to every rule that keeps state." {...form.getInputProps('stateDefaults')}>
-                      <Stack gap={6} mt={6}>
-                        <Checkbox value="no-sync" label="Not synchronized to a failover partner (no-sync)" />
-                        <Checkbox value="pflow" label="Exported as flow records (pflow)" />
-                        <Checkbox value="sloppy" label="Sloppy TCP tracking, for asymmetric routing (sloppy)" />
+                    </Stack>
+                  </Part>
+                  <Part title="State and fragments">
+                    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
+                      <Checkbox.Group label="Every connection’s state" description="Applies to every rule that keeps state." inputWrapperOrder={below} {...form.getInputProps('stateDefaults')}>
+                        <Stack gap={6} my={6}>
+                          <Checkbox value="no-sync" label="Not synchronized to a failover partner (no-sync)" />
+                          <Checkbox value="pflow" label="Exported as flow records (pflow)" />
+                          <Checkbox value="sloppy" label="Sloppy TCP tracking, for asymmetric routing (sloppy)" />
+                        </Stack>
+                      </Checkbox.Group>
+                      <Stack gap="sm">
+                        <Select
+                          label="Fragment reassembly"
+                          data={[{ value: '', label: 'pf default (on)' }, { value: 'yes', label: 'On' }, { value: 'no', label: 'Off' }]}
+                          {...form.getInputProps('reassemble')}
+                          value={v.reassemble ?? ''}
+                        />
+                        {v.reassemble === 'yes' && <Switch label="Clear the don’t-fragment bit on reassembled packets" {...form.getInputProps('reassembleNoDf', { type: 'checkbox' })} />}
                       </Stack>
-                    </Checkbox.Group>
-                    <Stack>
-                      <Select
-                        label="Fragment reassembly"
-                        data={[{ value: '', label: 'pf default (on)' }, { value: 'yes', label: 'On' }, { value: 'no', label: 'Off' }]}
-                        {...form.getInputProps('reassemble')}
-                        value={v.reassemble ?? ''}
-                      />
-                      {v.reassemble === 'yes' && <Switch label="Clear the don’t-fragment bit on reassembled packets" {...form.getInputProps('reassembleNoDf', { type: 'checkbox' })} />}
+                    </SimpleGrid>
+                  </Part>
+                  <Part title="Loading and logging">
+                    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xl">
                       <Select
                         label="Ruleset optimization"
                         description="How pfctl tidies the rules as it loads them."
+                        inputWrapperOrder={below}
                         data={[{ value: '', label: 'pf default (basic)' }, { value: 'none', label: 'None' }, { value: 'basic', label: 'Basic' }, { value: 'profile', label: 'Profile against current traffic' }]}
                         {...form.getInputProps('rulesetOptimization')}
                         value={v.rulesetOptimization ?? ''}
                       />
-                    </Stack>
-                    <Select
-                      label="Statistics interface"
-                      description="The interface pf keeps packet and byte counts for."
-                      data={[{ value: '', label: 'The WAN' }, ...staged.interfaces.map((i) => ({ value: i.id, label: `${i.name} (${i.device})` })), { value: 'none', label: 'None' }]}
-                      {...form.getInputProps('logInterface')}
-                      value={v.logInterface ?? ''}
-                    />
-                    <Stack gap={6}>
+                      <Select
+                        label="Statistics interface"
+                        description="The interface pf keeps packet and byte counts for."
+                        inputWrapperOrder={below}
+                        data={[{ value: '', label: 'The WAN' }, ...staged.interfaces.map((i) => ({ value: i.id, label: `${i.name} (${i.device})` })), { value: 'none', label: 'None' }]}
+                        {...form.getInputProps('logInterface')}
+                        value={v.logInterface ?? ''}
+                      />
+                      <Select
+                        label="pf debug level"
+                        description="How much pf logs about itself."
+                        inputWrapperOrder={below}
+                        data={[{ value: '', label: 'pf default (err)' }, ...['emerg', 'alert', 'crit', 'err', 'warning', 'notice', 'info', 'debug'].map((d) => ({ value: d, label: d }))]}
+                        {...form.getInputProps('debug')}
+                        value={v.debug ?? ''}
+                      />
+                    </SimpleGrid>
+                  </Part>
+                  <Part title="Unfiltered interfaces">
+                    <Stack gap="sm" maw={640}>
                       <TagsInput
                         label="Don’t filter at all on"
                         description="Interfaces or groups pf ignores entirely, besides loopback. The WAN can’t be listed."
+                        inputWrapperOrder={below}
                         data={inside.map((i) => i.id)}
                         {...form.getInputProps('skipOn')}
                         value={v.skipOn ?? []}
@@ -254,16 +310,13 @@ export function FirewallSettings() {
                         </Alert>
                       )}
                     </Stack>
-                    <Select
-                      label="pf debug level"
-                      description="How much pf logs about itself."
-                      data={[{ value: '', label: 'pf default (err)' }, ...['emerg', 'alert', 'crit', 'err', 'warning', 'notice', 'info', 'debug'].map((d) => ({ value: d, label: d }))]}
-                      {...form.getInputProps('debug')}
-                      value={v.debug ?? ''}
-                    />
-                    <NumberInput label="Host id" description="Identifies this firewall to a failover partner (pfsync)." placeholder="Random" min={1} max={4294967295} {...form.getInputProps('hostId')} />
-                    <TextInput label="OS fingerprint file" description="Used by rules that match an operating system." placeholder="/etc/pf.os" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('fingerprints')} value={v.fingerprints ?? ''} />
-                  </SimpleGrid>
+                  </Part>
+                  <Part title="Failover and fingerprints">
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl">
+                      <NumberInput label="Host id" description="Identifies this firewall to a failover partner (pfsync)." inputWrapperOrder={below} placeholder="Random" min={1} max={4294967295} {...form.getInputProps('hostId')} />
+                      <TextInput label="OS fingerprint file" description="Used by rules that match an operating system." inputWrapperOrder={below} placeholder="/etc/pf.os" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('fingerprints')} value={v.fingerprints ?? ''} />
+                    </SimpleGrid>
+                  </Part>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
