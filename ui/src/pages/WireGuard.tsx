@@ -554,13 +554,16 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   );
 }
 
-function Devices({ tunnel }: { tunnel: Tunnel }) {
+function Devices({ tunnel, onAdd }: { tunnel: Tunnel; onAdd: () => void }) {
   const { edit } = useStore();
   const { data: live } = useLive('interfaces');
   const [editing, setEditing] = useState<Peer | null>(null);
   return (
     <Card padding={0}>
-      <Group p="lg" pb="xs"><Text fw={600}>Devices</Text></Group>
+      <Group p="lg" pb="xs" justify="space-between">
+        <Text fw={600}>Devices</Text>
+        <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={onAdd}>Add device</Button>
+      </Group>
       <Table.ScrollContainer minWidth={820}>
         <Table highlightOnHover>
           <Table.Thead>
@@ -658,8 +661,7 @@ export function WireGuardPage() {
         description="Lets phones, laptops and other sites reach your networks securely from anywhere."
         actions={
           <Group gap="sm">
-            <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
-            {tunnel && <Button leftSection={<IconPlus size={16} />} onClick={() => setAdding(true)}>Add device</Button>}
+            <Button leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
           </Group>
         }
       />
@@ -697,7 +699,7 @@ export function WireGuardPage() {
               <TrafficFlow tunnel={tunnel} />
             </Grid.Col>
             <Grid.Col span={12}>
-              <Devices tunnel={tunnel} />
+              <Devices tunnel={tunnel} onAdd={() => setAdding(true)} />
             </Grid.Col>
           </Grid>
           <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
