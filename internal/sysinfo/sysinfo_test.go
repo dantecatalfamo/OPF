@@ -206,6 +206,12 @@ func TestParsePing(t *testing.T) {
 			t.Errorf("got %+v, %v", p, ok)
 		}
 	})
+	// As root, with the 0.2 s interval the gateway check uses.
+	eachFixture(t, "ping_fast.txt", func(t *testing.T, dir, out string) {
+		if p, ok := ParsePing(out); !ok || p.Received != 3 || p.AvgMs != 0.184 {
+			t.Errorf("got %+v, %v", p, ok)
+		}
+	})
 	if _, ok := ParsePing("ping: unknown host\n"); ok {
 		t.Error("no statistics should be not ok")
 	}
@@ -325,7 +331,7 @@ func TestParsePflog(t *testing.T) {
 	eachFixture(t, "tcpdump_pflog.txt", func(t *testing.T, dir, out string) {
 		golden(t, dir, "tcpdump_pflog", ParsePflog(out, now, 100))
 	})
-	out := fixtureOr(t, "tcpdump_pflog.txt")
+	out, _ := fixture(t, "handwritten", "tcpdump_pflog.txt")
 	if es := ParsePflog(out, now, 2); len(es) != 2 || es[1].Reason != "short" {
 		t.Errorf("last 2: %+v", es)
 	}
@@ -333,6 +339,11 @@ func TestParsePflog(t *testing.T) {
 	e, ok := parsePflogLine("Dec 31 23:59:59.000000 rule 0/(match) block in on em0: 1.2.3.4.1 > 5.6.7.8.2: S 1:1(0) win 1", time.Date(2027, 1, 1, 0, 0, 5, 0, time.UTC))
 	if !ok || e.Time.Year() != 2026 {
 		t.Errorf("year: %v %v", e.Time, ok)
+	}
+	// pf's default rule, as a real capture has it.
+	real, _ := fixture(t, "openbsd-7.9", "tcpdump_pflog.txt")
+	if es := ParsePflog(real, now, 10); len(es) != 2 || es[0].Rule != -1 || es[0].Reason != "ip-option" || es[0].Source != "::" || es[0].Destination != "ff02::16" {
+		t.Errorf("rule def: %+v", es)
 	}
 	// Space-padded days.
 	if e, ok := parsePflogLine("Oct  1 01:02:03.000004 rule 1/(match) pass out on em0: 1.2.3.4 > 5.6.7.8: icmp: echo request", now); !ok || e.Time.Day() != 1 || e.Proto != "icmp" {

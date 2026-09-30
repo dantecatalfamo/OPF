@@ -172,7 +172,7 @@ func (m *Manager) FirewallLog() (*FirewallLog, error) {
 	// Newest first.
 	for i := len(entries) - 1; i >= 0; i-- {
 		e := FirewallLogEntry{PfLogEntry: entries[i]}
-		if e.Anchor == "" && (loaded == nil || e.Time.After(*loaded)) {
+		if e.Anchor == "" && e.Rule >= 0 && (loaded == nil || e.Time.After(*loaded)) {
 			e.Label = labels[e.Rule]
 		}
 		res.Entries = append(res.Entries, e)

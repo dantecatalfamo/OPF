@@ -253,6 +253,7 @@ export interface RuleCountersResource {
 /** A packet pf logged. */
 export interface FirewallLogEntry {
   time: string;
+  /** pf's number for the rule; -1 is pf's default rule (no rule, pf itself). */
   rule: number;
   anchor?: string;
   reason: string;

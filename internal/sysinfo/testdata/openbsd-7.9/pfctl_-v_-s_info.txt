@@ -1,0 +1,53 @@
+Status: Enabled for 0 days 00:54:21              Debug: err
+
+Hostid:   0xd04fb106
+Checksum: 0x20bbcbf12d19f7497fa49d51023bfd84
+
+State Table                          Total             Rate
+  current entries                        6               
+  half-open tcp                          0               
+  searches                            2961            0.9/s
+  inserts                               46            0.0/s
+  removals                              40            0.0/s
+Source Tracking Table
+  current entries                        0               
+  searches                               0            0.0/s
+  inserts                                0            0.0/s
+  removals                               0            0.0/s
+Fragments
+  current entries                        0               
+  searches                               0            0.0/s
+  inserts                                0            0.0/s
+  removals                               0            0.0/s
+Counters
+  match                                 47            0.0/s
+  bad-offset                             0            0.0/s
+  fragment                               0            0.0/s
+  short                                  1            0.0/s
+  normalize                              0            0.0/s
+  memory                                 0            0.0/s
+  bad-timestamp                          0            0.0/s
+  congestion                             0            0.0/s
+  ip-option                              1            0.0/s
+  proto-cksum                            0            0.0/s
+  state-mismatch                         0            0.0/s
+  state-insert                           0            0.0/s
+  state-limit                            0            0.0/s
+  src-limit                              0            0.0/s
+  synproxy                               0            0.0/s
+  translate                              0            0.0/s
+  no-route                               0            0.0/s
+Limit Counters
+  max states per rule                    0            0.0/s
+  max-src-states                         0            0.0/s
+  max-src-nodes                          0            0.0/s
+  max-src-conn                           0            0.0/s
+  max-src-conn-rate                      0            0.0/s
+  overload table insertion               0            0.0/s
+  overload flush states                  0            0.0/s
+  synfloods detected                     0            0.0/s
+  syncookies sent                        0            0.0/s
+  syncookies validated                   0            0.0/s
+Adaptive Syncookies Watermarks
+  start                              25000 states
+  end                                12500 states

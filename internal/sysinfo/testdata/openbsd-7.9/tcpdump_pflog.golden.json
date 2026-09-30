@@ -1,0 +1,24 @@
+[
+  {
+    "time": "2026-06-26T23:07:13.067333Z",
+    "rule": -1,
+    "reason": "ip-option",
+    "action": "block",
+    "direction": "in",
+    "iface": "vio0",
+    "source": "::",
+    "destination": "ff02::16",
+    "info": "HBH multicast listener report v2, 1 group record(s) [hlim 1]"
+  },
+  {
+    "time": "2026-06-26T23:07:13.19922Z",
+    "rule": -1,
+    "reason": "ip-option",
+    "action": "block",
+    "direction": "in",
+    "iface": "vio0",
+    "source": "::",
+    "destination": "ff02::16",
+    "info": "HBH multicast listener report v2, 1 group record(s) [hlim 1]"
+  }
+]

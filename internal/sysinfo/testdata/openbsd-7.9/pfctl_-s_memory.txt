@@ -1,0 +1,7 @@
+states        hard limit   100000
+src-nodes     hard limit    10000
+frags         hard limit    16384
+tables        hard limit     1000
+table-entries hard limit   200000
+pktdelay-pkts hard limit    10000
+anchors       hard limit      512

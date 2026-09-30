@@ -986,11 +986,13 @@ skipped and the web process isn't dropped to another user.
       exercise pledge, unveil and the privilege drop.
 - [ ] Status parsers against output they've only seen written by hand
       (`internal/sysinfo/testdata/handwritten/`): `ifconfig` for wg
-      peers (as root), vlan, carp and point-to-point interfaces; every
-      pfctl command (`-v -s info` with a loginterface, `-vv -s states`
-      with NAT, port forwards and IPv6, `-vv -s rules` with labels,
-      `-s memory`) and tcpdump's pflog lines (IPv6, anchors, UDP with a
-      decoded payload, truncated packets). Capture them and move them to
+      peers (as root), vlan, carp and point-to-point interfaces; pfctl
+      on a configured firewall (`-v -s info` with a loginterface, `-vv
+      -s states` with NAT, port forwards and IPv6, `-vv -s rules` with
+      labels); and pflog lines from rules (TCP, UDP with a decoded
+      payload, anchors, truncated packets). The formats themselves are
+      checked against a 7.9 capture with pf's default ruleset, which has
+      none of these. Capture them and move them to
       `testdata/openbsd-<release>/`.
 - [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
       `-vv -s states` prints it.

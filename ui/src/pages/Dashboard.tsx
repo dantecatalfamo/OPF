@@ -284,7 +284,7 @@ export function Dashboard() {
                     <Table.Td>
                       <Mono>{hostOnly(b.source ?? '—')}</Mono>
                       <Text size="xs" c="dimmed">
-                        {labelOwner(applied, b.label)?.text ?? `pf rule ${b.rule}`}
+                        {labelOwner(applied, b.label)?.text ?? (b.rule < 0 ? 'pf’s default rule' : `pf rule ${b.rule}`)}
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right" style={{ verticalAlign: 'top' }}>

@@ -483,6 +483,8 @@ type PfLogEntry struct {
 	Time time.Time `json:"time"`
 	// Rule is the number of the rule that logged it, and Anchor the
 	// anchor it's in, if any (the rule is then numbered in the anchor).
+	// -1 is pf's default rule ("rule def"): no rule, pf itself, such as
+	// dropping a packet with IP options.
 	Rule   int    `json:"rule"`
 	Anchor string `json:"anchor,omitempty"`
 	Reason string `json:"reason"` // match, short, bad-offset...
@@ -551,7 +553,9 @@ func parsePflogLine(l string, now time.Time) (PfLogEntry, bool) {
 	if parts := strings.Split(num, "."); len(parts) == 3 {
 		e.Anchor, num = parts[1], parts[2]
 	}
-	if e.Rule, err = strconv.Atoi(num); err != nil || e.Rule < 0 {
+	if num == "def" {
+		e.Rule = -1
+	} else if e.Rule, err = strconv.Atoi(num); err != nil || e.Rule < 0 {
 		return e, false
 	}
 	// block in on em0: <packet>

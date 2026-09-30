@@ -1,0 +1,19 @@
+all udp 192.168.14.11:35204 -> 162.159.200.1:123       MULTIPLE:MULTIPLE
+   age 00:54:14, expires in 00:00:50, 106:106 pkts, 8056:8056 bytes, rule 1
+   id: 6abc1b170000000f creatorid: d04fb106
+all udp 192.168.14.11:46465 -> 198.50.127.72:123       MULTIPLE:MULTIPLE
+   age 00:54:14, expires in 00:00:28, 105:105 pkts, 7980:7980 bytes, rule 1
+   id: 6abc1b1700000010 creatorid: d04fb106
+all udp 192.168.14.11:23783 -> 162.159.200.1:123       MULTIPLE:MULTIPLE
+   age 00:54:14, expires in 00:00:35, 106:106 pkts, 8056:8056 bytes, rule 1
+   id: 6abc1b1700000011 creatorid: d04fb106
+all udp 192.168.14.11:37542 -> 54.39.23.64:123       MULTIPLE:MULTIPLE
+   age 00:54:14, expires in 00:00:48, 106:106 pkts, 8056:8056 bytes, rule 1
+   id: 6abc1b1700000012 creatorid: d04fb106
+all udp 192.168.14.11:27916 -> 167.160.187.179:123       MULTIPLE:MULTIPLE
+   age 00:54:14, expires in 00:00:42, 106:106 pkts, 8056:8056 bytes, rule 1
+   id: 6abc1b1700000013 creatorid: d04fb106
+all tcp 192.168.14.11:22 <- 192.168.14.1:35796       ESTABLISHED:ESTABLISHED
+   [631424051 + 83932] wscale 6  [1996762632 + 17344] wscale 10
+   age 00:04:51, expires in 24:00:00, 451:443 pkts, 45574:43566 bytes, rule 1
+   id: 6abc1b170000002d creatorid: d04fb106

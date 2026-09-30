@@ -1,0 +1,15 @@
+@0 block return all
+  [ Evaluations: 44        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 98091 State Creations: 0     ]
+@1 pass all flags S/SA
+  [ Evaluations: 44        Packets: 2960      Bytes: 386639      States: 6     ]
+  [ Inserted: uid 0 pid 98091 State Creations: 44    ]
+@2 block return in on ! lo0 proto tcp from any to any port 6000:6010
+  [ Evaluations: 44        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 98091 State Creations: 0     ]
+@3 block return out log proto tcp all user = 55
+  [ Evaluations: 43        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 98091 State Creations: 0     ]
+@4 block return out log proto udp all user = 55
+  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 98091 State Creations: 0     ]

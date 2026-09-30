@@ -1,0 +1,37 @@
+[
+  {
+    "number": 0,
+    "evaluations": 44,
+    "packets": 0,
+    "bytes": 0,
+    "states": 0
+  },
+  {
+    "number": 1,
+    "evaluations": 44,
+    "packets": 2960,
+    "bytes": 386639,
+    "states": 6
+  },
+  {
+    "number": 2,
+    "evaluations": 44,
+    "packets": 0,
+    "bytes": 0,
+    "states": 0
+  },
+  {
+    "number": 3,
+    "evaluations": 43,
+    "packets": 0,
+    "bytes": 0,
+    "states": 0
+  },
+  {
+    "number": 4,
+    "evaluations": 40,
+    "packets": 0,
+    "bytes": 0,
+    "states": 0
+  }
+]

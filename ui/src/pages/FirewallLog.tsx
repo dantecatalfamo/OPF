@@ -16,6 +16,13 @@ const actionText: Record<string, string> = { block: 'Blocked', pass: 'Allowed', 
 /** The rule that logged an entry, in words, and why it's missing when it is. */
 export function LogRule({ e, model }: { e: FirewallLogEntry; model: Model }) {
   const owner = labelOwner(model, e.label);
+  if (e.rule < 0) {
+    return (
+      <Tooltip label="No rule: pf itself, such as dropping a packet with IP options." multiline w={260}>
+        <Text size="sm" c="dimmed">pf’s default rule</Text>
+      </Tooltip>
+    );
+  }
   if (owner) return owner.to ? <Anchor component={Link} to={owner.to} size="sm">{owner.text}</Anchor> : <Text size="sm">{owner.text}</Text>;
   const why = e.anchor
     ? `Rule ${e.rule} in anchor ${e.anchor}.`
