@@ -285,7 +285,16 @@ func mockIfconfig(m *pf.Model, t float64) string {
 					fmt.Fprintf(&b, "\t\ttx: 0, rx: 0\n")
 				} else {
 					fmt.Fprintf(&b, "\t\twgendpoint 198.51.100.%d %d\n", 70+k, 40212+k)
-					fmt.Fprintf(&b, "\t\ttx: %d, rx: %d\n", int64(wander(p.ID+" tx", 40e3, t)+1.9e9), int64(wander(p.ID+" rx", 4e3, t)+1.8e8))
+					// The online one carries all of the tunnel's traffic
+					// (the interface's counters in mockNetstat); the idle
+					// ones' counters stand still.
+					tx, rx := 1.9e9, 1.8e8
+					if k == 0 {
+						in, out := mockTraffic(i)
+						tx += wander(i.Device+" tx", out, t)
+						rx += wander(i.Device+" rx", in, t)
+					}
+					fmt.Fprintf(&b, "\t\ttx: %d, rx: %d\n", int64(tx), int64(rx))
 					ago := int64(t) % 120
 					if k > 0 {
 						ago = 3900 + int64(t)

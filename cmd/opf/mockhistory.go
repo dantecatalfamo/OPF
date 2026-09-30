@@ -49,8 +49,17 @@ func seedHistory(st *metrics.Store, m *pf.Model, leases map[string]int, now time
 		if i.WireGuard == nil || !i.Enabled {
 			continue
 		}
-		for _, p := range i.WireGuard.Peers {
-			ls = append(ls, level{"wg." + p.ID + ".rx", 0.3e6, true}, level{"wg." + p.ID + ".tx", 1.1e6, true}, level{"wg." + p.ID + ".handshake", 60, false})
+		// As mockIfconfig has them: the first device online, carrying
+		// all of the tunnel's traffic; the others idle, the last never
+		// connected.
+		in, out := mockTraffic(i)
+		for k, p := range i.WireGuard.Peers {
+			switch {
+			case k == 0:
+				ls = append(ls, level{"wg." + p.ID + ".rx", in * 8, true}, level{"wg." + p.ID + ".tx", out * 8, true}, level{"wg." + p.ID + ".handshake", 60, false})
+			case k < len(i.WireGuard.Peers)-1:
+				ls = append(ls, level{"wg." + p.ID + ".rx", 0, false}, level{"wg." + p.ID + ".tx", 0, false})
+			}
 		}
 	}
 	// Rules match at the rates mockPf counts them at.

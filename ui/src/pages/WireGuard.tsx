@@ -624,6 +624,22 @@ function Devices({ tunnel }: { tunnel: Tunnel }) {
   );
 }
 
+// The tunnel's traffic over time: all of it, and each device's, in
+// and out added together.
+const deviceColors = ['harbor.6', 'amber.6', 'grape.6', 'teal.6', 'pink.6', 'lime.6', 'indigo.6', 'orange.6'];
+
+function TunnelTraffic({ tunnel }: { tunnel: Tunnel }) {
+  const series = [
+    { key: `if.${tunnel.device}.rx`, plus: `if.${tunnel.device}.tx`, label: 'All devices', color: 'gray.5' },
+    ...tunnel.wireguard.peers.map((p, i) => ({ key: `wg.${p.id}.rx`, plus: `wg.${p.id}.tx`, label: p.name, color: deviceColors[i % deviceColors.length] })),
+  ];
+  return (
+    <Card>
+      <HistoryCard title="Traffic" series={series} format={formatBits} h={220} empty="Nothing recorded for this tunnel yet." />
+    </Card>
+  );
+}
+
 export function WireGuardPage() {
   const { staged } = useStore();
   const { tunnel: param } = useParams();
@@ -675,6 +691,9 @@ export function WireGuardPage() {
             </Grid.Col>
             <Grid.Col span={12}>
               <Devices tunnel={tunnel} />
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <TunnelTraffic tunnel={tunnel} />
             </Grid.Col>
           </Grid>
           <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
