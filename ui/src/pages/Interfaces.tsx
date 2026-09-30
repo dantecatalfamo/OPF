@@ -9,6 +9,8 @@ import type { Iface } from '../model/types';
 import { formatBits } from '../lib/format';
 import { isIPv4 } from '../lib/ip';
 import { PageHeader, StatusDot, Mono } from '../components/ui';
+import { TrafficSpark } from '../components/HistoryChart';
+import { useHistory } from '../lib/history';
 
 const roleLabel: Record<Iface['role'], string> = { wan: 'Internet', lan: 'Local network', opt: 'Extra network', vpn: 'VPN' };
 
@@ -97,6 +99,8 @@ export function Interfaces() {
   const [opened, dlg] = useDisclosure();
   const { data: ifs } = useLive('interfaces');
   const { data: routes } = useLive('routes');
+  // The last hour of every interface's traffic, in one request.
+  const { data: history } = useHistory(staged.interfaces.flatMap((i) => [`if.${i.device}.rx`, `if.${i.device}.tx`]), 3600);
 
   return (
     <>
@@ -118,7 +122,7 @@ export function Interfaces() {
           const link = !i.enabled ? 'Disabled' : !ifs ? '…' : !s ? 'Not on this system' : !s.up ? 'Down' : s.status === 'no carrier' ? 'No link' : 'Up';
           const errors = (s?.counters?.rxErrors ?? 0) + (s?.counters?.txErrors ?? 0);
           return (
-            <Card key={i.id}>
+            <Card key={i.id} style={{ display: 'flex', flexDirection: 'column' }}>
               <Group justify="space-between" mb="md" wrap="nowrap">
                 <Stack gap={2}>
                   <Group gap="sm">
@@ -162,6 +166,12 @@ export function Interfaces() {
                   </Field>
                 )}
               </Stack>
+              {i.enabled && (
+                <Card.Section mt="auto" pt="md">
+                  <Text size="xs" c="dimmed" px="lg" mb={2}>Last hour</Text>
+                  <TrafficSpark data={history} dev={i.device} range={3600} />
+                </Card.Section>
+              )}
             </Card>
           );
         })}

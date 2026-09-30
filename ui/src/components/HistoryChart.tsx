@@ -10,6 +10,7 @@ import { Anchor, ColorSwatch, Group, SegmentedControl, Text } from '@mantine/cor
 import { Link } from 'react-router';
 import type { MetricsResource } from '../lib/api';
 import { ranges, timeLabel, useHistory } from '../lib/history';
+import { formatBits } from '../lib/format';
 import { SectionTitle } from './ui';
 
 export interface ChartSeries {
@@ -116,5 +117,38 @@ export function HistoryCard({ title, series, format, area, peaks, empty, h = 170
       <HistoryChart data={data} series={series} range={Number(range)} format={format} area={area} peaks={peaks} h={h} empty={empty} />
       <Anchor component={Link} to={`/diagnostics/graphs${range === '86400' ? '' : `?range=${range}`}`} size="xs" c="dimmed" mt={6} display="inline-block">More graphs</Anchor>
     </>
+  );
+}
+
+/** A small, bare graph of an interface's traffic for a card: no axes, a tooltip, in and out. */
+export function TrafficSpark({ data, dev, range, h = 56 }: { data?: MetricsResource; dev: string; range: number; h?: number }) {
+  const rx = data?.series[`if.${dev}.rx`];
+  const tx = data?.series[`if.${dev}.tx`];
+  const first = rx ?? tx;
+  if (!first || ![rx, tx].some((x) => x?.avg.some((v) => v !== null))) {
+    return <Text size="xs" c="dimmed" h={h} ta="center" pt={h / 2 - 8}>{data ? 'No traffic recorded yet' : ''}</Text>;
+  }
+  const rows = first.avg.map((_, i) => ({
+    time: timeLabel(first.start + i * first.step, range),
+    In: rx?.avg[i] ?? null,
+    Out: tx?.avg[i] ?? null,
+  }));
+  return (
+    <AreaChart
+      h={h}
+      data={rows}
+      dataKey="time"
+      series={[{ name: 'In', color: 'harbor.6' }, { name: 'Out', color: 'amber.6' }]}
+      curveType="monotone"
+      withDots={false}
+      connectNulls={false}
+      withXAxis={false}
+      withYAxis={false}
+      gridAxis="none"
+      strokeWidth={1.25}
+      fillOpacity={0.2}
+      valueFormatter={formatBits}
+      tooltipAnimationDuration={0}
+    />
   );
 }
