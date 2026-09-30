@@ -635,7 +635,7 @@ function TunnelTraffic({ tunnel }: { tunnel: Tunnel }) {
   ];
   return (
     <Card>
-      <HistoryCard title="Traffic" series={series} format={formatBits} h={220} empty="Nothing recorded for this tunnel yet." />
+      <HistoryCard title="Traffic" series={series} format={formatBits} h={180} empty="Nothing recorded for this tunnel yet." />
     </Card>
   );
 }
@@ -683,6 +683,9 @@ export function WireGuardPage() {
             </Tabs>
           )}
           <Grid gutter="md">
+            <Grid.Col span={12}>
+              <TunnelTraffic tunnel={tunnel} />
+            </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <TunnelSettings tunnel={tunnel} />
             </Grid.Col>
@@ -691,9 +694,6 @@ export function WireGuardPage() {
             </Grid.Col>
             <Grid.Col span={12}>
               <Devices tunnel={tunnel} />
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <TunnelTraffic tunnel={tunnel} />
             </Grid.Col>
           </Grid>
           <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
