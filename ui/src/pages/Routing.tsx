@@ -10,6 +10,8 @@ import type { RoutingTableResource } from '../lib/api';
 import { deviceName, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, StatusDot } from '../components/ui';
+import { HistoryCard } from '../components/HistoryChart';
+
 
 const mono = { input: { fontFamily: 'var(--mantine-font-family-monospace)' } };
 
@@ -170,6 +172,16 @@ function Gateways() {
           </Table>
         </Table.ScrollContainer>
       </Card>
+      {staged.routing.gateways.length > 0 && (
+        <Card mt="md">
+          <HistoryCard
+            title="Latency"
+            series={staged.routing.gateways.map((g, i) => ({ key: `gw.${g.id}.rtt`, label: g.name, color: ['harbor.6', 'amber.6', 'grape.6', 'teal.6'][i % 4] }))}
+            format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)} ms`}
+            peaks
+          />
+        </Card>
+      )}
       <GatewayModal opened={modal.open} onClose={() => setModal((x) => ({ ...x, open: false }))} gateway={modal.gateway} />
     </>
   );

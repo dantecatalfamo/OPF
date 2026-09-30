@@ -65,8 +65,9 @@ func newSeries() *series {
 	return s
 }
 
-// KeyRE is what a series' name may be: "if.em0.rx", "gw.g1.rtt".
-var KeyRE = regexp.MustCompile(`^[a-z0-9][a-z0-9._:-]{0,63}$`)
+// KeyRE is what a series' name may be: "if.em0.rx", "gw.g1.rtt",
+// "pf.rule.R12" (model ids keep their case).
+var KeyRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$`)
 
 // Store holds the series. It's safe for concurrent use.
 type Store struct {

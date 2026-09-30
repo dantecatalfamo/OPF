@@ -9,6 +9,9 @@ import { useNow } from '../lib/useNow';
 import type { DhcpScope, Iface, Reservation } from '../model/types';
 import { fromInt, inSubnet, isIPv4, isMAC, network, toInt } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
+import { poolSize } from '../lib/ip';
+import { HistoryCard } from '../components/HistoryChart';
+
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
   const { edit } = useStore();
@@ -212,6 +215,14 @@ export function Dhcp() {
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 7 }}>
             <Stack gap="md">
+              <Card>
+                <HistoryCard
+                  title={`Leases in use${poolSize(scope.rangeStart, scope.rangeEnd) ? ` of ${poolSize(scope.rangeStart, scope.rangeEnd)}` : ''}`}
+                  series={[{ key: `dhcp.${iface.id}.leases`, label: 'Leases', color: 'harbor.6' }]}
+                  format={(n) => String(Math.round(n))}
+                  h={140}
+                />
+              </Card>
               <Card>
                 <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, initial: null })}>Reserve address</Button>}>
                   Reserved addresses

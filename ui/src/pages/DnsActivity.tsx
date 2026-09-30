@@ -12,6 +12,8 @@ import { estimateBytes, memoryLevel, modelNames, reloadSeconds } from '../lib/dn
 import { formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import type { Model } from '../model/types';
 import { Empty, SectionTitle } from '../components/ui';
+import { HistoryCard } from '../components/HistoryChart';
+
 
 function Stat({ label, value, detail, tip }: { label: string; value: string; detail?: string; tip?: string }) {
   const body = (
@@ -70,6 +72,12 @@ export function DnsStatsCard() {
                 detail={data?.memoryBytes && physmem ? `${pct(data.memoryBytes, physmem)} of the RAM` : 'unbound, lists included'}
               />
             </SimpleGrid>
+            <HistoryCard
+              title="Over time"
+              series={[{ key: 'dns.queries', label: 'Queries', color: 'harbor.6' }, ...(blocking ? [{ key: 'dns.blocked', label: 'Blocked', color: 'red.6' }] : [])]}
+              format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)}/s`}
+              h={150}
+            />
             {s.extended && answered > 0 && (
               <Group gap="lg">
                 <Text size="xs" c="dimmed">

@@ -84,7 +84,7 @@ func TestOldBucketsDontComeBack(t *testing.T) {
 func TestRefused(t *testing.T) {
 	s := New(2)
 	now := time.Now()
-	for _, bad := range []string{"", "Upper", "a b", "../x", "x\x00", string(make([]byte, 70))} {
+	for _, bad := range []string{"", "-dash", "a b", "a,b", "../x", "x\x00", string(make([]byte, 70))} {
 		if s.Add(bad, now, 1) {
 			t.Errorf("took name %q", bad)
 		}

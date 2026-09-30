@@ -13,6 +13,7 @@ import { checkPfLine } from '../lib/pfcheck';
 import { EndpointField, validateEndpoint } from '../components/EndpointField';
 import { getIcmpTypeOptions, getIcmpCodeOptions, returnIcmpCodes, returnIcmp6Codes } from '../lib/icmp';
 import { renderedText, useRendered } from '../lib/generated';
+import { HistoryCard } from '../components/HistoryChart';
 import { backend } from '../model/store';
 
 type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: string };
@@ -498,6 +499,9 @@ export function RuleDrawer({
             <Alert variant="light" color="harbor" icon={<IconInfoCircle size={18} />}>
               <Text size="xs">Rules are checked from top to bottom. Floating rules come before interface rules. See the full ruleset under Firewall → Ruleset.</Text>
             </Alert>
+          )}
+          {rule?.id && rule.kind === 'form' && (
+            <HistoryCard title="Packets matched" series={[{ key: `pf.rule.${rule.id}`, label: 'Packets', color: 'harbor.6' }]} format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString()}/s`} h={140} empty="Nothing recorded for this rule yet." />
           )}
         </Stack>
 

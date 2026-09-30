@@ -17,7 +17,8 @@ import (
 // went down for twenty minutes. Each span is sampled at its ring's
 // resolution: every 10 s for the last hour, every minute for the day,
 // and so on.
-func seedHistory(st *metrics.Store, m *pf.Model, now time.Time) {
+// leases is how many DHCP leases each network has now.
+func seedHistory(st *metrics.Store, m *pf.Model, leases map[string]int, now time.Time) {
 	type level struct {
 		key   string
 		v     float64
@@ -44,6 +45,29 @@ func seedHistory(st *metrics.Store, m *pf.Model, now time.Time) {
 			ls = append(ls, level{appliance.SeriesDNSBlocked, 24 * mockBlockShare, true})
 		}
 	}
+	for _, i := range m.Interfaces {
+		if i.WireGuard == nil || !i.Enabled {
+			continue
+		}
+		for _, p := range i.WireGuard.Peers {
+			ls = append(ls, level{"wg." + p.ID + ".rx", 0.3e6, true}, level{"wg." + p.ID + ".tx", 1.1e6, true}, level{"wg." + p.ID + ".handshake", 60, false})
+		}
+	}
+	// Rules match at the rates mockPf counts them at.
+	rules := map[string]float64{}
+	for _, r := range mockRules(m) {
+		if kind, id, ok := pf.ParseLabel(r.label); ok {
+			k := float64(seed(r.label+r.text)%1000) / 1000
+			rules["pf."+kind+"."+id] += 400 * k * k
+		}
+	}
+	for key, v := range rules {
+		ls = append(ls, level{key, v, true})
+	}
+	for iface, n := range leases {
+		ls = append(ls, level{"dhcp." + iface + ".leases", float64(n), false})
+	}
+	ls = append(ls, level{appliance.SeriesTimeOffset, 0.4, false})
 	for _, g := range m.Routing.Gateways {
 		rtt := 23.1
 		if strings.HasPrefix(g.Address, "203.0.113.") { // as mockPing answers
@@ -75,6 +99,8 @@ func seedHistory(st *metrics.Store, m *pf.Model, now time.Time) {
 					v = 100
 				case outage && (strings.HasPrefix(l.key, "if.") || strings.HasSuffix(l.key, ".rtt") || strings.HasPrefix(l.key, "dns.")):
 					continue // nothing answered
+				case strings.HasPrefix(l.key, "dhcp."):
+					v = math.Round(l.v * noise(l.key, t)) // whole leases
 				case strings.HasSuffix(l.key, ".loss"):
 					v = 0
 					if jitter(l.key, t) > 0.995 {

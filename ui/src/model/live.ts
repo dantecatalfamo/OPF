@@ -299,9 +299,12 @@ function sampleLevel(m: Model, key: string): number | undefined {
     return (what === 'rx' ? rx : tx) * 8;
   }
   if (kind === 'gw') return what === 'rtt' ? 8.4 : 0;
+  if (kind === 'wg') return what === 'rx' ? 0.3e6 : what === 'tx' ? 1.1e6 : 60;
+  if (kind === 'dhcp') return leases.filter((l) => m.interfaces.find((i) => i.id === id)?.name.toLowerCase() === l.iface).length || 3;
+  if (kind === 'pf' && key.split('.').length === 3) return 5 + (key.length * 37) % 120; // a rule's packets a second
   const levels: Record<string, number> = {
     'cpu.busy': 15, 'mem.used': 1.6e9, 'load.1': 0.3, 'pf.states': 70, 'pf.blocked': 4,
-    'dns.queries': 24, 'dns.cachehit': 78, 'dns.blocked': blockingZones(m).length ? 2.9 : 0,
+    'dns.queries': 24, 'dns.cachehit': 78, 'dns.blocked': blockingZones(m).length ? 2.9 : 0, 'time.offset': 0.4,
   };
   return levels[key];
 }

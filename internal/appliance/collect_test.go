@@ -70,6 +70,12 @@ func (g *growing) Run(_ context.Context, argv ...string) ([]byte, error) {
 		return []byte(file("vmstat_-s.txt")), nil
 	case "pfctl -v -s info":
 		return []byte(file("pfctl_-v_-s_info.txt")), nil
+	case "pfctl -vv -s rules":
+		b, err := os.ReadFile(filepath.Join("..", "sysinfo", "testdata", "handwritten", "pfctl_-vv_-s_rules.txt"))
+		if err != nil {
+			panic(err)
+		}
+		return b, nil
 	case "unbound-control -c /var/unbound/etc/unbound.conf stats_noreset":
 		return fmt.Appendf(nil, "total.num.queries=%d\ntotal.num.cachehits=%d\ntotal.num.cachemiss=%d\ntime.up=%d\nnum.rpz.action.rpz-local-data=%d\n", 100*n, 75*n, 25*n, 10*n, 5*n), nil
 	}
@@ -125,6 +131,20 @@ func TestSample(t *testing.T) {
 		t.Errorf("dns blocked %v %v", b, ok)
 	}
 
+	// Rules' packets a second, by label, from the slower round.
+	e.m.sampleSlow(e.m.collect)
+	time.Sleep(1100 * time.Millisecond)
+	e.m.sampleSlow(e.m.collect)
+	if v, ok := lastPoint(t, st, "pf.builtin.anti-lockout"); !ok || v != 0 {
+		t.Errorf("anti-lockout packets %v %v", v, ok)
+	}
+	// Every enabled DHCP network has a count of leases, none here.
+	for _, s := range e.live().Model.DHCP {
+		if v, ok := lastPoint(t, st, dhcpSeries(s.Iface)); s.Enabled && (!ok || v != 0) {
+			t.Errorf("dhcp %s: %v %v", s.Iface, v, ok)
+		}
+	}
+
 	// Metrics answers for what was asked, and lists what's kept.
 	res, err := e.m.Metrics(MetricsRequest{Series: []string{SeriesPfStates, "if.nope.rx"}, Range: 3600})
 	if err != nil || res.Series[SeriesPfStates] == nil || res.Series["if.nope.rx"] != nil || len(res.Known) < 5 {
@@ -159,5 +179,13 @@ func TestSample(t *testing.T) {
 	<-done
 	if v, ok := lastPoint(t, m2.metricsStore(), ifaceSeries("em0", "rx")); !ok || v != rx {
 		t.Errorf("after a restart: %v %v, want %v", v, ok, rx)
+	}
+}
+
+func TestPseudoIface(t *testing.T) {
+	for name, want := range map[string]bool{"lo0": true, "enc0": true, "pflog0": true, "pfsync0": true, "em0": false, "lo": false, "local0": false, "vlan20": false, "wg0": false} {
+		if pseudoIface(name) != want {
+			t.Errorf("%s: %v", name, !want)
+		}
 	}
 }

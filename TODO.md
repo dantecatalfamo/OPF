@@ -862,18 +862,16 @@ them, so they can be graphed and compared):
   and when OPF stops, in a format whose every count is checked on
   reading (gob looped for ever on a damaged file). It keeps interface
   traffic, CPU, memory, load, pf states and blocks, DNS queries, blocks
-  and cache hits, and gateway latency and loss. `GET /api/metrics`,
-  Diagnostics › Graphs and the dashboard's traffic chart show them.
-- [ ] Peaks: each bucket keeps its maximum, which the graphs don't show
-      yet; a month of hourly averages hides a burst that filled the
-      link.
-- [ ] Run the collector on OpenBSD (`openbsd-dev`): the combined
-      `sysctl kern.cp_time vm.loadavg hw.physmem`, the file in the state
-      directory under unveil, and what 10 s of sampling costs in CPU.
-- [ ] A graph's own page for a series (an interface, a gateway), and
-      graphs where their numbers are shown now (the DNS page, Routing's
-      gateways, each interface).
-- [ ] What else to collect (the first series are above):
+  and cache hits, gateway latency and loss, WireGuard peers' traffic
+  and handshake age, packets per labelled rule, DHCP leases in use per
+  network and the clock's offset (the slower ones every 30 s).
+  `GET /api/metrics`, Diagnostics › Graphs, the dashboard's traffic
+  chart, and a graph where each number is shown (the DNS page,
+  Routing's gateways, an interface, a DHCP network, a rule, a VPN
+  device), with peaks dashed for traffic and latency. It ran on 7.9
+  (`-dry`): every series, the file under unveil, about 1% of a CPU.
+  Loopback, enc and pflog aren't kept.
+- [ ] What else to collect (what's above is collected):
       - **Interface traffic**: bytes, packets, errors and drops in and
         out per interface (`netstat -in`, queue drops from
         `netstat -id`): the dashboard chart (simulated today) and

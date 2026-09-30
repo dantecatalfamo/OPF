@@ -376,7 +376,11 @@ every 10 minutes for a week and every hour for the month.
   `pf.states`, `pf.blocked` (packets a second on the statistics
   interface), `dns.queries` and `dns.blocked` (a second),
   `dns.cachehit` (percent), `gw.<gateway id>.rtt` (ms) and `.loss`
-  (percent).
+  (percent), `wg.<peer id>.rx` and `.tx` (bits a second) and
+  `.handshake` (seconds since), `pf.<label kind>.<id>` (packets a
+  second matched by the rule labelled `opf:<kind>:<id>`, as
+  `pf.rule.r3`), `dhcp.<interface id>.leases` (leases in use) and
+  `time.offset` (ms). Loopback, enc and pflog interfaces aren't kept.
 
 ### Diagnostic tools
 

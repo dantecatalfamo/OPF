@@ -9,6 +9,9 @@ import { useStore } from '../model/store';
 import type { Iface } from '../model/types';
 import { isIPv4, inSubnet } from '../lib/ip';
 import { PageHeader, SectionTitle } from '../components/ui';
+import { formatBits } from '../lib/format';
+import { HistoryCard } from '../components/HistoryChart';
+
 import { DeleteInterface } from '../components/DeleteInterface';
 
 interface Values {
@@ -241,6 +244,15 @@ export function InterfaceEdit() {
               </>
             )}
           </Stack>
+        </Card>
+        <Card>
+          <HistoryCard
+            title="Traffic"
+            series={[{ key: `if.${iface.device}.rx`, label: 'In', color: 'harbor.6' }, { key: `if.${iface.device}.tx`, label: 'Out', color: 'amber.6' }]}
+            format={formatBits}
+            area
+            peaks
+          />
         </Card>
       </Stack>
       {iface.vlan && <DeleteInterface iface={iface} kind="VLAN network" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/interfaces')} />}

@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/metrics"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
 
@@ -44,10 +46,30 @@ const (
 	SeriesDNSQueries  = "dns.queries" // a second
 	SeriesDNSBlocked  = "dns.blocked" // a second
 	SeriesDNSCacheHit = "dns.cachehit"
+	SeriesTimeOffset  = "time.offset" // ms from the peer ntpd follows
 )
 
 func ifaceSeries(dev, dir string) string   { return "if." + dev + "." + dir } // bits a second, rx or tx
 func gatewaySeries(id, what string) string { return "gw." + id + "." + what } // rtt (ms) or loss (percent)
+
+// peerSeries is a WireGuard peer's rx or tx (bits a second) or
+// handshake (seconds since); ruleSeries a labelled rule's packets a
+// second (pf.rule.R12, pf.builtin.anti-lockout); dhcpSeries a network's
+// leases in use.
+func peerSeries(id, what string) string { return "wg." + id + "." + what }
+func ruleSeries(kind, id string) string { return "pf." + kind + "." + id }
+func dhcpSeries(iface string) string    { return "dhcp." + iface + ".leases" }
+
+// pseudoIface is an interface whose traffic isn't worth a series:
+// loopback, IPsec's enc and pflog's copies of logged packets.
+func pseudoIface(name string) bool {
+	for _, p := range []string{"lo", "enc", "pflog", "pfsync"} {
+		if rest, ok := strings.CutPrefix(name, p); ok && rest != "" && strings.Trim(rest, "0123456789") == "" {
+			return true
+		}
+	}
+	return false
+}
 
 // collector is the collector's state: the store and the last reading
 // of each counter.
@@ -57,6 +79,16 @@ type collector struct {
 	cpu   sysinfo.CPUTicks
 	cpuAt time.Time
 	gwAt  time.Time
+	full  bool // said once that the cap was reached
+}
+
+// add stores a point, and says once in the log when a new series was
+// turned away because there are as many as are kept.
+func (c *collector) add(key string, t time.Time, v float64) {
+	if !c.store.Add(key, t, v) && metrics.KeyRE.MatchString(key) && !c.full {
+		c.full = true
+		log.Printf("graphs: %d series kept, the most there can be; %s and any after it aren't recorded", maxSeries, key)
+	}
 }
 
 type reading struct {
@@ -88,7 +120,7 @@ func (c *collector) rate(key string, v float64, t time.Time) (float64, bool) {
 
 func (c *collector) addRate(key string, v float64, t time.Time, scale float64) {
 	if r, ok := c.rate(key, v, t); ok {
-		c.store.Add(key, t, r*scale)
+		c.add(key, t, r*scale)
 	}
 }
 
@@ -145,14 +177,18 @@ func (m *Manager) SaveMetrics() error {
 // sample reads everything once. A command that fails leaves its series
 // without a point.
 func (m *Manager) sample(now time.Time) {
-	st := m.metricsStore()
+	m.metricsStore()
 	c := m.collect
+	model, _, _ := m.live()
 
 	// Interfaces: bits a second in and out.
 	if b, err := m.read("netstat", "-ibn"); err == nil {
 		if p, err := m.read("netstat", "-in"); err == nil {
 			t := time.Now()
 			for dev, cn := range sysinfo.ParseNetstatIfaces(b, p) {
+				if pseudoIface(dev) {
+					continue
+				}
 				c.addRate(ifaceSeries(dev, "rx"), float64(cn.RxBytes), t, 8)
 				c.addRate(ifaceSeries(dev, "tx"), float64(cn.TxBytes), t, 8)
 			}
@@ -166,17 +202,17 @@ func (m *Manager) sample(now time.Time) {
 		if ticks, err := sysinfo.ParseCPUTicks(vals["kern.cp_time"]); err == nil {
 			if p, ok := c.cpuPrev(ticks); ok {
 				if u, ok := ticks.Usage(p); ok {
-					st.Add(SeriesCPU, t, u.Busy())
+					c.add(SeriesCPU, t, u.Busy())
 				}
 			}
 		}
 		if l, err := sysinfo.ParseLoadavg(vals["vm.loadavg"]); err == nil {
-			st.Add(SeriesLoad, t, l[0])
+			c.add(SeriesLoad, t, l[0])
 		}
 		physmem, _ := strconv.ParseUint(vals["hw.physmem"], 10, 64)
 		if out, err := m.read("vmstat", "-s"); err == nil {
 			if mem, err := sysinfo.ParseVmstatMemory(out, physmem); err == nil && mem.Total >= mem.Free {
-				st.Add(SeriesMemory, time.Now(), float64(mem.Total-mem.Free))
+				c.add(SeriesMemory, time.Now(), float64(mem.Total-mem.Free))
 			}
 		}
 	}
@@ -185,19 +221,19 @@ func (m *Manager) sample(now time.Time) {
 	if out, err := m.read("pfctl", "-v", "-s", "info"); err == nil {
 		if info, ok := sysinfo.ParsePfInfo(out); ok {
 			t := time.Now()
-			st.Add(SeriesPfStates, t, float64(info.States))
+			c.add(SeriesPfStates, t, float64(info.States))
 			if i := info.Iface; i != nil {
 				// The counter is the interface's, so a new statistics
 				// interface starts over rather than looking like a jump.
 				if r, ok := c.rate("pf.blocked@"+i.Name, float64(i.PacketsInBlocked+i.PacketsOutBlocked), t); ok {
-					st.Add(SeriesPfBlocked, t, r)
+					c.add(SeriesPfBlocked, t, r)
 				}
 			}
 		}
 	}
 
 	// DNS, when the resolver runs.
-	if model, _, err := m.live(); err == nil && model != nil && model.DNS.Enabled {
+	if model != nil && model.DNS.Enabled {
 		if out, err := m.read("unbound-control", "-c", unboundConf, "stats_noreset"); err == nil {
 			if s, ok := sysinfo.ParseUnboundStats(out); ok {
 				t := time.Now()
@@ -214,25 +250,92 @@ func (m *Manager) sample(now time.Time) {
 				h, hok := c.rate("dns.hits", float64(s.CacheHits), t)
 				mi, mok := c.rate("dns.misses", float64(s.CacheMisses), t)
 				if hok && mok && h+mi > 0 {
-					st.Add(SeriesDNSCacheHit, t, 100*h/(h+mi))
+					c.add(SeriesDNSCacheHit, t, 100*h/(h+mi))
 				}
 			}
 		}
 	}
 
-	// Gateways, less often: each is a ping.
+	// WireGuard peers, by the model's ids: traffic and how long since
+	// the last handshake (a site link that's quietly down).
+	if model != nil && len(tunnelPeers(model)) > 0 {
+		if out, err := m.read("ifconfig", "-A"); err == nil {
+			t := time.Now()
+			ids := tunnelPeers(model)
+			for _, i := range sysinfo.ParseIfconfig(out) {
+				if i.WireGuard == nil {
+					continue
+				}
+				for _, p := range i.WireGuard.Peers {
+					id, ok := ids[p.PublicKey]
+					if !ok {
+						continue
+					}
+					c.addRate(peerSeries(id, "rx"), float64(p.RxBytes), t, 8)
+					c.addRate(peerSeries(id, "tx"), float64(p.TxBytes), t, 8)
+					if p.HandshakeAgo != nil {
+						c.add(peerSeries(id, "handshake"), t, float64(*p.HandshakeAgo))
+					}
+				}
+			}
+		}
+	}
+
+	// Less often: gateways (each is a ping), rules' counters, DHCP
+	// leases and the clock.
 	if now.Sub(c.gwAt) >= gatewayEvery {
 		c.gwAt = now
-		if gws, err := m.Gateways(); err == nil {
-			t := time.Now()
-			for id, h := range gws.Gateways {
-				if h.Error != "" && h.Address == "" {
-					continue // nothing to ping yet
+		m.sampleSlow(c)
+	}
+}
+
+func (m *Manager) sampleSlow(c *collector) {
+	if out, err := m.read("pfctl", "-vv", "-s", "rules"); err == nil {
+		t := time.Now()
+		packets := map[string]uint64{}
+		for _, r := range sysinfo.ParsePfRules(out) {
+			if kind, id, ok := pf.ParseLabel(r.Label); ok {
+				packets[ruleSeries(kind, id)] += r.Packets
+			}
+		}
+		// A ruleset reload zeroes the counters; rate starts over.
+		for k, n := range packets {
+			c.addRate(k, float64(n), t, 1)
+		}
+	}
+	if l, err := m.DHCPLeases(); err == nil && l.Error == "" {
+		t := time.Now()
+		inUse := map[string]int{}
+		if model, _, err := m.live(); err == nil && model != nil {
+			for _, s := range model.DHCP {
+				if s.Enabled {
+					inUse[s.Iface] = 0
 				}
-				st.Add(gatewaySeries(id, "loss"), t, h.LossPct)
-				if h.RttMs != nil {
-					st.Add(gatewaySeries(id, "rtt"), t, *h.RttMs)
-				}
+			}
+		}
+		for _, le := range l.Leases {
+			if _, ok := inUse[le.Iface]; ok && (le.Ends == nil || le.Ends.After(t)) {
+				inUse[le.Iface]++
+			}
+		}
+		for iface, n := range inUse {
+			c.add(dhcpSeries(iface), t, float64(n))
+		}
+	}
+	if out, err := m.read("ntpctl", "-s", "all"); err == nil {
+		if ts, ok := sysinfo.ParseNtpctl(out); ok && ts.OffsetMs != nil {
+			c.add(SeriesTimeOffset, time.Now(), *ts.OffsetMs)
+		}
+	}
+	if gws, err := m.Gateways(); err == nil {
+		t := time.Now()
+		for id, h := range gws.Gateways {
+			if h.Error != "" && h.Address == "" {
+				continue // nothing to ping yet
+			}
+			c.add(gatewaySeries(id, "loss"), t, h.LossPct)
+			if h.RttMs != nil {
+				c.add(gatewaySeries(id, "rtt"), t, *h.RttMs)
 			}
 		}
 	}
@@ -290,4 +393,17 @@ func (m *Manager) Metrics(req MetricsRequest) (*Metrics, error) {
 		}
 	}
 	return res, nil
+}
+
+// tunnelPeers maps the model's WireGuard peers' public keys to their ids.
+func tunnelPeers(m *pf.Model) map[string]string {
+	ids := map[string]string{}
+	for _, i := range m.Interfaces {
+		if i.WireGuard != nil {
+			for _, p := range i.WireGuard.Peers {
+				ids[p.PublicKey] = p.ID
+			}
+		}
+	}
+	return ids
 }

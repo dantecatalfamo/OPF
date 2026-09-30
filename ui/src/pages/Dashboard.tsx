@@ -168,7 +168,7 @@ export function Dashboard() {
               Internet traffic
             </SectionTitle>
             {wan ? (
-              <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area h={250} />
+              <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area peaks h={250} />
             ) : (
               <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No internet interface is set up.</Text>
             )}

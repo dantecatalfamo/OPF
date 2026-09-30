@@ -4,7 +4,9 @@
 import { Card, Grid, SegmentedControl, SimpleGrid, Text } from '@mantine/core';
 import { useSearchParams } from 'react-router';
 import { useStore } from '../model/store';
-import { HistoryChart, type ChartSeries } from '../components/HistoryChart';
+import { HistoryChart, seriesKeys, type ChartSeries } from '../components/HistoryChart';
+import { tunnels } from '../model/types';
+import { poolSize } from '../lib/ip';
 import { ranges, useHistory } from '../lib/history';
 import { formatBits, formatBytes } from '../lib/format';
 import { PageHeader, SectionTitle } from '../components/ui';
@@ -39,16 +41,28 @@ export function Graphs() {
   const load: ChartSeries[] = [{ key: 'load.1', label: 'Load', color: 'teal.6' }];
   const states: ChartSeries[] = [{ key: 'pf.states', label: 'States', color: 'harbor.6' }];
   const blocked: ChartSeries[] = [{ key: 'pf.blocked', label: 'Blocked', color: 'red.6' }];
+  const blocking = (applied.dns.blocklists ?? []).some((l) => l.enabled) || (applied.dns.blocked ?? []).length > 0;
   const dns: ChartSeries[] = [
     { key: 'dns.queries', label: 'Queries', color: 'harbor.6' },
-    { key: 'dns.blocked', label: 'Blocked', color: 'red.6' },
+    ...(blocking ? [{ key: 'dns.blocked', label: 'Blocked', color: 'red.6' }] : []),
   ];
   const cache: ChartSeries[] = [{ key: 'dns.cachehit', label: 'From the cache', color: 'teal.6' }];
   const colors = ['harbor.6', 'amber.6', 'grape.6', 'teal.6', 'pink.6', 'lime.6'];
   const rtt: ChartSeries[] = gateways.map((g, i) => ({ key: `gw.${g.id}.rtt`, label: g.name, color: colors[i % colors.length] }));
   const loss: ChartSeries[] = gateways.map((g, i) => ({ key: `gw.${g.id}.loss`, label: g.name, color: colors[i % colors.length] }));
-  const all = [...ifaces.flatMap((i) => traffic(i.device)), ...system, ...memory, ...load, ...states, ...blocked, ...dns, ...cache, ...rtt, ...loss].map((s) => s.key);
-  const { data, error } = useHistory(all, range);
+  const vpns = tunnels(applied).filter((t) => t.enabled && t.wireguard.peers.length);
+  const peerTraffic = (t: (typeof vpns)[number]): ChartSeries[] =>
+    t.wireguard.peers.map((p, i) => ({ key: `wg.${p.id}.rx`, plus: `wg.${p.id}.tx`, label: p.name, color: colors[i % colors.length] }));
+  const pools = applied.dhcp.filter((d) => d.enabled);
+  const leases: ChartSeries[] = pools.map((d, i) => {
+    const iface = applied.interfaces.find((x) => x.id === d.iface);
+    const size = poolSize(d.rangeStart, d.rangeEnd);
+    return { key: `dhcp.${d.iface}.leases`, label: `${iface?.name ?? d.iface}${size ? ` (of ${size})` : ''}`, color: colors[i % colors.length] };
+  });
+  const offset: ChartSeries[] = [{ key: 'time.offset', label: 'Offset', color: 'harbor.6' }];
+  const all = [...ifaces.flatMap((i) => traffic(i.device)), ...system, ...memory, ...load, ...states, ...blocked, ...dns, ...cache, ...rtt, ...loss, ...vpns.flatMap(peerTraffic), ...leases, ...offset];
+  const keys = seriesKeys(all);
+  const { data, error } = useHistory(keys, range);
   const common = { data, range };
 
   return (
@@ -62,7 +76,7 @@ export function Graphs() {
       <Text fw={600} mb="sm">Traffic</Text>
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md" mb="lg">
         {ifaces.map((i) => (
-          <Graph key={i.id} title={`${i.name} (${i.device})`} series={traffic(i.device)} format={bits} area {...common} />
+          <Graph key={i.id} title={`${i.name} (${i.device})`} series={traffic(i.device)} format={bits} area peaks {...common} />
         ))}
       </SimpleGrid>
       <Text fw={600} mb="sm">System and firewall</Text>
@@ -88,11 +102,28 @@ export function Graphs() {
         <>
           <Text fw={600} mb="sm">Gateways</Text>
           <Grid gutter="md">
-            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Latency" series={rtt} format={ms} note="Pinged every 30 seconds." {...common} /></Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Latency" series={rtt} format={ms} peaks note="Pinged every 30 seconds." {...common} /></Grid.Col>
             <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Packet loss" series={loss} format={pct} {...common} /></Grid.Col>
           </Grid>
         </>
       )}
+      {vpns.length > 0 && (
+        <>
+          <Text fw={600} mb="sm" mt="lg">VPN</Text>
+          <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+            {vpns.map((t) => (
+              <Graph key={t.id} title={`${t.name}: traffic by device`} series={peerTraffic(t)} format={bits} {...common} />
+            ))}
+          </SimpleGrid>
+        </>
+      )}
+      <Text fw={600} mb="sm" mt="lg">DHCP and time</Text>
+      <Grid gutter="md">
+        {pools.length > 0 && <Grid.Col span={{ base: 12, md: 7 }}><Graph title="DHCP leases in use" series={leases} format={(n) => String(Math.round(n))} {...common} /></Grid.Col>}
+        <Grid.Col span={{ base: 12, md: pools.length ? 5 : 12 }}>
+          <Graph title="Clock offset" series={offset} format={(n) => `${n.toFixed(Math.abs(n) < 10 ? 1 : 0)} ms`} note="How far the clock is from the time server ntpd follows." {...common} />
+        </Grid.Col>
+      </Grid>
     </>
   );
 }

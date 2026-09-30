@@ -11,7 +11,9 @@ import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../mode
 import { useDerived } from '../lib/generated';
 import { formRule } from '../model/sample';
 import { isFloating } from '../lib/rules';
-import { formatAgo, formatBytes } from '../lib/format';
+import { formatAgo, formatBits, formatBytes } from '../lib/format';
+import { HistoryCard } from '../components/HistoryChart';
+
 import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
@@ -532,6 +534,13 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
             )}
             <NumberInput label="Keepalive" description="Seconds between keepalive packets; empty for none." min={0} max={65535} {...form.getInputProps('keepalive')} />
             <Text size="xs" c="dimmed">The device’s key stays the same. To replace it, remove the device and add it again.</Text>
+            <HistoryCard
+              title="Traffic"
+              series={[{ key: `wg.${peer.id}.rx`, label: 'From the device', color: 'harbor.6' }, { key: `wg.${peer.id}.tx`, label: 'To the device', color: 'amber.6' }]}
+              format={formatBits}
+              h={150}
+              empty="Nothing recorded for this device yet."
+            />
             <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={onClose}>Cancel</Button>
               <Button type="submit" disabled={!form.isDirty()}>Save</Button>

@@ -127,7 +127,13 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	go watcher.Run(context.Background())
 	go api.RunRefresher(context.Background(), time.Minute)
 	if m, err := liveModel(api)(); err == nil {
-		seedHistory(api.MetricsStore(), m, time.Now())
+		leases := map[string]int{}
+		if l, err := api.DHCPLeases(); err == nil {
+			for _, le := range l.Leases {
+				leases[le.Iface]++
+			}
+		}
+		seedHistory(api.MetricsStore(), m, leases, time.Now())
 	}
 	go api.RunCollector(context.Background())
 

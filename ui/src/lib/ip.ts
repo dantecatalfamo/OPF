@@ -52,3 +52,10 @@ export function network(address: string, prefix: number): string {
 export function inSubnet(ip: string, address: string, prefix: number): boolean {
   return isIPv4(ip) && network(ip, prefix) === network(address, prefix);
 }
+
+/** How many addresses a DHCP range holds, first to last; 0 if it isn't one. */
+export function poolSize(start: string, end: string): number {
+  if (!isIPv4(start) || !isIPv4(end)) return 0;
+  const n = toInt(end) - toInt(start) + 1;
+  return n > 0 ? n : 0;
+}
