@@ -28,6 +28,17 @@ const (
 // DNSListZoneName is a blocklist's zone in unbound.
 func DNSListZoneName(id string) string { return "opf-list-" + id + "." }
 
+// Zones' names in unbound's rpz-log lines, from which the DNS page
+// counts what each blocked. They're ids, like pf labels (Label), so a
+// line always says which zone it was and renaming a list doesn't
+// change unbound.conf.
+const OwnLogName = "opf:own"
+
+func DNSListLogName(id string) string { return "opf:list:" + id }
+
+// UnboundControlSocket is unbound's control socket.
+const UnboundControlSocket = "/var/run/unbound.sock"
+
 // DNSListZonePath is a blocklist's zone file for an answer. The answer
 // is in the zone's records (0.0.0.0 can't be an override), so each
 // answer has its own file, and unbound.conf names the one in use: a
@@ -1175,6 +1186,9 @@ func GenerateUnboundConf(m *Model) string {
 	}
 
 	lines = append(lines, "\thide-identity: yes", "\thide-version: yes")
+	// Answers by response code and blocks by action, for the DNS page
+	// (unbound-control stats_noreset).
+	lines = append(lines, "\textended-statistics: yes")
 
 	if d.DNSSEC {
 		lines = append(lines, "\tauto-trust-anchor-file: \""+RootKeyPath+"\"", "\tval-log-level: 2")
@@ -1208,22 +1222,20 @@ func GenerateUnboundConf(m *Model) string {
 		lines = append(lines, "\tmodule-config: \"respip validator iterator\"")
 	}
 	if own {
-		lines = append(lines, "", "rpz:", "\tname: \""+OwnZoneName+"\"", "\tzonefile: \""+OwnZonePath+"\"", "\trpz-log: yes", "\trpz-log-name: \"Your entries\"")
+		lines = append(lines, "", "rpz:", "\tname: \""+OwnZoneName+"\"", "\tzonefile: \""+OwnZonePath+"\"", "\trpz-log: yes", "\trpz-log-name: \""+OwnLogName+"\"")
 	}
 	for _, l := range lists {
 		lines = append(lines, "", "rpz:",
 			fmt.Sprintf("\tname: \"%s\"", DNSListZoneName(l.ID)),
 			fmt.Sprintf("\tzonefile: \"%s\"", DNSListZonePath(l.ID, d.BlockAnswer)),
 			"\trpz-log: yes",
-			fmt.Sprintf("\trpz-log-name: \"%s\"", l.Name))
+			fmt.Sprintf("\trpz-log-name: \"%s\"", DNSListLogName(l.ID)))
 	}
 
-	// Dynamic leases are added at runtime, and a blocklist's zone is
-	// reloaded when it's downloaded again, over a control socket that
-	// only root can use.
-	if d.RegisterDynamicLeases || len(lists) > 0 {
-		lines = append(lines, "", "remote-control:", "\tcontrol-enable: yes", "\tcontrol-interface: /var/run/unbound.sock")
-	}
+	// Over a control socket only root can use, OPF reads the stats,
+	// adds dynamic leases' names and reloads a blocklist's zone when
+	// it's downloaded again.
+	lines = append(lines, "", "remote-control:", "\tcontrol-enable: yes", "\tcontrol-interface: "+UnboundControlSocket)
 
 	if d.Mode == ResolverModeForward {
 		lines = append(lines, "", "forward-zone:", "\tname: \".\"")

@@ -104,7 +104,16 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
-	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, next: run.Dry{Log: log.Default()}}
+	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, dnsNames: func() int {
+		n := 0
+		ls, _ := api.DNSLists()
+		for _, l := range ls {
+			if l.Enabled {
+				n += l.Blocked + l.Allowed
+			}
+		}
+		return n
+	}, next: run.Dry{Log: log.Default()}}
 	srv := web.New(api, ui.Files())
 
 	watcher := &leases.Watcher{

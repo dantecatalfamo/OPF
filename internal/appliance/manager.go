@@ -67,9 +67,11 @@ type Manager struct {
 	Actions run.Runner
 
 	// Earlier readings, for rates (status.go).
-	cpu        rate[sysinfo.CPUTicks]
-	ifCounters rate[map[string]sysinfo.Counters]
-	pfInfo     rate[sysinfo.PfInfo]
+	cpu         rate[sysinfo.CPUTicks]
+	ifCounters  rate[map[string]sysinfo.Counters]
+	pfInfo      rate[sysinfo.PfInfo]
+	dnsCounters rate[sysinfo.UnboundStats]
+	reload      reloadRecord // the resolver's last full reload (dnsstats.go)
 
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus
@@ -725,6 +727,9 @@ func (m *Manager) commit(req CommitRequest) (*Commit, error) {
 		return commitOf(e), nil
 	case err != nil:
 		return nil, err
+	}
+	if model.DNS.Enabled && reloadsResolver(e) {
+		m.timeReload()
 	}
 	return commitOf(e), nil
 }

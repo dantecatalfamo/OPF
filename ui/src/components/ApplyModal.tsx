@@ -7,6 +7,7 @@ import { ApiError } from '../lib/api';
 import { sectionLabel } from '../lib/sections';
 import { sectionIcon } from '../lib/sectionIcons';
 import { UnifiedDiff } from './UnifiedDiff';
+import { ResolverReloadNotice } from '../pages/DnsActivity';
 
 const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard'];
 
@@ -115,7 +116,7 @@ function Problem({ error, onOverwrite }: { error: unknown; onOverwrite: (paths: 
 }
 
 export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
-  const { changes, review, apply, discard } = useStore();
+  const { changes, review, apply, discard, staged: stagedModel } = useStore();
   const [staging, setStaging] = useState(false);
   const [applying, setApplying] = useState(false);
   const [staged, setStaged] = useState<Review | null>(null);
@@ -186,6 +187,7 @@ export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () =
               the time runs out, or the previous settings come back on their own.
             </Alert>
           )}
+          {staged?.files.some((f) => f.path === '/var/unbound/etc/unbound.conf') && <ResolverReloadNotice model={stagedModel} />}
           {staged && <Files review={staged} />}
           {applying && (
             <Group gap="sm"><Loader size="sm" /><Text size="sm">Checking, saving a restore point and applying…</Text></Group>

@@ -249,6 +249,9 @@ func FuzzParsers(f *testing.F) {
 		ParsePfStates(s, 10)
 		ParsePfRules(s)
 		ParsePflog(s, time.Now(), 10)
+		ParseUnboundStats(s)
+		ParseRPZLog(s, time.Now())
+		ParseProcessRSS(s, "unbound")
 	})
 }
 
@@ -366,5 +369,41 @@ func TestParsePflog(t *testing.T) {
 	// Space-padded days.
 	if e, ok := parsePflogLine("Oct  1 01:02:03.000004 rule 1/(match) pass out on em0: 1.2.3.4 > 5.6.7.8: icmp: echo request", now); !ok || e.Time.Day() != 1 || e.Proto != "icmp" {
 		t.Errorf("padded day: %+v %v", e, ok)
+	}
+}
+
+func TestParseUnboundStats(t *testing.T) {
+	eachFixture(t, "unbound-control_stats_noreset.txt", func(t *testing.T, dir, out string) {
+		s, ok := ParseUnboundStats(out)
+		if !ok {
+			t.Fatal("not read")
+		}
+		golden(t, dir, "unbound-control_stats_noreset", s)
+	})
+	// Without extended-statistics there are only the totals.
+	s, ok := ParseUnboundStats("total.num.queries=10\ntotal.num.cachehits=4\ntime.up=5.5\n")
+	if !ok || s.Extended || s.Queries != 10 || s.CacheHits != 4 || s.Uptime != 5.5 || s.Blocked() != 0 {
+		t.Errorf("basic: %+v %v", s, ok)
+	}
+	if _, ok := ParseUnboundStats("error: connect to /var/run/unbound.sock: No such file or directory\n"); ok {
+		t.Error("an error read as stats")
+	}
+}
+
+func TestParseRPZLog(t *testing.T) {
+	now := time.Date(2026, 9, 29, 17, 0, 0, 0, time.UTC)
+	eachFixture(t, "daemon_rpz.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "daemon_rpz", ParseRPZLog(out, now))
+	})
+}
+
+func TestParseProcessRSS(t *testing.T) {
+	eachFixture(t, "ps_-A_-o_rss_comm.txt", func(t *testing.T, dir, out string) {
+		if n, ok := ParseProcessRSS(out, "unbound"); !ok || n != 9120*1024 {
+			t.Errorf("got %d %v", n, ok)
+		}
+	})
+	if _, ok := ParseProcessRSS(" 12 init\n", "unbound"); ok {
+		t.Error("found a process that isn't there")
 	}
 }

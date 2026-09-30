@@ -138,6 +138,14 @@ type (
 		Result
 		List *appliance.DNSListStatus
 	}
+	DNSStatsReply struct {
+		Result
+		Stats *appliance.DNSStats
+	}
+	DNSBlockedReply struct {
+		Result
+		Blocked *appliance.DNSBlocked
+	}
 	NameArgs    struct{ Name string }
 	ToolRunArgs struct {
 		ID   string
@@ -285,6 +293,20 @@ func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
 	var err error
 	r.Lists, err = s.api.DNSLists()
 	r.set("DNSLists", err)
+	return nil
+}
+
+func (s *Service) DNSStats(_ None, r *DNSStatsReply) error {
+	var err error
+	r.Stats, err = s.api.DNSStats()
+	r.set("DNSStats", err)
+	return nil
+}
+
+func (s *Service) DNSBlocked(_ None, r *DNSBlockedReply) error {
+	var err error
+	r.Blocked, err = s.api.DNSBlocked()
+	r.set("DNSBlocked", err)
 	return nil
 }
 
@@ -658,6 +680,27 @@ func (c *Client) RefreshDNSList(id string) (*appliance.DNSListStatus, error) {
 	var r DNSListReply
 	err := c.call("RefreshDNSList", IDArgs{id}, &r)
 	return r.List, err
+}
+
+func (c *Client) DNSStats() (*appliance.DNSStats, error) {
+	var r DNSStatsReply
+	err := c.call("DNSStats", None{}, &r)
+	if s := r.Stats; s != nil {
+		s.Errors = nonNil(s.Errors)
+	}
+	return r.Stats, err
+}
+
+func (c *Client) DNSBlocked() (*appliance.DNSBlocked, error) {
+	var r DNSBlockedReply
+	err := c.call("DNSBlocked", None{}, &r)
+	if b := r.Blocked; b != nil {
+		b.Names = nonNil(b.Names)
+		if b.ByList == nil {
+			b.ByList = map[string]int{}
+		}
+	}
+	return r.Blocked, err
 }
 
 func nonNil[T any](s []T) []T {

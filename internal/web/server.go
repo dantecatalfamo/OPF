@@ -108,6 +108,8 @@ func New(api appliance.API, ui fs.FS) *Server {
 		return dnsListsBody{l}, err
 	}))
 	s.mux.HandleFunc("POST /api/dns/blocklists/{id}/refresh", s.refreshDNSList)
+	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
+	s.mux.HandleFunc("GET /api/dns/blocked", getter(s.api.DNSBlocked))
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)

@@ -11,6 +11,9 @@ import type { DnsListStatus } from '../lib/api';
 import type { DnsBlocklist, Model } from '../model/types';
 import { ListState } from '../components/ListState';
 import { Empty, SectionTitle } from '../components/ui';
+import { formatBytes } from '../lib/format';
+import { estimateBytes } from '../lib/dnsCost';
+import { BlocklistMemory } from './DnsActivity';
 
 // Lists people use, in formats OPF reads, fetched to check them.
 const wellKnown: Omit<DnsBlocklist, 'id' | 'enabled'>[] = [
@@ -143,6 +146,7 @@ export function DnsBlocklists() {
             data={[{ value: '', label: '0.0.0.0, like Pi-hole' }, { value: 'nxdomain', label: 'No such name' }]}
           />
         </Group>
+        <BlocklistMemory status={status} />
         {lists.length ? (
           <Table.ScrollContainer minWidth={460}>
             <Table verticalSpacing="xs">
@@ -160,7 +164,7 @@ export function DnsBlocklists() {
                         <Text size="sm" fw={500} c={l.enabled ? undefined : 'dimmed'}>{l.name}</Text>
                         <Anchor href={l.url} target="_blank" rel="noreferrer" size="xs" c="dimmed" className="mono" style={{ wordBreak: 'break-all' }}>{l.url}</Anchor>
                         {l.enabled && (status
-                          ? <ListState applied={live} fetched={s?.fetched} count={s && `${s.blocked.toLocaleString()} names${s.allowed ? ` (${s.allowed.toLocaleString()} let through)` : ''}`} refresh={s?.refresh} />
+                          ? <ListState applied={live} fetched={s?.fetched} count={s && `${s.blocked.toLocaleString()} names${s.allowed ? ` (${s.allowed.toLocaleString()} let through)` : ''}, about ${formatBytes(estimateBytes(s.blocked + s.allowed))} of memory`} refresh={s?.refresh} />
                           : <Text size="xs" c="dimmed">…</Text>)}
                         {s && live && <Skipped skipped={s.skipped} />}
                       </Table.Td>

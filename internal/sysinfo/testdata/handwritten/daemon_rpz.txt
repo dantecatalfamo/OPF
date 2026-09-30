@@ -1,0 +1,13 @@
+Sep 29 09:58:01 gw unbound: [29114:0] info: start of service (unbound 1.26.1).
+Sep 29 09:58:14 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] *.doubleclick.net. local_data 192.168.1.23@51932 securepubads.g.doubleclick.net. A IN
+Sep 29 09:58:14 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] *.doubleclick.net. local_data 192.168.1.23@51933 securepubads.g.doubleclick.net. AAAA IN
+Sep 29 09:59:02 gw dhcpd[5512]: DHCPACK on 192.168.1.40 to 3c:22:fb:10:aa:01 via em1
+Sep 29 09:59:40 gw unbound: [29114:0] info: rpz: applied [opf:own] tracker.example.com. nxdomain 192.168.1.40@60100 tracker.example.com. A IN
+Sep 29 09:59:41 gw unbound: [29114:0] info: rpz: applied [opf:own] cdn.example.org. passthru 192.168.1.40@60101 cdn.example.org. A IN
+Sep  9 10:00:03 gw unbound: [29114:0] info: rpz: applied [opf:list:oisd] *.app-measurement.com. local_data fd00::23@4410 app-measurement.com. HTTPS IN
+Sep 29 10:00:05 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] *.doubleclick.net. local_data 192.168.1.23@51990 securepubads.g.doubleclick.net. A IN
+Sep 29 10:00:06 gw unbound: [29114:0] info: rpz: applied metrics.example.net. nxdomain  metrics.example.net. A IN
+Sep 29 10:00:07 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] nsdname ns1.bad.example. local_data 192.168.1.23@5199 x.bad.example. A IN
+Sep 29 10:00:08 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] broken
+Sep 29 10:00:09 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] a.example. local_data 192.168.1.23@notaport a.example. A IN
+Sep 29 10:00:10 gw unbound: [29114:0] info: rpz: applied [opf:list:hagezi] a.example. made-up 192.168.1.23@5199 a.example. A IN

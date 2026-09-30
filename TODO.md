@@ -545,19 +545,20 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       DNS (port 53) from inside networks to the firewall, and blocking
       DNS over TLS (853) outbound. DNS over HTTPS looks like any web
       traffic and can't be stopped this way; the page says so.
-- [ ] **Memory and reload time.** Measured on 7.9: Hagezi Pro's RPZ and
-      OISD small (575,000 entries) take unbound to 782 MB and 14 s before
-      it answers at all. Show each list's size and what it will cost,
-      warn against more than the machine's memory allows (check
-      `hw.physmem`), and suggest a lighter list (Hagezi's Light or
-      Normal) for small machines.
-- [ ] Adding or removing a blocklist, or changing the answer, changes
-      unbound.conf, which still means one full reload (unbound-control
-      can't add a zone at run time), so DNS stops answering while every
-      list loads. Say so in the review, with how long it took last time.
-      Turning a list off could instead keep its zone loaded with
-      `rpz-action-override: disabled` and use `rpz_disable`, at the cost
-      of its memory; decide whether that's worth it.
+- [ ] Turning a list off changes unbound.conf and reloads every list
+      (the review says how long DNS pauses). It could instead keep the
+      zone loaded with `rpz-action-override: disabled` and use
+      `rpz_disable`, at the cost of its memory; decide whether that's
+      worth it.
+- [ ] Whether reloading one list's zone (`auth_zone_reload`, on a
+      scheduled or manual download) stops unbound answering while it
+      loads, as a full reload does: with one thread it may. Measure it
+      with a big list on the host; if it does, say so where lists are
+      downloaded again and consider a second thread (`num-threads`).
+- [ ] Memory and reload estimates (`ui/src/lib/dnsCost.ts`) come from
+      one measurement (1,400 bytes and 24 µs a name). Measure a few more
+      lists and a machine with less memory, and warn from unbound's own
+      size once it's running rather than only from the estimate.
 
 ## Services
 
@@ -701,20 +702,14 @@ Firewall:
 
 DNS:
 
-- [ ] **DNS stats now, on the DNS resolver page** (from `unbound-control
-      stats_noreset`, which doesn't reset the counters OPF's collector
-      will read): queries per second, cache hit rate, recursion time,
-      answers by response code (NOERROR, NXDOMAIN, SERVFAIL), DNSSEC
-      validation failures, and queries blocked, in total and by list
-      (the RPZ counters, `num.rpz.action.*`). Rates from two readings,
-      as for CPU and interfaces (`rate`); a dashboard tile with queries
-      and blocked per second. The control socket is there whenever DHCP
-      names or a blocklist is in use; otherwise say it needs one, or
-      turn it on whenever the resolver is.
-- [ ] Top blocked names and which list blocked each, from unbound's
-      `rpz-log` lines (in daemon's log), for the Blocking tab and for
-      "allow this name". Per-client names are opt-in, like top domains
-      (see Privacy below).
+- [ ] DNS stats over time (the collector): queries, cache hits and
+      blocks per minute, and blocks by list.
+- [ ] Which device asked for a blocked name, opt-in like top domains
+      (see Privacy below): the rpz-log lines have the client's address,
+      which OPF reads but doesn't keep or show.
+- [ ] Blocked names older than the current daemon log (newsyslog
+      rotates it at 300 KB, which on a busy network is an hour or less):
+      read the rotated copies too, or keep counts in the collector.
 
 Network, VPN and logs:
 
@@ -1188,6 +1183,14 @@ Stop it by the PID it wrote; never pkill.
       checked against a 7.9 capture with pf's default ruleset, which has
       none of these. Capture them and move them to
       `testdata/openbsd-<release>/`.
+- [ ] unbound's side of the DNS stats, written by hand from unbound
+      1.26's source (`testdata/handwritten/`): `unbound-control
+      stats_noreset` with extended-statistics (the `num.rpz.action.*`
+      names: `local_data` or `local-data`?), the `rpz: applied` lines
+      in `/var/log/daemon` (the rpz-log-name in brackets, the client,
+      the query), and `ps -A -o rss=,comm=`. Also check that
+      `unbound-control status` doesn't answer until a full reload has
+      loaded every zone, which is how OPF times it.
 - [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
       `-vv -s states` prints it.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors
@@ -1296,6 +1299,22 @@ Commit engine:
 
 Live data:
 
+- [x] DNS stats on the DNS page and the dashboard, from `unbound-control
+      stats_noreset` (extended-statistics, over the control socket,
+      which is now on whenever the resolver is): queries a second, cache
+      hits, typical lookup time, blocked a second, answers by response
+      code, DNSSEC failures and unbound's memory. The names blocked most
+      and by which list, from unbound's rpz-log lines (zone names are
+      ids, `opf:own` and `opf:list:<id>`, so renaming a list no longer
+      changes unbound.conf), with "Never block" and "Stop blocking";
+      names that aren't DNS names are counted but not offered, and which
+      device asked isn't kept.
+- [x] Blocklist costs: each list's estimated memory, a warning when the
+      enabled lists would take over a quarter (or half) of the RAM with
+      lighter lists suggested, and, when a change reloads the resolver
+      whole, a notice in the review with how long DNS will pause,
+      scaled from the last full reload, which OPF times after each
+      commit by asking unbound until it answers.
 - [x] A commit or revert tells each service once, after its last
       changed file (unbound was reloaded once per changed file before),
       and a file with a cheaper reload uses it when it changed alone:

@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Anchor, Badge, Button, Card, Grid, Group, Progress, SimpleGrid, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { AreaChart } from '@mantine/charts';
-import { IconShieldCheck, IconShieldHalf, IconWorld, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
+import { IconShieldCheck, IconShieldHalf, IconWorld, IconWorldSearch, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { tunnels } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
-import type { InterfacesResource } from '../lib/api';
+import { rpzBlocked, type InterfacesResource } from '../lib/api';
 import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import { deviceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
@@ -105,6 +105,9 @@ export function Dashboard() {
   const connectedPeers = peers.filter(({ tunnel, peer }) => peerOnline(peerState(ifs, tunnel, peer))).length;
   const { data: pfs } = useLive('pfStatus');
   const { data: log } = useLive('firewallLog');
+  const { data: dns } = useLive('dnsStats');
+  const dnsBlocking = (applied.dns.blocklists ?? []).some((l) => l.enabled) || (applied.dns.blocked ?? []).length > 0;
+  const rate = (n: number) => (n < 10 ? n.toFixed(1) : String(Math.round(n)));
   const blocked = (log?.entries ?? []).filter((e) => e.action === 'block').slice(0, 5);
   const blockedPerMin = pfs?.blockedPerSec !== undefined ? Math.round(pfs.blockedPerSec * 60) : undefined;
   const statsIface = pfs?.info?.iface ? applied.interfaces.find((i) => i.device === pfs.info!.iface!.name)?.name ?? pfs.info.iface.name : undefined;
@@ -122,7 +125,7 @@ export function Dashboard() {
         description={sys ? `OpenBSD ${sys.release} on ${hardware}.${sys.bootedAt ? ` Up for ${formatDuration((Date.now() - Date.parse(sys.bootedAt)) / 1000)}.` : ''}` : 'Reading the system…'}
       />
 
-      <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="md" mb="md">
+      <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 5 }} spacing="md" mb="md">
         <Tile
           icon={IconWorld}
           label="Internet"
@@ -136,6 +139,18 @@ export function Dashboard() {
           value={!pfs ? '…' : !pfs.info ? 'Unknown' : !pfs.info.enabled ? 'Disabled' : `${formatCount(pfs.info.states)} states`}
           detail={pfs?.info && !pfs.info.enabled ? 'pf isn’t filtering anything' : blockedPerMin !== undefined && statsIface ? `${formatCount(blockedPerMin)} packets a minute blocked on ${statsIface}` : 'Connections through and to the firewall'}
           state={!pfs || (pfs.info?.enabled ?? false) ? 'ok' : 'bad'}
+        />
+        <Tile
+          icon={IconWorldSearch}
+          label="DNS"
+          value={!applied.dns.enabled ? 'Off' : !dns ? '…' : dns.stats ? (dns.queriesPerSec !== undefined ? `${rate(dns.queriesPerSec)} queries/s` : 'Answering') : 'Not answering'}
+          detail={
+            !applied.dns.enabled ? 'The resolver isn’t running'
+              : !dns?.stats ? (dns?.errors[0] ? 'Couldn’t read its counters' : 'Name lookups for your networks')
+              : dnsBlocking && dns.blockedPerSec !== undefined ? `${rate(dns.blockedPerSec)} blocked a second, ${formatCount(rpzBlocked(dns.stats))} in all`
+              : `${Math.round((dns.stats.cacheHits / Math.max(1, dns.stats.cacheHits + dns.stats.cacheMisses)) * 100)}% answered from the cache`
+          }
+          state={!applied.dns.enabled || !dns || dns.stats ? 'ok' : 'bad'}
         />
         <Tile
           icon={IconServer2}

@@ -3,7 +3,7 @@
 // stops while the tab is hidden.
 import { useEffect, useState } from 'react';
 import { backend } from '../model/store';
-import type { FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfStatesResource, PfStatusResource, RoutingTableResource, RuleCountersResource, SystemResource, UpdatesResource, WgPeerState } from './api';
+import type { DnsBlockedResource, DnsStatsResource, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfStatesResource, PfStatusResource, RoutingTableResource, RuleCountersResource, SystemResource, UpdatesResource, WgPeerState } from './api';
 import type { Iface, Peer } from '../model/types';
 
 const sources = {
@@ -17,6 +17,8 @@ const sources = {
   pfStates: { load: () => backend.pfStates(), ms: 5000 },
   ruleCounters: { load: () => backend.ruleCounters(), ms: 10_000 },
   firewallLog: { load: () => backend.firewallLog(), ms: 10_000 },
+  dnsStats: { load: () => backend.dnsStats(), ms: 5000 },
+  dnsBlocked: { load: () => backend.dnsBlocked(), ms: 30_000 },
 };
 
 interface Types {
@@ -29,6 +31,8 @@ interface Types {
   pfStates: PfStatesResource;
   ruleCounters: RuleCountersResource;
   firewallLog: FirewallLogResource;
+  dnsStats: DnsStatsResource;
+  dnsBlocked: DnsBlockedResource;
 }
 type Key = keyof Types;
 

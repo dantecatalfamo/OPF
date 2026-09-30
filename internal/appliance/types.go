@@ -52,6 +52,8 @@ type API interface {
 	RefreshAlias(name string) (*TableStatus, error)
 	DNSLists() ([]DNSListStatus, error)
 	RefreshDNSList(id string) (*DNSListStatus, error)
+	DNSStats() (*DNSStats, error)
+	DNSBlocked() (*DNSBlocked, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

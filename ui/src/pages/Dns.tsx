@@ -10,6 +10,7 @@ import type { Dns as DnsSettings } from '../model/types';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
+import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
 import { useSearchParams } from 'react-router';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
@@ -192,7 +193,10 @@ export function Dns() {
         <Tabs.Panel value="blocking">
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 7 }}>
-              <DnsBlocklists />
+              <Stack gap="md">
+                <DnsBlocklists />
+                <DnsBlockedNames />
+              </Stack>
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <DnsOwnNames />
@@ -200,6 +204,7 @@ export function Dns() {
           </Grid>
         </Tabs.Panel>
         <Tabs.Panel value="resolver">
+          <DnsStatsCard />
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <Card>

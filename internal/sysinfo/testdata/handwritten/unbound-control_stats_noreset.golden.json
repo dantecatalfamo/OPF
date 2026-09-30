@@ -1,0 +1,40 @@
+{
+  "queries": 48213,
+  "cacheHits": 39120,
+  "cacheMisses": 9093,
+  "prefetches": 1204,
+  "recursionAvg": 0.061532,
+  "recursionMedian": 0.0327,
+  "uptime": 86412.500311,
+  "extended": true,
+  "answers": {
+    "NOERROR": 44870,
+    "NXDOMAIN": 3302,
+    "SERVFAIL": 41,
+    "nodata": 5521
+  },
+  "secure": 8120,
+  "bogus": 3,
+  "rpz": {
+    "local_data": 6120,
+    "nxdomain": 12,
+    "passthru": 64
+  },
+  "queryTypes": {
+    "A": 30112,
+    "AAAA": 14003,
+    "HTTPS": 3196,
+    "PTR": 812,
+    "SRV": 90
+  },
+  "memory": {
+    "cache.message": 2228742,
+    "cache.rrset": 4137562,
+    "http.query_buffer": 0,
+    "http.response_buffer": 0,
+    "mod.iterator": 16748,
+    "mod.respip": 0,
+    "mod.validator": 287430,
+    "streamwait": 0
+  }
+}

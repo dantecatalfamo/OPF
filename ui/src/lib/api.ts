@@ -339,6 +339,80 @@ export interface DnsListStatus {
   warning?: string;
 }
 
+/** unbound's counters (unbound-control stats_noreset), since it started or reloaded. */
+export interface UnboundStats {
+  queries: number;
+  cacheHits: number;
+  cacheMisses: number;
+  prefetches: number;
+  /** Seconds, for answers that weren't in the cache. */
+  recursionAvg: number;
+  recursionMedian: number;
+  /** Seconds since unbound started or reloaded. */
+  uptime: number;
+  /** Whether the maps below are there (extended-statistics). */
+  extended: boolean;
+  /** Answers by response code, and "nodata"; zero ones are left out. */
+  answers: Record<string, number>;
+  secure: number;
+  bogus: number;
+  /** Response policy actions taken, by action (local_data, nxdomain, passthru...). */
+  rpz: Record<string, number>;
+  queryTypes: Record<string, number>;
+  memory: Record<string, number>;
+}
+
+/** How long unbound took to answer again after a commit reloaded it whole. */
+export interface ResolverReload {
+  at: string;
+  seconds: number;
+  /** Blocklist and own names it loaded. */
+  names: number;
+  timedOut?: boolean;
+}
+
+/** The resolver's counters and rates (GET /api/dns/stats). */
+export interface DnsStatsResource {
+  enabled: boolean;
+  stats?: UnboundStats;
+  queriesPerSec?: number;
+  blockedPerSec?: number;
+  /** unbound's resident memory, zones included. */
+  memoryBytes?: number;
+  lastReload?: ResolverReload;
+  errors: string[];
+}
+
+/** A name the resolver blocked, from its log. */
+export interface BlockedName {
+  name: string;
+  count: number;
+  last: string;
+  /** The list that blocked it last; missing for your own entries. */
+  list?: string;
+  /** The entry that matched: the name, or *. and a name it's under. */
+  entry: string;
+}
+
+/** What the blocklists blocked, from unbound's log (GET /api/dns/blocked). */
+export interface DnsBlockedResource {
+  /** The first line read; missing when there are none. */
+  since?: string;
+  blocked: number;
+  own: number;
+  byList: Record<string, number>;
+  /** Queries your never-block names let through. */
+  allowed: number;
+  names: BlockedName[];
+  error?: string;
+}
+
+/** Response policy actions that let a query through rather than block it. */
+export const rpzPass = new Set(['passthru', 'disabled', 'no_override', 'invalid']);
+
+/** Queries a policy zone blocked. */
+export const rpzBlocked = (s: UnboundStats) => Object.entries(s.rpz).reduce((n, [a, c]) => (rpzPass.has(a) ? n : n + c), 0);
+
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
 export interface TableStatus {
   name: string;
@@ -482,6 +556,8 @@ export const api = {
   dnsLists: async () => (await request<{ lists: DnsListStatus[] }>('GET', '/dns/blocklists')).lists,
   /** Downloads a DNS blocklist again and reloads it in the resolver. */
   refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),
+  dnsStats: () => request<DnsStatsResource>('GET', '/dns/stats'),
+  dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
   startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
   toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),
   cancelTool: (id: string) => request<void>('POST', `/diagnostics/runs/${enc(id)}/cancel`),

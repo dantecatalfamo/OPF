@@ -3,7 +3,7 @@
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
 import type {
-  FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  BlockedName, DnsBlockedResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
   RuleCountersResource, SystemResource, UpdatesResource,
 } from '../lib/api';
 import type { Iface, Model } from './types';
@@ -229,4 +229,62 @@ export function sampleGateways(m: Model): GatewaysResource {
       address: g.monitor || (g.address === 'dhcp' ? '203.0.113.1' : g.address), online: true, lossPct: n ? 0.5 : 0, rttMs: n ? 23.1 : 8.4,
     }])),
   };
+}
+
+// The preview's resolver: about 24 queries a second, a share blocked
+// when a blocklist or your own blocked names are on.
+const sampleBlockedNames = [
+  'securepubads.g.doubleclick.net', 'app-measurement.com', 'graph.facebook.com', 'ads.samsungads.com',
+  'telemetry.microsoft.com', 'pagead2.googlesyndication.com', 'stats.g.doubleclick.net', 'api.segment.io',
+];
+
+function blockingZones(m: Model): string[] {
+  if (!m.dns.enabled) return [];
+  const lists = (m.dns.blocklists ?? []).filter((l) => l.enabled).map((l) => l.id);
+  return (m.dns.blocked ?? []).length ? ['', ...lists] : lists;
+}
+
+export function sampleDnsStats(m: Model, names: number): DnsStatsResource {
+  if (!m.dns.enabled) return { enabled: false, errors: [] };
+  const up = 3 * 86400 + (Date.now() / 1000) % 86400;
+  const queries = Math.floor(24 * up);
+  const blocking = blockingZones(m).length > 0;
+  const blocked = blocking ? Math.floor(queries * 0.12) : 0;
+  const action = m.dns.blockAnswer === 'nxdomain' ? 'nxdomain' : 'local_data';
+  return {
+    enabled: true,
+    stats: {
+      queries, cacheHits: Math.floor(queries * 0.78), cacheMisses: Math.ceil(queries * 0.22), prefetches: Math.floor(queries * 0.02),
+      recursionAvg: 0.058, recursionMedian: 0.031, uptime: up, extended: true,
+      answers: { NOERROR: Math.floor(queries * 0.939), NXDOMAIN: Math.floor(queries * 0.06), SERVFAIL: Math.floor(queries * 0.001), nodata: Math.floor(queries * 0.09) },
+      secure: m.dns.dnssec ? Math.floor(queries * 0.17) : 0, bogus: m.dns.dnssec ? 3 : 0,
+      rpz: blocking ? { [action]: blocked } : {},
+      queryTypes: { A: Math.floor(queries * 0.62), AAAA: Math.floor(queries * 0.29), HTTPS: Math.floor(queries * 0.07) },
+      memory: { 'cache.rrset': 4_100_000, 'cache.message': 2_200_000 },
+    },
+    queriesPerSec: 24 + 6 * Math.sin(Date.now() / 30_000),
+    blockedPerSec: blocking ? 2.9 + 0.8 * Math.sin(Date.now() / 25_000) : undefined,
+    memoryBytes: (38 << 20) + names * 1400,
+    lastReload: names ? { at: new Date(Date.now() - 2 * 3600_000).toISOString(), seconds: Math.max(0.4, names * 0.000024), names } : undefined,
+    errors: [],
+  };
+}
+
+export function sampleDnsBlocked(m: Model): DnsBlockedResource {
+  const zones = blockingZones(m);
+  const r = rng(29);
+  const byList: Record<string, number> = {};
+  let own = 0;
+  const names: BlockedName[] = [];
+  if (zones.length) {
+    sampleBlockedNames.forEach((name, i) => {
+      const count = Math.floor(400 / (i + 1) + r() * 20);
+      const zone = zones[i % zones.length];
+      if (zone) byList[zone] = (byList[zone] ?? 0) + count;
+      else own += count;
+      names.push({ name, count, last: new Date(Date.now() - Math.floor(r() * 600_000)).toISOString(), list: zone || undefined, entry: '*.' + name.slice(name.indexOf('.') + 1) });
+    });
+  }
+  const blocked = own + Object.values(byList).reduce((a, b) => a + b, 0);
+  return { since: zones.length ? new Date(Date.now() - 3600_000).toISOString() : undefined, blocked, own, byList, allowed: (m.dns.allowed ?? []).length ? 17 : 0, names };
 }

@@ -22,7 +22,9 @@ type mockSystem struct {
 	start time.Time
 	model func() (*pf.Model, error)
 	pf    *mockPf
-	next  run.Runner
+	// dnsNames is how many names the enabled blocklists have.
+	dnsNames func() int
+	next     run.Runner
 }
 
 func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
@@ -97,6 +99,23 @@ peer
 		}
 	case argv[0] == "ping" || argv[0] == "ping6":
 		return mockPing(argv[len(argv)-1], t)
+	case cmd == "unbound-control -c /var/unbound/etc/unbound.conf stats_noreset", cmd == "tail -n 20000 /var/log/daemon":
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		if !m.DNS.Enabled && argv[0] == "unbound-control" {
+			return []byte("error: connect to /var/run/unbound.sock: No such file or directory\n"), fmt.Errorf("exit status 1")
+		}
+		if argv[0] == "tail" {
+			out = mockDaemonLog(m, time.Now())
+		} else {
+			out = mockUnboundStats(m, t)
+		}
+	case cmd == "unbound-control -c /var/unbound/etc/unbound.conf status":
+		out = "version: 1.26.1\nverbosity: 1\nthreads: 1\nmodules: 3 [ respip validator iterator ]\nuptime: 4000 seconds\noptions: control(ssl)\nunbound (pid 29114) is running...\n"
+	case cmd == "ps -A -o rss=,comm=":
+		out = mockUnboundRSS(s.dnsNames())
 	case cmd == "syspatch -c":
 		select {
 		case <-time.After(2 * time.Second): // it fetches from a mirror
