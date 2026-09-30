@@ -131,7 +131,14 @@ export function InterfaceEdit() {
       </Breadcrumbs>
       <PageHeader
         title={iface.name}
-        description={iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`}
+        description={
+          iface.wireguard ? (
+            <>
+              WireGuard tunnel {iface.device} ·{' '}
+              <Anchor component={Link} to={`/services/wireguard/${iface.id}`} size="sm">Its keys, port and devices are on WireGuard VPN</Anchor>
+            </>
+          ) : iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`
+        }
         actions={
           <>
             {iface.vlan && (

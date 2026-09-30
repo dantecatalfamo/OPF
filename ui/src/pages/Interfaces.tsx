@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router';
-import { Badge, Button, Card, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { IconPencil, IconPlus } from '@tabler/icons-react';
@@ -153,7 +153,11 @@ export function Interfaces() {
                   </Field>
                 )}
                 <Field label="Port">
-                  <Mono>{i.device}</Mono> · {s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s) ?? '—'}
+                  <Mono>{i.device}</Mono> ·{' '}
+                  {i.wireguard ? (
+                    // Its keys, port and devices are set on its WireGuard tab.
+                    <Anchor component={Link} to={`/services/wireguard/${i.id}`} size="sm">WireGuard tunnel</Anchor>
+                  ) : s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s) ?? '—'}
                 </Field>
                 <Field label="Traffic">
                   <span className="num">
