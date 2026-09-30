@@ -57,10 +57,11 @@ func sample(t *testing.T) *pf.Model {
 }
 
 type env struct {
-	t    *testing.T
-	root string
-	m    *Manager
-	run  *runner
+	t     *testing.T
+	root  string
+	state string
+	m     *Manager
+	run   *runner
 }
 
 // newEnv is a system whose files are what the sample model generates.
@@ -95,7 +96,8 @@ func newEnv(t *testing.T, timeout time.Duration) *env {
 	write(pf.RootKeyPath, []byte(". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"))
 
 	r := &runner{}
-	store, err := config.New(config.Options{Root: root, StateDir: t.TempDir(), Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: timeout})
+	state := t.TempDir()
+	store, err := config.New(config.Options{Root: root, StateDir: state, Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: timeout})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +106,7 @@ func newEnv(t *testing.T, timeout time.Duration) *env {
 		t.Fatal(err)
 	}
 	m.Runner = r // nothing runs for real
-	return &env{t: t, root: root, m: m, run: r}
+	return &env{t: t, root: root, state: state, m: m, run: r}
 }
 
 func (e *env) live() *Config {

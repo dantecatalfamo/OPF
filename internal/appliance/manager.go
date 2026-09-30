@@ -451,6 +451,20 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 			liveGen[pf.RcPath] = merged
 		}
 	}
+	// What OPF last left in each file, from history; a file no commit
+	// has touched yet is judged against what the applied model
+	// generates, the best there is.
+	written, err := m.lastWritten()
+	if err != nil {
+		return nil, err
+	}
+	lastWrite := func(path string) (content []byte, exists bool) {
+		if w, ok := written[path]; ok {
+			return w.content, w.exists
+		}
+		prev, ok := liveGen[path]
+		return []byte(prev), ok
+	}
 	var removed []config.File // generated before, not any more
 	type file struct {
 		f       config.File
@@ -471,13 +485,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		if onDisk && bytes.Equal(disk, want) {
 			continue // no change to this file
 		}
-		// What OPF last wrote there, if anything.
-		prev, known := liveGen[path]
-		outside := onDisk != known || (known && !bytes.Equal(disk, config.Normalize([]byte(prev))))
+		// What OPF last wrote there, if anything. Not what it would
+		// write now: after an upgrade that changes a generator, that
+		// differs from every file it wrote before.
+		prev, wrote := lastWrite(path)
+		outside := onDisk != wrote || (wrote && !bytes.Equal(disk, config.Normalize(prev)))
 		if path == pf.RcPath {
 			// Only OPF's own lines count; the rest isn't OPF's, and a
 			// missing file means rc.conf's defaults.
-			outside = known && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(prev))
+			outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
 		}
 		if outside && !slices.Contains(req.Overwrite, path) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF; list it in overwrite to replace it"})
@@ -503,7 +519,8 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 			return nil, fmt.Errorf("the model no longer generates %s, which can't be removed", path)
 		}
 		// Don't delete someone's hand edits without asking either.
-		if !bytes.Equal(disk, config.Normalize([]byte(liveGen[path]))) && !slices.Contains(req.Overwrite, path) {
+		prev, wrote := lastWrite(path)
+		if (!wrote || !bytes.Equal(disk, config.Normalize(prev))) && !slices.Contains(req.Overwrite, path) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF, and the change removes it; list it in overwrite to remove it"})
 		}
 		removed = append(removed, f)
@@ -543,6 +560,42 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		return &Staged{Version: liveVersion, Base: liveVersion, Model: req.Model, Changes: []FileChange{}}, nil
 	}
 	return m.staged()
+}
+
+// writtenFile is a file as OPF last left it.
+type writtenFile struct {
+	content []byte
+	exists  bool
+}
+
+// lastWritten returns each file some commit touched, as OPF last left
+// it: the newest commit's new copy, or its old one if the commit was
+// reverted or failed, since OPF put that back. (An interrupted one is
+// reverted on recovery.)
+func (m *Manager) lastWritten() (map[string]writtenFile, error) {
+	entries, err := m.store.History() // newest first
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]writtenFile{}
+	for _, e := range entries {
+		old := e.Status == config.StatusReverted || e.Status == config.StatusFailed || e.Status == config.StatusApplying
+		for _, f := range e.Files {
+			if _, seen := out[f.Path]; seen {
+				continue
+			}
+			if f.Removed && !old {
+				out[f.Path] = writtenFile{}
+				continue
+			}
+			data, exists, err := m.store.EntryContent(e.ID, f.Name, old)
+			if err != nil {
+				return nil, err
+			}
+			out[f.Path] = writtenFile{data, exists}
+		}
+	}
+	return out, nil
 }
 
 func generated(model *pf.Model) map[string]string {

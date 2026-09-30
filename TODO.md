@@ -332,13 +332,6 @@ In order. Each step's details are in the section it points to.
 - [ ] Run downloads as a dedicated `_opffetch` user created at install,
       rather than the web process's user, so the fetcher can't signal
       the web process or the other way round.
-- [ ] **Outside changes are judged against what the current generator
-      would write** for the applied model, so an OPF upgrade that
-      changes generated text (a comment, say) makes every such file look
-      hand-edited on the next change, and asks to overwrite it. Compare
-      with the copy OPF last wrote (the newest history entry's, or the
-      file as it was when OPF took over) instead. Found when the URL
-      table comment changed.
 - [ ] **IPv6.** Interfaces, NAT and rules are IPv4-first:
       `automaticNat()` only emits `inet` rules, unbound's access-control
       list only has IPv4 networks, lease names are IPv4 only (DHCP and
@@ -1128,6 +1121,15 @@ run.
 ## Done
 
 Finished work, kept here for now. Git history has the details.
+
+Commit engine:
+
+- [x] Outside changes are judged against the copy OPF last wrote (the
+      newest commit's, or the old one it put back after a revert or a
+      failure), so an OPF upgrade that changes a generator's output
+      doesn't make every file look hand-edited. Files no commit has
+      touched yet are still judged against what the applied model
+      generates.
 
 Live data:
 
