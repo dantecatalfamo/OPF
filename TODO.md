@@ -516,11 +516,8 @@ in 7.9 has RPZ, response policy zones, through its respip module):
 - [ ] Per network: apply lists only to some interfaces (the IoT VLAN
       but not the LAN, say) with unbound's views
       (`access-control-view`).
-- [ ] Stats: queries blocked, the top blocked names, and which list
-      blocked a name (`rpz-log`, `log-local-actions`,
-      `unbound-control stats`), feeding the event log and history
-      (Live data). Needs unbound's `remote-control` on a local socket,
-      as the unbound diagnostics do.
+- Stats (queries blocked, top blocked names, which list blocked a name)
+  are under Live data and monitoring › DNS, now and over time.
 - [ ] Keeping devices on the resolver: an optional pf rule sending plain
       DNS (port 53) from inside networks to the firewall, and blocking
       DNS over TLS (853) outbound. DNS over HTTPS looks like any web
@@ -651,6 +648,23 @@ Firewall:
       rows; show them for port forwards and outbound NAT too, and for
       raw rules (which only have a label if their text has one).
 
+DNS:
+
+- [ ] **DNS stats now, on the DNS resolver page** (from `unbound-control
+      stats_noreset`, which doesn't reset the counters OPF's collector
+      will read): queries per second, cache hit rate, recursion time,
+      answers by response code (NOERROR, NXDOMAIN, SERVFAIL), DNSSEC
+      validation failures, and queries blocked, in total and by list
+      (the RPZ counters, `num.rpz.action.*`). Rates from two readings,
+      as for CPU and interfaces (`rate`); a dashboard tile with queries
+      and blocked per second. The control socket is there whenever DHCP
+      names or a blocklist is in use; otherwise say it needs one, or
+      turn it on whenever the resolver is.
+- [ ] Top blocked names and which list blocked each, from unbound's
+      `rpz-log` lines (in daemon's log), for the Blocking tab and for
+      "allow this name". Per-client names are opt-in, like top domains
+      (see Privacy below).
+
 Network, VPN and logs:
 
 - [ ] Interfaces OPF doesn't configure (a spare port, one added by
@@ -698,11 +712,12 @@ Reachability:
 
 DNS:
 
-- [ ] unbound (`unbound-control`): statistics (`stats_noreset`), what
-      it would answer (`lookup`), the cache for a name (`dump_cache`
-      filtered), local data (`list_local_data`, the lease names), and
-      flushing a name or zone (`flush`, `flush_zone`, `flush_bogus`).
-      Needs `remote-control` on a local socket in unbound.conf.
+- [ ] unbound (`unbound-control`): what it would answer (`lookup`),
+      the cache for a name (`dump_cache` filtered), local data
+      (`list_local_data`, the lease names), and flushing a name or zone
+      (`flush`, `flush_zone`, `flush_bogus`). Its statistics are the DNS
+      stats above. Needs `remote-control` on a local socket in
+      unbound.conf.
 - [ ] `unbound-checkconf` output on the DNS page when unbound refuses
       its configuration.
 
@@ -851,8 +866,10 @@ them, so they can be graphed and compared):
       - **DNS** (`unbound-control stats`): queries by type and by
         response code (a rising NXDOMAIN rate often means malware or a
         misconfiguration), cache hit rate, recursion time, DNSSEC
-        validation failures. Top domains and queries per client too,
-        but only opt-in (see privacy below).
+        validation failures, and queries blocked, in total and by
+        blocklist (is a list worth its memory?). Top domains, top
+        blocked names and queries per client too, but only opt-in (see
+        privacy below).
       - **DHCP**: leases given, renewed and released, how full each
         pool is, and pools running out.
       - **Time** (`ntpctl -s all`): clock offset and usable peers.
