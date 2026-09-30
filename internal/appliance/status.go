@@ -316,14 +316,7 @@ func (m *Manager) checkUpdates() {
 	if err != nil {
 		u.Error = "couldn't check for patches: " + firstLine(string(out))
 	} else {
-		for _, l := range strings.Fields(string(out)) {
-			// Patch names are like 013_unbound.
-			if len(l) < 64 && strings.IndexFunc(l, func(r rune) bool {
-				return !(r == '_' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
-			}) < 0 {
-				u.Patches = append(u.Patches, l)
-			}
-		}
+		u.Patches = sysinfo.ParseSyspatch(string(out))
 	}
 	m.updMu.Lock()
 	m.upd, m.updRunning = u, false

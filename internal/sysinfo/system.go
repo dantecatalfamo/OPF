@@ -426,3 +426,25 @@ func ParseNtpctl(out string) (TimeSync, bool) {
 	}
 	return t, true
 }
+
+// ParseSyspatch reads `syspatch -c`: the patches available, one name a
+// line ("015_smtpd"), nothing when the system is up to date. Anything
+// that isn't a patch name is skipped.
+func ParseSyspatch(out string) []string {
+	ps := []string{}
+	for _, l := range lines(out) {
+		l = strings.TrimSpace(l)
+		num, name, ok := strings.Cut(l, "_")
+		if !ok || len(num) != 3 || name == "" || len(l) > 64 {
+			continue
+		}
+		if strings.IndexFunc(num, func(r rune) bool { return r < '0' || r > '9' }) >= 0 ||
+			strings.IndexFunc(name, func(r rune) bool {
+				return !(r == '_' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+			}) >= 0 {
+			continue
+		}
+		ps = append(ps, l)
+	}
+	return ps
+}

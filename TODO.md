@@ -1001,8 +1001,9 @@ skipped and the web process isn't dropped to another user.
       `swapctl` with two devices, and a release other than 7.9.
 - [ ] `ping -6` for an IPv6 gateway, and `kern.boottime` read in the
       parent's time zone matching the system's.
-- [ ] `syspatch -c` output when patches are available (names one per
-      line is assumed), and its error when the mirror can't be reached.
+- [ ] `syspatch -c`'s error when the mirror can't be reached (its
+      output with patches available is in
+      `internal/sysinfo/testdata/openbsd-other/`).
 - [ ] Parent pledge: confirm `stdio rpath wpath cpath fattr chown proc
       exec id` covers fork, setuid in the child before exec, socketpair,
       atomic writes with chown, and running every check/apply command.

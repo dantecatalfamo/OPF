@@ -12,11 +12,12 @@ import (
 
 var update = flag.Bool("update", false, "rewrite the golden files")
 
-// Output captured on real systems, by release, and output written by
+// Output captured on real systems, by release (openbsd-other: real
+// output from systems whose release wasn't recorded), and output written by
 // hand for what the capture host doesn't have (wg, vlan, carp; pflog
 // entries). Handwritten fixtures are checked on real OpenBSD later
 // (TODO.md › Verify on real OpenBSD).
-var fixtureDirs = []string{"openbsd-7.9", "handwritten"}
+var fixtureDirs = []string{"openbsd-7.9", "openbsd-other", "handwritten"}
 
 func fixture(t *testing.T, dir, name string) (string, bool) {
 	t.Helper()
@@ -242,12 +243,29 @@ func FuzzParsers(f *testing.F) {
 		ParseNetstatIfaces(s, s)
 		ParsePing(s)
 		ParseNtpctl(s)
+		ParseSyspatch(s)
 		ParsePfInfo(s)
 		ParsePfMemory(s)
 		ParsePfStates(s, 10)
 		ParsePfRules(s)
 		ParsePflog(s, time.Now(), 10)
 	})
+}
+
+func TestParseSyspatch(t *testing.T) {
+	eachFixture(t, "syspatch_-c.txt", func(t *testing.T, dir, out string) {
+		p := ParseSyspatch(out)
+		if len(p) != 16 || p[0] != "015_smtpd" || p[15] != "030_uidrange" {
+			t.Errorf("got %q", p)
+		}
+	})
+	// Up to date: syspatch prints nothing.
+	if p := ParseSyspatch(""); p == nil || len(p) != 0 {
+		t.Errorf("empty: %#v", p)
+	}
+	if p := ParseSyspatch("syspatch: Error retrieving https://cdn.openbsd.org/...\n"); len(p) != 0 {
+		t.Errorf("error text: %q", p)
+	}
 }
 
 func TestParseNtpctl(t *testing.T) {
