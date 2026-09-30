@@ -444,6 +444,51 @@ Types, roughly in order of usefulness:
 - [ ] `resolv.conf` isn't managed: OPF's own DNS client configuration
       (OpenBSD uses `resolv.conf.tail` with resolvd).
 
+DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
+in 7.9 has RPZ, response policy zones, through its respip module):
+
+- [ ] **One "DNS blocklists" list on the DNS resolver page**: a URL, the
+      format (detected), and how names on it are answered (NXDOMAIN by
+      default, or 0.0.0.0). Two ways in, chosen by format:
+  - **RPZ lists** (OISD, Hagezi and others publish them): an `rpz:`
+    section with `url:`, and unbound downloads, refreshes (on the zone's
+    SOA timers) and applies it itself, in its chroot as `_unbound`, so
+    OPF never touches the data. First check on OpenBSD that unbound's
+    HTTPS download works in the chroot (it needs a CA bundle to verify
+    certificates, `tls-cert-bundle`).
+  - **Everything else**, converted by OPF into one local RPZ zone file
+    that unbound loads, with the downloader the pf lists use (ftp as an
+    unprivileged user, only lines that parse kept, size-capped),
+    downloaded at commit when missing and again on demand, then
+    `unbound-control reload`: hosts files (`0.0.0.0 ads.example.com`,
+    StevenBlack), plain domain lists, and the domain rules of adblock
+    lists (`||ads.example.com^` blocks, `@@||example.com^` excepts).
+- [ ] **Adblock-format lists (EasyList and the like) only partly apply**:
+      element-hiding rules (`##.banner`) and path rules
+      (`example.com/ads/*`) can't be done by DNS, which only sees names,
+      and neither can rules narrowed by options (`$script`,
+      `$third-party`). Use a rule only when it blocks a whole domain; say
+      on the page how many rules were used and how many skipped, and
+      why, and suggest the DNS-oriented lists built from the same
+      sources (AdGuard DNS filter, OISD, Hagezi), which cover far more.
+- [ ] An allowlist that wins over every list, with a way to add a name
+      from the blocked-queries log ("this broke something").
+- [ ] Per network: apply lists only to some interfaces (the IoT VLAN
+      but not the LAN, say) with unbound's views
+      (`access-control-view`).
+- [ ] Stats: queries blocked, the top blocked names, and which list
+      blocked a name (`rpz-log`, `log-local-actions`,
+      `unbound-control stats`), feeding the event log and history
+      (Live data). Needs unbound's `remote-control` on a local socket,
+      as the unbound diagnostics do.
+- [ ] Keeping devices on the resolver: an optional pf rule sending plain
+      DNS (port 53) from inside networks to the firewall, and blocking
+      DNS over TLS (853) outbound. DNS over HTTPS looks like any web
+      traffic and can't be stopped this way; the page says so.
+- [ ] Memory: a million-name list costs unbound real memory; show each
+      list's size, warn on small machines, and check the RPZ zone
+      against unbound's limits before loading.
+
 ## Services
 
 OpenBSD's own daemons, controlled with rcctl. Every service must be
