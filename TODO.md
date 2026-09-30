@@ -438,6 +438,29 @@ Types, roughly in order of usefulness:
       wizard must set it.
 - [ ] No PTR records for leases or reservations: reverse lookups of DHCP
       clients fail.
+- [ ] **Local DNS records**: an editor on the DNS resolver page for any
+      record type, not just host overrides (which are A records today):
+      A, AAAA, CNAME, MX, TXT, SRV, PTR, CAA, NS, written as unbound
+      `local-data:` in zone-file syntax (`local-data-ptr:` for reverse
+      records), each checked for its type (an MX's preference and host,
+      an SRV's priority, weight and port) and shown as the answer a
+      client would get.
+  - Per domain, how names without a record behave (`local-zone:`):
+    `transparent` (your records first, then normal resolution; the
+    default for a domain that also exists outside) or `static` (only
+    your records; "no such name" otherwise, right for `office.arpa`).
+    Say on the page what each means: under `static`, a mistyped name
+    hides nothing but answers nothing either.
+  - Check on OpenBSD before relying on it: how 7.9's unbound (1.26.1)
+    answers a CNAME in `local-data` (whether it follows the target, and
+    to a name outside the local zone), and how a name with some local
+    records but not the type asked for answers under each zone type.
+  - Host overrides and DHCP names become records in the same list,
+    marked by where they came from (a lease, a reservation), so there's
+    one place to see every local name.
+  - Not an authoritative server: no DNSSEC signing of your own zones,
+    no dynamic updates, no zone transfers to secondaries. For a public
+    domain served from here, that's nsd (Services).
 - [ ] A commit reverted by the confirm timeout doesn't kick the lease
       watcher, so names are missing for up to 15 s after unbound
       reloads.
