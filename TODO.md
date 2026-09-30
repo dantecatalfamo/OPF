@@ -225,9 +225,8 @@ diffs, whether confirmation is needed, and the server's objections.
 - **UI:** every page exists. Review, apply, confirm, revert, history and
   undo go through the API (`make mock` runs it against the real engine).
   Leases, the ARP and routing tables, the system, interfaces, gateways,
-  VPN devices and updates are live. pf's own status (connections,
-  per-rule counters, the firewall log and the dashboard's firewall
-  tile) still shows sample data from `ui/src/model/live.ts`.
+  VPN devices, updates, and pf's state table, counters and log are
+  live. `ui/src/model/live.ts` only feeds the offline preview.
 - **Missing:** authentication, importing an existing system.
 - **Never run on OpenBSD.**
 
@@ -511,21 +510,24 @@ System:
 
 Firewall:
 
-- [ ] States (`pfctl -vv -s states`) → `GET /api/pf/states`: the
-      Connections page (sample data today).
-- [ ] Killing states (`pfctl -k`) → `POST /api/pf/kill`: by state id from
-      the Connections page, by address or interface in bulk, and all of
-      a rule's states with `-k label -k opf:rule:<id>`.
-- [ ] Per-rule counters (`pfctl -s labels`, or `pfctl -vv -s rules`) →
-      `GET /api/pf/labels`: evaluations, packets and bytes on the Rules
-      page, matched to model rules by their labels.
-- [ ] pf info (`pfctl -v -s info`) → `GET /api/pf/info`: the firewall
-      dashboard tile (state table size, match rate, drops); interface
-      stats (`pfctl -vv -s Interface`) and memory limits
-      (`pfctl -s memory`).
-- [ ] The firewall log (`tcpdump -n -e -ttt -r /var/log/pflog`) →
-      `GET /api/logs/firewall`, with each entry's rule number mapped to
-      the model rule through `pfctl -vvsr`'s labels (sample data today).
+- [ ] Killing states in bulk: by address or interface, and all of a
+      rule's states (`pfctl -k label -k opf:rule:<id>`), from the rule's
+      menu. One at a time from Connections is done.
+- [ ] Record each state killed in the event log (who, when, which
+      connection) once there's one.
+- [ ] The firewall log: follow pflog0 live (`tcpdump -l -i pflog0`,
+      over a WebSocket) instead of rereading the file, and read the
+      rotated `pflog.0.gz` for older entries.
+- [ ] A log entry's rule is only known for entries after the last
+      commit (pf numbers rules, and a reload renumbers them). Keep the
+      number-to-label map of each loaded ruleset with its commit, so
+      older entries can be matched too.
+- [ ] pf's per-interface statistics (`pfctl -vv -s Interfaces`), memory
+      limits as a meter beside the state table, and the counters in
+      `pfctl -s info` (state-mismatch, memory, congestion) on a pf page.
+- [ ] The Rules page shows counters for form rules and the built-in
+      rows; show them for port forwards and outbound NAT too, and for
+      raw rules (which only have a label if their text has one).
 
 Network, VPN and logs:
 
@@ -984,8 +986,14 @@ skipped and the web process isn't dropped to another user.
       exercise pledge, unveil and the privilege drop.
 - [ ] Status parsers against output they've only seen written by hand
       (`internal/sysinfo/testdata/handwritten/`): `ifconfig` for wg
-      peers (as root), vlan, carp and point-to-point interfaces. Capture
-      them and move them to `testdata/openbsd-<release>/`.
+      peers (as root), vlan, carp and point-to-point interfaces; every
+      pfctl command (`-v -s info` with a loginterface, `-vv -s states`
+      with NAT, port forwards and IPv6, `-vv -s rules` with labels,
+      `-s memory`) and tcpdump's pflog lines (IPv6, anchors, UDP with a
+      decoded payload, truncated packets). Capture them and move them to
+      `testdata/openbsd-<release>/`.
+- [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
+      `-vv -s states` prints it.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors
       (temperatures, fans, volts, drives), `df` with more filesystems,
       `swapctl` with two devices, and a release other than 7.9.
@@ -1065,6 +1073,11 @@ Finished work, kept here for now. Git history has the details.
 
 Live data:
 
+- [x] pf's own state: the dashboard's firewall tile (states, packets
+      blocked a minute on the statistics interface) and recently
+      blocked, Connections from the state table with closing a
+      connection for real, counters on the Rules page by label, and the
+      firewall log with each entry's rule when it's known.
 - [x] The dashboard, Interfaces, Routing's gateways, WireGuard's devices
       and System › General's updates show the running system instead of
       sample data: CPU, load, memory, swap, disks, uptime, hardware and a

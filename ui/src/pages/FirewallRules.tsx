@@ -8,11 +8,12 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { newId, useStore } from '../model/store';
-import { ruleCounters } from '../model/live';
+import { useLive } from '../lib/live';
+import type { RuleCountersResource } from '../lib/api';
 import { useDerived } from '../lib/generated';
 import type { Model, Rule, RuleInput } from '../model/types';
 import { endpointLabel, ifaceName, portLabel, protocolLabel } from '../lib/labels';
-import { formatCount } from '../lib/format';
+import { formatBytes, formatCount } from '../lib/format';
 import { rawAction } from '../lib/pfcheck';
 import { isFloating } from '../lib/rules';
 import { ActionBadge, PageHeader, Mono } from '../components/ui';
@@ -66,11 +67,13 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
   );
 }
 
-function RuleRow({ rule, model, pfText, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
-  rule: Rule; model: Model; pfText?: string; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+function RuleRow({ rule, model, pfText, counters, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
+  rule: Rule; model: Model; pfText?: string; counters?: RuleCountersResource; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
-  const c = ruleCounters[rule.id];
+  // Counters are the loaded rule's, by label; a rule that's only staged,
+  // or disabled, has none yet.
+  const c = counters?.labels[`opf:rule:${rule.id}`];
   const dim = rule.enabled ? undefined : 'dimmed';
   const action = rule.kind === 'raw' ? rawAction(rule.text) : rule.action;
   const pf = showPf || rule.kind === 'raw';
@@ -118,11 +121,11 @@ function RuleRow({ rule, model, pfText, showPf, floating, onEdit, onToggle, onDu
       )}
       <Table.Td ta="right">
         {c ? (
-          <Tooltip label={`${c.evaluations.toLocaleString()} checked · ${c.states} open connections`}>
-            <Text size="sm" c="dimmed" className="num">{formatCount(c.evaluations)}</Text>
+          <Tooltip multiline w={260} label={`${c.packets.toLocaleString()} packets (${formatBytes(c.bytes)}) since the rules were loaded · ${c.states.toLocaleString()} open connections · checked ${c.evaluations.toLocaleString()} times`}>
+            <Text size="sm" c="dimmed" className="num">{formatCount(c.packets)}</Text>
           </Tooltip>
         ) : (
-          <Text size="sm" c="dimmed">New</Text>
+          <Text size="sm" c="dimmed">{!counters ? '…' : !rule.enabled ? 'Off' : 'Not loaded'}</Text>
         )}
       </Table.Td>
       <Table.Td w={44}>
@@ -144,8 +147,10 @@ function RuleRow({ rule, model, pfText, showPf, floating, onEdit, onToggle, onDu
   );
 }
 
-function SystemRow({ action, description, source, destination, port, pf, showPf, to }: {
+function SystemRow({ action, description, source, destination, port, pf, showPf, to, counter }: {
   action: 'pass' | 'block'; description: string; source: string; destination: string; port?: string; pf: string; showPf: boolean; to: string;
+  // Counters by the built-in rule's label; the default block's are over every interface.
+  counter?: RuleCountersResource['labels'][string];
 }) {
   return (
     <Table.Tr style={{ background: 'var(--opf-bg)' }}>
@@ -168,7 +173,13 @@ function SystemRow({ action, description, source, destination, port, pf, showPf,
           <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono c="dimmed">{port ?? 'Any'}</Mono></Table.Td>
         </>
       )}
-      <Table.Td />
+      <Table.Td ta="right">
+        {counter && (
+          <Tooltip multiline w={260} label={`${counter.packets.toLocaleString()} packets (${formatBytes(counter.bytes)}) since the rules were loaded · ${counter.states.toLocaleString()} open connections`}>
+            <Text size="sm" c="dimmed" className="num">{formatCount(counter.packets)}</Text>
+          </Tooltip>
+        )}
+      </Table.Td>
       <Table.Td />
     </Table.Tr>
   );
@@ -179,6 +190,7 @@ export function FirewallRules() {
   const navigate = useNavigate();
   const { staged, edit } = useStore();
   const derived = useDerived(staged).data;
+  const { data: counters } = useLive('ruleCounters');
   const [showPf, setShowPf] = usePref('opf.rules.showPf', false);
   const ifaces = staged.interfaces;
   const floating = param === FLOATING;
@@ -273,10 +285,10 @@ export function FirewallRules() {
               <Table.Tbody>
                 {lan && (
                   <SystemRow action="pass" description="Anti-lockout: always allow this web interface" source={`${lan.name} network`} destination={`${lan.name} address`} port="443, 22"
-                    pf={`pass in quick on $${lan.id} proto tcp to ($${lan.id}) port { 443 22 }`} showPf={showPf} to={`/interfaces/${lan.id}`} />
+                    pf={`pass in quick on $${lan.id} proto tcp to ($${lan.id}) port { 443 22 }`} showPf={showPf} to={`/interfaces/${lan.id}`} counter={counters?.labels['opf:builtin:anti-lockout']} />
                 )}
-                {wan?.blockPrivate && <SystemRow action="block" description="Block private networks" source="<private>" destination="Any" pf={`block in log quick on $${wan.id} from <private>`} showPf={showPf} to={`/interfaces/${wan.id}`} />}
-                {wan?.blockBogons && <SystemRow action="block" description="Block bogon networks" source="<bogons>" destination="Any" pf={`block in log quick on $${wan.id} from <bogons>`} showPf={showPf} to={`/interfaces/${wan.id}`} />}
+                {wan?.blockPrivate && <SystemRow action="block" description="Block private networks" source="<private>" destination="Any" pf={`block in log quick on $${wan.id} from <private>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-private']} />}
+                {wan?.blockBogons && <SystemRow action="block" description="Block bogon networks" source="<bogons>" destination="Any" pf={`block in log quick on $${wan.id} from <bogons>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-bogons']} />}
                 {wan && staged.firewall.forwards.some((f) => f.enabled && f.iface === wan.id) && (
                   <SystemRow action="pass" description={`Port forwards (${staged.firewall.forwards.filter((f) => f.enabled && f.iface === wan.id).length})`} source="See NAT" destination="Forward targets" pf="pass in quick on $wan … rdr-to …" showPf={showPf} to="/firewall/nat" />
                 )}
@@ -287,6 +299,7 @@ export function FirewallRules() {
                         rule={r}
                         model={staged}
                         pfText={derived?.rules[r.id]}
+                        counters={counters}
                         showPf={showPf}
                         floating={floating}
                         onEdit={() => setDrawer({ open: true, rule: r })}
@@ -310,7 +323,7 @@ export function FirewallRules() {
                 )}
                 {!floating && (
                   <SystemRow action="block" description={`Default: block everything else${opts.logDefaultBlock ? ' (logged)' : ''}`} source="Any" destination="Any"
-                    pf={opts.logDefaultBlock ? 'block log all' : 'block all'} showPf={showPf} to="/firewall/settings" />
+                    pf={opts.logDefaultBlock ? 'block log all' : 'block all'} showPf={showPf} to="/firewall/settings" counter={counters?.labels['opf:builtin:default-block']} />
                 )}
               </Table.Tbody>
             </Table>

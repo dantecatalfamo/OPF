@@ -194,6 +194,88 @@ export interface UpdatesResource {
   error?: string;
 }
 
+/** pf's own state (GET /api/pf/status). */
+export interface PfStatusResource {
+  info?: {
+    enabled: boolean;
+    /** Seconds since pf was enabled. */
+    enabledFor?: number;
+    debug?: string;
+    states: number;
+    halfOpenTcp: number;
+    /** Totals since pf was enabled, by pfctl's names (match, state-mismatch...). */
+    counters: Record<string, number>;
+    /** Traffic on the statistics interface (set loginterface). */
+    iface?: { name: string; bytesIn: number; bytesOut: number; packetsInPassed: number; packetsInBlocked: number; packetsOutPassed: number; packetsOutBlocked: number };
+  };
+  stateLimit?: number;
+  /** Packets blocked per second on the statistics interface, lately. */
+  blockedPerSec?: number;
+  errors: string[];
+}
+
+/** One entry of pf's state table. */
+export interface PfState {
+  id: string;
+  creatorId: string;
+  /** The interface it's bound to, or "all". */
+  iface: string;
+  proto: string;
+  direction: 'in' | 'out';
+  /** The ends as the device that opened the connection sees them. */
+  source: string;
+  destination: string;
+  /** The other side of NAT or a port forward, when there is one. */
+  translated?: string;
+  state: string;
+  ageSec: number;
+  expiresSec: number;
+  packets: number;
+  bytes: number;
+  rule: number;
+  /** The label of the rule that created it. */
+  label?: string;
+}
+
+/** GET /api/pf/states */
+export interface PfStatesResource {
+  states: PfState[];
+  truncated?: boolean;
+  error?: string;
+}
+
+/** GET /api/pf/rules/counters: counters by OPF label. */
+export interface RuleCountersResource {
+  labels: Record<string, { evaluations: number; packets: number; bytes: number; states: number }>;
+  error?: string;
+}
+
+/** A packet pf logged. */
+export interface FirewallLogEntry {
+  time: string;
+  rule: number;
+  anchor?: string;
+  reason: string;
+  action: string;
+  direction: 'in' | 'out';
+  /** The device it was logged on. */
+  iface: string;
+  proto?: string;
+  source?: string;
+  destination?: string;
+  info?: string;
+  /** The label of the rule that logged it, when that's known. */
+  label?: string;
+}
+
+/** GET /api/logs/firewall, newest first. */
+export interface FirewallLogResource {
+  entries: FirewallLogEntry[];
+  /** When the loaded rules may last have changed; entries before it have no label. */
+  rulesSince?: string;
+  error?: string;
+}
+
 /** System routing table (GET /api/network/routes). */
 export interface RoutingTableResource {
   ipv4: {
@@ -313,6 +395,12 @@ export const api = {
   updates: () => request<UpdatesResource>('GET', '/system/updates'),
   interfaces: () => request<InterfacesResource>('GET', '/network/interfaces'),
   gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
+  pfStatus: () => request<PfStatusResource>('GET', '/pf/status'),
+  pfStates: () => request<PfStatesResource>('GET', '/pf/states'),
+  /** Ends a connection. It's gone at once; the device can reconnect if the rules allow. */
+  killState: (s: Pick<PfState, 'id' | 'creatorId'>) => request<void>('POST', '/pf/states/kill', { id: s.id, creatorId: s.creatorId }),
+  ruleCounters: () => request<RuleCountersResource>('GET', '/pf/rules/counters'),
+  firewallLog: () => request<FirewallLogResource>('GET', '/logs/firewall'),
 
   /** A model's pf.conf, each line with where it came from. */
   pfRuleset: async (model: Model) => (await request<{ lines: PfLine[] }>('POST', '/pf/ruleset', { model })).lines,

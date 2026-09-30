@@ -3,7 +3,7 @@
 // stops while the tab is hidden.
 import { useEffect, useState } from 'react';
 import { backend } from '../model/store';
-import type { GatewaysResource, InterfaceState, InterfacesResource, RoutingTableResource, SystemResource, UpdatesResource, WgPeerState } from './api';
+import type { FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfStatesResource, PfStatusResource, RoutingTableResource, RuleCountersResource, SystemResource, UpdatesResource, WgPeerState } from './api';
 import type { Iface, Peer } from '../model/types';
 
 const sources = {
@@ -13,6 +13,10 @@ const sources = {
   // Quickly while a check runs, so its answer shows when it arrives.
   updates: { load: () => backend.updates(), ms: (d?: UpdatesResource) => (d?.checking ? 3000 : 60_000) },
   routes: { load: () => backend.routingTable(), ms: 30_000 },
+  pfStatus: { load: () => backend.pfStatus(), ms: 5000 },
+  pfStates: { load: () => backend.pfStates(), ms: 5000 },
+  ruleCounters: { load: () => backend.ruleCounters(), ms: 10_000 },
+  firewallLog: { load: () => backend.firewallLog(), ms: 10_000 },
 };
 
 interface Types {
@@ -21,6 +25,10 @@ interface Types {
   gateways: GatewaysResource;
   updates: UpdatesResource;
   routes: RoutingTableResource;
+  pfStatus: PfStatusResource;
+  pfStates: PfStatesResource;
+  ruleCounters: RuleCountersResource;
+  firewallLog: FirewallLogResource;
 }
 type Key = keyof Types;
 
@@ -61,6 +69,11 @@ if (typeof document !== 'undefined') {
 }
 
 /** The latest answer for key, polled while the component is mounted. */
+/** Asks for key again now, after a change (ending a connection, say). */
+export function refreshLive(key: Key) {
+  poll(key);
+}
+
 export function useLive<K extends Key>(key: K): Live<Types[K]> {
   let p = pollers.get(key);
   if (!p) {

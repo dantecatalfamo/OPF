@@ -2,31 +2,11 @@
 // netstat and friends. Sample values for the preview build, which has no
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
-import type { GatewaysResource, InterfaceState, InterfacesResource, SystemResource, UpdatesResource } from '../lib/api';
+import type {
+  FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  RuleCountersResource, SystemResource, UpdatesResource,
+} from '../lib/api';
 import type { Iface, Model } from './types';
-
-export const pfStats = {
-  states: 318,
-  stateLimit: 100_000,
-  blockedLastHour: 1_482,
-  passedLastHour: 912_004,
-};
-
-export const ruleCounters: Record<string, { evaluations: number; states: number }> = {
-  r1: { evaluations: 20_411, states: 3 },
-  r2: { evaluations: 20_411, states: 0 },
-  r3: { evaluations: 1_204_998, states: 241 },
-  r4: { evaluations: 18_320, states: 12 },
-  r5: { evaluations: 18_320, states: 0 },
-  r6: { evaluations: 11_002, states: 38 },
-  r7: { evaluations: 4_120, states: 9 },
-  r8: { evaluations: 2_310, states: 6 },
-  r9: { evaluations: 20_411, states: 1 },
-  r10: { evaluations: 1_402_118, states: 0 },
-  r11: { evaluations: 88_120, states: 2 },
-  r12: { evaluations: 0, states: 0 },
-  r13: { evaluations: 3_870, states: 17 },
-};
 
 // Deterministic pseudo-random so the preview looks the same each load.
 function rng(seed: number) {
@@ -59,77 +39,80 @@ export const leases: Lease[] = [
   { ip: '192.168.20.117', mac: 'd8:f1:5b:8e:22:90', hostname: 'tv-lobby', iface: 'iot', expiresInMin: 38 },
 ];
 
-export interface Connection {
-  id: string;
-  proto: 'tcp' | 'udp' | 'icmp';
-  iface: string;
-  source: string;
-  destination: string;
-  nat?: string;
-  state: string;
-  ageSec: number;
-  bytes: number;
-}
-
 const hosts = ['192.168.1.112', '192.168.1.118', '192.168.1.131', '192.168.1.20', '192.168.20.101', '192.168.20.102', '10.8.0.2', '192.168.1.144'];
 const remotes = ['140.82.112.4:443', '151.101.1.140:443', '9.9.9.9:853', '17.253.144.10:443', '52.94.236.248:443', '142.250.72.110:443', '104.16.132.229:443', '93.184.215.14:80'];
 
-export function connections(): Connection[] {
+// The first enabled rule on an interface, for the sample's states.
+const firstRule = (m: Model, iface: string) => m.firewall.rules.find((r) => r.enabled && r.interfaces.length === 1 && r.interfaces[0] === iface);
+
+export function samplePfStates(m: Model, closed: Set<string>): PfStatesResource {
   const r = rng(99);
-  const out: Connection[] = [];
+  const states: PfState[] = [];
   for (let i = 0; i < 42; i++) {
     const src = hosts[Math.floor(r() * hosts.length)];
     const proto = r() < 0.78 ? 'tcp' : r() < 0.9 ? 'udp' : 'icmp';
     const dst = proto === 'icmp' ? remotes[Math.floor(r() * remotes.length)].split(':')[0] : remotes[Math.floor(r() * remotes.length)];
     const iface = src.startsWith('192.168.20.') ? 'iot' : src.startsWith('10.8.') ? 'wg' : 'lan';
-    out.push({
-      id: `s${1000 + i}`,
-      proto,
-      iface,
+    const rule = firstRule(m, iface);
+    const id = `6505b0d4${i.toString(16).padStart(8, '0')}`;
+    states.push({
+      id, creatorId: '1c9d3f2a', iface: 'all', proto, direction: 'out',
       source: proto === 'icmp' ? src : `${src}:${49152 + Math.floor(r() * 16000)}`,
       destination: dst,
-      nat: `203.0.113.24:${50000 + Math.floor(r() * 15000)}`,
-      state: proto === 'tcp' ? (r() < 0.85 ? 'ESTABLISHED' : 'FIN_WAIT_2') : proto === 'udp' ? 'MULTIPLE' : '0:0',
-      ageSec: Math.floor(r() * 7200),
+      translated: `203.0.113.24:${50000 + Math.floor(r() * 15000)}`,
+      state: proto === 'tcp' ? (r() < 0.85 ? 'ESTABLISHED:ESTABLISHED' : 'FIN_WAIT_2:FIN_WAIT_2') : proto === 'udp' ? 'MULTIPLE:SINGLE' : '0:0',
+      ageSec: Math.floor(r() * 7200), expiresSec: 86400,
+      packets: Math.floor(r() * 90_000),
       bytes: Math.floor(r() * r() * 400_000_000),
+      rule: 7, label: rule && `opf:rule:${rule.id}`,
     });
   }
-  return out;
-}
-
-export interface LogEntry {
-  id: string;
-  time: string;
-  action: 'block' | 'pass';
-  iface: string;
-  proto: string;
-  source: string;
-  destination: string;
-  rule: string;
+  return { states: states.filter((x) => !closed.has(x.id)) };
 }
 
 const attackers = ['198.51.100.23', '198.51.100.201', '185.220.101.4', '45.95.147.10', '162.142.125.9', '192.0.2.66'];
 const ports = ['22', '23', '3389', '445', '8080', '5060', '1433', '443'];
 
-export function logEntries(): LogEntry[] {
+export function sampleFirewallLog(m: Model): FirewallLogResource {
   const r = rng(3);
-  const out: LogEntry[] = [];
   const now = Date.now();
+  const device = (id: string) => m.interfaces.find((i) => i.id === id)?.device ?? id;
+  const byDescription = (d: string) => m.firewall.rules.find((x) => x.description === d);
+  const entries: FirewallLogEntry[] = [];
   for (let i = 0; i < 36; i++) {
     const t = new Date(now - i * (8000 + r() * 40_000));
     const iot = r() < 0.18;
-    out.push({
-      id: `l${i}`,
-      time: t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      action: 'block',
-      iface: iot ? 'iot' : 'wan',
+    const named = iot ? byDescription('Keep IoT devices off the LAN') : r() < 0.3 ? byDescription('Drop known-bad networks') : undefined;
+    entries.push({
+      time: t.toISOString(), rule: 0, reason: 'match', action: 'block', direction: 'in',
+      iface: device(iot ? 'iot' : 'wan'),
       proto: iot ? 'tcp' : r() < 0.8 ? 'tcp' : 'udp',
       source: iot ? `192.168.20.10${1 + Math.floor(r() * 3)}:${40000 + Math.floor(r() * 9000)}` : `${attackers[Math.floor(r() * attackers.length)]}:${1024 + Math.floor(r() * 60000)}`,
       destination: iot ? `192.168.1.${[20, 112, 118][Math.floor(r() * 3)]}:${['445', '22', '80'][Math.floor(r() * 3)]}` : `203.0.113.24:${ports[Math.floor(r() * ports.length)]}`,
-      rule: iot ? 'Keep IoT devices off the LAN' : r() < 0.3 ? 'Drop known-bad networks' : 'Default: block incoming',
+      label: named ? `opf:rule:${named.id}` : 'opf:builtin:default-block',
     });
   }
-  return out;
+  return { entries };
+}
+
+export function sampleRuleCounters(m: Model): RuleCountersResource {
+  const r = rng(11);
+  return {
+    labels: Object.fromEntries(m.firewall.rules.filter((x) => x.enabled).map((x) => {
+      const evaluations = Math.floor(r() * 1_400_000);
+      const packets = Math.floor(evaluations * r() * r());
+      return [`opf:rule:${x.id}`, { evaluations, packets, bytes: packets * 700, states: Math.floor(r() * 40) }];
+    })),
+  };
+}
+
+export function samplePfStatus(states: number): PfStatusResource {
+  return {
+    info: { enabled: true, enabledFor: (23 * 24 + 5) * 3600, debug: 'err', states, halfOpenTcp: 2, counters: { match: 41_203_311, 'state-mismatch': 207 } },
+    stateLimit: 100_000,
+    blockedPerSec: 0.4 + 0.3 * Math.sin(Date.now() / 20_000),
+    errors: [],
+  };
 }
 
 export interface RouteEntry {

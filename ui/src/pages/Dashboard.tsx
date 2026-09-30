@@ -5,11 +5,11 @@ import { AreaChart } from '@mantine/charts';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { tunnels } from '../model/types';
-import { logEntries, pfStats } from '../model/live';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
+import { labelOwner } from '../lib/pfLabels';
 import type { InterfacesResource } from '../lib/api';
 import { formatBits, formatBytes, formatCount, formatDuration } from '../lib/format';
-import { ifaceName } from '../lib/labels';
+import { deviceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
 
 function Tile({ icon: Icon, label, value, detail, state }: {
@@ -61,6 +61,12 @@ function useTraffic(live: InterfacesResource | undefined, device: string | undef
   return series;
 }
 
+// An address without its port: 1.2.3.4:443 → 1.2.3.4, [2001:db8::1]:443 → 2001:db8::1.
+function hostOnly(a: string): string {
+  if (a.startsWith('[')) return a.slice(1, a.indexOf(']'));
+  return a.split(':').length === 2 ? a.split(':')[0] : a;
+}
+
 function Meter({ label, used, total, format }: { label: string; used?: number; total?: number; format?: (n: number) => string }) {
   if (used === undefined || !total) {
     return (
@@ -97,7 +103,11 @@ export function Dashboard() {
   const vpns = tunnels(applied);
   const peers = vpns.flatMap((t) => t.wireguard.peers.map((p) => ({ tunnel: t, peer: p })));
   const connectedPeers = peers.filter(({ tunnel, peer }) => peerOnline(peerState(ifs, tunnel, peer))).length;
-  const blocked = logEntries().slice(0, 5);
+  const { data: pfs } = useLive('pfStatus');
+  const { data: log } = useLive('firewallLog');
+  const blocked = (log?.entries ?? []).filter((e) => e.action === 'block').slice(0, 5);
+  const blockedPerMin = pfs?.blockedPerSec !== undefined ? Math.round(pfs.blockedPerSec * 60) : undefined;
+  const statsIface = pfs?.info?.iface ? applied.interfaces.find((i) => i.device === pfs.info!.iface!.name)?.name ?? pfs.info.iface.name : undefined;
   const hardware = sys && [[sys.vendor, sys.product].filter(Boolean).join(' '), sys.cpuModel, `${sys.cpus} ${sys.cpus === 1 ? 'core' : 'cores'}`].filter(Boolean).join(' · ');
   const patches = upd?.patches.length ?? 0;
   const disks = sys?.disks ?? [];
@@ -123,9 +133,9 @@ export function Dashboard() {
         <Tile
           icon={IconShieldHalf}
           label="Firewall"
-          value={`${formatCount(pfStats.states)} connections`}
-          detail={`${formatCount(pfStats.blockedLastHour)} blocked in the last hour`}
-          state="ok"
+          value={!pfs ? '…' : !pfs.info ? 'Unknown' : !pfs.info.enabled ? 'Disabled' : `${formatCount(pfs.info.states)} states`}
+          detail={pfs?.info && !pfs.info.enabled ? 'pf isn’t filtering anything' : blockedPerMin !== undefined && statsIface ? `${formatCount(blockedPerMin)} packets a minute blocked on ${statsIface}` : 'Connections through and to the firewall'}
+          state={!pfs || (pfs.info?.enabled ?? false) ? 'ok' : 'bad'}
         />
         <Tile
           icon={IconServer2}
@@ -269,22 +279,23 @@ export function Dashboard() {
             </SectionTitle>
             <Table verticalSpacing={6} horizontalSpacing={0} fz="sm">
               <Table.Tbody>
-                {blocked.map((b) => (
-                  <Table.Tr key={b.id}>
+                {blocked.map((b, i) => (
+                  <Table.Tr key={`${b.time}-${i}`}>
                     <Table.Td>
-                      <Mono>{b.source.split(':')[0]}</Mono>
+                      <Mono>{hostOnly(b.source ?? '—')}</Mono>
                       <Text size="xs" c="dimmed">
-                        {b.rule}
+                        {labelOwner(applied, b.label)?.text ?? `pf rule ${b.rule}`}
                       </Text>
                     </Table.Td>
                     <Table.Td ta="right" style={{ verticalAlign: 'top' }}>
-                      <Badge color="gray" size="sm">{ifaceName(applied, b.iface)}</Badge>
-                      <Text size="xs" c="dimmed" className="num">{b.time}</Text>
+                      <Badge color="gray" size="sm">{deviceName(applied, b.iface)}</Badge>
+                      <Text size="xs" c="dimmed" className="num">{new Date(b.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
+            {log && blocked.length === 0 && <Text size="sm" c="dimmed">Nothing blocked has been logged yet.</Text>}
           </Card>
         </Grid.Col>
       </Grid>
