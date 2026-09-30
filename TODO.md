@@ -586,6 +586,24 @@ Daemons, by how much an appliance needs them:
       (802.1X, VPN auth), ldapd, ftpd and ftpproxy, isakmpd (legacy IKEv1;
       prefer iked), sasyncd (IPsec failover with carp), ldpd (MPLS),
       dvmrpd and mrouted (multicast), hostapd (Wi-Fi access point), lpd.
+- [ ] **vmd** (virtual machines, with vmm(4) and vmctl), off unless
+      asked for, for a few small services kept apart from the host. A
+      deliberate trade-off: a vmm bug or a compromised guest sits on the
+      box that guards the network (vmm has had security fixes), so the
+      page says so before it's turned on.
+  - Check the hardware first (VT-x with EPT, or AMD-V with RVI, in
+    dmesg's vmm lines); many small firewall boxes have neither.
+  - Guests are OpenBSD or Linux with a serial console only, one vCPU
+    each, no device passthrough; say so rather than let someone find
+    out.
+  - Each guest gets a network of its own behind the firewall's rules,
+    never the LAN's: vmd's local interfaces (a /31 each, NATed), or
+    `tap` interfaces on a `veb` bridge (Interfaces › veb), with the pf
+    rules and addresses generated like any other network's.
+  - Managed: `vm.conf` (disks, memory, networks, boot image or ISO),
+    disk images (`vmctl create`), start and stop, the console in the
+    page (`vmctl console`, over a WebSocket through the parent), and
+    each guest's status and resource use (`vmctl status`).
 
 ## Live data and monitoring
 
