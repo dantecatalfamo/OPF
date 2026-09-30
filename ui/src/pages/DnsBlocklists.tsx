@@ -137,15 +137,6 @@ export function DnsBlocklists() {
         <Text size="sm" c="dimmed">
           Names on these lists, such as ad and tracker servers, don’t resolve for devices using this resolver. Lists are downloaded when you apply them and again on a schedule. Every list a Pi-hole takes works here. Browser lists like EasyList only partly apply: DNS sees names, not pages, so OPF uses their rules for whole names and says how many it left out.
         </Text>
-        <Group gap="sm" align="center">
-          <Text size="sm" fw={500}>Answer blocked names with</Text>
-          <SegmentedControl
-            size="xs"
-            value={answer}
-            onChange={(v) => setDns(v ? 'Blocked names answer “no such name”' : 'Blocked names answer 0.0.0.0', (d) => ({ ...d, blockAnswer: v as '' | 'nxdomain' }))}
-            data={[{ value: '', label: '0.0.0.0, like Pi-hole' }, { value: 'nxdomain', label: 'No such name' }]}
-          />
-        </Group>
         <BlocklistMemory status={status} />
         {lists.length ? (
           <Table.ScrollContainer minWidth={460}>
@@ -191,6 +182,16 @@ export function DnsBlocklists() {
         ) : (
           <Empty>No blocklists. Add one of the well-known lists to start.</Empty>
         )}
+        {/* How blocked names are answered, a setting, after the lists. */}
+        <Group gap="sm" align="center">
+          <Text size="sm" fw={500}>Answer blocked names with</Text>
+          <SegmentedControl
+            size="xs"
+            value={answer}
+            onChange={(v) => setDns(v ? 'Blocked names answer “no such name”' : 'Blocked names answer 0.0.0.0', (d) => ({ ...d, blockAnswer: v as '' | 'nxdomain' }))}
+            data={[{ value: '', label: '0.0.0.0, like Pi-hole' }, { value: 'nxdomain', label: 'No such name' }]}
+          />
+        </Group>
       </Stack>
       <ListModal
         list={modal}

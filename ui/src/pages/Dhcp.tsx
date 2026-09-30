@@ -209,20 +209,23 @@ export function Dhcp() {
           </Stack>
         </Card>
       ) : (
-        <Grid gutter="md">
-          <Grid.Col span={{ base: 12, lg: 5 }}>
-            <ScopeSettings iface={iface} scope={scope} />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 7 }}>
-            <Stack gap="md">
-              <Card>
-                <HistoryCard
-                  title={`Leases in use${poolSize(scope.rangeStart, scope.rangeEnd) ? ` of ${poolSize(scope.rangeStart, scope.rangeEnd)}` : ''}`}
-                  series={[{ key: `dhcp.${iface.id}.leases`, label: 'Leases', color: 'harbor.6' }]}
-                  format={(n) => String(Math.round(n))}
-                  h={140}
-                />
-              </Card>
+        // What's happening, how it's set up (with the reservations you
+        // make beside it), then the connected devices, a list that grows
+        // on its own, so the settings stay put however many there are.
+        <Stack gap="md">
+          <Card>
+            <HistoryCard
+              title={`Leases in use${poolSize(scope.rangeStart, scope.rangeEnd) ? ` of ${poolSize(scope.rangeStart, scope.rangeEnd)}` : ''}`}
+              series={[{ key: `dhcp.${iface.id}.leases`, label: 'Leases', color: 'harbor.6' }]}
+              format={(n) => String(Math.round(n))}
+              h={140}
+            />
+          </Card>
+          <Grid gutter="md">
+            <Grid.Col span={{ base: 12, lg: 5 }}>
+              <ScopeSettings iface={iface} scope={scope} />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, lg: 7 }}>
               <Card>
                 <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, initial: null })}>Reserve address</Button>}>
                   Reserved addresses
@@ -247,9 +250,11 @@ export function Dhcp() {
                     </Table>
                   </Table.ScrollContainer>
                 ) : (
-                  <Empty>No reservations. Reserve an address from the device list below.</Empty>
+                  <Empty>No reservations. Reserve an address from the connected devices below.</Empty>
                 )}
               </Card>
+            </Grid.Col>
+            <Grid.Col span={12}>
               <Card>
                 <SectionTitle right={<Badge color="gray">{ifaceLeases.length} devices</Badge>}>Connected devices</SectionTitle>
                 {leasesFailed && <Alert color="red" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {leasesFailed}</Alert>}
@@ -298,9 +303,9 @@ export function Dhcp() {
                 {leaseData && ifaceLeases.length === 0 && <Empty>No devices have an address yet.</Empty>}
                 {leaseData?.truncated && <Text size="xs" c="dimmed">Showing the first 5000 leases.</Text>}
               </Card>
-            </Stack>
-          </Grid.Col>
-        </Grid>
+            </Grid.Col>
+          </Grid>
+        </Stack>
       )}
       {scope && <ReservationModal opened={modal.open} onClose={() => setModal((m) => ({ ...m, open: false }))} iface={iface} scope={scope} initial={modal.initial} />}
     </>

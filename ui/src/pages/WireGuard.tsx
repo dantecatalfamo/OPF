@@ -684,15 +684,17 @@ export function WireGuardPage() {
               </Tabs.List>
             </Tabs>
           )}
+          {/* What's happening, how it's set up, then the devices, a list that
+              grows, so the settings stay put however many connect. */}
           <Grid gutter="md">
+            <Grid.Col span={12}>
+              <TunnelTraffic tunnel={tunnel} />
+            </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <TunnelSettings tunnel={tunnel} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 7 }}>
               <TrafficFlow tunnel={tunnel} />
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <TunnelTraffic tunnel={tunnel} />
             </Grid.Col>
             <Grid.Col span={12}>
               <Devices tunnel={tunnel} />

@@ -191,19 +191,24 @@ export function Dns() {
           <Tabs.Tab value="blocking" rightSection={enabledLists ? <Badge size="xs" variant="light" circle>{enabledLists}</Badge> : undefined}>Blocking</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="blocking">
-          <Grid gutter="md">
-            <Grid.Col span={{ base: 12, lg: 7 }}>
-              <Stack gap="md">
+          {/* The lists and your own names, then what they blocked, a list
+              that changes by itself. */}
+          <Stack gap="md">
+            <Grid gutter="md">
+              <Grid.Col span={{ base: 12, lg: 7 }}>
                 <DnsBlocklists />
-                <DnsBlockedNames />
-              </Stack>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 5 }}>
-              <DnsOwnNames />
-            </Grid.Col>
-          </Grid>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, lg: 5 }}>
+                <DnsOwnNames />
+              </Grid.Col>
+            </Grid>
+            <DnsBlockedNames />
+          </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="resolver">
+          {/* What's happening, how it's set up, then the names: the DHCP
+              devices' list grows on its own, beside the settings rather
+              than above them. */}
           <DnsStatsCard />
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 5 }}>

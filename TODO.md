@@ -954,6 +954,13 @@ them, so they can be graphed and compared):
 
 ## UI
 
+- Page order, for pages that show a service's state and its settings
+  (DNS, DHCP, WireGuard, Routing): what's happening now (its numbers and
+  graph) first, then its settings, then the lists that grow on their own
+  (connected devices, leases, blocked names). A growing list above the
+  settings would push them down as devices connect, and an admin would
+  have to hunt for them. Lists only the admin adds to (reservations,
+  host names, blocklists) can sit beside the settings.
 - [ ] Responsive design: usable from phones to large monitors, since
       admins may need to check status or make an urgent change from a
       phone. Test at phone (375px), tablet (768px), laptop (1024px) and

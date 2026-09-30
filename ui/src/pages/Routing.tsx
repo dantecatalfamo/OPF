@@ -103,6 +103,17 @@ function Gateways() {
   const inUse = (id: string) => r.routes.some((x) => x.gateway === id) || staged.firewall.rules.some((x) => x.kind === 'form' && (x.gateway === id || x.replyTo === id)) || r.defaultGateway === id;
   return (
     <>
+      {/* What's happening, then the gateways themselves. */}
+      {staged.routing.gateways.length > 0 && (
+        <Card mb="md">
+          <HistoryCard
+            title="Latency"
+            series={staged.routing.gateways.map((g, i) => ({ key: `gw.${g.id}.rtt`, label: g.name, color: ['harbor.6', 'amber.6', 'grape.6', 'teal.6'][i % 4] }))}
+            format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)} ms`}
+            peaks
+          />
+        </Card>
+      )}
       <Group justify="space-between" mb="md">
         <Text size="sm" c="dimmed">The default gateway carries internet traffic. Others are used by static routes and by firewall rules that route traffic.</Text>
         <Button leftSection={<IconPlus size={16} />} onClick={() => setModal({ open: true, gateway: null })}>Add gateway</Button>
@@ -172,16 +183,6 @@ function Gateways() {
           </Table>
         </Table.ScrollContainer>
       </Card>
-      {staged.routing.gateways.length > 0 && (
-        <Card mt="md">
-          <HistoryCard
-            title="Latency"
-            series={staged.routing.gateways.map((g, i) => ({ key: `gw.${g.id}.rtt`, label: g.name, color: ['harbor.6', 'amber.6', 'grape.6', 'teal.6'][i % 4] }))}
-            format={(n) => `${n < 10 ? n.toFixed(1) : Math.round(n)} ms`}
-            peaks
-          />
-        </Card>
-      )}
       <GatewayModal opened={modal.open} onClose={() => setModal((x) => ({ ...x, open: false }))} gateway={modal.gateway} />
     </>
   );
