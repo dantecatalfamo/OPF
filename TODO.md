@@ -535,7 +535,140 @@ Network, VPN and logs:
       tunnel and peer.
 - [ ] System logs → `GET /api/logs/{dmesg,messages,daemon,authlog}`: a
       Diagnostics › System logs page with a tab each.
-- [ ] Diagnostics tools: ping, traceroute, DNS lookup.
+
+Diagnostics tools (everything in the base system that helps someone
+work out what's wrong, each with a form rather than a command line):
+
+- [ ] **How they run.** Only through the parent, as a fixed argv built
+      from validated fields (never a shell, never free-form flags), with
+      a time limit, an output cap, one run at a time per tool, and the
+      output streamed to the page. Addresses and names are checked like
+      the model's; interfaces come from a list. Tools that change
+      something (killing states, flushing a cache, waking a device) are
+      actions that say what they'll do, and later need the operator
+      role (Security › User accounts). Record each run in the event log.
+- [ ] Every tool page offers the next useful step: a ping that fails
+      offers a traceroute, a DNS answer offers a ping, a lookup of an
+      address offers "which rule allows this" (the packet tester).
+
+Reachability:
+
+- [ ] Ping (`ping`, `ping6`): count, size, interval, source address or
+      interface, don't-fragment (`-D -s`) to find the path MTU. Show
+      loss and round-trip min/avg/max as they arrive.
+- [ ] Traceroute (`traceroute`, `traceroute6`): UDP, ICMP (`-P icmp`)
+      or TCP to a port, source interface, AS numbers (`-A`), each hop
+      with its name and times.
+- [ ] Port test (`nc -z -v`, `nc -u`): does a TCP or UDP port answer,
+      from a chosen source address, with a time limit.
+- [ ] Fetch a URL (`ftp -o - -M`, headers only or the first bytes):
+      proves DNS, routing, NAT and TLS together.
+- [ ] TLS check (`openssl s_client -connect -servername`): the
+      certificate chain, expiry, protocol and cipher of a server.
+- [ ] Throughput (`tcpbench`): between the firewall and a device on the
+      network running `tcpbench -s` (or the reverse), for testing a link
+      without the firewall's own traffic in the way.
+- [ ] Wake-on-LAN (`arp -W`): wake a device by MAC address on an
+      interface, with the DHCP reservations and ARP table as a picker.
+
+DNS:
+
+- [ ] Lookup (`dig`, `host`): any record type, against unbound or a
+      chosen server, with `+trace` and DNSSEC (`+dnssec`) output, so
+      "is it the resolver or upstream?" can be answered.
+- [ ] unbound (`unbound-control`): statistics (`stats_noreset`), what
+      it would answer (`lookup`), the cache for a name (`dump_cache`
+      filtered), local data (`list_local_data`, the lease names), and
+      flushing a name or zone (`flush`, `flush_zone`, `flush_bogus`).
+      Needs `remote-control` on a local socket in unbound.conf.
+- [ ] `unbound-checkconf` output on the DNS page when unbound refuses
+      its configuration.
+
+Packets:
+
+- [ ] Packet capture (`tcpdump`): interface, a filter built from fields
+      (host, network, port, protocol) or typed, a packet and time limit,
+      live decoded output, and a pcap download for Wireshark. The file
+      lives in a private directory, is capped in size and deleted after
+      a while.
+- [ ] Live pflog (`tcpdump -n -e -ttt -i pflog0`): blocked and logged
+      traffic as it happens, each line mapped to its rule.
+- The packet tester is under Models and generators; it belongs on
+  this page too.
+
+pf:
+
+- [ ] Everything `pfctl -s` shows, on one page with a tab each: rules
+      with counters (`-vv -s rules`), states, info, tables and their
+      entries (`-t name -T show`), labels, memory and timeouts as pf
+      has them, interfaces (`-vv -s Interfaces`), source-tracking nodes
+      (`-s Sources`) and OS fingerprints (`-s osfp`).
+- [ ] Test an address against a table (`pfctl -t name -T test addr`):
+      "is 1.2.3.4 in my blocklist?".
+- [ ] Clear things: kill states (above), source nodes (`-K`), a table's
+      entries (dynamic tables only) and counters (`-z`).
+- [ ] The loaded ruleset against OPF's (`pfctl -s rules` vs the
+      generated pf.conf), to spot something loaded by hand.
+
+Network state:
+
+- [ ] Which route a destination takes (`route -n get addr`): interface,
+      gateway, source address. Offered from the routing table and the
+      packet tester.
+- [ ] Routing changes as they happen (`route -n monitor`), for flapping
+      links and DHCP renewals.
+- [ ] Neighbours: ARP (done) and IPv6 (`ndp -an`).
+- [ ] Protocol statistics (`netstat -s`, per protocol with `-p`):
+      retransmissions, checksum errors, drops; mbufs (`netstat -m`).
+- [ ] Listening and connected sockets (`netstat -an`, `fstat -n`):
+      which process has a port open on the firewall itself.
+- [ ] Interfaces in full (`ifconfig -A`): media, capabilities,
+      groups, MTU, and wireless scans (`ifconfig if scan`) where there's
+      a wireless card.
+- [ ] DHCP client and SLAAC state (`dhcpleasectl -l`, `slaacctl`): the
+      WAN's lease, its server and when it renews; router
+      advertisements received.
+- [ ] Neighbour discovery on the wire (`lldp`, if the release has it in
+      base: check) to show which switch port each interface is plugged
+      into.
+
+Time, system and health:
+
+- [ ] Time (`ntpctl -s all`): OpenNTPD's peers, offsets, whether the
+      clock is synced, sensors; TLS constraints status. A wrong clock
+      breaks TLS and DNSSEC, so show it prominently when unsynced.
+- [ ] Processes (above), `top -b` for a snapshot, `vmstat` and `iostat`
+      for where time goes, `pstat -s` for swap.
+- [ ] Sensors (`sysctl hw.sensors`, `sensorsd`): temperatures, fans,
+      voltages, disk and RAID health.
+- [ ] Disks: `df`, RAID status (`bioctl`), SMART on ATA disks
+      (`atactl`), and which disks the system sees (`sysctl hw.disknames`).
+- [ ] Kernel messages (`dmesg`, and `dmesg -s` for the console buffer)
+      and the system logs (above).
+- [ ] Who's logged in and recent logins (`w`, `last`), and failed
+      sshd logins from authlog.
+- [ ] The nightly reports (`daily(8)`, `security(8)`, in root's mail):
+      setuid changes, disk use, failed services, shown on the dashboard
+      rather than left unread in a mailbox.
+- [ ] Services that should be running and aren't (`rcctl ls failed`).
+- [ ] Updates: `syspatch -c` (patches available), whether a newer
+      release is on the mirror (what `sysupgrade` would fetch),
+      `fw_update -n` (firmware), `pkg_add -u -n` (package updates).
+      Applying them is a separate, confirmed action.
+
+When the matching daemon is enabled (Services):
+
+- [ ] Routing daemons' status: `ospfctl`, `ospf6ctl`, `bgpctl`,
+      `ripctl`, `eigrpctl`, `ldpctl` (`show neighbor`, `show rib`,
+      `show interfaces`).
+- [ ] IPsec: `ipsecctl -s all`, `ikectl show sa`.
+- [ ] carp and pfsync: each carp interface's state (master, backup),
+      demotion counters (`ifconfig -g carp`), `netstat -s -p pfsync`.
+- [ ] relayd (`relayctl show summary`), smtpd (`smtpctl show queue`),
+      httpd (`httpd -n`), snmpd (`snmp` walk of the firewall itself),
+      npppd (`npppctl session all`), dhcrelay and rad status.
+- [ ] Certificates: expiry of every certificate OPF knows of
+      (`openssl x509 -enddate`), and `acme-client` renewal results.
 
 History over time (the pages above show the current values; these keep
 them, so they can be graphed and compared):
