@@ -1,8 +1,9 @@
 // The Go generators, validation and pf parser compiled to WebAssembly
-// (cmd/opfwasm), for the offline preview build, which has no server to
-// ask. Only that build uses this module: vite.config.ts points
-// @wasmgen at wasmGenStub.ts for every other build, so the real UI never
-// ships it.
+// (cmd/opfwasm): the offline preview build, which has no server to ask,
+// runs on them, and the real UI uses them for previews of a large model
+// (lib/generated.ts), so editing doesn't send the whole model to the
+// firewall on every keystroke. The module is only fetched when first
+// called.
 import '../wasm/wasm_exec.js';
 import wasmUrl from '../wasm/opf.wasm?url';
 

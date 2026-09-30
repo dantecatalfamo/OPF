@@ -135,9 +135,12 @@ func init() {
 
 // uiPolicy allows the page only its own scripts, styles, fonts and API.
 // Styles may be inline because the component library injects its CSS
-// variables at runtime; scripts may not. The page can't be framed, so it
+// variables at runtime; scripts may not. 'wasm-unsafe-eval' lets the
+// page compile its own WebAssembly (OPF's generators, for previews of a
+// large model) and nothing else: JavaScript eval stays blocked, and the
+// module still has to come from 'self'. The page can't be framed, so it
 // can't be dressed up by another site to trick a click.
-const uiPolicy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+const uiPolicy = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; " +
 	"img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; " +
 	"base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 

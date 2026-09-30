@@ -5,7 +5,32 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Model } from '../model/types';
 import { backend } from '../model/store';
-import type { Derived, PfLine, RenderTarget, Rendered } from './api';
+import { call, GeneratorError } from '@wasmgen';
+import { offline, type Derived, type PfLine, type RenderTarget, type Rendered } from './api';
+
+// Where previews come from. Asking the server sends it the whole model,
+// which for a small firewall is a few KB, less than the generators'
+// WebAssembly (about 1.4 MB compressed, once, then cached). Past
+// localAbove the model is the bigger cost on every edit, so the
+// browser's copy of the same Go generators answers instead. If it can't
+// load (an old browser, a policy), the server still does. What's
+// applied is always generated and checked by the firewall itself.
+const localAbove = 100_000; // bytes of model JSON, about 300 rules
+let localBroken = false;
+
+async function generate<T>(size: number, name: string, request: object, remote: () => Promise<T>): Promise<T> {
+  if (offline || size <= localAbove || localBroken) return remote();
+  try {
+    return await call<T>(name, request);
+  } catch (e) {
+    // A generator's own error (a half-finished rule) is the answer; the
+    // module failing to load isn't, so fall back and stop trying.
+    if (e instanceof GeneratorError) throw e;
+    localBroken = true;
+    console.warn('generating previews on the firewall instead:', e);
+    return remote();
+  }
+}
 
 // Several parts of a page ask for the same thing about the same model;
 // share one request. Only the latest few are kept.
@@ -50,19 +75,19 @@ function useGenerated<T>(key: string | null, load: () => Promise<T>, debounce = 
 /** Automatic NAT, local networks, each rule's text: see Derived. */
 export function useDerived(model: Model): Result<Derived> {
   const key = 'derived ' + JSON.stringify(model);
-  return useGenerated(key, () => backend.pfDerived(model));
+  return useGenerated(key, () => generate(key.length, 'derived', { model }, () => backend.pfDerived(model)));
 }
 
 /** The model's pf.conf, each line with where it came from. */
 export function useRuleset(model: Model): Result<PfLine[]> {
   const key = 'ruleset ' + JSON.stringify(model);
-  return useGenerated(key, () => backend.pfRuleset(model));
+  return useGenerated(key, () => generate(key.length, 'ruleset', { model }, () => backend.pfRuleset(model)));
 }
 
 /** One object's pf text, for a form's preview; asked for as typing pauses. */
 export function useRendered(model: Model, target: RenderTarget | null): Result<Rendered> {
   const key = target ? 'render ' + JSON.stringify([model, target]) : null;
-  return useGenerated(key, () => backend.pfRender(model, target!), 150);
+  return useGenerated(key, () => generate(key!.length, 'render', { model, ...target! }, () => backend.pfRender(model, target!)), 150);
 }
 
 /** A rendered object as text: the comment, then its rules. */

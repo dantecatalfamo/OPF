@@ -9,10 +9,12 @@ declare const process: { env: Record<string, string | undefined> };
 // sample data, for sharing the design without an appliance.
 export default defineConfig(({ mode }) => ({
   plugins: [react(), ...(mode === 'preview' ? [viteSingleFile()] : [])],
-  // The Go generators in WebAssembly, only in the offline preview build;
-  // every other build gets a stub, so the real UI never ships them.
+  // The Go generators in WebAssembly: the offline preview runs on them,
+  // and the real UI uses them for previews once a model is large
+  // (lib/generated.ts). The preview inlines the module; the real build
+  // ships it as an asset, fetched only when it's needed.
   resolve: {
-    alias: { '@wasmgen': new URL(mode === 'preview' ? './src/lib/wasmGen.ts' : './src/lib/wasmGenStub.ts', import.meta.url).pathname },
+    alias: { '@wasmgen': new URL('./src/lib/wasmGen.ts', import.meta.url).pathname },
   },
   // `npm run dev` sends API calls to the Go backend; `make mock` starts
   // it (opf -mock) on this address. OPF_API points it elsewhere, for

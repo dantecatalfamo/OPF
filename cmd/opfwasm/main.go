@@ -1,10 +1,12 @@
 //go:build js && wasm
 
 // Command opfwasm is OPF's generators, validation and pf parser compiled
-// to WebAssembly for the UI's offline preview build, which has no server
-// to ask: its stand-in API (ui/src/lib/localApi.ts) calls these instead
-// of the web process's /api/pf endpoints, so the preview shows exactly
-// what the appliance would. The real UI doesn't load it.
+// to WebAssembly. The UI's offline preview build, which has no server to
+// ask, calls these instead of the web process's /api/pf endpoints (its
+// stand-in API, ui/src/lib/localApi.ts), so the preview shows exactly
+// what the appliance would. The real UI calls them for previews once
+// its model is large (ui/src/lib/generated.ts), rather than sending the
+// whole model to the firewall on every edit.
 //
 // Each function takes a JSON string and returns one: {"ok": …} or
 // {"error": "…"}.
