@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
-import { Anchor, Badge, Button, Card, Grid, Group, Progress, SimpleGrid, Stack, Table, Text, ThemeIcon } from '@mantine/core';
-import { AreaChart } from '@mantine/charts';
+import { Anchor, Badge, Button, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconWorldSearch, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { tunnels } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
-import { rpzBlocked, type InterfacesResource } from '../lib/api';
+import { rpzBlocked } from '../lib/api';
+import { ranges, useHistory } from '../lib/history';
+import { HistoryChart } from '../components/HistoryChart';
 import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import { deviceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
@@ -36,29 +37,6 @@ function Tile({ icon: Icon, label, value, detail, state }: {
       </Group>
     </Card>
   );
-}
-
-interface TrafficPoint {
-  time: string;
-  download: number;
-  upload: number;
-}
-
-// The WAN's traffic at each poll while the page is open: the last few
-// minutes, not history (that needs the collector, TODO.md › Live data).
-function useTraffic(live: InterfacesResource | undefined, device: string | undefined) {
-  const [series, setSeries] = useState<TrafficPoint[]>([]);
-  useEffect(() => {
-    const s = live?.interfaces.find((i) => i.name === device);
-    if (s?.rxBps === undefined || s.txBps === undefined) return;
-    const next: TrafficPoint = {
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      download: Math.round(s.rxBps / 1e5) / 10,
-      upload: Math.round(s.txBps / 1e5) / 10,
-    };
-    setSeries((prev) => [...prev.slice(-59), next]);
-  }, [live, device]);
-  return series;
 }
 
 // An address without its port: 1.2.3.4:443 → 1.2.3.4, [2001:db8::1]:443 → 2001:db8::1.
@@ -96,8 +74,9 @@ export function Dashboard() {
   const { data: ifs } = useLive('interfaces');
   const { data: upd } = useLive('updates');
   const wan = applied.interfaces.find((i) => i.role === 'wan');
-  const traffic = useTraffic(ifs, wan?.device);
-  const last = traffic[traffic.length - 1];
+  const [range, setRange] = useState(ranges[1].value);
+  const wanSeries = wan ? [{ key: `if.${wan.device}.rx`, label: 'Download', color: 'harbor.6' }, { key: `if.${wan.device}.tx`, label: 'Upload', color: 'amber.6' }] : [];
+  const { data: history } = useHistory(wanSeries.map((x) => x.key), Number(range));
   const wanStatus = wan ? ifaceState(ifs, wan) : undefined;
   const wanUp = !!wanStatus?.up && wanStatus.status !== 'no carrier' && wanStatus.ipv4.length > 0;
   const vpns = tunnels(applied);
@@ -176,40 +155,24 @@ export function Dashboard() {
                 <Group gap="lg">
                   <Group gap={4}>
                     <IconArrowDown size={14} color="var(--mantine-color-harbor-6)" />
-                    <Text size="sm" className="num">{last ? `${last.download} Mbit/s` : '—'}</Text>
+                    <Text size="sm" className="num">{wanStatus?.rxBps !== undefined ? formatBits(wanStatus.rxBps) : '—'}</Text>
                   </Group>
                   <Group gap={4}>
                     <IconArrowUp size={14} color="var(--mantine-color-amber-6)" />
-                    <Text size="sm" className="num">{last ? `${last.upload} Mbit/s` : '—'}</Text>
+                    <Text size="sm" className="num">{wanStatus?.txBps !== undefined ? formatBits(wanStatus.txBps) : '—'}</Text>
                   </Group>
+                  <SegmentedControl size="xs" value={range} onChange={setRange} data={ranges} />
                 </Group>
               }
             >
               Internet traffic
             </SectionTitle>
-            {traffic.length < 2 ? (
-              <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">{wan ? 'Measuring…' : 'No internet interface is set up.'}</Text>
+            {wan ? (
+              <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area h={250} />
             ) : (
-            <AreaChart
-              h={250}
-              data={traffic}
-              dataKey="time"
-              series={[
-                { name: 'download', label: 'Download', color: 'harbor.6' },
-                { name: 'upload', label: 'Upload', color: 'amber.6' },
-              ]}
-              curveType="monotone"
-              withDots={false}
-              gridAxis="x"
-              tickLine="none"
-              unit=" Mbit/s"
-              fillOpacity={0.25}
-              strokeWidth={1.75}
-              xAxisProps={{ interval: 14 }}
-              yAxisProps={{ width: 70 }}
-            />
+              <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No internet interface is set up.</Text>
             )}
-            <Text size="xs" c="dimmed" mt={4}>Since this page opened. Longer history comes later.</Text>
+            <Anchor component={Link} to="/diagnostics/graphs" size="xs" c="dimmed">More graphs</Anchor>
           </Card>
         </Grid.Col>
 

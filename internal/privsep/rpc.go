@@ -8,6 +8,7 @@ import (
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/diag"
+	"github.com/dantecatalfamo/OPF/internal/metrics"
 )
 
 // The web process can only call these methods: whole models in,
@@ -137,6 +138,10 @@ type (
 	DNSListReply struct {
 		Result
 		List *appliance.DNSListStatus
+	}
+	MetricsReply struct {
+		Result
+		Metrics *appliance.Metrics
 	}
 	DNSStatsReply struct {
 		Result
@@ -293,6 +298,13 @@ func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
 	var err error
 	r.Lists, err = s.api.DNSLists()
 	r.set("DNSLists", err)
+	return nil
+}
+
+func (s *Service) Metrics(a appliance.MetricsRequest, r *MetricsReply) error {
+	var err error
+	r.Metrics, err = s.api.Metrics(a)
+	r.set("Metrics", err)
 	return nil
 }
 
@@ -680,6 +692,18 @@ func (c *Client) RefreshDNSList(id string) (*appliance.DNSListStatus, error) {
 	var r DNSListReply
 	err := c.call("RefreshDNSList", IDArgs{id}, &r)
 	return r.List, err
+}
+
+func (c *Client) Metrics(req appliance.MetricsRequest) (*appliance.Metrics, error) {
+	var r MetricsReply
+	err := c.call("Metrics", req, &r)
+	if m := r.Metrics; m != nil {
+		m.Known = nonNil(m.Known)
+		if m.Series == nil {
+			m.Series = map[string]*metrics.Result{}
+		}
+	}
+	return r.Metrics, err
 }
 
 func (c *Client) DNSStats() (*appliance.DNSStats, error) {

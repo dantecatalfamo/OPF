@@ -336,6 +336,48 @@ A commit that turns on DNSSEC also creates unbound's trust anchor
 (`unbound-anchor`) when there isn't one, as rc.d/unbound does before
 unbound first starts.
 
+### The resolver's numbers
+
+- `GET /api/dns/stats`: `enabled` (the applied configuration runs the
+  resolver; nothing else is read when it doesn't), `stats` (from
+  `unbound-control stats_noreset`: `queries`, `cacheHits`,
+  `cacheMisses`, `prefetches`, `recursionAvg` and `recursionMedian` in
+  seconds, `uptime`, and with `extended` the maps `answers` by response
+  code, `rpz` by action, `queryTypes` and `memory`, plus `secure` and
+  `bogus`), `queriesPerSec` and `blockedPerSec` over the last few
+  seconds (absent across a reload, when the counters start again),
+  `memoryBytes` (unbound's resident size, zones included), `lastReload`
+  (`{"at", "seconds", "names", "timedOut"}`: how long unbound took to
+  answer again after the last commit that reloaded it whole) and
+  `errors`.
+- `GET /api/dns/blocked`: what the response policy zones did, from
+  unbound's rpz-log lines in the daemon log: `since` (the first line
+  read), `blocked`, `own`, `byList` (by list id), `allowed` (let through
+  by your never-block names) and `names`, the 50 blocked most
+  (`{"name", "count", "last", "list", "entry"}`; `list` is absent for
+  your own entries). Only DNS names are listed, and which device asked
+  isn't kept.
+
+### History
+
+The parent samples the system every 10 seconds and keeps each series
+for a month: every 10 s for the last hour, every minute for a day,
+every 10 minutes for a week and every hour for the month.
+
+- `GET /api/metrics?series=<name>,<name>&range=<seconds>[&step=<seconds>]`:
+  `{"series": {"<name>": {"start", "step", "avg", "max"}}, "known": [...]}`.
+  Point `i` is at `start + i*step` (unix seconds), `null` where nothing
+  was recorded; `max` is the highest sample in each point. A range
+  longer than an hour comes from a coarser ring, and at most 1500
+  points come back (a longer range gets a larger step). At most 32
+  series a request; a series with nothing recorded is left out, and
+  `known` lists every series kept. Names: `if.<device>.rx` and `.tx`
+  (bits a second), `cpu.busy` (percent), `mem.used` (bytes), `load.1`,
+  `pf.states`, `pf.blocked` (packets a second on the statistics
+  interface), `dns.queries` and `dns.blocked` (a second),
+  `dns.cachehit` (percent), `gw.<gateway id>.rtt` (ms) and `.loss`
+  (percent).
+
 ### Diagnostic tools
 
 The tools run in the privileged process. A request is a form, never a

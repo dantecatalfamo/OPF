@@ -54,6 +54,7 @@ type API interface {
 	RefreshDNSList(id string) (*DNSListStatus, error)
 	DNSStats() (*DNSStats, error)
 	DNSBlocked() (*DNSBlocked, error)
+	Metrics(MetricsRequest) (*Metrics, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

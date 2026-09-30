@@ -133,6 +133,7 @@ func main() {
 	api.SetLeaseWatcher(watcher)
 	go watcher.Run(sigCtx)
 	go api.RunRefresher(sigCtx, time.Minute) // downloaded lists, as they fall due
+	go api.RunCollector(sigCtx)              // the graphs' history
 
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
@@ -143,6 +144,10 @@ func main() {
 	})
 	if err != nil {
 		log.Print(err)
+	}
+
+	if err := api.SaveMetrics(); err != nil {
+		log.Printf("saving the graphs: %v", err)
 	}
 
 	// Don't leave an unconfirmed commit loaded after OPF stops.

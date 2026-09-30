@@ -34,6 +34,13 @@ func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	switch {
 	case cmd == "sysctl kern.cp_time":
 		out = "kern.cp_time=" + s.cpTime(t)
+	case cmd == "sysctl kern.cp_time vm.loadavg hw.physmem": // the collector's
+		out = "kern.cp_time=" + s.cpTime(t)
+		for _, l := range strings.Split(s.sysctl(t), "\n") {
+			if strings.HasPrefix(l, "vm.loadavg=") || strings.HasPrefix(l, "hw.physmem=") {
+				out += l + "\n"
+			}
+		}
 	case cmd == "sysctl kern.osrelease":
 		out = "kern.osrelease=7.9\n"
 	case strings.HasPrefix(cmd, "sysctl kern.hostname"):

@@ -413,6 +413,20 @@ export const rpzPass = new Set(['rpz-passthru', 'rpz-disabled', 'rpz-no-override
 /** Queries a policy zone blocked. */
 export const rpzBlocked = (s: UnboundStats) => Object.entries(s.rpz).reduce((n, [a, c]) => (rpzPass.has(a) ? n : n + c), 0);
 
+/** A series over a time range: point i is at start + i*step (unix seconds), null where nothing was recorded. */
+export interface MetricSeries {
+  start: number;
+  step: number;
+  avg: (number | null)[];
+  max: (number | null)[];
+}
+
+/** Series from the collector (GET /api/metrics), and the names of every series kept. */
+export interface MetricsResource {
+  series: Record<string, MetricSeries>;
+  known: string[];
+}
+
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
 export interface TableStatus {
   name: string;
@@ -557,6 +571,9 @@ export const api = {
   /** Downloads a DNS blocklist again and reloads it in the resolver. */
   refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),
   dnsStats: () => request<DnsStatsResource>('GET', '/dns/stats'),
+  /** Series over the last range seconds, points at least step apart. */
+  metrics: (series: string[], range: number, step?: number) =>
+    request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
   startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
   toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),

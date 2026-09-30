@@ -3,7 +3,7 @@
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
 import type {
-  BlockedName, DnsBlockedResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  BlockedName, DnsBlockedResource, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
   RuleCountersResource, SystemResource, UpdatesResource,
 } from '../lib/api';
 import type { Iface, Model } from './types';
@@ -287,4 +287,47 @@ export function sampleDnsBlocked(m: Model): DnsBlockedResource {
   }
   const blocked = own + Object.values(byList).reduce((a, b) => a + b, 0);
   return { since: zones.length ? new Date(Date.now() - 3600_000).toISOString() : undefined, blocked, own, byList, allowed: (m.dns.allowed ?? []).length ? 17 : 0, names };
+}
+
+// The preview's history: each series at a level, busier in the evening.
+function sampleLevel(m: Model, key: string): number | undefined {
+  const [kind, id, what] = key.split('.');
+  if (kind === 'if') {
+    const i = m.interfaces.find((x) => x.device === id);
+    if (!i) return undefined;
+    const [rx, tx] = i.role === 'wan' ? [6e6, 0.8e6] : i.role === 'vpn' ? [0.05e6, 0.15e6] : i.vlan ? [0.03e6, 0.06e6] : [0.7e6, 5.8e6];
+    return (what === 'rx' ? rx : tx) * 8;
+  }
+  if (kind === 'gw') return what === 'rtt' ? 8.4 : 0;
+  const levels: Record<string, number> = {
+    'cpu.busy': 15, 'mem.used': 1.6e9, 'load.1': 0.3, 'pf.states': 70, 'pf.blocked': 4,
+    'dns.queries': 24, 'dns.cachehit': 78, 'dns.blocked': blockingZones(m).length ? 2.9 : 0,
+  };
+  return levels[key];
+}
+
+export function sampleMetrics(m: Model, series: string[], range: number, step?: number): MetricsResource {
+  const tiers = [10, 60, 600, 3600];
+  const spans = [3600, 86400, 7 * 86400, 31 * 86400];
+  const base = tiers[spans.findIndex((s) => range <= s)] ?? 3600;
+  const st = Math.max(base, step ?? 0, Math.ceil(range / 1500 / base) * base);
+  const now = Math.floor(Date.now() / 1000);
+  const start = Math.floor((now - range) / st) * st;
+  const out: Record<string, MetricSeries> = {};
+  for (const key of series) {
+    const level = sampleLevel(m, key);
+    if (level === undefined) continue;
+    const r = rng(key.length * 7919 + Math.floor(start / st));
+    const avg: (number | null)[] = [];
+    const max: (number | null)[] = [];
+    for (let t = start; t <= now; t += st) {
+      const hour = (new Date(t * 1000).getHours() + new Date(t * 1000).getMinutes() / 60);
+      const daily = key.startsWith('if.') || key === 'cpu.busy' || key === 'pf.states' || key === 'dns.queries' ? 1 + 0.35 * Math.sin((2 * Math.PI * (hour - 15)) / 24) : 1;
+      const v = level * daily * (0.94 + 0.12 * r());
+      avg.push(v);
+      max.push(v * (1 + 0.3 * r()));
+    }
+    out[key] = { start, step: st, avg, max };
+  }
+  return { series: out, known: Object.keys(out) };
 }

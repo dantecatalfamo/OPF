@@ -240,7 +240,7 @@ diffs, whether confirmation is needed, and the server's objections.
   point to it from anywhere else it matters. When it's finished, move
   it to "Done" at the end with a line on what was done.
 
-## Where things stand (2026-09-29)
+## Where things stand (2026-09-30)
 
 - **Working and tested in Go:** the model is the source of truth and
   lives in the parent (`internal/appliance`). The web process sends a
@@ -252,10 +252,14 @@ diffs, whether confirmation is needed, and the server's objections.
 - **UI:** every page exists. Review, apply, confirm, revert, history and
   undo go through the API (`make mock` runs it against the real engine).
   Leases, the ARP and routing tables, the system, interfaces, gateways,
-  VPN devices, updates, and pf's state table, counters and log are
-  live. `ui/src/model/live.ts` only feeds the offline preview.
+  VPN devices, updates, pf's state table, counters and log, and DNS
+  stats are live, with a month of history for traffic, the system, pf,
+  DNS and gateways. `ui/src/model/live.ts` only feeds the offline
+  preview.
 - **Missing:** authentication, importing an existing system.
-- **Never run on OpenBSD.**
+- **On OpenBSD:** runs under pledge and unveil on 7.9 with `-dry
+  -checks` (Verify on real OpenBSD); real commits haven't been made on a
+  machine yet.
 
 ## Roadmap
 
@@ -851,16 +855,25 @@ When the matching daemon is enabled (Services):
 History over time (the pages above show the current values; these keep
 them, so they can be graphed and compared):
 
-- [ ] **A collector** in the parent that samples on a fixed interval
-      (10 s, say) and keeps each series in a bounded store: recent
-      samples at full resolution, older ones averaged down (1 min for a
-      day, 1 h for a month, and so on, like RRD), with a fixed cap on
-      disk under the state directory so it can never fill the disk.
-      Counters are stored as rates (deltas per second), and a counter
-      that goes backwards (a pf reload, a reboot) starts over rather
-      than giving a negative spike. It survives restarts, and the API
-      gives a series over a time range at the resolution asked for.
-- [ ] What to collect:
+- The collector is built (`internal/metrics`, `internal/appliance/
+  collect.go`): every 10 s, rings of an hour at 10 s, a day at 1 min, a
+  week at 10 min and a month at 1 h, at most 256 series (about 110 KB
+  each), saved to `metrics.bin` in the state directory every 5 minutes
+  and when OPF stops, in a format whose every count is checked on
+  reading (gob looped for ever on a damaged file). It keeps interface
+  traffic, CPU, memory, load, pf states and blocks, DNS queries, blocks
+  and cache hits, and gateway latency and loss. `GET /api/metrics`,
+  Diagnostics › Graphs and the dashboard's traffic chart show them.
+- [ ] Peaks: each bucket keeps its maximum, which the graphs don't show
+      yet; a month of hourly averages hides a burst that filled the
+      link.
+- [ ] Run the collector on OpenBSD (`openbsd-dev`): the combined
+      `sysctl kern.cp_time vm.loadavg hw.physmem`, the file in the state
+      directory under unveil, and what 10 s of sampling costs in CPU.
+- [ ] A graph's own page for a series (an interface, a gateway), and
+      graphs where their numbers are shown now (the DNS page, Routing's
+      gateways, each interface).
+- [ ] What else to collect (the first series are above):
       - **Interface traffic**: bytes, packets, errors and drops in and
         out per interface (`netstat -in`, queue drops from
         `netstat -id`): the dashboard chart (simulated today) and
@@ -938,8 +951,8 @@ them, so they can be graphed and compared):
       top domains) are off unless the admin turns them on, saying what
       is kept and for how long. Deleting a device's history should be
       possible.
-- [ ] Graphs in the UI: time range picker, per-interface, per-rule and
-      per-host views, and the dashboard's charts from real data.
+- [ ] Graphs for rules and hosts, once those are collected, and a
+      custom time range beside the hour, day, week and month.
 
 ## UI
 

@@ -126,6 +126,10 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	api.SetLeaseWatcher(watcher)
 	go watcher.Run(context.Background())
 	go api.RunRefresher(context.Background(), time.Minute)
+	if m, err := liveModel(api)(); err == nil {
+		seedHistory(api.MetricsStore(), m, time.Now())
+	}
+	go api.RunCollector(context.Background())
 
 	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)
 	log.Printf("mock: API on http://%s; `make mock` also starts the UI, whose dev server proxies to 127.0.0.1:18080", listen)

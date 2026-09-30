@@ -109,6 +109,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	}))
 	s.mux.HandleFunc("POST /api/dns/blocklists/{id}/refresh", s.refreshDNSList)
 	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
+	s.mux.HandleFunc("GET /api/metrics", s.metrics)
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s.api.DNSBlocked))
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
@@ -443,6 +444,32 @@ func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
+}
+
+// metrics answers ?series=a,b&range=<seconds>[&step=<seconds>].
+func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := appliance.MetricsRequest{}
+	if v := q.Get("series"); v != "" {
+		req.Series = strings.Split(v, ",")
+	}
+	var err error
+	if req.Range, err = strconv.Atoi(q.Get("range")); err != nil {
+		badRequest(w, http.StatusBadRequest, "range is a number of seconds")
+		return
+	}
+	if v := q.Get("step"); v != "" {
+		if req.Step, err = strconv.Atoi(v); err != nil {
+			badRequest(w, http.StatusBadRequest, "step is a number of seconds")
+			return
+		}
+	}
+	m, err := s.api.Metrics(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, m)
 }
 
 func (s *Server) startTool(w http.ResponseWriter, r *http.Request) {

@@ -16,3 +16,7 @@ func (s *Store) WritableDirs() []string {
 	}
 	return dirs
 }
+
+// StatePath is a file in the state directory that isn't one of the
+// store's own, such as the graphs' series.
+func (s *Store) StatePath(name string) string { return filepath.Join(s.dir, name) }
