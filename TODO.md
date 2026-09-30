@@ -56,6 +56,24 @@ break connectivity. Every feature must be:
    - Link to authoritative sources in code comments where format details
      are non-obvious.
 
+6. **Networking first, then the whole base system.** OPF starts as a
+   firewall and router, but the aim is almost everything OpenBSD's base
+   system does, so the same binary can run different jobs on different
+   machines: a firewall on one, a mail server (smtpd), a web server
+   (httpd, relayd, acme-client), authoritative DNS (nsd), a VM host
+   (vmd), a file server on another. That means, from now on:
+   - Nothing may assume the machine is a firewall. A model with one
+     interface, no WAN and pf close to its defaults must be valid and
+     make sense on every page; the firewall is one job among several.
+   - Each area follows the same pattern (a model section, a generator,
+     the daemon's own check, status read with its tools, a page), so
+     adding one is mechanical rather than a redesign.
+   - The navigation and dashboard are built from what the machine does,
+     not a fixed list: a mail server doesn't lead with an Internet
+     tile.
+   - Each instance manages its own machine. Managing several from one
+     place is a separate, later piece (Roadmap).
+
 ## How we work
 
 The goal is a polished, OPNsense-style appliance: the user should never
@@ -253,6 +271,11 @@ In order. Each step's details are in the section it points to.
 4. **Live data** (Live data and monitoring): the pages read the real
    system now; what's left is history over time and the rest of the
    diagnostics.
+5. **Beyond networking** (Principles › 6): jobs chosen at first run
+   and changed later, which decide what the navigation and dashboard
+   lead with; then the base system's other daemons as full areas
+   (Services), and storage, accounts and scheduled jobs. Later still,
+   a view of several OPF instances from one place.
 
 ## Commit engine and staging
 
@@ -550,6 +573,16 @@ lines, all through the commit engine.
 - [ ] The Services page will manage more daemons through
       `rc.conf.local`: `config.RcServices`, `pf.RcNames` and `RcVars`
       grow together (a test holds them to the same list).
+- [ ] **Nothing assumes a firewall** (Principles › 6): check each page
+      and generator with a model that has one interface and no WAN, and
+      fix what assumes otherwise (the dashboard's Internet tile, the
+      anti-lockout rule on the LAN, NAT and the WAN rules, the default
+      navigation).
+- [ ] **Jobs** for an instance (firewall and router, web server, mail,
+      DNS, VM host, file server...), chosen in the first-run wizard and
+      changeable later. They order the navigation and dashboard and
+      suggest what to set up, and never turn a feature off: any page
+      stays reachable.
 - [ ] **A Services page** listing every base daemon, grouped by
       category, with name, description, enabled and running, quick
       actions (start, stop, restart, enable, disable) and links to the
