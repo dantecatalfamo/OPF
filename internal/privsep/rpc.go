@@ -7,6 +7,7 @@ import (
 	"net/rpc"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/diag"
 )
 
 // The web process can only call these methods: whole models in,
@@ -117,6 +118,14 @@ type (
 		Result
 		Log *appliance.FirewallLog
 	}
+	ToolRunReply struct {
+		Result
+		Run *diag.Run
+	}
+	ToolRunArgs struct {
+		ID   string
+		From int
+	}
 	EmptyReply struct{ Result }
 )
 
@@ -219,6 +228,25 @@ func (s *Service) FirewallLog(_ None, r *FirewallLogReply) error {
 	var err error
 	r.Log, err = s.api.FirewallLog()
 	r.set("FirewallLog", err)
+	return nil
+}
+
+func (s *Service) StartTool(a diag.Request, r *ToolRunReply) error {
+	var err error
+	r.Run, err = s.api.StartTool(a)
+	r.set("StartTool", err)
+	return nil
+}
+
+func (s *Service) ToolRun(a ToolRunArgs, r *ToolRunReply) error {
+	var err error
+	r.Run, err = s.api.ToolRun(a.ID, a.From)
+	r.set("ToolRun", err)
+	return nil
+}
+
+func (s *Service) CancelTool(a IDArgs, r *EmptyReply) error {
+	r.set("CancelTool", s.api.CancelTool(a.ID))
 	return nil
 }
 
@@ -539,6 +567,28 @@ func (c *Client) FirewallLog() (*appliance.FirewallLog, error) {
 		s.Entries = nonNil(s.Entries)
 	}
 	return r.Log, err
+}
+
+func (c *Client) StartTool(req diag.Request) (*diag.Run, error) {
+	var r ToolRunReply
+	err := c.call("StartTool", req, &r)
+	if r.Run != nil {
+		r.Run.Lines = nonNil(r.Run.Lines)
+	}
+	return r.Run, err
+}
+
+func (c *Client) ToolRun(id string, from int) (*diag.Run, error) {
+	var r ToolRunReply
+	err := c.call("ToolRun", ToolRunArgs{id, from}, &r)
+	if r.Run != nil {
+		r.Run.Lines = nonNil(r.Run.Lines)
+	}
+	return r.Run, err
+}
+
+func (c *Client) CancelTool(id string) error {
+	return c.call("CancelTool", IDArgs{id}, &EmptyReply{})
 }
 
 func nonNil[T any](s []T) []T {

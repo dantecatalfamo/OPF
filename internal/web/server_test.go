@@ -12,6 +12,7 @@ import (
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"testing/fstest"
@@ -48,6 +49,7 @@ func newServer(t *testing.T) *Server {
 	if err != nil {
 		t.Fatal(err)
 	}
+	api.Runner = run.Dry{} // tests never run the system's commands
 	return New(api, nil)
 }
 
@@ -315,4 +317,35 @@ func TestUI(t *testing.T) {
 	if rec := get("GET", "/api/status"); rec.Code != 200 {
 		t.Errorf("no UI, /api/status: %d", rec.Code)
 	}
+}
+
+func TestTools(t *testing.T) {
+	c := client{t, newServer(t)}
+	var r diag.Run
+	c.do("POST", "/api/diagnostics/runs", `{"tool":"ping","host":"9.9.9.9","count":2}`, http.StatusCreated, &r)
+	if r.ID == "" || r.Command != "ping -4 -c 2 -s 56 -w 2 -- 9.9.9.9" {
+		t.Fatalf("started %+v", r)
+	}
+	for range 100 {
+		c.do("GET", "/api/diagnostics/runs/"+r.ID+"?from=0", "", http.StatusOK, &r)
+		if !r.Running {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	// The dry runner prints what it would have run.
+	if r.Running || len(r.Lines) != 1 || !strings.HasPrefix(r.Lines[0], "dry-run: ping") {
+		t.Errorf("finished %+v", r)
+	}
+	c.do("POST", "/api/diagnostics/runs/"+r.ID+"/cancel", "", http.StatusNoContent, nil)
+
+	var e struct{ Error appliance.Error }
+	c.do("POST", "/api/diagnostics/runs", `{"tool":"ping","host":"-f"}`, http.StatusUnprocessableEntity, &e)
+	if len(e.Error.Details) != 1 || e.Error.Details[0].Path != "host" {
+		t.Errorf("invalid: %+v", e.Error)
+	}
+	c.do("POST", "/api/diagnostics/runs", `{"tool":"rm"}`, http.StatusUnprocessableEntity, nil)
+	c.do("POST", "/api/diagnostics/runs", `{"tool":"ping","host":"a","extra":1}`, http.StatusBadRequest, nil)
+	c.do("GET", "/api/diagnostics/runs/nope", "", http.StatusNotFound, nil)
+	c.do("GET", "/api/diagnostics/runs/"+r.ID+"?from=-1", "", http.StatusBadRequest, nil)
 }

@@ -289,6 +289,35 @@ never by number: numbers change with every reload.
   last time OPF may have reloaded the rules, since a rule number only
   means the same rule until then.
 
+### Diagnostic tools
+
+The tools run in the privileged process. A request is a form, never a
+command line: each field is checked and the command is built from them,
+with `--` before the host, so a value can only be an address, a DNS
+name or a number. At most four run at once (429 `busy` past that).
+
+- `POST /api/diagnostics/runs` starts one. The body is `{"tool", ...}`:
+  - `ping`: `host`, `family` (`ipv4`, `ipv6` or empty), `count`
+    (1-50, default 5), `size` (1-9000 data bytes, default 56),
+    `dontFragment` (IPv4 only).
+  - `traceroute`: `host`, `family`, `protocol` (`udp` or `icmp`),
+    `maxHops` (1-64, default 30), `asNumbers`, `names`.
+  - `dns`: `name` (an address is a reverse lookup), `type` (A, AAAA,
+    CNAME, MX, NS, PTR, SOA, SRV, TXT, CAA, DS, DNSKEY, HTTPS, SVCB,
+    ANY), `server` (an address; empty is this firewall's resolver),
+    `trace`, `dnssec`.
+  - `port`: `host`, `family`, `port`, `protocol` (`tcp` or `udp`).
+
+  201 with the run. 422 names the field it refused in `details`.
+- `GET /api/diagnostics/runs/{id}?from=N`: the run with its output
+  from line N on: `id`, `tool`, `command` (for showing), `started`,
+  `running`, `finished`, `exitCode` (when it ran to the end), `error`
+  (why it didn't: stopped, timed out, too much output), `lines`, `next`
+  (the line to ask from next) and `truncated`. Output is cleaned of
+  control characters and bidi overrides, and kept for 15 minutes after
+  the run ends; a run is stopped past 2000 lines or 256 KB.
+- `POST /api/diagnostics/runs/{id}/cancel` stops it. 204.
+
 ### `POST /api/pf/parse`
 
 `{"text": "pass in on $lan …", "model": {…}}` → `{"rule": {…}}`. The

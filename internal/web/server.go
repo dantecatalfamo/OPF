@@ -27,6 +27,9 @@
 //	POST   /api/pf/states/kill            end a connection
 //	GET    /api/pf/rules/counters         each labelled rule's counters
 //	GET    /api/logs/firewall             packets pf logged, newest first
+//	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
+//	GET    /api/diagnostics/runs/{id}     a run and its output, from ?from=N on
+//	POST   /api/diagnostics/runs/{id}/cancel  stop it
 //	POST   /api/pf/parse                  pf rule text to a rule
 //	POST   /api/pf/ruleset                a model's annotated pf.conf
 //	POST   /api/pf/derived                what the UI shows that depends on generation
@@ -46,9 +49,11 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
@@ -89,6 +94,9 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
 	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s.api.RuleCounters))
 	s.mux.HandleFunc("GET /api/logs/firewall", getter(s.api.FirewallLog))
+	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
+	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
+	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
 	s.mux.HandleFunc("POST /api/pf/render", s.render)
 	s.mux.HandleFunc("POST /api/pf/ruleset", s.ruleset)
@@ -184,6 +192,8 @@ func statusFor(c appliance.Code) int {
 		return http.StatusNotFound
 	case appliance.CodeConflict, appliance.CodePending, appliance.CodeNotPending, appliance.CodeModifiedOutside:
 		return http.StatusConflict
+	case appliance.CodeBusy:
+		return http.StatusTooManyRequests
 	}
 	return http.StatusInternalServerError
 }
@@ -387,6 +397,45 @@ func (s *Server) killState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.api.KillState(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) startTool(w http.ResponseWriter, r *http.Request) {
+	var req diag.Request
+	if !decode(w, r, &req) {
+		return
+	}
+	run, err := s.api.StartTool(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, run)
+}
+
+func (s *Server) toolRun(w http.ResponseWriter, r *http.Request) {
+	from := 0
+	if f := r.URL.Query().Get("from"); f != "" {
+		n, err := strconv.Atoi(f)
+		if err != nil || n < 0 {
+			badRequest(w, http.StatusBadRequest, "from is a line number")
+			return
+		}
+		from = n
+	}
+	run, err := s.api.ToolRun(r.PathValue("id"), from)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, run)
+}
+
+func (s *Server) cancelTool(w http.ResponseWriter, r *http.Request) {
+	if err := s.api.CancelTool(r.PathValue("id")); err != nil {
 		fail(w, err)
 		return
 	}

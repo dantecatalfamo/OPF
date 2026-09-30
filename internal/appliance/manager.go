@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
@@ -65,6 +66,9 @@ type Manager struct {
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus
 	gwAt    time.Time
+
+	diagOnce sync.Once
+	diag     *diag.Runs
 
 	releaseOnce sync.Once
 	release     string

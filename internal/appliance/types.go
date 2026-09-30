@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
@@ -44,6 +45,9 @@ type API interface {
 	KillState(KillStateRequest) error
 	RuleCounters() (*RuleCounters, error)
 	FirewallLog() (*FirewallLog, error)
+	StartTool(diag.Request) (*diag.Run, error)
+	ToolRun(id string, from int) (*diag.Run, error)
+	CancelTool(id string) error
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.
@@ -391,6 +395,7 @@ const (
 	CodeModifiedOutside Code = "modified_outside" // files changed outside OPF
 	CodeCheckFailed     Code = "check_failed"     // a validator rejected a generated file
 	CodeUnsupported     Code = "unsupported"      // something OPF can't do yet
+	CodeBusy            Code = "busy"             // too much is running; try again soon
 	CodeInternal        Code = "internal"
 )
 
