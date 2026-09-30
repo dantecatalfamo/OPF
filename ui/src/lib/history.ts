@@ -12,7 +12,8 @@ export const ranges = [
   { value: '2678400', label: 'Month' },
 ];
 
-export function useHistory(series: string[], range: number): { data?: MetricsResource; error?: string } {
+/** Series over the last range seconds, points at least step apart (the server's finest, if not given). */
+export function useHistory(series: string[], range: number, step?: number): { data?: MetricsResource; error?: string } {
   const [state, setState] = useState<{ data?: MetricsResource; error?: string }>({});
   const key = series.join(',');
   useEffect(() => {
@@ -23,7 +24,7 @@ export function useHistory(series: string[], range: number): { data?: MetricsRes
       // The server takes 32 series a request.
       const chunks: string[][] = [];
       for (let i = 0; i < series.length; i += 32) chunks.push(series.slice(i, i + 32));
-      Promise.all(chunks.map((c) => backend.metrics(c, range))).then(
+      Promise.all(chunks.map((c) => backend.metrics(c, range, step))).then(
         (all) => live && setState({ data: { series: Object.assign({}, ...all.map((d) => d.series)), known: all[0]?.known ?? [] } }),
         (e) => live && setState((s) => ({ data: s.data, error: e instanceof Error ? e.message : String(e) })),
       );
@@ -31,7 +32,7 @@ export function useHistory(series: string[], range: number): { data?: MetricsRes
     load();
     const t = setInterval(load, range <= 3600 ? 10_000 : 60_000);
     return () => { live = false; clearInterval(t); };
-  }, [key, range]); // series is compared by its names
+  }, [key, range, step]); // series is compared by its names
   return state;
 }
 

@@ -160,3 +160,34 @@ export function TrafficSpark({ data, dev, range, h = 56 }: { data?: MetricsResou
     />
   );
 }
+
+/**
+ * A faint graph filling its parent (which must be position: relative),
+ * for behind a number in a table cell: a rule's matches over time. No
+ * tooltip; the number carries one.
+ */
+export function CellSpark({ data, k, color }: { data?: MetricsResource; k: string; color: string }) {
+  const r = data?.series[k];
+  if (!r || !r.avg.some((v) => v !== null && v > 0)) return null;
+  const rows = r.avg.map((v, i) => ({ t: i, v }));
+  return (
+    // The lower part of the cell, faint, so the number above stays readable.
+    <div aria-hidden style={{ position: 'absolute', inset: '52% 0 3px 0', opacity: 0.45, pointerEvents: 'none' }}>
+      <AreaChart
+        h="100%"
+        data={rows}
+        dataKey="t"
+        series={[{ name: 'v', color }]}
+        curveType="monotone"
+        withDots={false}
+        connectNulls={false}
+        withXAxis={false}
+        withYAxis={false}
+        withTooltip={false}
+        gridAxis="none"
+        strokeWidth={1}
+        fillOpacity={0.35}
+      />
+    </div>
+  );
+}

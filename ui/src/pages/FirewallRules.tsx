@@ -17,6 +17,9 @@ import { formatBytes, formatCount } from '../lib/format';
 import { rawAction } from '../lib/pfcheck';
 import { isFloating } from '../lib/rules';
 import { ActionBadge, PageHeader, Mono } from '../components/ui';
+import { CellSpark } from '../components/HistoryChart';
+import { useHistory } from '../lib/history';
+import type { MetricsResource } from '../lib/api';
 import { RuleDrawer } from './RuleDrawer';
 
 const FLOATING = 'floating';
@@ -67,8 +70,25 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
   );
 }
 
-function RuleRow({ rule, model, pfText, counters, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
-  rule: Rule; model: Model; pfText?: string; counters?: RuleCountersResource; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+// Matches over the last day, drawn behind each rule's count: points 10
+// minutes apart (rules' counters are sampled every 30 s).
+const SPARK_RANGE = 86400;
+const SPARK_STEP = 600;
+const sparkNote = ' The graph behind it is matches a second over the last day.';
+const sparkColor = (action: string) => (action === 'block' ? 'red.6' : 'harbor.5');
+
+// The Matches cell: the count, over its graph.
+function MatchesCell({ history, series, action, children }: { history?: MetricsResource; series?: string; action: string; children: React.ReactNode }) {
+  return (
+    <Table.Td ta="right" w={120} style={{ position: 'relative' }}>
+      {series && <CellSpark data={history} k={series} color={sparkColor(action)} />}
+      <div style={{ position: 'relative', transform: 'translateY(-6px)' }}>{children}</div>
+    </Table.Td>
+  );
+}
+
+function RuleRow({ rule, model, pfText, counters, history, showPf, floating, onEdit, onToggle, onDuplicate, onDelete }: {
+  rule: Rule; model: Model; pfText?: string; counters?: RuleCountersResource; history?: MetricsResource; showPf: boolean; floating: boolean; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
   // Counters are the loaded rule's, by label; a rule that's only staged,
@@ -119,15 +139,15 @@ function RuleRow({ rule, model, pfText, counters, showPf, floating, onEdit, onTo
           </>
         )
       )}
-      <Table.Td ta="right">
+      <MatchesCell history={history} series={rule.enabled ? `pf.rule.${rule.id}` : undefined} action={action}>
         {c ? (
-          <Tooltip multiline w={260} label={`${c.packets.toLocaleString()} packets (${formatBytes(c.bytes)}) since the rules were loaded · ${c.states.toLocaleString()} open connections · checked ${c.evaluations.toLocaleString()} times`}>
+          <Tooltip multiline w={260} label={`${c.packets.toLocaleString()} packets (${formatBytes(c.bytes)}) since the rules were loaded · ${c.states.toLocaleString()} open connections · checked ${c.evaluations.toLocaleString()} times.${sparkNote}`}>
             <Text size="sm" c="dimmed" className="num">{formatCount(c.packets)}</Text>
           </Tooltip>
         ) : (
           <Text size="sm" c="dimmed">{!counters ? '…' : !rule.enabled ? 'Off' : 'Not loaded'}</Text>
         )}
-      </Table.Td>
+      </MatchesCell>
       <Table.Td w={44}>
         <Menu position="bottom-end" withinPortal>
           <Menu.Target>
@@ -147,10 +167,13 @@ function RuleRow({ rule, model, pfText, counters, showPf, floating, onEdit, onTo
   );
 }
 
-function SystemRow({ action, description, source, destination, port, pf, showPf, to, counter }: {
+function SystemRow({ action, description, source, destination, port, pf, showPf, to, counter, series, history }: {
   action: 'pass' | 'block'; description: string; source: string; destination: string; port?: string; pf: string; showPf: boolean; to: string;
   // Counters by the built-in rule's label; the default block's are over every interface.
   counter?: RuleCountersResource['labels'][string];
+  // Its matches over time (pf.builtin.<name>).
+  series?: string;
+  history?: MetricsResource;
 }) {
   return (
     <Table.Tr style={{ background: 'var(--opf-bg)' }}>
@@ -173,13 +196,13 @@ function SystemRow({ action, description, source, destination, port, pf, showPf,
           <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono c="dimmed">{port ?? 'Any'}</Mono></Table.Td>
         </>
       )}
-      <Table.Td ta="right">
+      <MatchesCell history={history} series={series} action={action}>
         {counter && (
-          <Tooltip multiline w={260} label={`${counter.packets.toLocaleString()} packets (${formatBytes(counter.bytes)}) since the rules were loaded · ${counter.states.toLocaleString()} open connections`}>
+          <Tooltip multiline w={260} label={`${counter.packets.toLocaleString()} packets (${formatBytes(counter.bytes)}) since the rules were loaded · ${counter.states.toLocaleString()} open connections.${series ? sparkNote : ''}`}>
             <Text size="sm" c="dimmed" className="num">{formatCount(counter.packets)}</Text>
           </Tooltip>
         )}
-      </Table.Td>
+      </MatchesCell>
       <Table.Td />
     </Table.Tr>
   );
@@ -198,6 +221,9 @@ export function FirewallRules() {
   const tab = floating ? FLOATING : current!.id;
   const inTab = (r: Rule) => (floating ? isFloating(r) : !isFloating(r) && r.interfaces[0] === current!.id);
   const rules = staged.firewall.rules.filter(inTab);
+  // Every row's matches over the last day, in one request.
+  const builtins = ['pf.builtin.anti-lockout', 'pf.builtin.block-private', 'pf.builtin.block-bogons', 'pf.builtin.default-block'];
+  const { data: history } = useHistory([...builtins, ...rules.filter((r) => r.enabled).map((r) => `pf.rule.${r.id}`)], SPARK_RANGE, SPARK_STEP);
   const tabName = floating ? 'floating' : current!.name;
   const [drawer, setDrawer] = useState<{ open: boolean; rule: Rule | null }>({ open: false, rule: null });
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -285,10 +311,10 @@ export function FirewallRules() {
               <Table.Tbody>
                 {lan && (
                   <SystemRow action="pass" description="Anti-lockout: always allow this web interface" source={`${lan.name} network`} destination={`${lan.name} address`} port="443, 22"
-                    pf={`pass in quick on $${lan.id} proto tcp to ($${lan.id}) port { 443 22 }`} showPf={showPf} to={`/interfaces/${lan.id}`} counter={counters?.labels['opf:builtin:anti-lockout']} />
+                    pf={`pass in quick on $${lan.id} proto tcp to ($${lan.id}) port { 443 22 }`} showPf={showPf} to={`/interfaces/${lan.id}`} counter={counters?.labels['opf:builtin:anti-lockout']} series="pf.builtin.anti-lockout" history={history} />
                 )}
-                {wan?.blockPrivate && <SystemRow action="block" description="Block private networks" source="<private>" destination="Any" pf={`block in log quick on $${wan.id} from <private>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-private']} />}
-                {wan?.blockBogons && <SystemRow action="block" description="Block bogon networks" source="<bogons>" destination="Any" pf={`block in log quick on $${wan.id} from <bogons>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-bogons']} />}
+                {wan?.blockPrivate && <SystemRow action="block" description="Block private networks" source="<private>" destination="Any" pf={`block in log quick on $${wan.id} from <private>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-private']} series="pf.builtin.block-private" history={history} />}
+                {wan?.blockBogons && <SystemRow action="block" description="Block bogon networks" source="<bogons>" destination="Any" pf={`block in log quick on $${wan.id} from <bogons>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-bogons']} series="pf.builtin.block-bogons" history={history} />}
                 {wan && staged.firewall.forwards.some((f) => f.enabled && f.iface === wan.id) && (
                   <SystemRow action="pass" description={`Port forwards (${staged.firewall.forwards.filter((f) => f.enabled && f.iface === wan.id).length})`} source="See NAT" destination="Forward targets" pf="pass in quick on $wan … rdr-to …" showPf={showPf} to="/firewall/nat" />
                 )}
@@ -300,6 +326,7 @@ export function FirewallRules() {
                         model={staged}
                         pfText={derived?.rules[r.id]}
                         counters={counters}
+                        history={history}
                         showPf={showPf}
                         floating={floating}
                         onEdit={() => setDrawer({ open: true, rule: r })}
@@ -323,7 +350,7 @@ export function FirewallRules() {
                 )}
                 {!floating && (
                   <SystemRow action="block" description={`Default: block everything else${opts.logDefaultBlock ? ' (logged)' : ''}`} source="Any" destination="Any"
-                    pf={opts.logDefaultBlock ? 'block log all' : 'block all'} showPf={showPf} to="/firewall/settings" counter={counters?.labels['opf:builtin:default-block']} />
+                    pf={opts.logDefaultBlock ? 'block log all' : 'block all'} showPf={showPf} to="/firewall/settings" counter={counters?.labels['opf:builtin:default-block']} series="pf.builtin.default-block" history={history} />
                 )}
               </Table.Tbody>
             </Table>
