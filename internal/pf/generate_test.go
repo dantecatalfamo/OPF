@@ -971,3 +971,30 @@ func TestPfOptions(t *testing.T) {
 		t.Errorf("empty scrub:\n%s", conf)
 	}
 }
+
+func TestSafe(t *testing.T) {
+	if _, err := Safe(func() int { var m *Model; return len(m.Interfaces) }); err == nil {
+		t.Error("a panic wasn't turned into an error")
+	}
+	if v, err := Safe(func() int { return 3 }); v != 3 || err != nil {
+		t.Errorf("Safe = %d, %v", v, err)
+	}
+}
+
+// Derive gives the pages what they'd otherwise compute themselves.
+func TestDerive(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	d := Derive(m)
+	if d.Rules["r6"] != GenerateRule(&m.Firewall.Rules[slices.IndexFunc(m.Firewall.Rules, func(r Rule) bool { return r.ID == "r6" })], m) {
+		t.Errorf("rule text %q", d.Rules["r6"])
+	}
+	if len(d.AutomaticNAT) != len(AutomaticNAT(m)) || slices.Contains(d.LocalNetworks, "$lan:network") {
+		t.Errorf("derived %+v", d)
+	}
+	if !d.DynamicIfaces["wan"] || d.DynamicIfaces["lan"] || !d.SelfDynamic {
+		t.Errorf("dynamic %v, self %v", d.DynamicIfaces, d.SelfDynamic)
+	}
+	if d := Derive(&Model{}); d.AutomaticNAT == nil || d.LocalNetworks == nil || d.Rules == nil {
+		t.Error("empty lists should be empty, not null in JSON")
+	}
+}

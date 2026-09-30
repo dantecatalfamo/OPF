@@ -195,12 +195,44 @@ func TestPfHelpers(t *testing.T) {
 	if r.Rule.Kind != "form" || r.Rule.Port != "22" {
 		t.Fatalf("parse %+v", r.Rule)
 	}
-	var out renderBody
+	var out pf.Rendered
+	r.Rule.Description = "SSH"
 	c.do("POST", "/api/pf/render", js(renderRequest{Rule: r.Rule}), 200, &out)
-	if out.Text != "pass in proto tcp from any to any port 22" {
-		t.Fatalf("render %q", out.Text)
+	if len(out.Lines) != 1 || out.Lines[0] != "pass in proto tcp from any to any port 22" || out.Comment != "# SSH" {
+		t.Fatalf("render %+v", out)
 	}
 	c.do("POST", "/api/pf/parse", `{"text":"not pf"}`, 422, nil)
+	// Exactly one object to render.
+	c.do("POST", "/api/pf/render", `{}`, 422, nil)
+	c.do("POST", "/api/pf/render", js(renderRequest{Rule: r.Rule, NAT: &pf.NATRule{}}), 422, nil)
+
+	var live appliance.Config
+	c.do("GET", "/api/config", "", 200, &live)
+	var fwd pf.Rendered
+	c.do("POST", "/api/pf/render", js(renderRequest{Model: live.Model, Forward: &live.Model.Firewall.Forwards[0]}), 200, &fwd)
+	if len(fwd.Lines) < 2 || !strings.Contains(fwd.Lines[0], "rdr-to") {
+		t.Errorf("forward %+v", fwd)
+	}
+
+	var rs rulesetBody
+	c.do("POST", "/api/pf/ruleset", js(modelRequest{live.Model}), 200, &rs)
+	origins := 0
+	for _, l := range rs.Lines {
+		if l.Origin != nil {
+			origins++
+		}
+	}
+	if len(rs.Lines) < 20 || origins == 0 {
+		t.Errorf("ruleset: %d lines, %d with an origin", len(rs.Lines), origins)
+	}
+
+	var d pf.Derived
+	c.do("POST", "/api/pf/derived", js(modelRequest{live.Model}), 200, &d)
+	if len(d.AutomaticNAT) == 0 || len(d.LocalNetworks) == 0 || d.Rules["r3"] == "" || d.DynamicIfaces["wan"] != true || d.DynamicIfaces["lan"] != false {
+		t.Errorf("derived %+v", d)
+	}
+	// No model is an empty one, not an error.
+	c.do("POST", "/api/pf/derived", `{}`, 200, nil)
 }
 
 func TestLeaseNames(t *testing.T) {

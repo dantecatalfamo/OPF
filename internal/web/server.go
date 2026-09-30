@@ -17,6 +17,8 @@
 //	GET    /api/dhcp/leases               dhcpd's current leases
 //	GET    /api/dns/leases                names DHCP leases have in DNS, and refused ones
 //	POST   /api/pf/parse                  pf rule text to a rule
+//	POST   /api/pf/ruleset                a model's annotated pf.conf
+//	POST   /api/pf/derived                what the UI shows that depends on generation
 //	POST   /api/pf/render                 a rule to pf rule text
 //
 // Errors are {"error": {"code", "message", "details"}} with the status
@@ -68,7 +70,9 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/network/arp", s.arpTable)
 	s.mux.HandleFunc("GET /api/network/routes", s.routingTable)
 	s.mux.HandleFunc("POST /api/pf/parse", s.parseRule)
-	s.mux.HandleFunc("POST /api/pf/render", s.renderRule)
+	s.mux.HandleFunc("POST /api/pf/render", s.render)
+	s.mux.HandleFunc("POST /api/pf/ruleset", s.ruleset)
+	s.mux.HandleFunc("POST /api/pf/derived", s.derived)
 	s.mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, &appliance.Error{Code: appliance.CodeNotFound, Message: "no such resource"})
 	})
@@ -410,23 +414,83 @@ func (s *Server) parseRule(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ruleBody{rule})
 }
 
+// The pf helpers work on the model being edited, which may not be valid
+// yet; pf.Safe turns a generator's panic on a half-finished model into
+// a 422 instead of a crash. They compute text only, so they run here in
+// the web process.
+
+type modelRequest struct {
+	Model *pf.Model `json:"model"`
+}
+
+func (req modelRequest) model() *pf.Model {
+	if req.Model == nil {
+		return &pf.Model{}
+	}
+	return req.Model
+}
+
 type renderRequest struct {
-	Rule  *pf.Rule  `json:"rule"`
-	Model *pf.Model `json:"model,omitempty"`
+	Model   *pf.Model       `json:"model,omitempty"`
+	Rule    *pf.Rule        `json:"rule,omitempty"`
+	NAT     *pf.NATRule     `json:"nat,omitempty"`
+	Forward *pf.PortForward `json:"forward,omitempty"`
 }
 
-type renderBody struct {
-	Text string `json:"text"`
-}
-
-func (s *Server) renderRule(w http.ResponseWriter, r *http.Request) {
+// render returns the pf text for one rule, NAT rule or port forward.
+func (s *Server) render(w http.ResponseWriter, r *http.Request) {
 	var req renderRequest
 	if !decode(w, r, &req) {
 		return
 	}
-	if req.Rule == nil {
-		badRequest(w, http.StatusUnprocessableEntity, "rule is required")
+	m := modelRequest{req.Model}.model()
+	type result struct {
+		out pf.Rendered
+		err error
+	}
+	res, err := pf.Safe(func() result {
+		out, err := pf.Render(m, req.Rule, req.NAT, req.Forward)
+		return result{out, err}
+	})
+	if err == nil {
+		err = res.err
+	}
+	if err != nil {
+		badRequest(w, http.StatusUnprocessableEntity, "%v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, renderBody{pf.GenerateRule(req.Rule, req.Model)})
+	writeJSON(w, http.StatusOK, res.out)
+}
+
+type rulesetBody struct {
+	Lines []pf.PfLine `json:"lines"`
+}
+
+// ruleset returns a model's pf.conf, each line with where it came from.
+func (s *Server) ruleset(w http.ResponseWriter, r *http.Request) {
+	var req modelRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	lines, err := pf.Safe(func() []pf.PfLine { return pf.GeneratePfRuleset(req.model()) })
+	if err != nil {
+		badRequest(w, http.StatusUnprocessableEntity, "%v", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rulesetBody{lines})
+}
+
+// derived returns what the UI shows about a model that the generators
+// work out: automatic NAT, local networks, each rule's text.
+func (s *Server) derived(w http.ResponseWriter, r *http.Request) {
+	var req modelRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	d, err := pf.Safe(func() pf.Derived { return pf.Derive(req.model()) })
+	if err != nil {
+		badRequest(w, http.StatusUnprocessableEntity, "%v", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
 }

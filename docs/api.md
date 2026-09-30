@@ -228,5 +228,29 @@ isn't a pf rule.
 
 ### `POST /api/pf/render`
 
-`{"rule": {…}, "model": {…}}` → `{"text": "pass in quick on $lan …"}`,
-the text the generator writes for the rule.
+`{"model": {…}, "rule": {…}}` → `{"comment": "# Allow DNS", "lines":
+["pass in quick on $lan …"]}`, the text the generator writes for one
+object in the context of a model: give exactly one of `rule`, `nat` (an
+outbound NAT rule) or `forward` (a port forward, which can be several
+lines). `comment` is the description as pf.conf carries it, left out
+when there's none. This is what a form previews as it's filled in.
+
+### `POST /api/pf/ruleset`
+
+`{"model": {…}}` → `{"lines": [{"text": "…", "origin": {"label":
+"Firewall rule “Allow DNS”", "to": "/firewall/rules/lan"}}, …]}`, the
+pf.conf the model generates, each line with the page it comes from
+(`origin` is left out for lines OPF writes on its own).
+
+### `POST /api/pf/derived`
+
+`{"model": {…}}` → what the pages show that depends on generation:
+`automaticNat` (the outbound NAT rules OPF adds on its own),
+`localNetworks` (the networks a split-tunnel VPN device is told to
+send through the tunnel), `rules` (each firewall rule's pf text, by
+id), and `dynamicIfaces` and `selfDynamic` (whether a reference to
+each interface, or to self, follows address changes by default).
+
+The models these three take are the ones being edited, not yet valid.
+Anything validation would refuse can give odd text rather than an
+error; a model too incomplete to generate from at all is a 422.
