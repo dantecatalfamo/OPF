@@ -38,12 +38,14 @@ function usePublicAddress(): string {
 
 function Copyable({ value }: { value: string }) {
   return (
-    <Group gap={4} wrap="nowrap">
-      <Mono>{value}</Mono>
+    // A key is one long word: let it break onto a second line in a
+    // narrow card rather than push the button out of it.
+    <Group gap={4} wrap="nowrap" align="flex-start">
+      <Text className="mono" size="sm" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{value}</Text>
       <CopyButton value={value}>
         {({ copied, copy }) => (
           <Tooltip label={copied ? 'Copied' : 'Copy'}>
-            <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} size="sm" onClick={copy} aria-label="Copy">
+            <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} size="sm" onClick={copy} aria-label="Copy" style={{ flexShrink: 0 }}>
               {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
             </ActionIcon>
           </Tooltip>
