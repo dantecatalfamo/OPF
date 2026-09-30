@@ -23,17 +23,26 @@ func (s mockSystem) Stream(ctx context.Context, line func(string), argv ...strin
 		target = argv[i+1]
 	}
 	var steps []mockStep
-	switch argv[0] {
-	case "ping":
+	if strings.Contains(target, "nonexistent") && argv[0] != "dig" {
+		// As OpenBSD's tools say it for a name DNS has no address for.
+		msg := map[string]string{"nc": fmt.Sprintf("nc: getaddrinfo for host %q port %s: no address associated with name", target, argv[len(argv)-1])}[argv[0]]
+		if msg == "" {
+			msg = argv[0] + ": no address associated with name"
+		}
+		steps = []mockStep{{100 * time.Millisecond, msg, 0}, {0, "", 1}}
+	}
+	switch {
+	case steps != nil:
+	case argv[0] == "ping" || argv[0] == "ping6":
 		if slices.Contains(argv, "-q") {
 			break // the gateway check: Run's summary
 		}
 		steps = mockPingRun(argv, target)
-	case "traceroute":
+	case argv[0] == "traceroute" || argv[0] == "traceroute6":
 		steps = mockTraceroute(argv, target)
-	case "dig":
+	case argv[0] == "dig":
 		steps = mockDig(argv)
-	case "nc":
+	case argv[0] == "nc":
 		steps = mockNc(argv, target)
 	}
 	if steps == nil {
@@ -205,7 +214,7 @@ func mockDig(argv []string) []mockStep {
 		status = "NXDOMAIN"
 	}
 	lines := []string{
-		"", fmt.Sprintf("; <<>> dig 9.10.8-P1 <<>> %s", strings.Join(argv[1:], " ")),
+		"", fmt.Sprintf("; <<>> dig 9.10.8-P1 <<>> %s", strings.Join(argv[1:], " ")), "; (1 server found)",
 		";; global options: +cmd", ";; Got answer:",
 		fmt.Sprintf(";; ->>HEADER<<- opcode: QUERY, status: %s, id: 41236", status),
 		fmt.Sprintf(";; flags: qr rd ra ad; QUERY: 1, ANSWER: %d, AUTHORITY: 0, ADDITIONAL: 1", map[bool]int{true: 1, false: 0}[answer != ""]),
@@ -233,11 +242,11 @@ func mockNc(argv []string, target string) []mockStep {
 	// Web, mail and DNS ports answer; others are closed.
 	open := up && slices.Contains([]string{"22", "25", "53", "80", "443", "853"}, port)
 	if !open {
-		wait := 50 * time.Millisecond
 		if !up {
-			wait = 5 * time.Second
+			return []mockStep{{5 * time.Second, fmt.Sprintf("nc: connect to %s port %s (%s) failed: Operation timed out", a, port, proto), 0}, {0, "", 1}}
 		}
-		return []mockStep{{wait, fmt.Sprintf("nc: connect to %s port %s (%s) failed: Connection refused", a, port, proto), 0}, {0, "", 1}}
+		return []mockStep{{50 * time.Millisecond, fmt.Sprintf("nc: connect to %s port %s (%s) failed: Connection refused", a, port, proto), 0}, {0, "", 1}}
 	}
-	return []mockStep{{80 * time.Millisecond, fmt.Sprintf("Connection to %s %s port [%s/*] succeeded!", target, port, proto), 0}}
+	service := map[string]string{"22": "ssh", "25": "smtp", "53": "domain", "80": "http", "443": "https", "853": "domain-s"}[port]
+	return []mockStep{{80 * time.Millisecond, fmt.Sprintf("Connection to %s %s port [%s/%s] succeeded!", target, port, proto, service), 0}}
 }

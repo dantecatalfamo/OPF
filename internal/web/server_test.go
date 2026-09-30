@@ -323,7 +323,7 @@ func TestTools(t *testing.T) {
 	c := client{t, newServer(t)}
 	var r diag.Run
 	c.do("POST", "/api/diagnostics/runs", `{"tool":"ping","host":"9.9.9.9","count":2}`, http.StatusCreated, &r)
-	if r.ID == "" || r.Command != "ping -4 -c 2 -s 56 -w 2 -- 9.9.9.9" {
+	if r.ID == "" || r.Command != "ping -c 2 -s 56 -w 2 -- 9.9.9.9" {
 		t.Fatalf("started %+v", r)
 	}
 	for range 100 {

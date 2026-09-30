@@ -266,11 +266,12 @@ func (m *Manager) ping(a netip.Addr) GatewayHealth {
 	h := GatewayHealth{Address: a.String()}
 	// Three probes, 0.2 s apart (root may go below a second), each
 	// waiting at most a second: under two seconds for one that's down.
-	argv := []string{"ping", "-n", "-q", "-c", "3", "-i", "0.2", "-w", "1"}
+	// OpenBSD's ping has no -6; IPv6 is ping6.
+	cmd := "ping"
 	if a.Is6() {
-		argv = append(argv, "-6")
+		cmd = "ping6"
 	}
-	out, _ := m.read(append(argv, a.String())...) // exits 2 when nothing answers
+	out, _ := m.read(cmd, "-n", "-q", "-c", "3", "-i", "0.2", "-w", "1", "--", a.String()) // exits 1 when nothing answers
 	p, ok := sysinfo.ParsePing(out)
 	if !ok {
 		h.Error = "couldn't ping it"

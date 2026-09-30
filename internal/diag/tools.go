@@ -128,9 +128,17 @@ func isHostName(s string) bool {
 	return true
 }
 
-// family returns -4 or -6 for a request: the address's own family, or
-// the one asked for a name. It's an error to ask for the other family
-// than an address has.
+// ipv6 says whether a request is for IPv6: its address is, or it asks
+// for IPv6 for a name. It's an error to ask for the other family than
+// an address has. OpenBSD's ping and traceroute have no -4 and -6; IPv6
+// is ping6 and traceroute6.
+func ipv6(r Request, a netip.Addr) (bool, error) {
+	f, err := family(r, a)
+	return len(f) == 1 && f[0] == "-6", err
+}
+
+// family returns -4 or -6 for a request (nc takes them): the address's
+// own family, or the one asked for a name.
 func family(r Request, a netip.Addr) ([]string, error) {
 	switch r.Family {
 	case "", "ipv4", "ipv6":
@@ -170,7 +178,7 @@ func pingCommand(r Request) (command, error) {
 	if err != nil {
 		return command{}, err
 	}
-	fam, err := family(r, a)
+	v6, err := ipv6(r, a)
 	if err != nil {
 		return command{}, err
 	}
@@ -183,10 +191,13 @@ func pingCommand(r Request) (command, error) {
 	if err != nil {
 		return command{}, err
 	}
-	argv := append([]string{"ping"}, fam...)
+	argv := []string{"ping"}
+	if v6 {
+		argv = []string{"ping6"}
+	}
 	argv = append(argv, "-c", strconv.Itoa(count), "-s", strconv.Itoa(size), "-w", "2")
 	if r.DontFragment {
-		if a.IsValid() && a.Is6() || r.Family == "ipv6" {
+		if v6 {
 			return command{}, invalid("dontFragment", "IPv6 packets are never fragmented on the way")
 		}
 		argv = append(argv, "-D")
@@ -201,7 +212,7 @@ func tracerouteCommand(r Request) (command, error) {
 	if err != nil {
 		return command{}, err
 	}
-	fam, err := family(r, a)
+	v6, err := ipv6(r, a)
 	if err != nil {
 		return command{}, err
 	}
@@ -209,7 +220,10 @@ func tracerouteCommand(r Request) (command, error) {
 	if err != nil {
 		return command{}, err
 	}
-	argv := append([]string{"traceroute"}, fam...)
+	argv := []string{"traceroute"}
+	if v6 {
+		argv = []string{"traceroute6"}
+	}
 	switch r.Protocol {
 	case "", "udp":
 	case "icmp":

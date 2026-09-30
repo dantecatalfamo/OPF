@@ -8,6 +8,7 @@ import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react';
 import { backend } from '../model/store';
 import { ApiError, type ToolRequest, type ToolRun } from '../lib/api';
 import { PageHeader } from '../components/ui';
+import { commonOutcome, dnsOutcome, pingOutcome, portOutcome, tracerouteOutcome, type Outcome } from '../lib/toolOutcomes';
 
 type Tool = ToolRequest['tool'];
 
@@ -50,72 +51,6 @@ function useToolRun() {
   };
   const stop = () => run && backend.cancelTool(run.id).catch(() => {});
   return { run, error, start, stop };
-}
-
-// What a finished run found, in words, and what to try next.
-interface Outcome {
-  ok: boolean;
-  text: string;
-  next?: { label: string; req: ToolRequest }[];
-}
-
-function pingOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined {
-  const stats = run.lines.map((l) => l.match(/(\d+) packets transmitted, (\d+) packets received/)).find(Boolean);
-  const rtt = run.lines.map((l) => l.match(/= [\d.]+\/([\d.]+)\//)).find(Boolean);
-  if (run.lines.some((l) => /Message too long/.test(l))) {
-    return { ok: false, text: `Packets of ${req.size} bytes don’t fit on the way without being fragmented. Try a smaller size to find the largest that does.` };
-  }
-  if (!stats) return undefined;
-  const [sent, got] = [Number(stats[1]), Number(stats[2])];
-  if (got === 0) {
-    return { ok: false, text: `${req.host} didn’t answer any of ${sent} pings. It may be down, unreachable from here, or not answering pings.`, next: [{ label: 'Trace the route to it', req: { tool: 'traceroute', host: req.host } }] };
-  }
-  return { ok: got === sent, text: `${got} of ${sent} answered${rtt ? `, ${Number(rtt[1]).toFixed(1)} ms on average` : ''}.`, next: got < sent ? [{ label: 'Trace the route', req: { tool: 'traceroute', host: req.host } }] : undefined };
-}
-
-function tracerouteOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined {
-  // "traceroute to example.com (93.184.215.14), 30 hops max, ..."
-  const target = run.lines[0]?.match(/^traceroute6? to \S+ \(([^)]+)\)/)?.[1];
-  const hops = run.lines.filter((l) => /^\s*\d+\s/.test(l));
-  if (!target || !hops.length) return undefined;
-  const answered = hops.filter((l) => !/^\s*\d+\s+(\*\s*)+$/.test(l));
-  const reached = answered.find((l) => l.trim().split(/\s+/).slice(1).includes(target));
-  if (reached) return { ok: true, text: `Reached ${target} in ${reached.trim().split(/\s+/)[0]} hops.`, next: [{ label: 'Ping it', req: { tool: 'ping', host: req.host } }] };
-  const last = answered.at(-1)?.trim().split(/\s+/);
-  return {
-    ok: false,
-    text: last
-      ? `${target} never answered. The last router that did is ${last[1]} (hop ${last[0]}), so the trouble is likely there or just after it. Some hosts don’t answer traceroute at all; try ICMP, or ping it.`
-      : `No router on the way answered, not even the first. Check this firewall’s internet connection.`,
-    next: [{ label: 'Ping it', req: { tool: 'ping', host: req.host } }],
-  };
-}
-
-function dnsOutcome(run: ToolRun): Outcome | undefined {
-  const status = run.lines.map((l) => l.match(/status: ([A-Z]+)/)).find(Boolean)?.[1];
-  if (!status) return run.lines.some((l) => /connection timed out|no servers could be reached/.test(l)) ? { ok: false, text: 'The DNS server didn’t answer.' } : undefined;
-  if (status === 'NXDOMAIN') return { ok: false, text: 'The name doesn’t exist.' };
-  if (status !== 'NOERROR') return { ok: false, text: `The server answered ${status}.` };
-  const start = run.lines.findIndex((l) => l.startsWith(';; ANSWER SECTION'));
-  const answers = start < 0 ? [] : run.lines.slice(start + 1).filter((l) => l && !l.startsWith(';')).map((l) => l.split(/\s+/));
-  if (!answers.length) return { ok: true, text: 'The name exists, but has no records of that type.' };
-  const addrs = answers.filter((a) => a[3] === 'A' || a[3] === 'AAAA').map((a) => a[4]);
-  return {
-    ok: true,
-    text: `${answers.length} ${answers.length === 1 ? 'answer' : 'answers'}${addrs.length ? `: ${addrs.slice(0, 4).join(', ')}` : ''}.`,
-    next: addrs.slice(0, 2).map((a) => ({ label: `Ping ${a}`, req: { tool: 'ping' as const, host: a } })),
-  };
-}
-
-function portOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined {
-  const proto = req.protocol === 'udp' ? 'UDP' : 'TCP';
-  if (run.lines.some((l) => /succeeded/.test(l))) {
-    return { ok: true, text: req.protocol === 'udp' ? `Nothing refused UDP port ${req.port}; with UDP that’s all a test can tell.` : `Something is listening on port ${req.port}.` };
-  }
-  if (run.lines.some((l) => /Connection refused/.test(l))) {
-    return { ok: false, text: `${req.host} answered, but nothing is listening on ${proto} port ${req.port} (the connection was refused).` };
-  }
-  return { ok: false, text: `Nothing answered on ${proto} port ${req.port}: the host may be down, or a firewall on the way drops it.`, next: [{ label: `Ping ${req.host}`, req: { tool: 'ping', host: req.host } }] };
 }
 
 function Output({ run, outcome, onNext, onStop }: { run?: ToolRun; outcome?: Outcome; onNext: (r: ToolRequest) => void; onStop: () => void }) {
@@ -201,7 +136,7 @@ function ToolPanel<V extends Record<string, unknown>>({ defaults, initial, runKe
           </Group>
           {error && !fieldError && <Alert color="red" variant="light">{error.message}</Alert>}
           {/* Judged once it has finished: a trace still going hasn't failed. */}
-          <Output run={run} outcome={run && req && !run.running && !run.error ? outcome(run, req) : undefined} onNext={onNext} onStop={stop} />
+          <Output run={run} outcome={run && req && !run.running && !run.error ? commonOutcome(run, req) ?? outcome(run, req) : undefined} onNext={onNext} onStop={stop} />
         </Stack>
       </form>
     </Card>
@@ -284,7 +219,7 @@ export function Tools() {
         </Tabs.Panel>
         <Tabs.Panel value="dns">
           <ToolPanel
-            runKey={key('dns')} initial={initial('dns') as never} onNext={next} outcome={(r) => dnsOutcome(r)}
+            runKey={key('dns')} initial={initial('dns') as never} onNext={next} outcome={dnsOutcome}
             help="Asks DNS about a name, or an address for its name. Asking this firewall’s resolver shows what your devices get; asking another server, or tracing from the root, shows whether the problem is here or upstream."
             defaults={{ name: '', type: 'A', server: '', trace: false, dnssec: false }}
             toRequest={(v) => ({ tool: 'dns', name: v.name, type: v.type, server: v.server.trim() || undefined, trace: v.trace, dnssec: v.dnssec })}

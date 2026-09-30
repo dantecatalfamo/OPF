@@ -85,7 +85,7 @@ peer
 		default:
 			out = mockNetstat(m, t, false)
 		}
-	case argv[0] == "ping":
+	case argv[0] == "ping" || argv[0] == "ping6":
 		return mockPing(argv[len(argv)-1], t)
 	case cmd == "syspatch -c":
 		select {

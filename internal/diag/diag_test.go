@@ -15,12 +15,14 @@ func TestBuild(t *testing.T) {
 		req  Request
 		want string
 	}{
-		{Request{Tool: "ping", Host: "9.9.9.9"}, "ping -4 -c 5 -s 56 -w 2 -- 9.9.9.9"},
+		{Request{Tool: "ping", Host: "9.9.9.9"}, "ping -c 5 -s 56 -w 2 -- 9.9.9.9"},
 		{Request{Tool: "ping", Host: " example.com ", Count: 3, Size: 1472, DontFragment: true}, "ping -c 3 -s 1472 -w 2 -D -- example.com"},
-		{Request{Tool: "ping", Host: "2001:DB8::1"}, "ping -6 -c 5 -s 56 -w 2 -- 2001:db8::1"},
-		{Request{Tool: "ping", Host: "example.com", Family: "ipv6"}, "ping -6 -c 5 -s 56 -w 2 -- example.com"},
+		{Request{Tool: "ping", Host: "2001:DB8::1"}, "ping6 -c 5 -s 56 -w 2 -- 2001:db8::1"},
+		{Request{Tool: "ping", Host: "example.com", Family: "ipv6"}, "ping6 -c 5 -s 56 -w 2 -- example.com"},
+		{Request{Tool: "ping", Host: "example.com", Family: "ipv4"}, "ping -c 5 -s 56 -w 2 -- example.com"},
+		{Request{Tool: "traceroute", Host: "2620:fe::fe", Protocol: "icmp"}, "traceroute6 -I -n -m 30 -q 3 -w 2 -- 2620:fe::fe"},
 		{Request{Tool: "traceroute", Host: "example.com"}, "traceroute -n -m 30 -q 3 -w 2 -- example.com"},
-		{Request{Tool: "traceroute", Host: "1.1.1.1", Protocol: "icmp", ASNumbers: true, Names: true, MaxHops: 12}, "traceroute -4 -I -A -m 12 -q 3 -w 2 -- 1.1.1.1"},
+		{Request{Tool: "traceroute", Host: "1.1.1.1", Protocol: "icmp", ASNumbers: true, Names: true, MaxHops: 12}, "traceroute -I -A -m 12 -q 3 -w 2 -- 1.1.1.1"},
 		{Request{Tool: "dns", Name: "example.com"}, "dig @127.0.0.1 -q example.com -t A +time=3 +tries=2"},
 		{Request{Tool: "dns", Name: "_sip._tcp.example.com", Type: "srv", Server: "9.9.9.9", DNSSEC: true}, "dig @9.9.9.9 -q _sip._tcp.example.com -t SRV +time=3 +tries=2 +dnssec"},
 		{Request{Tool: "dns", Name: "example.com", Type: "AAAA", Trace: true}, "dig -q example.com -t AAAA +time=3 +tries=2 +trace"},
@@ -139,7 +141,7 @@ func TestRuns(t *testing.T) {
 	f := &fake{lines: []string{"one", "t\two", "bad \u202e \x1b[2J \xff end"}, delay: time.Millisecond}
 	rs := &Runs{Runner: f}
 	r, err := rs.Start(Request{Tool: "ping", Host: "9.9.9.9"})
-	if err != nil || !r.Running || r.Command != "ping -4 -c 5 -s 56 -w 2 -- 9.9.9.9" {
+	if err != nil || !r.Running || r.Command != "ping -c 5 -s 56 -w 2 -- 9.9.9.9" {
 		t.Fatalf("start: %+v %v", r, err)
 	}
 	done := wait(t, rs, r.ID)

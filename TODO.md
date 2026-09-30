@@ -179,6 +179,12 @@ diffs, whether confirmation is needed, and the server's objections.
 - **UI**:
   - `cd ui && npx tsc`, `npm run build`, and `npm run build:preview`
     (the single-file offline build; it builds the wasm first).
+  - `npm run check:tools` after changing the Tools page's result
+    summaries: they're run against real OpenBSD output
+    (`internal/diag/testdata/openbsd-7.9-tools.txt`). After changing
+    how `internal/diag` builds a command, run `TestRealTools` on
+    OpenBSD (`GOOS=openbsd go test -c ./internal/diag`, then
+    `OPF_REAL_TOOLS=1 ./diag.test -test.run TestRealTools`).
   - When a check is piped through `grep -v`, don't chain `&&` after it:
     `grep -v` exits 1 when there's nothing left to print.
 - **`make mock`** runs `opf -mock` (the real engine on the sample
@@ -1004,12 +1010,10 @@ skipped and the web process isn't dropped to another user.
       `swapctl` with two devices, and a release other than 7.9.
 - [ ] `ping -6` for an IPv6 gateway, and `kern.boottime` read in the
       parent's time zone matching the system's.
-- [ ] The diagnostic tools' flags as `internal/diag` builds them:
-      `ping -4/-6 -c -s -w -D --`, `traceroute -4/-6 -I -A -n -m -q -w
-      --` (the 6.4 merge of traceroute6 is assumed), `dig @server -q
-      -t -x +time +tries +trace +dnssec`, `nc -4/-6 -z -v -w -u --`.
-      Written from the man pages; openbsd-dev stopped answering before
-      they could be checked.
+- [ ] Diagnostic tools as root, through a running OPF (they've only
+      been run by hand and by `TestRealTools` as a user): traceroute
+      with UDP from the parent, `dig +trace`, and a gateway check with
+      `ping -i 0.2`, which only root may use.
 - [ ] `syspatch -c`'s error when the mirror can't be reached (its
       output with patches available is in
       `internal/sysinfo/testdata/openbsd-other/`).
@@ -1090,7 +1094,10 @@ Live data:
       type, another server, +trace, DNSSEC, reverse) and port tests,
       run by the parent from checked fields, output streamed to the
       page, each result explained in words with the next useful step.
-      Gateways can be pinged from Routing.
+      Gateways can be pinged from Routing. Checked on OpenBSD 7.9:
+      every command runs, and the summaries read its real output
+      (which is how ping6 and traceroute6 were found to be needed for
+      IPv6, instead of -6).
 - [x] pf's own state: the dashboard's firewall tile (states, packets
       blocked a minute on the statistics interface) and recently
       blocked, Connections from the state table with closing a

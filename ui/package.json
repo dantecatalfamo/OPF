@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "build:preview": "npm run build:wasm && tsc && vite build --mode preview && node scripts/fragment.mjs dist-preview/index.html dist-preview/opf-console.html",
     "typecheck": "tsc",
-    "build:wasm": "cd .. && GOOS=js GOARCH=wasm go build -trimpath -ldflags='-s -w' -o ui/src/wasm/opf.wasm ./cmd/opfwasm && cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" ui/src/wasm/wasm_exec.js"
+    "build:wasm": "cd .. && GOOS=js GOARCH=wasm go build -trimpath -ldflags='-s -w' -o ui/src/wasm/opf.wasm ./cmd/opfwasm && cp \"$(go env GOROOT)/lib/wasm/wasm_exec.js\" ui/src/wasm/wasm_exec.js",
+    "check:tools": "node scripts/check-tool-outcomes.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
