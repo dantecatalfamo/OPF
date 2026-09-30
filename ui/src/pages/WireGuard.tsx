@@ -6,7 +6,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
-import { ifaceStatus, peerStatus } from '../model/live';
+import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
 import { useDerived } from '../lib/generated';
 import { formRule } from '../model/sample';
@@ -23,6 +23,15 @@ function fakeKey(): string {
   for (let i = 0; i < 42; i++) s += chars[Math.floor(Math.random() * 64)];
   // The 43rd character carries only 4 bits of the 32-byte key.
   return s + 'AEIMQUYcgkosw048'[Math.floor(Math.random() * 16)] + '=';
+}
+
+// The WAN's address, where devices reach the tunnel. Behind another
+// router it's a private address, and the device needs the public one.
+function usePublicAddress(): string {
+  const { staged } = useStore();
+  const { data } = useLive('interfaces');
+  const wan = staged.interfaces.find((i) => i.role === 'wan');
+  return (wan && firstIPv4(ifaceState(data, wan))) ?? 'your-public-address';
 }
 
 function Copyable({ value }: { value: string }) {
@@ -186,7 +195,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
   }, [opened]); // form is stable
 
   const v = form.values;
-  const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
+  const wan = usePublicAddress();
   const local = useDerived(staged).data?.localNetworks ?? [];
   const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   const clientConfig = `[Interface]
@@ -275,6 +284,7 @@ PersistentKeepalive = 25`;
 
 function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const { staged } = useStore();
+  const publicAddress = usePublicAddress();
   const wg = tunnel.wireguard;
   const wan = staged.interfaces.find((i) => i.role === 'wan');
   const wanRule = staged.firewall.rules.find((r) => r.enabled && r.kind === 'form' && r.interfaces.includes(wan?.id ?? '') && r.protocol === 'udp' && r.port === String(wg.listenPort));
@@ -292,7 +302,7 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
       <Timeline bulletSize={28} lineWidth={2}>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconPlugConnected size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Devices connect</Text>}>
           <Text size="sm" c="dimmed">
-            To <Mono>{ifaceStatus.wan?.address?.split('/')[0]}:{wg.listenPort}</Mono> over UDP.{' '}
+            To <Mono>{publicAddress}:{wg.listenPort}</Mono> over UDP.{' '}
             {wanRule ? (
               <>Allowed by the WAN rule <Anchor component={Link} to={`/firewall/rules/${wan?.id}`} size="sm">“{wanRule.description}”</Anchor>.</>
             ) : (
@@ -407,8 +417,7 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
 
 // The device's configuration after an edit. Its private key is the one
 // it already has: OPF never sees it again after creating the device.
-function deviceConfig(local: string[], t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
-  const wan = ifaceStatus.wan?.address?.split('/')[0] ?? 'your-public-address';
+function deviceConfig(local: string[], wan: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
   const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   return `[Interface]
 PrivateKey = <the device’s existing private key>
@@ -453,6 +462,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   const { staged, edit } = useStore();
   const [saved, setSaved] = useState<Peer | null>(null);
   const local = useDerived(staged).data?.localNetworks ?? [];
+  const wan = usePublicAddress();
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
     validate: {
@@ -492,9 +502,9 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Update the device too">
             Its address or what it sends through the VPN changed, so the device needs the new settings below. Keep the private key it already has.
           </Alert>
-          <Code block>{deviceConfig(local, tunnel, saved)}</Code>
+          <Code block>{deviceConfig(local, wan, tunnel, saved)}</Code>
           <Group justify="flex-end">
-            <CopyButton value={deviceConfig(local, tunnel, saved)}>
+            <CopyButton value={deviceConfig(local, wan, tunnel, saved)}>
               {({ copied, copy }) => (
                 <Button variant="light" leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />} onClick={copy}>{copied ? 'Copied' : 'Copy configuration'}</Button>
               )}
@@ -535,6 +545,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
 
 function Devices({ tunnel }: { tunnel: Tunnel }) {
   const { edit } = useStore();
+  const { data: live } = useLive('interfaces');
   const [editing, setEditing] = useState<Peer | null>(null);
   return (
     <Card padding={0}>
@@ -556,8 +567,8 @@ function Devices({ tunnel }: { tunnel: Tunnel }) {
               <Table.Tr><Table.Td colSpan={6}><Text size="sm" c="dimmed" ta="center" py="md">No devices yet.</Text></Table.Td></Table.Tr>
             )}
             {tunnel.wireguard.peers.map((p) => {
-              const s = peerStatus[p.id];
-              const online = s?.handshakeSecAgo != null && s.handshakeSecAgo < 180;
+              const s = peerState(live, tunnel, p);
+              const online = peerOnline(s);
               return (
                 <Table.Tr key={p.id}>
                   <Table.Td>
@@ -570,9 +581,9 @@ function Devices({ tunnel }: { tunnel: Tunnel }) {
                   </Table.Td>
                   <Table.Td><Badge color={p.clientRoutes === 'full' ? 'amber' : 'gray'}>{routesLabel[p.clientRoutes]}</Badge></Table.Td>
                   <Table.Td>
-                    {s?.handshakeSecAgo != null ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeSecAgo)}</Text>) : <Text size="sm" c="dimmed">Never</Text>}
+                    {s?.handshakeAgo !== undefined ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeAgo)}</Text>) : <Text size="sm" c="dimmed">{live ? 'Never' : '…'}</Text>}
                   </Table.Td>
-                  <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.tx)} · ↑ ${formatBytes(s.rx)}` : '—'}</Text></Table.Td>
+                  <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.txBytes)} · ↑ ${formatBytes(s.rxBytes)}` : '—'}</Text></Table.Td>
                   <Table.Td w={88}>
                     <Group gap={4} wrap="nowrap">
                     <Tooltip label="Edit device">

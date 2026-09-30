@@ -1,51 +1,52 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Grid, Group, List, Modal, PasswordInput, Progress, Select, Stack, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
 import { useStore } from '../model/store';
-import { systemInfo } from '../model/live';
+import { useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
+// Security patches for the running release, from syspatch -c. Installing
+// them from here isn't built yet (TODO.md › Diagnostics tools › Updates).
 function Updates() {
-  const [state, setState] = useState<'idle' | 'installing' | 'done'>('idle');
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    if (state !== 'installing') return;
-    if (progress >= 100) {
-      setState('done');
-      return;
-    }
-    const t = setTimeout(() => setProgress((p) => p + 5), 120);
-    return () => clearTimeout(t);
-  }, [state, progress]);
-
+  const { data: upd, error } = useLive('updates');
+  const { data: sys } = useLive('system');
+  const release = sys ? `OpenBSD ${sys.release}` : 'OpenBSD';
+  let body;
+  if (!upd || (upd.checking && !upd.checkedAt)) {
+    body = <Text size="sm" c="dimmed">{error ? `Couldn’t ask the firewall: ${error}` : 'Checking for security patches…'}</Text>;
+  } else if (upd.error) {
+    body = <Text size="sm" c="yellow">{upd.error}. OPF tries again in a few minutes.</Text>;
+  } else if (!upd.patches.length) {
+    body = (
+      <Group gap="sm">
+        <ThemeIcon color="teal" variant="light" radius="xl"><IconCheck size={16} /></ThemeIcon>
+        <Text size="sm">{release} has every security patch.</Text>
+      </Group>
+    );
+  } else {
+    body = (
+      <Stack>
+        <Text size="sm">
+          {upd.patches.length} security {upd.patches.length === 1 ? 'patch is' : 'patches are'} available for {release}.
+        </Text>
+        <List size="sm" spacing={6} icon={<ThemeIcon size={18} radius="xl" color="amber" variant="light"><IconShieldCheck size={12} /></ThemeIcon>}>
+          {upd.patches.map((p) => <List.Item key={p}><Text span className="mono" size="sm">{p}</Text></List.Item>)}
+        </List>
+        <Text size="xs" c="dimmed">
+          Installing them from here comes later. For now, run <Text span className="mono" size="xs">syspatch</Text> as root on the firewall; some patches then need a reboot.
+        </Text>
+      </Stack>
+    );
+  }
   return (
     <Card>
       <SectionTitle>Updates</SectionTitle>
-      {state === 'done' ? (
-        <Group gap="sm">
-          <ThemeIcon color="teal" variant="light" radius="xl"><IconCheck size={16} /></ThemeIcon>
-          <Text size="sm">{systemInfo.version} is up to date.</Text>
-        </Group>
-      ) : (
-        <Stack>
-          <Text size="sm">
-            {systemInfo.patches.length} security patches are available for {systemInfo.version}.
-          </Text>
-          <List size="sm" spacing={6} icon={<ThemeIcon size={18} radius="xl" color="amber" variant="light"><IconShieldCheck size={12} /></ThemeIcon>}>
-            {systemInfo.patches.map((p) => <List.Item key={p.id}>{p.description}</List.Item>)}
-          </List>
-          {state === 'installing' && <Progress value={progress} animated />}
-          <Group justify="flex-end">
-            <Button loading={state === 'installing'} onClick={() => { setProgress(0); setState('installing'); }}>
-              Install patches
-            </Button>
-          </Group>
-        </Stack>
-      )}
+      {body}
+      {upd?.checkedAt && <Text size="xs" c="dimmed" mt="sm">Checked {new Date(upd.checkedAt).toLocaleString()}.</Text>}
     </Card>
   );
 }

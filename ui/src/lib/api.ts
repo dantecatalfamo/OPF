@@ -116,6 +116,84 @@ export interface ARPTableResource {
   error?: string;
 }
 
+/** The machine (GET /api/system). Parts that couldn't be read are missing, with a line in errors each. */
+export interface SystemResource {
+  hostname: string;
+  release: string;
+  version: string;
+  machine: string;
+  cpuModel: string;
+  vendor?: string;
+  product?: string;
+  cpus: number;
+  bootedAt?: string;
+  load?: [number, number, number];
+  /** Percent of time in each state over the last few seconds. */
+  cpu?: { user: number; nice: number; system: number; spin: number; interrupt: number; idle: number };
+  /** Bytes; in use is total minus free. */
+  memory?: { total: number; free: number; active: number; inactive: number };
+  swap?: { total: number; used: number };
+  disks: { device: string; mount: string; total: number; used: number; available: number }[];
+  sensors: { device: string; type: string; index: number; value: string; number?: number; unit?: string; description?: string; status?: string }[];
+  /** OpenNTPD's state; missing when ntpd isn't running. */
+  time?: { synced: boolean; stratum?: number; status: string; source?: string; offsetMs?: number };
+  errors: string[];
+}
+
+export interface WgPeerState {
+  publicKey: string;
+  description?: string;
+  endpoint?: string;
+  txBytes: number;
+  rxBytes: number;
+  /** Seconds since the last handshake; missing if there hasn't been one. */
+  handshakeAgo?: number;
+  allowedIps: string[];
+}
+
+/** An interface as the system has it, by device name. */
+export interface InterfaceState {
+  name: string;
+  flags: string[];
+  up: boolean;
+  running: boolean;
+  mtu?: number;
+  mac?: string;
+  description?: string;
+  media?: string;
+  /** Link: "active", "no carrier"; missing when the driver doesn't say. */
+  status?: string;
+  groups: string[];
+  ipv4: string[];
+  ipv6: string[];
+  vlan?: { id: number; parent: string };
+  carp?: { state: string; device: string; vhid: number; advskew: number };
+  wireguard?: { port?: number; publicKey?: string; peers: WgPeerState[] };
+  counters?: { rxBytes: number; txBytes: number; rxPackets: number; txPackets: number; rxErrors: number; txErrors: number; collisions: number };
+  /** Bits per second over the last few seconds. */
+  rxBps?: number;
+  txBps?: number;
+}
+
+/** GET /api/network/interfaces */
+export interface InterfacesResource {
+  interfaces: InterfaceState[];
+  errors: string[];
+}
+
+/** GET /api/network/gateways: each gateway's health, by gateway id. */
+export interface GatewaysResource {
+  gateways: Record<string, { address?: string; online: boolean; lossPct: number; rttMs?: number; error?: string }>;
+}
+
+/** GET /api/system/updates */
+export interface UpdatesResource {
+  checkedAt?: string;
+  checking: boolean;
+  patches: string[];
+  error?: string;
+}
+
 /** System routing table (GET /api/network/routes). */
 export interface RoutingTableResource {
   ipv4: {
@@ -177,6 +255,8 @@ export interface StatusResource {
   live: string;
   staged?: string;
   pending?: CommitResource;
+  /** The running OpenBSD release, such as 7.9. */
+  release?: string;
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -229,6 +309,10 @@ export const api = {
   dhcpLeases: () => request<DhcpLeasesResource>('GET', '/dhcp/leases'),
   arpTable: () => request<ARPTableResource>('GET', '/network/arp'),
   routingTable: () => request<RoutingTableResource>('GET', '/network/routes'),
+  system: () => request<SystemResource>('GET', '/system'),
+  updates: () => request<UpdatesResource>('GET', '/system/updates'),
+  interfaces: () => request<InterfacesResource>('GET', '/network/interfaces'),
+  gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
 
   /** A model's pf.conf, each line with where it came from. */
   pfRuleset: async (model: Model) => (await request<{ lines: PfLine[] }>('POST', '/pf/ruleset', { model })).lines,

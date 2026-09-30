@@ -144,7 +144,7 @@ export function AppLayout() {
   const [navOpened, nav] = useDisclosure();
   const [reviewOpened, review] = useDisclosure();
   const [confirmOpened, setConfirmOpened] = useState(false);
-  const { staged, confirming } = useStore();
+  const { staged, confirming, release } = useStore();
   const { setColorScheme } = useMantineColorScheme();
   const scheme = useComputedColorScheme('light');
 
@@ -205,7 +205,7 @@ export function AppLayout() {
         </AppShell.Section>
         <AppShell.Section>
           <Text size="xs" c="dimmed" px="sm" pt="sm">
-            OPF 0.1 · OpenBSD 7.8
+            OPF 0.1{release ? ` · OpenBSD ${release}` : ''}
           </Text>
         </AppShell.Section>
       </AppShell.Navbar>

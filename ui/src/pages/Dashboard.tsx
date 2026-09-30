@@ -5,7 +5,9 @@ import { AreaChart } from '@mantine/charts';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { tunnels } from '../model/types';
-import { ifaceStatus, logEntries, peerStatus, pfStats, stepTraffic, systemInfo, trafficSeries, type TrafficPoint } from '../model/live';
+import { logEntries, pfStats } from '../model/live';
+import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
+import type { InterfacesResource } from '../lib/api';
 import { formatBits, formatBytes, formatCount, formatDuration } from '../lib/format';
 import { ifaceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
@@ -36,27 +38,38 @@ function Tile({ icon: Icon, label, value, detail, state }: {
   );
 }
 
-function useTraffic() {
-  const [series, setSeries] = useState<TrafficPoint[]>(() => trafficSeries());
+interface TrafficPoint {
+  time: string;
+  download: number;
+  upload: number;
+}
+
+// The WAN's traffic at each poll while the page is open: the last few
+// minutes, not history (that needs the collector, TODO.md › Live data).
+function useTraffic(live: InterfacesResource | undefined, device: string | undefined) {
+  const [series, setSeries] = useState<TrafficPoint[]>([]);
   useEffect(() => {
-    const t = setInterval(() => {
-      setSeries((s) => {
-        const last = s[s.length - 1];
-        const { down, up } = stepTraffic(last.download, last.upload);
-        const next: TrafficPoint = {
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          download: Math.round(down * 10) / 10,
-          upload: Math.round(up * 10) / 10,
-        };
-        return [...s.slice(1), next];
-      });
-    }, 3000);
-    return () => clearInterval(t);
-  }, []);
+    const s = live?.interfaces.find((i) => i.name === device);
+    if (s?.rxBps === undefined || s.txBps === undefined) return;
+    const next: TrafficPoint = {
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      download: Math.round(s.rxBps / 1e5) / 10,
+      upload: Math.round(s.txBps / 1e5) / 10,
+    };
+    setSeries((prev) => [...prev.slice(-59), next]);
+  }, [live, device]);
   return series;
 }
 
-function Meter({ label, used, total, format }: { label: string; used: number; total: number; format?: (n: number) => string }) {
+function Meter({ label, used, total, format }: { label: string; used?: number; total?: number; format?: (n: number) => string }) {
+  if (used === undefined || !total) {
+    return (
+      <Group justify="space-between">
+        <Text size="sm">{label}</Text>
+        <Text size="sm" c="dimmed">—</Text>
+      </Group>
+    );
+  }
   const pct = (used / total) * 100;
   return (
     <Stack gap={6}>
@@ -73,30 +86,39 @@ function Meter({ label, used, total, format }: { label: string; used: number; to
 
 export function Dashboard() {
   const { applied } = useStore();
-  const traffic = useTraffic();
-  const last = traffic[traffic.length - 1];
+  const { data: sys } = useLive('system');
+  const { data: ifs } = useLive('interfaces');
+  const { data: upd } = useLive('updates');
   const wan = applied.interfaces.find((i) => i.role === 'wan');
-  const wanStatus = wan ? ifaceStatus[wan.id] : undefined;
+  const traffic = useTraffic(ifs, wan?.device);
+  const last = traffic[traffic.length - 1];
+  const wanStatus = wan ? ifaceState(ifs, wan) : undefined;
+  const wanUp = !!wanStatus?.up && wanStatus.status !== 'no carrier' && wanStatus.ipv4.length > 0;
   const vpns = tunnels(applied);
-  const peers = vpns.flatMap((t) => t.wireguard.peers);
-  const connectedPeers = peers.filter((p) => (peerStatus[p.id]?.handshakeSecAgo ?? Infinity) < 180).length;
+  const peers = vpns.flatMap((t) => t.wireguard.peers.map((p) => ({ tunnel: t, peer: p })));
+  const connectedPeers = peers.filter(({ tunnel, peer }) => peerOnline(peerState(ifs, tunnel, peer))).length;
   const blocked = logEntries().slice(0, 5);
-  const uptime = formatDuration((Date.now() - systemInfo.bootedAt) / 1000);
+  const hardware = sys && [[sys.vendor, sys.product].filter(Boolean).join(' '), sys.cpuModel, `${sys.cpus} ${sys.cpus === 1 ? 'core' : 'cores'}`].filter(Boolean).join(' · ');
+  const patches = upd?.patches.length ?? 0;
+  const disks = sys?.disks ?? [];
+  const diskTotal = disks.reduce((n, d) => n + d.total, 0);
+  const diskUsed = disks.reduce((n, d) => n + d.used, 0);
+  const temp = sys?.sensors.find((x) => x.type === 'temp' && x.number !== undefined);
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description={`${systemInfo.version} on ${systemInfo.hardware}. Up for ${uptime}.`}
+        description={sys ? `OpenBSD ${sys.release} on ${hardware}.${sys.bootedAt ? ` Up for ${formatDuration((Date.now() - Date.parse(sys.bootedAt)) / 1000)}.` : ''}` : 'Reading the system…'}
       />
 
       <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="md" mb="md">
         <Tile
           icon={IconWorld}
           label="Internet"
-          value={wanStatus?.up ? 'Connected' : 'Offline'}
-          detail={wanStatus?.address ? `${wanStatus.address.split('/')[0]} via DHCP` : 'No address'}
-          state={wanStatus?.up ? 'ok' : 'bad'}
+          value={!ifs ? '…' : wanUp ? 'Connected' : 'Offline'}
+          detail={firstIPv4(wanStatus) ? `${firstIPv4(wanStatus)}${wan?.ipv4.mode === 'dhcp' ? ' via DHCP' : ''}` : 'No address'}
+          state={!ifs || wanUp ? 'ok' : 'bad'}
         />
         <Tile
           icon={IconShieldHalf}
@@ -115,9 +137,9 @@ export function Dashboard() {
         <Tile
           icon={IconShieldCheck}
           label="Updates"
-          value={`${systemInfo.patches.length} patches available`}
-          detail="Security fixes for OpenBSD 7.8"
-          state={systemInfo.patches.length ? 'warn' : 'ok'}
+          value={!upd || (upd.checking && !upd.checkedAt) ? 'Checking…' : upd.error ? 'Couldn’t check' : patches ? `${patches} ${patches === 1 ? 'patch' : 'patches'} available` : 'Up to date'}
+          detail={sys ? `Security fixes for OpenBSD ${sys.release}` : 'Security fixes'}
+          state={upd?.error ? 'warn' : patches ? 'warn' : 'ok'}
         />
       </SimpleGrid>
 
@@ -129,17 +151,20 @@ export function Dashboard() {
                 <Group gap="lg">
                   <Group gap={4}>
                     <IconArrowDown size={14} color="var(--mantine-color-harbor-6)" />
-                    <Text size="sm" className="num">{last.download} Mbit/s</Text>
+                    <Text size="sm" className="num">{last ? `${last.download} Mbit/s` : '—'}</Text>
                   </Group>
                   <Group gap={4}>
                     <IconArrowUp size={14} color="var(--mantine-color-amber-6)" />
-                    <Text size="sm" className="num">{last.upload} Mbit/s</Text>
+                    <Text size="sm" className="num">{last ? `${last.upload} Mbit/s` : '—'}</Text>
                   </Group>
                 </Group>
               }
             >
               Internet traffic
             </SectionTitle>
+            {traffic.length < 2 ? (
+              <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">{wan ? 'Measuring…' : 'No internet interface is set up.'}</Text>
+            ) : (
             <AreaChart
               h={250}
               data={traffic}
@@ -158,6 +183,8 @@ export function Dashboard() {
               xAxisProps={{ interval: 14 }}
               yAxisProps={{ width: 70 }}
             />
+            )}
+            <Text size="xs" c="dimmed" mt={4}>Since this page opened. Longer history comes later.</Text>
           </Card>
         </Grid.Col>
 
@@ -166,17 +193,17 @@ export function Dashboard() {
             <SectionTitle right={<Anchor component={Link} to="/interfaces" size="sm">Manage</Anchor>}>Interfaces</SectionTitle>
             <Stack gap="md">
               {applied.interfaces.map((i) => {
-                const s = ifaceStatus[i.id];
-                const addr = i.ipv4.mode === 'static' ? `${i.ipv4.address}/${i.ipv4.prefix}` : s?.address ?? '—';
+                const s = ifaceState(ifs, i);
+                const addr = i.ipv4.mode === 'static' ? `${i.ipv4.address}/${i.ipv4.prefix}` : s?.ipv4[0] ?? '—';
                 return (
                   <Group key={i.id} justify="space-between" wrap="nowrap" align="flex-start">
                     <Stack gap={2}>
-                      <StatusDot ok={!!s?.up && i.enabled} label={i.name} />
+                      <StatusDot ok={!!s?.up && s.status !== 'no carrier' && i.enabled} label={i.name} />
                       <Mono c="dimmed">{addr}</Mono>
                     </Stack>
                     <Stack gap={2} align="flex-end">
-                      <Text size="xs" c="dimmed" className="num">↓ {formatBits(s?.rxBps ?? 0)}</Text>
-                      <Text size="xs" c="dimmed" className="num">↑ {formatBits(s?.txBps ?? 0)}</Text>
+                      <Text size="xs" c="dimmed" className="num">↓ {s?.rxBps !== undefined ? formatBits(s.rxBps) : '—'}</Text>
+                      <Text size="xs" c="dimmed" className="num">↑ {s?.txBps !== undefined ? formatBits(s.txBps) : '—'}</Text>
                     </Stack>
                   </Group>
                 );
@@ -189,17 +216,25 @@ export function Dashboard() {
           <Card h="100%">
             <SectionTitle>System</SectionTitle>
             <Stack gap="md">
-              <Meter label="CPU" used={18} total={100} />
-              <Meter label="Memory" used={systemInfo.memoryUsed} total={systemInfo.memoryTotal} format={formatBytes} />
-              <Meter label="Storage" used={systemInfo.diskUsed} total={systemInfo.diskTotal} format={formatBytes} />
-              <Group justify="space-between" mt={4}>
-                <Text size="sm" c="dimmed">
-                  {systemInfo.patches.length} security patches ready
+              <Meter label="CPU" used={sys?.cpu ? 100 - sys.cpu.idle : undefined} total={100} />
+              <Meter label="Memory" used={sys?.memory ? sys.memory.total - sys.memory.free : undefined} total={sys?.memory?.total} format={formatBytes} />
+              <Meter label="Storage" used={disks.length ? diskUsed : undefined} total={diskTotal} format={formatBytes} />
+              {sys && (
+                <Text size="xs" c="dimmed" className="num">
+                  {sys.load && `Load ${sys.load.map((l) => l.toFixed(2)).join(', ')}`}
+                  {temp && ` · ${temp.number!.toFixed(0)} °C`}
                 </Text>
-                <Button size="xs" variant="light" leftSection={<IconDownload size={14} />} component={Link} to="/system/general">
-                  Review
-                </Button>
-              </Group>
+              )}
+              {patches > 0 && (
+                <Group justify="space-between" mt={4}>
+                  <Text size="sm" c="dimmed">
+                    {patches} security {patches === 1 ? 'patch' : 'patches'} ready
+                  </Text>
+                  <Button size="xs" variant="light" leftSection={<IconDownload size={14} />} component={Link} to="/system/general">
+                    Review
+                  </Button>
+                </Group>
+              )}
             </Stack>
           </Card>
         </Grid.Col>
@@ -211,9 +246,12 @@ export function Dashboard() {
               {[
                 { name: 'DHCP server', ok: applied.dhcp.some((d) => d.enabled), note: `${applied.dhcp.filter((d) => d.enabled).length} networks` },
                 { name: 'DNS resolver', ok: applied.dns.enabled, note: applied.dns.mode === 'recursive' ? 'Recursive, DNSSEC' : 'Forwarding' },
-                { name: 'WireGuard VPN', ok: vpns.some((t) => t.enabled), note: `${vpns.filter((t) => t.enabled).length} of ${vpns.length} tunnels, ${peers.length} peers` },
-                { name: 'Time sync', ok: true, note: 'Synced, offset 0.4 ms' },
-                { name: 'SSH', ok: true, note: 'LAN only' },
+                { name: 'WireGuard VPN', ok: vpns.some((t) => t.enabled), note: `${vpns.filter((t) => t.enabled).length} of ${vpns.length} tunnels, ${peers.length} devices` },
+                {
+                  name: 'Time sync',
+                  ok: !!sys?.time?.synced,
+                  note: !sys ? '…' : !sys.time ? 'Not running' : sys.time.synced ? `Synced${sys.time.offsetMs !== undefined ? `, offset ${Math.abs(sys.time.offsetMs) < 10 ? sys.time.offsetMs.toFixed(1) : Math.round(sys.time.offsetMs)} ms` : ''}` : 'Not synced yet',
+                },
               ].map((s) => (
                 <Group key={s.name} justify="space-between">
                   <StatusDot ok={s.ok} label={s.name} />

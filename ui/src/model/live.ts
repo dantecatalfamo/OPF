@@ -1,38 +1,9 @@
 // Runtime status, as the appliance would read it from pfctl, ifconfig,
-// netstat and friends. Sample values for the preview build.
-
-export interface IfaceStatus {
-  up: boolean;
-  mac: string;
-  media: string;
-  address?: string; // current address, including DHCP-assigned
-  gateway?: string;
-  rxBps: number;
-  txBps: number;
-}
-
-export const ifaceStatus: Record<string, IfaceStatus> = {
-  wan: { up: true, mac: '00:0d:b9:5e:21:a0', media: '1000baseT full-duplex', address: '203.0.113.24/24', gateway: '203.0.113.1', rxBps: 48_200_000, txBps: 6_100_000 },
-  lan: { up: true, mac: '00:0d:b9:5e:21:a1', media: '1000baseT full-duplex', rxBps: 5_900_000, txBps: 46_800_000 },
-  iot: { up: true, mac: '00:0d:b9:5e:21:a1', media: 'VLAN 20 on em1', rxBps: 180_000, txBps: 420_000 },
-  wg: { up: true, mac: '—', media: 'WireGuard tunnel', rxBps: 310_000, txBps: 1_200_000 },
-  wg1: { up: true, mac: '—', media: 'WireGuard tunnel', rxBps: 2_100_000, txBps: 900_000 },
-};
-
-export const systemInfo = {
-  version: 'OpenBSD 7.8',
-  arch: 'amd64',
-  hardware: 'APU4D4 · AMD GX-412TC · 4 cores',
-  bootedAt: Date.now() - (23 * 24 + 5) * 3600_000,
-  memoryTotal: 4e9,
-  memoryUsed: 1.3e9,
-  diskTotal: 32e9,
-  diskUsed: 4.1e9,
-  patches: [
-    { id: '013_unbound', description: 'unbound: fix denial of service with crafted DNS responses' },
-    { id: '014_libssl', description: 'libssl: fix certificate verification bypass' },
-  ],
-};
+// netstat and friends. Sample values for the preview build, which has no
+// server: localApi answers the status calls with these, in the API's
+// shapes, for its own live model.
+import type { GatewaysResource, InterfaceState, InterfacesResource, SystemResource, UpdatesResource } from '../lib/api';
+import type { Iface, Model } from './types';
 
 export const pfStats = {
   states: 318,
@@ -66,38 +37,6 @@ function rng(seed: number) {
   };
 }
 
-// A random walk that drifts back toward typical office levels.
-export function stepTraffic(down: number, up: number, r: () => number = Math.random) {
-  return {
-    down: Math.max(3, Math.min(180, down + (r() - 0.5) * 26 + (55 - down) * 0.12)),
-    up: Math.max(1, Math.min(40, up + (r() - 0.5) * 5 + (8 - up) * 0.12)),
-  };
-}
-
-export interface TrafficPoint {
-  time: string;
-  download: number;
-  upload: number;
-}
-
-export function trafficSeries(points = 60, seed = 7): TrafficPoint[] {
-  const r = rng(seed);
-  const now = Date.now();
-  const out: TrafficPoint[] = [];
-  let down = 40;
-  let up = 6;
-  for (let i = points - 1; i >= 0; i--) {
-    ({ down, up } = stepTraffic(down, up, r));
-    const t = new Date(now - i * 60_000);
-    out.push({
-      time: t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      download: Math.round(down * 10) / 10,
-      upload: Math.round(up * 10) / 10,
-    });
-  }
-  return out;
-}
-
 export interface Lease {
   ip: string;
   mac: string;
@@ -119,12 +58,6 @@ export const leases: Lease[] = [
   { ip: '192.168.20.103', mac: '50:02:91:7c:3a:1a', hostname: 'camera-dock', iface: 'iot', expiresInMin: 612 },
   { ip: '192.168.20.117', mac: 'd8:f1:5b:8e:22:90', hostname: 'tv-lobby', iface: 'iot', expiresInMin: 38 },
 ];
-
-export const peerStatus: Record<string, { handshakeSecAgo: number | null; rx: number; tx: number; endpoint?: string }> = {
-  p1: { handshakeSecAgo: 42, rx: 184_000_000, tx: 1_920_000_000, endpoint: '198.51.100.77:40212' },
-  p2: { handshakeSecAgo: 3_900, rx: 42_000_000, tx: 310_000_000, endpoint: '192.0.2.140:51820' },
-  p3: { handshakeSecAgo: 11, rx: 8_400_000_000, tx: 5_100_000_000, endpoint: 'warehouse.example.net:51820' },
-};
 
 export interface Connection {
   id: string;
@@ -199,11 +132,6 @@ export function logEntries(): LogEntry[] {
   return out;
 }
 
-export const gatewayStatus: Record<string, { online: boolean; address: string; rttMs: number; lossPct: number }> = {
-  gw_wan: { online: true, address: '203.0.113.1', rttMs: 8.4, lossPct: 0 },
-  gw_wh: { online: true, address: '10.8.0.10', rttMs: 23.1, lossPct: 0.5 },
-};
-
 export interface RouteEntry {
   destination: string;
   gateway: string;
@@ -246,3 +174,76 @@ export const arpTable: ARPEntry[] = [
   { ip: '192.168.20.103', mac: '50:02:91:7c:3a:1a', iface: 'vlan20', expires: '412s' },
   { ip: '10.8.0.2', mac: '(incomplete)', iface: 'wg0', expires: '60s' },
 ];
+
+// Seconds since the page loaded, and a counter growing at avg per second
+// give or take, never backwards: traffic that moves, for the dashboard.
+const started = Date.now();
+function wander(seed: number, avg: number, t: number) {
+  const w = (2 * Math.PI) / (60 + (seed % 90));
+  return avg * t - (avg * 0.6 * (Math.cos(w * t + seed) - Math.cos(seed))) / w;
+}
+
+export function sampleSystem(): SystemResource {
+  const t = (Date.now() - started) / 1000;
+  const busy = 9 + 4 * Math.sin(t / 20);
+  return {
+    hostname: 'gw.office.arpa', release: '7.9', version: 'OpenBSD 7.9 (GENERIC.MP) #15: Sun Sep 27 02:47:36 MDT 2026',
+    machine: 'amd64', cpuModel: 'AMD GX-412TC SOC', vendor: 'PC Engines', product: 'apu4', cpus: 4,
+    bootedAt: new Date(started - (23 * 24 + 5) * 3600_000).toISOString(),
+    load: [0.31, 0.28, 0.25],
+    cpu: { user: busy * 0.6, nice: 0, system: busy * 0.3, spin: 0, interrupt: busy * 0.1, idle: 100 - busy },
+    memory: { total: 4_261_412_864, free: 2_743_631_872, active: 657_620_992, inactive: 614_400_000 },
+    swap: { total: 4_294_967_296, used: 0 },
+    disks: [
+      { device: '/dev/sd0a', mount: '/', total: 1_033_648_128, used: 134_187_008, available: 847_779_840 },
+      { device: '/dev/sd0e', mount: '/var', total: 10_567_268_352, used: 1_669_541_888, available: 8_369_362_944 },
+      { device: '/dev/sd0f', mount: '/usr', total: 5_283_805_184, used: 1_548_580_864, available: 3_471_034_368 },
+    ],
+    sensors: [{ device: 'km0', type: 'temp', index: 0, value: '51.17 degC', number: 51.17, unit: 'degC' }],
+    time: { synced: true, stratum: 3, status: '4/4 peers valid, clock synced, stratum 3', source: '162.159.200.1', offsetMs: 0.41 },
+    errors: [],
+  };
+}
+
+export const sampleUpdates = (): UpdatesResource => ({ checkedAt: new Date(started).toISOString(), checking: false, patches: ['001_unbound', '002_libcrypto'] });
+
+const traffic = (i: Iface): [number, number] =>
+  i.role === 'wan' ? [6e6, 0.8e6] : i.role === 'vpn' ? [0.05e6, 0.15e6] : i.vlan ? [0.03e6, 0.06e6] : [0.7e6, 5.8e6];
+
+export function sampleInterfaces(m: Model): InterfacesResource {
+  const t = (Date.now() - started) / 1000;
+  return {
+    errors: [],
+    interfaces: m.interfaces.map((i, n): InterfaceState => {
+      const [rx, tx] = traffic(i);
+      const rate = (avg: number, seed: number) => 8 * (wander(seed, avg, t + 1) - wander(seed, avg, t));
+      return {
+        name: i.device, flags: i.enabled ? ['UP', 'RUNNING'] : [], up: i.enabled, running: i.enabled,
+        mac: i.wireguard ? undefined : `00:0d:b9:5e:21:${(0xa0 + n).toString(16)}`,
+        media: i.wireguard ? undefined : '1000baseT full-duplex', status: i.wireguard ? undefined : i.enabled ? 'active' : 'no carrier',
+        groups: [], ipv6: [],
+        ipv4: i.ipv4.mode === 'static' && i.ipv4.address ? [`${i.ipv4.address}/${i.ipv4.prefix}`] : i.ipv4.mode === 'dhcp' ? ['203.0.113.24/24'] : [],
+        vlan: i.vlan ? { id: i.vlan.tag, parent: i.vlan.parent } : undefined,
+        wireguard: i.wireguard && {
+          port: i.wireguard.listenPort, publicKey: i.wireguard.publicKey,
+          peers: i.wireguard.peers.map((p, k) => ({
+            publicKey: p.publicKey, description: p.name, allowedIps: [p.address, ...p.networks],
+            ...(k === i.wireguard!.peers.length - 1 && k > 0
+              ? { txBytes: 0, rxBytes: 0 }
+              : { endpoint: `198.51.100.${70 + k}:${40212 + k}`, txBytes: 1.92e9 + wander(k, 40e3, t), rxBytes: 1.84e8 + wander(k + 7, 4e3, t), handshakeAgo: k === 0 ? Math.floor(t) % 120 : 3900 + Math.floor(t) }),
+          })),
+        },
+        rxBps: i.enabled ? rate(rx, n * 13) : 0,
+        txBps: i.enabled ? rate(tx, n * 13 + 5) : 0,
+      };
+    }),
+  };
+}
+
+export function sampleGateways(m: Model): GatewaysResource {
+  return {
+    gateways: Object.fromEntries(m.routing.gateways.map((g, n) => [g.id, {
+      address: g.monitor || (g.address === 'dhcp' ? '203.0.113.1' : g.address), online: true, lossPct: n ? 0.5 : 0, rttMs: n ? 23.1 : 8.4,
+    }])),
+  };
+}

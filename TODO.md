@@ -224,9 +224,10 @@ diffs, whether confirmation is needed, and the server's objections.
   pledge/unveil.
 - **UI:** every page exists. Review, apply, confirm, revert, history and
   undo go through the API (`make mock` runs it against the real engine).
-  Leases, lease names, the ARP table and the routing table are live; the
-  rest of the dashboard and diagnostics still show sample data from
-  `ui/src/model/live.ts`.
+  Leases, the ARP and routing tables, the system, interfaces, gateways,
+  VPN devices and updates are live. pf's own status (connections,
+  per-rule counters, the firewall log and the dashboard's firewall
+  tile) still shows sample data from `ui/src/model/live.ts`.
 - **Missing:** authentication, importing an existing system.
 - **Never run on OpenBSD.**
 
@@ -479,31 +480,32 @@ return errors on malformed input instead of panicking, and have
 golden-file tests from several OpenBSD versions and fuzzing (Testing).
 Delete `legacy/` once they're done.
 
-Pattern (from the ARP and routing tables): parsers in
-`internal/appliance/` beside `parseARPOutput` and `parseRoutingOutput`,
-a `runtime.GOOS` check returning `sample*()` data elsewhere, commands
-through the Manager's Runner, types in `ui/src/lib/api.ts` and sample
-data in `ui/src/model/live.ts`. Consider batching related endpoints
-(`/api/system/stats` for CPU, memory and load), polling at sensible
-rates (5 s for stats, 30 s for logs), and later a WebSocket for pflog
-and traffic.
+Pattern (from the system and interface status):
+- Parsers in `internal/sysinfo`, pure functions of a command's output,
+  tested against output captured on real OpenBSD
+  (`testdata/openbsd-<release>/`, golden JSON, `go test -update`) and
+  fuzzed. Output the capture host can't produce goes in
+  `testdata/handwritten/` and is listed under Verify on real OpenBSD.
+- The Manager runs the commands through its Runner (`status.go`),
+  leaves out what failed with a sentence in `errors`, and works out
+  rates from its last two readings (`rate`).
+- The mock answers the same commands with simulated output in the
+  captured formats (`cmd/opf/mocksys.go`), so the mock exercises the
+  parsers; the offline preview's `localApi` returns
+  `ui/src/model/live.ts` samples in the API's shapes.
+- Pages read it through `useLive` (`ui/src/lib/live.ts`), one shared
+  poller per endpoint, paused while the tab is hidden.
+- The ARP and routing tables still use the older pattern (parsers in
+  `internal/appliance`, samples on other platforms); move them over.
+- Later a WebSocket for pflog and traffic.
 
 System:
 
-- [ ] CPU (`sysctl kern.cp_time`) → `GET /api/system/cpu`: dashboard
-      meter (hard-coded 18% today) and history.
-- [ ] Load average (`sysctl vm.loadavg`) → `GET /api/system/loadavg`:
-      1, 5 and 15 minutes on the dashboard.
-- [ ] Memory (vmstat, `sysctl hw.physmem`) → `GET /api/system/memory`:
-      dashboard meter with active, free, wired and cached.
-- [ ] Swap (`swapctl -l`) → `GET /api/system/swap`, when configured.
-- [ ] Disks (`df -P`) → `GET /api/system/disks`: meter per mount, and a
-      storage page; disk I/O (vmstat) → `GET /api/system/diskio`.
-- [ ] Uptime (`sysctl kern.boottime`) → `GET /api/system/uptime`, on the
-      dashboard and System › General.
-- [ ] Hardware (`sysctl hw`, `sysctl hw.sensors`) →
-      `GET /api/system/hardware` and `/sensors`: CPU model, RAM,
-      temperatures, fans, voltages.
+- [ ] Disks: a storage page with a meter per mount (the dashboard only
+      sums them), and disk I/O (`iostat`).
+- [ ] Sensors: show every sensor on System › General, not just a
+      temperature on the dashboard, with WARNING and CRITICAL
+      highlighted.
 - [ ] Processes (`ps aux`) → `GET /api/system/processes`: a Diagnostics
       page with sorting and filtering.
 
@@ -527,12 +529,13 @@ Firewall:
 
 Network, VPN and logs:
 
-- [ ] Interfaces (`netstat -in`, `ifconfig -a`) →
-      `GET /api/network/interfaces`: packets, errors, collisions, link
-      state, media, addresses and flags.
-- [ ] WireGuard peer status (`ifconfig wgN` or `wg show`) →
-      `GET /api/wireguard/status`: handshake and bytes per peer, keyed by
-      tunnel and peer.
+- [ ] Interfaces OPF doesn't configure (a spare port, one added by
+      hand) are in `/api/network/interfaces` but no page shows them;
+      list them on Interfaces with an offer to set them up.
+- [ ] Gateway health is a ping per request, cached 10 s. A real monitor
+      (dpinger-like, in the collector) would keep loss and latency over
+      time and could drive gateway-group failover (Models and
+      generators › Multi-WAN).
 - [ ] System logs → `GET /api/logs/{dmesg,messages,daemon,authlog}`: a
       Diagnostics › System logs page with a tab each.
 
@@ -979,6 +982,17 @@ skipped and the web process isn't dropped to another user.
 
 - [ ] Run as root in `-dry` mode with scratch `-root`/`-state` to
       exercise pledge, unveil and the privilege drop.
+- [ ] Status parsers against output they've only seen written by hand
+      (`internal/sysinfo/testdata/handwritten/`): `ifconfig` for wg
+      peers (as root), vlan, carp and point-to-point interfaces. Capture
+      them and move them to `testdata/openbsd-<release>/`.
+- [ ] Status parsers on other hardware: `hw.sensors` from real sensors
+      (temperatures, fans, volts, drives), `df` with more filesystems,
+      `swapctl` with two devices, and a release other than 7.9.
+- [ ] `ping -6` for an IPv6 gateway, and `kern.boottime` read in the
+      parent's time zone matching the system's.
+- [ ] `syspatch -c` output when patches are available (names one per
+      line is assumed), and its error when the mirror can't be reached.
 - [ ] Parent pledge: confirm `stdio rpath wpath cpath fattr chown proc
       exec id` covers fork, setuid in the child before exec, socketpair,
       atomic writes with chown, and running every check/apply command.
@@ -1033,7 +1047,9 @@ skipped and the web process isn't dropped to another user.
 `make mock` and running your own mock are described in How we work.
 
 - [ ] Recorded responses: capture real OpenBSD command output
-      (`opf -record dir`) and replay it in the mock.
+      (`opf -record dir`) and replay it in the mock. The status commands
+      are simulated in their captured formats already
+      (`cmd/opf/mocksys.go`); this would cover the rest.
 - [ ] Simulated validator results: run the Go pf parser on staged
       pf.conf so `pfctl -nf`-style errors can be exercised; today every
       check passes in the mock.
@@ -1046,6 +1062,18 @@ skipped and the web process isn't dropped to another user.
 ## Done
 
 Finished work, kept here for now. Git history has the details.
+
+Live data:
+
+- [x] The dashboard, Interfaces, Routing's gateways, WireGuard's devices
+      and System › General's updates show the running system instead of
+      sample data: CPU, load, memory, swap, disks, uptime, hardware and a
+      temperature (`/api/system`); every interface's state, counters,
+      traffic and WireGuard peers (`/api/network/interfaces`); gateway
+      pings (`/api/network/gateways`); OpenNTPD's sync state; and
+      `syspatch -c` in the background (`/api/system/updates`). The fake
+      "Install patches" progress bar is gone; installing is under
+      Diagnostics tools › Updates.
 
 Parser and generators:
 

@@ -7,11 +7,11 @@ import type { Model, Rule } from '../model/types';
 import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
-import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable } from '../model/live';
+import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleGateways, sampleInterfaces, sampleSystem, sampleUpdates } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
-  type ARPTableResource, type RoutingTableResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -127,6 +127,7 @@ export const localApi = {
     live: version(live),
     staged: staged ? version(staged) : undefined,
     pending: pending ? clone(record(pending.id).resource) : undefined,
+    release: '7.9',
   }),
   live: async (): Promise<ConfigResource> => ({ version: version(live), model: clone(live) }),
   staged: async (): Promise<StagedResource | null> => (staged ? stagedResource() : null),
@@ -218,5 +219,9 @@ export const localApi = {
   },
   arpTable: async (): Promise<ARPTableResource> => ({ entries: clone(sampleArpTable) }),
   routingTable: async (): Promise<RoutingTableResource> => ({ ipv4: clone(sampleRoutingTable), ipv6: [] }),
+  system: async (): Promise<SystemResource> => sampleSystem(),
+  updates: async (): Promise<UpdatesResource> => sampleUpdates(),
+  interfaces: async (): Promise<InterfacesResource> => sampleInterfaces(live),
+  gateways: async (): Promise<GatewaysResource> => sampleGateways(live),
 };
 

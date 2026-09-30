@@ -4,7 +4,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { IconPencil, IconPlus } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
-import { ifaceStatus } from '../model/live';
+import { defaultGateway, firstIPv4, ifaceState, mediaLabel, useLive } from '../lib/live';
 import type { Iface } from '../model/types';
 import { formatBits } from '../lib/format';
 import { isIPv4 } from '../lib/ip';
@@ -95,6 +95,8 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
 export function Interfaces() {
   const { staged } = useStore();
   const [opened, dlg] = useDisclosure();
+  const { data: ifs } = useLive('interfaces');
+  const { data: routes } = useLive('routes');
 
   return (
     <>
@@ -109,9 +111,12 @@ export function Interfaces() {
       />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {staged.interfaces.map((i) => {
-          const s = ifaceStatus[i.id];
+          const s = ifaceState(ifs, i);
           const address =
-            i.ipv4.mode === 'static' ? `${i.ipv4.address}/${i.ipv4.prefix}` : i.ipv4.mode === 'dhcp' ? s?.address ?? 'Waiting for DHCP' : 'None';
+            i.ipv4.mode === 'static' ? `${i.ipv4.address}/${i.ipv4.prefix}` : i.ipv4.mode === 'dhcp' ? s?.ipv4[0] ?? 'Waiting for DHCP' : 'None';
+          const gateway = i.ipv4.mode === 'dhcp' && firstIPv4(s) ? defaultGateway(routes, i.device) : undefined;
+          const link = !i.enabled ? 'Disabled' : !ifs ? '…' : !s ? 'Not on this system' : !s.up ? 'Down' : s.status === 'no carrier' ? 'No link' : 'Up';
+          const errors = (s?.counters?.rxErrors ?? 0) + (s?.counters?.txErrors ?? 0);
           return (
             <Card key={i.id}>
               <Group justify="space-between" mb="md" wrap="nowrap">
@@ -122,7 +127,7 @@ export function Interfaces() {
                     </Text>
                     <Badge color={i.role === 'wan' ? 'amber' : 'harbor'}>{roleLabel[i.role]}</Badge>
                   </Group>
-                  <StatusDot ok={i.enabled && !!s?.up} label={!i.enabled ? 'Disabled' : s?.up ? 'Up' : 'No link'} />
+                  <StatusDot ok={link === 'Up'} label={link} />
                 </Stack>
                 <Button variant="default" size="xs" leftSection={<IconPencil size={14} />} component={Link} to={`/interfaces/${i.id}`}>
                   Edit
@@ -138,19 +143,24 @@ export function Interfaces() {
                     </Text>
                   )}
                 </Field>
-                {s?.gateway && (
+                {gateway && (
                   <Field label="Gateway">
-                    <Mono>{s.gateway}</Mono>
+                    <Mono>{gateway}</Mono>
                   </Field>
                 )}
                 <Field label="Port">
-                  <Mono>{i.device}</Mono> · {s?.media ?? '—'}
+                  <Mono>{i.device}</Mono> · {s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s) ?? '—'}
                 </Field>
                 <Field label="Traffic">
                   <span className="num">
-                    ↓ {formatBits(s?.rxBps ?? 0)} · ↑ {formatBits(s?.txBps ?? 0)}
+                    {s?.rxBps !== undefined && s.txBps !== undefined ? `↓ ${formatBits(s.rxBps)} · ↑ ${formatBits(s.txBps)}` : '—'}
                   </span>
                 </Field>
+                {errors > 0 && (
+                  <Field label="Errors">
+                    <Text span size="sm" c="yellow" className="num">{errors.toLocaleString()} since it came up</Text>
+                  </Field>
+                )}
               </Stack>
             </Card>
           );

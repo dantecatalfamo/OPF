@@ -4,7 +4,7 @@ import { ActionIcon, Alert, Badge, Button, Card, Group, Menu, Modal, Radio, Segm
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconDots, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
-import { gatewayStatus } from '../model/live';
+import { defaultGateway, useLive } from '../lib/live';
 import type { Gateway, StaticRoute } from '../model/types';
 import type { RoutingTableResource } from '../lib/api';
 import { deviceName, ifaceName } from '../lib/labels';
@@ -94,6 +94,8 @@ function RouteModal({ opened, onClose, route }: { opened: boolean; onClose: () =
 
 function Gateways() {
   const { staged, edit } = useStore();
+  const { data: health } = useLive('gateways');
+  const { data: routes } = useLive('routes');
   const r = staged.routing;
   const [modal, setModal] = useState<{ open: boolean; gateway: Gateway | null }>({ open: false, gateway: null });
   const inUse = (id: string) => r.routes.some((x) => x.gateway === id) || staged.firewall.rules.some((x) => x.kind === 'form' && (x.gateway === id || x.replyTo === id)) || r.defaultGateway === id;
@@ -119,7 +121,10 @@ function Gateways() {
             </Table.Thead>
             <Table.Tbody>
               {r.gateways.map((g) => {
-                const s = gatewayStatus[g.id];
+                const s = health?.gateways[g.id];
+                const device = staged.interfaces.find((i) => i.id === g.iface)?.device ?? '';
+                const address = g.address === 'dhcp' ? defaultGateway(routes, device) : g.address;
+                const answered = s && !s.error;
                 return (
                   <Table.Tr key={g.id}>
                     <Table.Td w={80}>
@@ -130,16 +135,18 @@ function Gateways() {
                       />
                     </Table.Td>
                     <Table.Td>
-                      <StatusDot ok={s ? (s.lossPct > 5 ? 'warn' : s.online) : false} label={g.name} />
+                      <StatusDot ok={answered ? (s.online && s.lossPct > 5 ? 'warn' : s.online) : false} label={g.name} />
                       <Text size="xs" c="dimmed" ml={16}>{g.description}</Text>
                     </Table.Td>
                     <Table.Td><Text size="sm">{ifaceName(staged, g.iface)}</Text></Table.Td>
                     <Table.Td>
-                      <Mono>{g.address === 'dhcp' ? s?.address ?? '—' : g.address}</Mono>
+                      <Mono>{address ?? '—'}</Mono>
                       {g.address === 'dhcp' && <Text span size="xs" c="dimmed"> (DHCP)</Text>}
+                      {s?.address && s.address !== address && <Text size="xs" c="dimmed">checked by pinging <Mono>{s.address}</Mono></Text>}
+                      {s?.error && <Text size="xs" c="dimmed">{s.error}</Text>}
                     </Table.Td>
-                    <Table.Td ta="right"><Text size="sm" className="num">{s ? `${s.rttMs} ms` : '—'}</Text></Table.Td>
-                    <Table.Td ta="right"><Text size="sm" className="num">{s ? `${s.lossPct}%` : '—'}</Text></Table.Td>
+                    <Table.Td ta="right"><Text size="sm" className="num">{answered && s.rttMs !== undefined ? `${s.rttMs.toFixed(1)} ms` : answered ? 'No answer' : '—'}</Text></Table.Td>
+                    <Table.Td ta="right"><Text size="sm" className="num">{answered ? `${Math.round(s.lossPct)}%` : '—'}</Text></Table.Td>
                     <Table.Td w={44}>
                       <Menu position="bottom-end">
                         <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label="Actions"><IconDots size={16} /></ActionIcon></Menu.Target>

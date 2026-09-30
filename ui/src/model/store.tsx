@@ -54,6 +54,8 @@ interface Store {
   pendingSections: Section[];
   history: HistoryEntry[];
   confirming: Confirming | null;
+  /** The running OpenBSD release, once known. */
+  release?: string;
   edit: (section: Section, summary: string, fn: (m: Model) => Model) => void;
   discard: () => Promise<void>;
   review: (overwrite?: string[]) => Promise<Review>;
@@ -111,6 +113,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [log, setLog] = useState<Change[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [release, setRelease] = useState<string>();
   const confirmingRef = useRef(confirming);
   confirmingRef.current = confirming;
 
@@ -141,6 +144,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setStaged(st ? st.model : live.model);
       setLog([]);
       setConfirming(status.pending ? confirmingOf(status.pending) : null);
+      setRelease(status.release);
       await refreshHistory();
       setLoaded(true);
     } catch (e) {
@@ -310,7 +314,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   editing = staged;
   const value: Store = {
-    applied, staged, changes, pendingSections, history, confirming,
+    applied, staged, changes, pendingSections, history, confirming, release,
     edit, discard, review, apply, keep, revert, restore,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
