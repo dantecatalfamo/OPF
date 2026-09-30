@@ -550,11 +550,6 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       zone loaded with `rpz-action-override: disabled` and use
       `rpz_disable`, at the cost of its memory; decide whether that's
       worth it.
-- [ ] Whether reloading one list's zone (`auth_zone_reload`, on a
-      scheduled or manual download) stops unbound answering while it
-      loads, as a full reload does: with one thread it may. Measure it
-      with a big list on the host; if it does, say so where lists are
-      downloaded again and consider a second thread (`num-threads`).
 - [ ] Memory and reload estimates (`ui/src/lib/dnsCost.ts`) come from
       one measurement (1,400 bytes and 24 µs a name). Measure a few more
       lists and a machine with less memory, and warn from unbound's own
@@ -1183,14 +1178,11 @@ Stop it by the PID it wrote; never pkill.
       checked against a 7.9 capture with pf's default ruleset, which has
       none of these. Capture them and move them to
       `testdata/openbsd-<release>/`.
-- [ ] unbound's side of the DNS stats, written by hand from unbound
-      1.26's source (`testdata/handwritten/`): `unbound-control
-      stats_noreset` with extended-statistics (the `num.rpz.action.*`
-      names: `local_data` or `local-data`?), the `rpz: applied` lines
-      in `/var/log/daemon` (the rpz-log-name in brackets, the client,
-      the query), and `ps -A -o rss=,comm=`. Also check that
-      `unbound-control status` doesn't answer until a full reload has
-      loaded every zone, which is how OPF times it.
+- [ ] The syslog prefix of unbound's rpz-log lines in `/var/log/daemon`
+      (`Sep 29 10:00:00 host unbound: [pid:tid] info: ...`). The message
+      itself is as unbound 1.26.1 wrote it on 7.9 (captured from its
+      own logfile, to keep the host's syslog untouched); the prefix
+      follows unbound's log.c and syslogd.
 - [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
       `-vv -s states` prints it.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors
@@ -1299,6 +1291,15 @@ Commit engine:
 
 Live data:
 
+- [x] Checked on 7.9 with Hagezi Pro and OISD small (574,720 names):
+      `stats_noreset` and `ps` captured (`testdata/openbsd-7.9/`); the
+      action names are `rpz-local-data`, `rpz-passthru` and so on, in
+      the stats and the log alike (the handwritten guesses were wrong);
+      782 MB and 13.6 s to start, and `unbound-control status` doesn't
+      answer until every zone is loaded, which is what OPF times.
+      Reloading one list's zone stopped every answer for 14 s with one
+      thread; with two, queries kept being answered, so unbound.conf
+      has `num-threads: 2` whenever a blocklist is on.
 - [x] DNS stats on the DNS page and the dashboard, from `unbound-control
       stats_noreset` (extended-statistics, over the control socket,
       which is now on whenever the resolver is): queries a second, cache

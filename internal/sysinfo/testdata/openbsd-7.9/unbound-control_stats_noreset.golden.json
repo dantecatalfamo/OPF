@@ -1,0 +1,39 @@
+{
+  "queries": 8,
+  "cacheHits": 6,
+  "cacheMisses": 2,
+  "prefetches": 0,
+  "recursionAvg": 0.27628,
+  "recursionMedian": 0,
+  "uptime": 13.457272,
+  "extended": true,
+  "answers": {
+    "FORMERR": 0,
+    "NOERROR": 7,
+    "NOTIMPL": 0,
+    "NXDOMAIN": 1,
+    "REFUSED": 0,
+    "SERVFAIL": 0
+  },
+  "secure": 0,
+  "bogus": 0,
+  "rpz": {
+    "rpz-local-data": 3,
+    "rpz-passthru": 1
+  },
+  "queryTypes": {
+    "A": 6,
+    "AAAA": 1,
+    "TXT": 1
+  },
+  "memory": {
+    "cache.message": 19171,
+    "cache.rrset": 47943,
+    "http.query_buffer": 0,
+    "http.response_buffer": 0,
+    "mod.iterator": 16844,
+    "mod.respip": 0,
+    "mod.validator": 19060,
+    "streamwait": 0
+  }
+}

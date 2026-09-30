@@ -11,7 +11,7 @@ import (
 
 func TestDNSStatsFromOutput(t *testing.T) {
 	e := newEnv(t, time.Minute)
-	c := &captured{dir: "handwritten", files: map[string]string{
+	c := &captured{files: map[string]string{
 		"unbound-control -c /var/unbound/etc/unbound.conf stats_noreset": "unbound-control_stats_noreset.txt",
 		"ps -A -o rss=,comm=": "ps_-A_-o_rss_comm.txt",
 	}}
@@ -20,14 +20,14 @@ func TestDNSStatsFromOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !s.Enabled || len(s.Errors) != 0 || s.Stats == nil || s.Stats.Queries != 48213 || s.Stats.Blocked() != 6132 {
+	if !s.Enabled || len(s.Errors) != 0 || s.Stats == nil || s.Stats.Queries != 8 || s.Stats.Blocked() != 3 {
 		t.Fatalf("got %+v", s)
 	}
 	// The same counters twice: none a second, not a made-up figure.
 	if s.QueriesPerSec == nil || *s.QueriesPerSec != 0 || s.BlockedPerSec == nil || *s.BlockedPerSec != 0 {
 		t.Errorf("rates %v %v", s.QueriesPerSec, s.BlockedPerSec)
 	}
-	if s.MemoryBytes != 9120*1024 {
+	if s.MemoryBytes != 782744*1024 {
 		t.Errorf("memory %d", s.MemoryBytes)
 	}
 
@@ -59,15 +59,15 @@ func TestDNSBlockedTally(t *testing.T) {
 	}
 	list := pf.DNSListLogName("ads")
 	hits := []sysinfo.RPZHit{
-		hit("someone-else", "nxdomain", "not.ours.example", 0), // not OPF's zone: not counted, not the start
-		hit(list, "local_data", "a.example", 1),
-		hit(list, "local_data", "b.example", 2),
-		hit(list, "local_data", "a.example", 3),
-		hit(pf.OwnLogName, "nxdomain", "a.example", 4),
-		hit(pf.OwnLogName, "passthru", "ok.example", 5),
+		hit("someone-else", "rpz-nxdomain", "not.ours.example", 0), // not OPF's zone: not counted, not the start
+		hit(list, "rpz-local-data", "a.example", 1),
+		hit(list, "rpz-local-data", "b.example", 2),
+		hit(list, "rpz-local-data", "a.example", 3),
+		hit(pf.OwnLogName, "rpz-nxdomain", "a.example", 4),
+		hit(pf.OwnLogName, "rpz-passthru", "ok.example", 5),
 		// Anyone on the network can ask for anything: a name that isn't
 		// one is counted but not offered.
-		hit(list, "local_data", "bad name\x1b[31m.example", 6),
+		hit(list, "rpz-local-data", "bad name\x1b[31m.example", 6),
 	}
 	var res DNSBlocked
 	res.ByList = map[string]int{}

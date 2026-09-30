@@ -1,13 +1,14 @@
 // What loading DNS blocklists costs the resolver. Measured on OpenBSD
-// 7.9 (unbound 1.26.1): a list of 575,000 names took unbound to 782 MB
-// of memory, and 14 s passed before it answered again after a reload.
+// 7.9 (unbound 1.26.1): Hagezi Pro and OISD small, 574,720 names, took
+// unbound to 782 MB of memory, and 13.6 s passed before it answered
+// after starting.
 // Only estimates: names under one wildcard, and unbound's version,
 // change them.
 import type { DnsListStatus, ResolverReload } from './api';
 import type { Model } from '../model/types';
 
 export const bytesPerName = 1400;
-const secondsPerName = 14 / 575_000;
+const secondsPerName = 13.6 / 575_000;
 
 export const estimateBytes = (names: number) => names * bytesPerName;
 

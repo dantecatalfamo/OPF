@@ -380,6 +380,11 @@ func TestParseUnboundStats(t *testing.T) {
 		}
 		golden(t, dir, "unbound-control_stats_noreset", s)
 	})
+	// Two queries blocked with 0.0.0.0 and one let through, on 7.9.
+	out, _ := fixture(t, "openbsd-7.9", "unbound-control_stats_noreset.txt")
+	if s, _ := ParseUnboundStats(out); s.Blocked() != 3 || s.RPZ["rpz-passthru"] != 1 || !s.Extended || s.Answers["NXDOMAIN"] != 1 {
+		t.Errorf("7.9: %+v", s)
+	}
 	// Without extended-statistics there are only the totals.
 	s, ok := ParseUnboundStats("total.num.queries=10\ntotal.num.cachehits=4\ntime.up=5.5\n")
 	if !ok || s.Extended || s.Queries != 10 || s.CacheHits != 4 || s.Uptime != 5.5 || s.Blocked() != 0 {
@@ -399,7 +404,7 @@ func TestParseRPZLog(t *testing.T) {
 
 func TestParseProcessRSS(t *testing.T) {
 	eachFixture(t, "ps_-A_-o_rss_comm.txt", func(t *testing.T, dir, out string) {
-		if n, ok := ParseProcessRSS(out, "unbound"); !ok || n != 9120*1024 {
+		if n, ok := ParseProcessRSS(out, "unbound"); !ok || n != 782744*1024 {
 			t.Errorf("got %d %v", n, ok)
 		}
 	})

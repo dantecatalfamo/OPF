@@ -28,8 +28,8 @@ type UnboundStats struct {
 	// Secure answers passed DNSSEC validation; bogus ones failed it.
 	Secure uint64 `json:"secure"`
 	Bogus  uint64 `json:"bogus"`
-	// RPZ is response policy actions taken, by action (nxdomain,
-	// local_data, passthru...).
+	// RPZ is response policy actions taken, by action (rpz-nxdomain,
+	// rpz-local-data, rpz-passthru...).
 	RPZ        map[string]uint64 `json:"rpz"`
 	QueryTypes map[string]uint64 `json:"queryTypes"`
 	// Memory is bytes in use by unbound's caches and modules, by name
@@ -40,7 +40,7 @@ type UnboundStats struct {
 
 // RPZPass are the policy actions that let a query through rather than
 // block it.
-var RPZPass = map[string]bool{"passthru": true, "disabled": true, "no_override": true, "invalid": true}
+var RPZPass = map[string]bool{"rpz-passthru": true, "rpz-disabled": true, "rpz-no-override": true, "rpz-invalid": true}
 
 // Blocked is how many queries a policy zone blocked.
 func (s UnboundStats) Blocked() uint64 {
@@ -100,7 +100,7 @@ func ParseUnboundStats(out string) (UnboundStats, bool) {
 // RPZHit is one query a response policy zone acted on, from the line
 // unbound logs for it with rpz-log (in syslog's daemon log):
 //
-//	Sep 29 10:00:00 fw unbound: [123:0] info: rpz: applied [opf:list:ads] *.example.net. local_data 192.0.2.10@53211 ads.example.net. A IN
+//	Sep 29 10:00:00 fw unbound: [123:0] info: rpz: applied [opf:list:ads] *.example.net. rpz-local-data 192.0.2.10@53211 ads.example.net. A IN
 type RPZHit struct {
 	Time time.Time `json:"time"`
 	// Zone is the zone's rpz-log-name, in brackets in the line; empty
@@ -171,10 +171,11 @@ func parseRPZLine(l string, now time.Time) (RPZHit, bool) {
 }
 
 // rpzActions are the actions unbound logs (rpz_action_to_string); a
-// line with anything else there isn't one it wrote.
+// line with anything else there isn't one it wrote. Seen on 7.9:
+// rpz-local-data and rpz-passthru; the rest follow unbound's source.
 var rpzActions = map[string]bool{
-	"nxdomain": true, "nodata": true, "passthru": true, "drop": true, "tcp_only": true,
-	"local_data": true, "disabled": true, "cname_override": true, "no_override": true, "invalid": true,
+	"rpz-nxdomain": true, "rpz-nodata": true, "rpz-passthru": true, "rpz-drop": true, "rpz-tcp-only": true,
+	"rpz-local-data": true, "rpz-disabled": true, "rpz-cname-override": true, "rpz-no-override": true, "rpz-invalid": true,
 }
 
 // ParseProcessRSS reads `ps -A -o rss=,comm=` and returns the resident

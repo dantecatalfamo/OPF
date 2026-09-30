@@ -250,7 +250,7 @@ export function sampleDnsStats(m: Model, names: number): DnsStatsResource {
   const queries = Math.floor(24 * up);
   const blocking = blockingZones(m).length > 0;
   const blocked = blocking ? Math.floor(queries * 0.12) : 0;
-  const action = m.dns.blockAnswer === 'nxdomain' ? 'nxdomain' : 'local_data';
+  const action = m.dns.blockAnswer === 'nxdomain' ? 'rpz-nxdomain' : 'rpz-local-data';
   return {
     enabled: true,
     stats: {

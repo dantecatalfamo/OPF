@@ -3,7 +3,7 @@
     "time": "2026-09-29T09:58:14Z",
     "zone": "opf:list:hagezi",
     "trigger": "*.doubleclick.net",
-    "action": "local_data",
+    "action": "rpz-local-data",
     "client": "192.168.1.23",
     "name": "securepubads.g.doubleclick.net",
     "type": "A"
@@ -12,7 +12,7 @@
     "time": "2026-09-29T09:58:14Z",
     "zone": "opf:list:hagezi",
     "trigger": "*.doubleclick.net",
-    "action": "local_data",
+    "action": "rpz-local-data",
     "client": "192.168.1.23",
     "name": "securepubads.g.doubleclick.net",
     "type": "AAAA"
@@ -21,7 +21,7 @@
     "time": "2026-09-29T09:59:40Z",
     "zone": "opf:own",
     "trigger": "tracker.example.com",
-    "action": "nxdomain",
+    "action": "rpz-nxdomain",
     "client": "192.168.1.40",
     "name": "tracker.example.com",
     "type": "A"
@@ -30,7 +30,7 @@
     "time": "2026-09-29T09:59:41Z",
     "zone": "opf:own",
     "trigger": "cdn.example.org",
-    "action": "passthru",
+    "action": "rpz-passthru",
     "client": "192.168.1.40",
     "name": "cdn.example.org",
     "type": "A"
@@ -39,7 +39,7 @@
     "time": "2026-09-09T10:00:03Z",
     "zone": "opf:list:oisd",
     "trigger": "*.app-measurement.com",
-    "action": "local_data",
+    "action": "rpz-local-data",
     "client": "fd00::23",
     "name": "app-measurement.com",
     "type": "HTTPS"
@@ -48,7 +48,7 @@
     "time": "2026-09-29T10:00:05Z",
     "zone": "opf:list:hagezi",
     "trigger": "*.doubleclick.net",
-    "action": "local_data",
+    "action": "rpz-local-data",
     "client": "192.168.1.23",
     "name": "securepubads.g.doubleclick.net",
     "type": "A"
@@ -56,7 +56,7 @@
   {
     "time": "2026-09-29T10:00:06Z",
     "trigger": "metrics.example.net",
-    "action": "nxdomain",
+    "action": "rpz-nxdomain",
     "name": "metrics.example.net",
     "type": "A"
   },
@@ -64,7 +64,7 @@
     "time": "2026-09-29T10:00:07Z",
     "zone": "opf:list:hagezi",
     "trigger": "ns1.bad.example",
-    "action": "local_data",
+    "action": "rpz-local-data",
     "client": "192.168.1.23",
     "name": "x.bad.example",
     "type": "A"

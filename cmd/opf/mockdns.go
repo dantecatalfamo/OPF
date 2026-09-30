@@ -68,13 +68,13 @@ func mockUnboundStats(m *pf.Model, t float64) string {
 	blocked := 0.0
 	if blocking {
 		blocked = wander("dns blocked", 24*mockBlockShare, t) + 24*mockBlockShare*(up-t)
-		action := "local_data"
+		action := "rpz-local-data"
 		if m.DNS.BlockAnswer == pf.BlockAnswerNXDomain {
-			action = "nxdomain"
+			action = "rpz-nxdomain"
 		}
 		w("num.rpz.action."+action, blocked)
 		if len(m.DNS.Allowed) > 0 {
-			w("num.rpz.action.passthru", queries*0.004)
+			w("num.rpz.action.rpz-passthru", queries*0.004)
 		}
 	}
 	nx := queries * 0.06
@@ -113,9 +113,9 @@ func mockDaemonLog(m *pf.Model, now time.Time) string {
 		if zone == pf.OwnLogName && len(zones) > 1 && r%10 != 0 {
 			zone = zones[1+int(r/7)%(len(zones)-1)]
 		}
-		action := "local_data"
+		action := "rpz-local-data"
 		if m.DNS.BlockAnswer == pf.BlockAnswerNXDomain || zone == pf.OwnLogName {
-			action = "nxdomain"
+			action = "rpz-nxdomain"
 		}
 		// Lists block a name and everything under it: the name's
 		// registered domain, roughly.
@@ -133,7 +133,7 @@ func mockDaemonLog(m *pf.Model, now time.Time) string {
 			at.Format(time.Stamp), zone, entry, action, clients[r%uint32(len(clients))], 1024+r%60000, name, typ)
 		if r%13 == 0 && len(m.DNS.Allowed) > 0 {
 			ok := strings.TrimPrefix(m.DNS.Allowed[int(r)%len(m.DNS.Allowed)], "*.")
-			fmt.Fprintf(&b, "%s gw unbound: [29114:0] info: rpz: applied [%s] %s. passthru %s@%d %s. A IN\n",
+			fmt.Fprintf(&b, "%s gw unbound: [29114:0] info: rpz: applied [%s] %s. rpz-passthru %s@%d %s. A IN\n",
 				at.Format(time.Stamp), pf.OwnLogName, ok, clients[r%uint32(len(clients))], 1024+r%60000, ok)
 		}
 		if r%17 == 0 {

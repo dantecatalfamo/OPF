@@ -1221,6 +1221,11 @@ func GenerateUnboundConf(m *Model) string {
 	if own || len(lists) > 0 {
 		lines = append(lines, "\tmodule-config: \"respip validator iterator\"")
 	}
+	// A thread reloading a list's zone answers nothing until it's done
+	// (14 s for 575,000 names on 7.9); a second one keeps answering.
+	if len(lists) > 0 {
+		lines = append(lines, "\tnum-threads: 2")
+	}
 	if own {
 		lines = append(lines, "", "rpz:", "\tname: \""+OwnZoneName+"\"", "\tzonefile: \""+OwnZonePath+"\"", "\trpz-log: yes", "\trpz-log-name: \""+OwnLogName+"\"")
 	}

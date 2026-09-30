@@ -356,7 +356,7 @@ export interface UnboundStats {
   answers: Record<string, number>;
   secure: number;
   bogus: number;
-  /** Response policy actions taken, by action (local_data, nxdomain, passthru...). */
+  /** Response policy actions taken, by action (rpz-local-data, rpz-nxdomain, rpz-passthru...). */
   rpz: Record<string, number>;
   queryTypes: Record<string, number>;
   memory: Record<string, number>;
@@ -408,7 +408,7 @@ export interface DnsBlockedResource {
 }
 
 /** Response policy actions that let a query through rather than block it. */
-export const rpzPass = new Set(['passthru', 'disabled', 'no_override', 'invalid']);
+export const rpzPass = new Set(['rpz-passthru', 'rpz-disabled', 'rpz-no-override', 'rpz-invalid']);
 
 /** Queries a policy zone blocked. */
 export const rpzBlocked = (s: UnboundStats) => Object.entries(s.rpz).reduce((n, [a, c]) => (rpzPass.has(a) ? n : n + c), 0);
