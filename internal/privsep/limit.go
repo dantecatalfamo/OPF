@@ -3,6 +3,7 @@ package privsep
 import (
 	"bufio"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -89,8 +90,34 @@ func readGobUint(r *bufio.Reader) ([]byte, uint64, error) {
 	return buf, v, nil
 }
 
+// The codecs frame each message with gob, which is what limitReader
+// can bound, but carry request and reply bodies as JSON inside it. gob
+// leaves out every zero value, pointers to zero included, so a reply's
+// *int that's 0 (an exit status, a handshake a second ago) would arrive
+// as nil, "unknown". The bodies are the API's JSON types, and JSON only
+// leaves out what omitempty says.
+
+func encodeBody(enc *gob.Encoder, body any) error {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	return enc.Encode(b)
+}
+
+func decodeBody(dec *gob.Decoder, body any) error {
+	var b []byte
+	if err := dec.Decode(&b); err != nil {
+		return err
+	}
+	if body == nil {
+		return nil // net/rpc discarding a body
+	}
+	return json.Unmarshal(b, body)
+}
+
 // serverCodec is net/rpc's gob server codec, which isn't exported,
-// reading through a limitReader.
+// reading through a limitReader, with JSON bodies.
 type serverCodec struct {
 	rwc    io.ReadWriteCloser
 	dec    *gob.Decoder
@@ -111,7 +138,7 @@ func newServerCodec(conn io.ReadWriteCloser) *serverCodec {
 
 func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error { return c.dec.Decode(r) }
 
-func (c *serverCodec) ReadRequestBody(body any) error { return c.dec.Decode(body) }
+func (c *serverCodec) ReadRequestBody(body any) error { return decodeBody(c.dec, body) }
 
 func (c *serverCodec) WriteResponse(r *rpc.Response, body any) error {
 	if err := c.enc.Encode(r); err != nil {
@@ -120,7 +147,7 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, body any) error {
 		}
 		return err
 	}
-	if err := c.enc.Encode(body); err != nil {
+	if err := encodeBody(c.enc, body); err != nil {
 		if c.encBuf.Flush() == nil {
 			c.Close()
 		}
@@ -136,3 +163,33 @@ func (c *serverCodec) Close() error {
 	c.closed = true
 	return c.rwc.Close()
 }
+
+// clientCodec is the web process's side: net/rpc's gob client codec,
+// with JSON bodies.
+type clientCodec struct {
+	rwc    io.ReadWriteCloser
+	dec    *gob.Decoder
+	enc    *gob.Encoder
+	encBuf *bufio.Writer
+}
+
+func newClientCodec(conn io.ReadWriteCloser) *clientCodec {
+	buf := bufio.NewWriter(conn)
+	return &clientCodec{rwc: conn, dec: gob.NewDecoder(bufio.NewReader(conn)), enc: gob.NewEncoder(buf), encBuf: buf}
+}
+
+func (c *clientCodec) WriteRequest(r *rpc.Request, body any) error {
+	if err := c.enc.Encode(r); err != nil {
+		return err
+	}
+	if err := encodeBody(c.enc, body); err != nil {
+		return err
+	}
+	return c.encBuf.Flush()
+}
+
+func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error { return c.dec.Decode(r) }
+
+func (c *clientCodec) ReadResponseBody(body any) error { return decodeBody(c.dec, body) }
+
+func (c *clientCodec) Close() error { return c.rwc.Close() }

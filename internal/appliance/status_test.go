@@ -221,3 +221,17 @@ func TestFirewallLogLabelsOnlySinceLastChange(t *testing.T) {
 		t.Error("no rulesSince")
 	}
 }
+
+// Ending a connection changes the system, so it goes through Actions
+// (the dry runner under -dry), not the runner that reads state.
+func TestKillStateUsesActions(t *testing.T) {
+	reads := &captured{files: map[string]string{}}
+	acts := &captured{files: map[string]string{"pfctl -k id -k 6505b0d400000001/1c9d3f2a": ""}}
+	m := &Manager{Runner: reads, Actions: acts}
+	if err := m.KillState(KillStateRequest{ID: "6505b0d400000001", CreatorID: "1c9d3f2a"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(reads.ran) != 0 || len(acts.ran) != 1 {
+		t.Errorf("reads ran %q, actions ran %q", reads.ran, acts.ran)
+	}
+}

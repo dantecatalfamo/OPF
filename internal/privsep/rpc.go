@@ -346,7 +346,7 @@ type Client struct {
 var _ appliance.API = (*Client)(nil)
 
 func NewClient(conn io.ReadWriteCloser) *Client {
-	return &Client{rpc: rpc.NewClient(conn)}
+	return &Client{rpc: rpc.NewClientWithCodec(newClientCodec(conn))}
 }
 
 func (c *Client) call(method string, args any, reply interface{ remoteErr() error }) error {

@@ -37,7 +37,8 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
 	stateDir := flag.String("state", "/var/opf", "directory for staged changes and history")
 	root := flag.String("root", "", "prefix for every managed path (for development)")
-	dry := flag.Bool("dry", false, "log system commands instead of running them")
+	checks := flag.Bool("checks", false, "with -dry, still run the validators (pfctl -n, dhcpd -n, ...), which change nothing")
+	dry := flag.Bool("dry", false, "log commands that change the system instead of running them (state is still read, and diagnostic tools still run)")
 	timeout := flag.Duration("confirm-timeout", 60*time.Second, "how long to wait for confirmation before reverting")
 	webUser := flag.String("user", "_opf", "unprivileged user for the web process")
 	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
@@ -64,11 +65,16 @@ func main() {
 	if *dry {
 		runner = run.Dry{Log: log.Default()}
 	}
+	var checkRunner run.Runner // the store's Runner
+	if *dry && *checks {
+		checkRunner = run.Exec{}
+	}
 	store, err := config.New(config.Options{
 		Root:           *root,
 		StateDir:       *stateDir,
 		Files:          config.DefaultFiles(),
 		Runner:         runner,
+		CheckRunner:    checkRunner,
 		ConfirmTimeout: *timeout,
 	})
 	if err != nil {
@@ -88,7 +94,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	api.Actions = runner // dry-run with -dry
 	leasesFile := filepath.Join(*root, leases.Path)
+	// Before the sandbox: the lookup reads /etc/passwd, and making the
+	// listener's file needs "inet", which the parent doesn't pledge.
+	cred, err := privsep.Credential(*webUser)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lf, err := privsep.ListenerFile(ln)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err := privsep.SandboxParent(store.WritableDirs(), []string{leasesFile}, exe); err != nil {
 		log.Fatal(err)
 	}
@@ -109,8 +126,8 @@ func main() {
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
 		API:        api,
-		Listener:   ln,
-		User:       *webUser,
+		Listener:   lf,
+		Credential: cred,
 		Executable: exe,
 	})
 	if err != nil {

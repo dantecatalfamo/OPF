@@ -61,6 +61,7 @@ type Store struct {
 	dir            string
 	files          []File
 	run            run.Runner
+	checkRun       run.Runner // validators: Check commands
 	confirmTimeout time.Duration
 	fileLog        *log.Logger
 
@@ -69,15 +70,26 @@ type Store struct {
 }
 
 type Options struct {
-	Root           string
-	StateDir       string
-	Files          []File
-	Runner         run.Runner
+	Root     string
+	StateDir string
+	Files    []File
+	Runner   run.Runner
+	// CheckRunner runs the validators (each File's Check), which change
+	// nothing; nil uses Runner. With a dry Runner, a real CheckRunner
+	// checks generated files against the system's own validators.
+	CheckRunner    run.Runner
 	ConfirmTimeout time.Duration
 	// FileLog, when set, reports every change to a staged or live file:
 	// the path on the real system, where it went (with Root, a scratch
 	// location), and why. The mock server sets it.
 	FileLog *log.Logger
+}
+
+func (s *Store) checker() run.Runner {
+	if s.checkRun != nil {
+		return s.checkRun
+	}
+	return s.run
 }
 
 func New(opts Options) (*Store, error) {
@@ -92,6 +104,7 @@ func New(opts Options) (*Store, error) {
 		dir:            opts.StateDir,
 		files:          opts.Files,
 		run:            opts.Runner,
+		checkRun:       opts.CheckRunner,
 		confirmTimeout: opts.ConfirmTimeout,
 		fileLog:        opts.FileLog,
 	}
@@ -500,7 +513,7 @@ func (s *Store) CheckContent(ctx context.Context, name string, data []byte) (out
 	if err := tmp.Close(); err != nil {
 		return "", false, err
 	}
-	out, err := s.run.Run(ctx, subst(f.Check, tmp.Name())...)
+	out, err := s.checker().Run(ctx, subst(f.Check, tmp.Name())...)
 	return string(out), err == nil, nil
 }
 

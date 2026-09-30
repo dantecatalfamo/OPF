@@ -41,3 +41,12 @@ export function formatAgo(sec: number): string {
   if (sec < 86400) return `${Math.floor(sec / 3600)} h ago`;
   return `${Math.floor(sec / 86400)} days ago`;
 }
+
+/** A log entry's time: just the time today, with the date on other days. */
+export function formatLogTime(iso: string, now = new Date()): string {
+  const t = new Date(iso);
+  const time = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (t.toDateString() === now.toDateString()) return time;
+  const date = t.toLocaleDateString([], { month: 'short', day: 'numeric', ...(t.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+  return `${date}, ${time}`;
+}

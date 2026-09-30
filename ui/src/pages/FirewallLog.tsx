@@ -4,6 +4,7 @@ import { Alert, Anchor, Badge, Card, Group, Select, Table, Text, TextInput, Tool
 import { IconSearch } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { deviceName } from '../lib/labels';
+import { formatLogTime } from '../lib/format';
 import { useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
 import type { FirewallLogEntry } from '../lib/api';
@@ -82,7 +83,7 @@ export function FirewallLog() {
                 <Table.Tr key={`${e.time}-${i}`}>
                   <Table.Td>
                     <Tooltip label={new Date(e.time).toLocaleString()}>
-                      <Text size="sm" className="num">{new Date(e.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
+                      <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
                     </Tooltip>
                   </Table.Td>
                   <Table.Td><Badge color={actionColor[e.action] ?? 'gray'}>{actionText[e.action] ?? e.action}</Badge></Table.Td>

@@ -8,7 +8,7 @@ import { tunnels } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
 import type { InterfacesResource } from '../lib/api';
-import { formatBits, formatBytes, formatCount, formatDuration } from '../lib/format';
+import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import { deviceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
 
@@ -260,7 +260,7 @@ export function Dashboard() {
                 {
                   name: 'Time sync',
                   ok: !!sys?.time?.synced,
-                  note: !sys ? '…' : !sys.time ? 'Not running' : sys.time.synced ? `Synced${sys.time.offsetMs !== undefined ? `, offset ${Math.abs(sys.time.offsetMs) < 10 ? sys.time.offsetMs.toFixed(1) : Math.round(sys.time.offsetMs)} ms` : ''}` : 'Not synced yet',
+                  note: !sys ? '…' : !sys.time ? 'Not running' : sys.time.synced ? `Synced${sys.time.offsetMs !== undefined ? `, offset ${Math.abs(sys.time.offsetMs) < 10 ? (Math.round(sys.time.offsetMs * 10) / 10 || 0).toFixed(1) : Math.round(sys.time.offsetMs)} ms` : ''}` : 'Not synced yet',
                 },
               ].map((s) => (
                 <Group key={s.name} justify="space-between">
@@ -289,7 +289,7 @@ export function Dashboard() {
                     </Table.Td>
                     <Table.Td ta="right" style={{ verticalAlign: 'top' }}>
                       <Badge color="gray" size="sm">{deviceName(applied, b.iface)}</Badge>
-                      <Text size="xs" c="dimmed" className="num">{new Date(b.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
+                      <Text size="xs" c="dimmed" className="num">{formatLogTime(b.time)}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}

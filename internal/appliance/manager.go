@@ -54,9 +54,13 @@ type Manager struct {
 	onChange func()
 	leases   *leases.Watcher
 
-	// Runner executes system commands for reading network state.
-	// If nil, run.Exec{} is used.
+	// Runner executes system commands for reading state, and the
+	// diagnostic tools. If nil, run.Exec{} is used.
 	Runner run.Runner
+	// Actions executes commands that change the system outside a
+	// commit, such as ending a connection. If nil, Runner is used; -dry
+	// makes it log them instead.
+	Actions run.Runner
 
 	// Earlier readings, for rates (status.go).
 	cpu        rate[sysinfo.CPUTicks]
@@ -76,6 +80,13 @@ type Manager struct {
 	updMu      sync.Mutex
 	upd        *UpdatesStatus
 	updRunning bool
+}
+
+func (m *Manager) actions() run.Runner {
+	if m.Actions != nil {
+		return m.Actions
+	}
+	return m.runner()
 }
 
 func (m *Manager) runner() run.Runner {

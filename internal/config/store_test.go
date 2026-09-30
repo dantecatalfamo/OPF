@@ -525,3 +525,23 @@ func TestFileLogCheck(t *testing.T) {
 		t.Errorf("got %q, want %q…", buf.String(), want)
 	}
 }
+
+// With a CheckRunner, validators run there and everything else on the
+// Runner: -dry -checks validates for real and applies nothing.
+func TestCheckRunner(t *testing.T) {
+	root := t.TempDir()
+	applies, checks := &fakeRunner{}, &fakeRunner{fail: []string{"pfctl -n"}}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: testFiles, Runner: applies, CheckRunner: checks, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/pf.conf", "pass\n")
+	stage(t, s, "pf", "garbage\n")
+	var ce *CheckError
+	if _, err := s.Commit(context.Background(), CommitInfo{}); !errors.As(err, &ce) {
+		t.Fatalf("err = %v", err)
+	}
+	if !checks.ran("pfctl -n -f") || len(applies.commands()) != 0 {
+		t.Errorf("checks ran %q, applies ran %q", checks.commands(), applies.commands())
+	}
+}

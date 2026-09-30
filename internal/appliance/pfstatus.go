@@ -104,7 +104,7 @@ func (m *Manager) KillState(req KillStateRequest) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
 	defer cancel()
-	out, err := m.runner().Run(ctx, "pfctl", "-k", "id", "-k", req.ID+"/"+req.CreatorID)
+	out, err := m.actions().Run(ctx, "pfctl", "-k", "id", "-k", req.ID+"/"+req.CreatorID)
 	if err != nil {
 		return errorf(CodeInternal, "pfctl couldn't end the connection: %s", firstLine(string(out)))
 	}

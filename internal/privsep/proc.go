@@ -42,28 +42,21 @@ const (
 func IsChild() bool { return os.Getenv(childEnv) == "1" }
 
 type ParentOptions struct {
-	API        *appliance.Manager
-	Listener   net.Listener
-	User       string // unprivileged user the child runs as
+	API *appliance.Manager
+	// Listener is the socket the child serves, from ListenerFile.
+	Listener *os.File
+	// Credential is the unprivileged user the child runs as, from
+	// Credential; nil keeps the current user (development).
+	Credential *syscall.Credential
 	Executable string // this binary, re-executed as the child
 }
 
 // RunParent runs the web process and answers its calls until ctx is
 // done. If the web process exits it is started again.
 func RunParent(ctx context.Context, opts ParentOptions) error {
-	tl, ok := opts.Listener.(*net.TCPListener)
-	if !ok {
-		return fmt.Errorf("privsep: need a TCP listener, got %T", opts.Listener)
-	}
-	lf, err := tl.File()
-	if err != nil {
-		return err
-	}
+	lf := opts.Listener
 	defer lf.Close()
-	cred, err := credential(opts.User)
-	if err != nil {
-		return err
-	}
+	cred := opts.Credential
 
 	for {
 		cmd, conn, err := spawn(opts.Executable, lf, cred)
@@ -93,7 +86,11 @@ func RunParent(ctx context.Context, opts ParentOptions) error {
 	}
 }
 
-func spawn(exe string, listener *os.File, cred *syscall.Credential) (*exec.Cmd, net.Conn, error) {
+// spawn starts the child with its end of a new socketpair and the
+// listener, and returns the parent's end for the RPC. The parent's end
+// stays an *os.File: net.FileConn would ask the socket's type with
+// getsockopt, which the parent's pledge doesn't allow.
+func spawn(exe string, listener *os.File, cred *syscall.Credential) (*exec.Cmd, *os.File, error) {
 	// Hold ForkLock so the child's end can't leak into a command
 	// started concurrently before it is marked close-on-exec.
 	syscall.ForkLock.RLock()
@@ -101,24 +98,25 @@ func spawn(exe string, listener *os.File, cred *syscall.Credential) (*exec.Cmd, 
 	if err == nil {
 		syscall.CloseOnExec(fds[0])
 		syscall.CloseOnExec(fds[1])
+		// Non-blocking, so os.NewFile gives it to the poller and Close
+		// interrupts a pending read.
+		if err = syscall.SetNonblock(fds[0], true); err != nil {
+			syscall.Close(fds[0])
+			syscall.Close(fds[1])
+		}
 	}
 	syscall.ForkLock.RUnlock()
 	if err != nil {
 		return nil, nil, fmt.Errorf("privsep: socketpair: %w", err)
 	}
-	parentEnd := os.NewFile(uintptr(fds[0]), "privsep-parent")
+	conn := os.NewFile(uintptr(fds[0]), "privsep-parent")
 	childEnd := os.NewFile(uintptr(fds[1]), "privsep-child")
 	defer childEnd.Close()
 
-	conn, err := net.FileConn(parentEnd)
-	parentEnd.Close()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	cmd := exec.Command(exe)
 	cmd.Env = []string{childEnv + "=1"}
-	cmd.Dir = "/"
+	// No cmd.Dir: the parent's unveil hides "/", so it can't chdir the
+	// child there. The child does it itself, before its own sandbox.
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	cmd.ExtraFiles = []*os.File{childEnd, listener} // rpcFD, listenerFD
@@ -130,9 +128,23 @@ func spawn(exe string, listener *os.File, cred *syscall.Credential) (*exec.Cmd, 
 	return cmd, conn, nil
 }
 
-// credential returns the uid and gid to run the child as. When OPF
+// ListenerFile returns the file of a TCP listener, to hand to the child.
+// Go checks the socket's type as it makes the file, which pledge only
+// allows with "inet", so call it before SandboxParent: the parent never
+// needs the network itself.
+func ListenerFile(ln net.Listener) (*os.File, error) {
+	tl, ok := ln.(*net.TCPListener)
+	if !ok {
+		return nil, fmt.Errorf("privsep: need a TCP listener, got %T", ln)
+	}
+	return tl.File()
+}
+
+// Credential returns the uid and gid to run the child as. When OPF
 // itself isn't root (development) the child keeps the current user.
-func credential(name string) (*syscall.Credential, error) {
+// It reads /etc/passwd, so call it before SandboxParent unveils the
+// filesystem.
+func Credential(name string) (*syscall.Credential, error) {
 	if os.Geteuid() != 0 {
 		log.Printf("not running as root; web process runs as uid %d", os.Geteuid())
 		return nil, nil
@@ -162,6 +174,10 @@ func credential(name string) (*syscall.Credential, error) {
 func RunChild(serve func(appliance.API, net.Listener) error) error {
 	if os.Getuid() == 0 || os.Geteuid() == 0 {
 		return errors.New("privsep: web process must not run as root")
+	}
+	// Out of whatever directory OPF was started in.
+	if err := os.Chdir("/"); err != nil {
+		return err
 	}
 	rpcFile := os.NewFile(rpcFD, "privsep-rpc")
 	conn, err := net.FileConn(rpcFile)

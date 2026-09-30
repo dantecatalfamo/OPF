@@ -239,7 +239,11 @@ func TestParentRunsAndRestartsChild(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := make(chan error)
-	go func() { stopped <- RunParent(ctx, ParentOptions{API: api, Listener: ln, Executable: exe}) }()
+	lf, err := ListenerFile(ln)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { stopped <- RunParent(ctx, ParentOptions{API: api, Listener: lf, Executable: exe}) }()
 
 	base := "http://" + ln.Addr().String()
 	hc := &http.Client{Timeout: 2 * time.Second}

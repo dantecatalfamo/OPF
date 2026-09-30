@@ -187,6 +187,9 @@ diffs, whether confirmation is needed, and the server's objections.
     `OPF_REAL_TOOLS=1 ./diag.test -test.run TestRealTools`).
   - When a check is piped through `grep -v`, don't chain `&&` after it:
     `grep -v` exits 1 when there's nothing left to print.
+- **On OpenBSD**, `opf -dry -checks` runs the real validators but
+  logs every command that changes the system; see Verify on real
+  OpenBSD for how it's run on `openbsd-dev`.
 - **`make mock`** runs `opf -mock` (the real engine on the sample
   model, in a scratch directory, commands logged, loopback only) on
   127.0.0.1:18080, plus Vite on 5173.
@@ -242,10 +245,14 @@ In order. Each step's details are in the section it points to.
 
 1. **Authentication and TLS**, enforced in the parent (Security › User
    accounts).
-2. **Run on OpenBSD** (Verify on real OpenBSD). The `openbsd-dev` host
-   in the SSH config is a candidate; ask before using it.
+2. **Run on OpenBSD** (Verify on real OpenBSD). Dry runs with the real
+   validators work on 7.9 (`openbsd-dev`, user `opfdev`; ask before
+   using it); next are the two load failures found there, then real
+   commits on a VM that can be locked out safely.
 3. **Import** (Parser and import), then the first-run wizard.
-4. **Live data** (Live data and monitoring).
+4. **Live data** (Live data and monitoring): the pages read the real
+   system now; what's left is history over time and the rest of the
+   diagnostics.
 
 ## Commit engine and staging
 
@@ -988,11 +995,34 @@ Live on-OpenBSD suite:
 
 ### Verify on real OpenBSD
 
-Everything so far has only run on macOS, where pledge and unveil are
-skipped and the web process isn't dropped to another user.
+OPF has run as root on OpenBSD 7.9 (`openbsd-dev`, as `opfdev`, who
+has passwordless doas) with `-dry -checks`, a scratch `-root` and
+`-state`, and the web process as `opfdev`: pledge, unveil and the
+privilege drop hold; status, pf, the tools, commits, confirm, revert
+and the automatic revert all work; and the real `pfctl -n`, `dhcpd -n`,
+`unbound-checkconf` and `ntpd -n` judged the generated files. How:
+`GOOS=openbsd go build -tags embedui`, copy it with a seed root (the
+mock's), start it with doas and nohup, and tunnel 127.0.0.1:18090.
+Stop it by the PID it wrote; never pkill.
 
-- [ ] Run as root in `-dry` mode with scratch `-root`/`-state` to
-      exercise pledge, unveil and the privilege drop.
+- [ ] **The generated pf.conf fails to load when a URL alias's table
+      file hasn't been downloaded yet**: `table <blocklist> persist
+      file "/var/opf/tables/blocklist"` makes pfctl refuse the whole
+      ruleset, so a commit with a URL alias can't pass its check.
+      Decide: download it at commit time (refusing the commit if that
+      fails, keeping the last good copy), or load the table empty and
+      say on the page that it hasn't been fetched. Tied to the refresh
+      mechanism (Models and generators).
+- [ ] **unbound-checkconf refuses unbound.conf on a system where
+      unbound has never run**: with DNSSEC on, `auto-trust-anchor-file:
+      /var/unbound/db/root.key` doesn't exist until rc.d's
+      `unbound-anchor` creates it. Run `unbound-anchor -a` before the
+      check (it falls back to its built-in anchor offline), or create
+      the file some other way, so turning on the DNS resolver works the
+      first time.
+- [ ] Test pf.conf with the real `pfctl -n` on a model whose interfaces
+      exist on the test host (openbsd-dev has only vio0), so the only
+      errors left are OPF's.
 - [ ] Status parsers against output they've only seen written by hand
       (`internal/sysinfo/testdata/handwritten/`): `ifconfig` for wg
       peers (as root), vlan, carp and point-to-point interfaces; pfctl
@@ -1008,29 +1038,26 @@ skipped and the web process isn't dropped to another user.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors
       (temperatures, fans, volts, drives), `df` with more filesystems,
       `swapctl` with two devices, and a release other than 7.9.
-- [ ] `ping -6` for an IPv6 gateway, and `kern.boottime` read in the
-      parent's time zone matching the system's.
-- [ ] Diagnostic tools as root, through a running OPF (they've only
-      been run by hand and by `TestRealTools` as a user): traceroute
-      with UDP from the parent, `dig +trace`, and a gateway check with
-      `ping -i 0.2`, which only root may use.
+- [ ] `ping6` for an IPv6 gateway (openbsd-dev has no IPv6 route), and
+      `kern.boottime` read in the parent's time zone matching the
+      system's.
 - [ ] `syspatch -c`'s error when the mirror can't be reached (its
       output with patches available is in
       `internal/sysinfo/testdata/openbsd-other/`).
-- [ ] Parent pledge: confirm `stdio rpath wpath cpath fattr chown proc
-      exec id` covers fork, setuid in the child before exec, socketpair,
-      atomic writes with chown, and running every check/apply command.
-- [ ] Web process pledge `stdio rpath inet`: check nothing in net/http
-      or the Go runtime needs more (a violation kills the process).
+- [ ] Parent pledge and unveil on paths not yet exercised: applying
+      for real (`-dry` logs the applies), `hostname.if` changes,
+      removals, and reading `/var/log/pflog` when pflogd rotates it.
+      Run under `ktrace -i` and look for `PLDG` in `kdump`: a violation
+      kills the process with SIGABRT and nothing in OPF's log.
 - [ ] Unveil paths exist on a stock install; `/usr/local/*` and
       `/var/unbound/etc` may be missing.
 - [ ] `os.Executable` returns the right path when started from rc.d.
 - [ ] rc.d script: `pexp` matches both processes; `rcctl stop` leaves
       nothing behind and reverts an unconfirmed commit.
 - [ ] Each validator works on a file outside its usual location:
-      `unbound-checkconf` (chroot-relative includes), `pfctl -nf`
-      (relative `include`/`table ... file`), `dhcpd -n -c`,
-      `httpd -n -f`, `ntpd -n -f`, `sshd -t -f` (host keys, `Include`).
+      `pfctl -n -f`, `dhcpd -n -c`, `unbound-checkconf` and
+      `ntpd -n -f` do (checked on 7.9); still to check `httpd -n -f`,
+      `sshd -t -f` (host keys, `Include`), and `sh -n` on hostname.if.
 - [ ] Real commits, with and without confirmation, on a VM that can be
       locked out safely.
 - [ ] DHCP names in DNS (`internal/leases`): the lease file format
@@ -1065,6 +1092,15 @@ skipped and the web process isn't dropped to another user.
       that sets `AllowedIPs = 0.0.0.0/0` from reaching the internet.
 - [ ] The ARP and routing table parsers against real `arp -an` and
       `netstat -rnf inet`/`inet6` output.
+
+Found and fixed by running on 7.9 (kept here as what to look for):
+the web user was looked up after unveil hid /etc/passwd; the parent
+took the listener's file, and built the RPC connection with
+`net.FileConn`, after pledging without "inet" (both call getsockopt);
+the child was started with `Dir: "/"`, which unveil hides; gob dropped
+every zero across the RPC, so exit status 0, 0 bps and a handshake 0
+seconds ago arrived as "unknown"; and `-dry` still closed connections
+for real.
 
 ## Development tooling
 
