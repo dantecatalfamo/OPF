@@ -86,7 +86,7 @@ func TestCommitKeepsDownloadedList(t *testing.T) {
 	if len(f.ran) != 0 {
 		t.Errorf("downloaded again: %q", f.ran)
 	}
-	if data, _ := os.ReadFile(listPath(e)); string(data) != "192.0.2.0/24\n" {
+	if data, _ := os.ReadFile(listPath(e)); !strings.HasSuffix(string(data), "\n192.0.2.0/24\n") || !strings.Contains(string(data), "2026-01-01") {
 		t.Errorf("list replaced: %q", data)
 	}
 }
@@ -175,5 +175,31 @@ func TestRefreshAlias(t *testing.T) {
 	}
 	if ts, err := e.m.Tables(); err != nil || len(ts) != 1 || ts[0].Name != "blocklist" || ts[0].Entries != 2 {
 		t.Errorf("tables %+v %v", ts, err)
+	}
+}
+
+// Changing an alias's URL downloads the new list at the next commit.
+func TestCommitRedownloadsWhenURLChanges(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	f := &fetch{body: "203.0.113.0/24\n"}
+	e.m.Fetcher = f
+	m := e.live().Model
+	for i := range m.Firewall.Aliases {
+		if m.Firewall.Aliases[i].Name == "blocklist" {
+			m.Firewall.Aliases[i].URL = "https://lists.example.org/other.txt"
+		}
+	}
+	st, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: m})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.m.Commit(CommitRequest{Staged: st.Version}); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.ran) != 1 || !strings.Contains(f.ran[0], "other.txt") {
+		t.Errorf("ran %q", f.ran)
+	}
+	if data, _ := os.ReadFile(listPath(e)); !strings.Contains(string(data), "203.0.113.0/24") {
+		t.Errorf("list: %q", data)
 	}
 }

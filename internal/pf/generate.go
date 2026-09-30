@@ -43,6 +43,24 @@ func (a BlockAnswer) name() string {
 	return "null"
 }
 
+// WithApexes adds, for each "*.name", the name itself: on the page and
+// in wildcard lists "*.example.com" is example.com and everything under
+// it, but in a response policy zone "*.example.com" matches only names
+// under it.
+func WithApexes(names []string) []string {
+	out := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, n := range names {
+		for _, x := range []string{strings.TrimPrefix(n, "*."), n} {
+			if k := strings.ToLower(x); !seen[k] {
+				seen[k] = true
+				out = append(out, x)
+			}
+		}
+	}
+	return out
+}
+
 // RPZZone writes a response policy zone: each blocked name answered as
 // a says, each allowed one passed through (and no later zone
 // consulted). Names are "example.com" or "*.example.com", written
@@ -1238,7 +1256,7 @@ func GenerateFiles(m *Model) []GeneratedFile {
 	// Your own blocked and allowed names; the downloaded lists' zones
 	// are data, written by the appliance (DNSListZonePath).
 	if len(m.DNS.Blocked)+len(m.DNS.Allowed) > 0 {
-		files = append(files, GeneratedFile{Path: OwnZonePath, Content: RPZZone(m.DNS.Blocked, m.DNS.Allowed, m.DNS.BlockAnswer)})
+		files = append(files, GeneratedFile{Path: OwnZonePath, Content: RPZZone(WithApexes(m.DNS.Blocked), WithApexes(m.DNS.Allowed), m.DNS.BlockAnswer)})
 	}
 
 	// Default gateway

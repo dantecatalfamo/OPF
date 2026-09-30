@@ -109,6 +109,13 @@ func main() {
 	// Downloads handle what a server on the internet sends: run them as
 	// the unprivileged user too (a dedicated one is in TODO).
 	api.Fetcher = run.Exec{Credential: cred}
+	// Unveil skips a directory that doesn't exist, and then nothing can
+	// be created in it; make the ones OPF writes before hiding the rest.
+	for _, d := range store.WritableDirs() {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			log.Fatal(err)
+		}
+	}
 	if err := privsep.SandboxParent(store.WritableDirs(), []string{leasesFile}, exe); err != nil {
 		log.Fatal(err)
 	}

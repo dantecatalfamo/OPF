@@ -14,7 +14,9 @@ import { Empty, SectionTitle } from '../components/ui';
 
 // Lists people use, in formats OPF reads, fetched to check them.
 const wellKnown: Omit<DnsBlocklist, 'id' | 'enabled'>[] = [
-  { name: 'Hagezi Pro', url: 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro-onlydomains.txt' },
+  // Hagezi's RPZ, which lists each name and what's under it; its
+  // "onlydomains" file means the same but reads as exact names.
+  { name: 'Hagezi Pro', url: 'https://raw.githubusercontent.com/hagezi/dns-blocklists/main/rpz/pro.txt' },
   { name: 'OISD small', url: 'https://small.oisd.nl/rpz' },
   { name: 'AdGuard DNS filter', url: 'https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt' },
   { name: 'Steven Black hosts', url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts' },

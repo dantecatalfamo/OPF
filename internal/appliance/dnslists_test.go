@@ -33,7 +33,8 @@ func TestParseRealLists(t *testing.T) {
 		// for addresses, which DNS can't block.
 		{"adguard-dns.txt", 548, "*.0xclicks.com", map[string]int{skipAddress: 2}},
 		{"hagezi-pro-domains.txt", 287, "0.07c225f3.online", nil},
-		{"hagezi-pro-wildcard.txt", 287, "*.0.07c225f3.online", nil},
+		// *.name lines: the name and everything under it.
+		{"hagezi-pro-wildcard.txt", 574, "*.0.07c225f3.online", nil},
 		{"hagezi-pro-rpz.txt", 283, "*.1xslots.africa", nil},
 		{"oisd-small-rpz.txt", 286, "*.0-02.net", nil},
 		// A browser list: none of its first 300 rules is about a whole
@@ -84,7 +85,7 @@ func TestParseDomainListForms(t *testing.T) {
 		"0.0.0.0 192.0.2.2",
 		"not a name",
 	})
-	want := []string{"*.adserver.example", "*.important.example", "*.rpz.example", "*.wild.example.net", "ads.example.com", "adserver.example", "important.example", "plain.example.org", "rpz.example", "tracker.example.com"}
+	want := []string{"*.adserver.example", "*.important.example", "*.rpz.example", "*.wild.example.net", "ads.example.com", "adserver.example", "important.example", "plain.example.org", "rpz.example", "tracker.example.com", "wild.example.net"}
 	if strings.Join(res.Blocked, " ") != strings.Join(want, " ") {
 		t.Errorf("blocked:\n got %q\nwant %q", res.Blocked, want)
 	}
@@ -139,7 +140,8 @@ func TestCommitDownloadsDNSList(t *testing.T) {
 	if own < 0 || list < own || !strings.Contains(conf, `module-config: "respip validator iterator"`) || !strings.Contains(conf, "control-enable: yes") {
 		t.Errorf("unbound.conf:\n%s", conf)
 	}
-	if o := e.read(pf.OwnZonePath); !strings.Contains(o, "good.example.com CNAME rpz-passthru.") || !strings.Contains(o, "*.bad.example A 0.0.0.0") {
+	// *.bad.example is bad.example too.
+	if o := e.read(pf.OwnZonePath); !strings.Contains(o, "good.example.com CNAME rpz-passthru.") || !strings.Contains(o, "*.bad.example A 0.0.0.0") || !strings.Contains(o, "\nbad.example A 0.0.0.0") {
 		t.Errorf("own zone:\n%s", o)
 	}
 

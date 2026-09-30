@@ -525,9 +525,18 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       DNS (port 53) from inside networks to the firewall, and blocking
       DNS over TLS (853) outbound. DNS over HTTPS looks like any web
       traffic and can't be stopped this way; the page says so.
-- [ ] Memory: a million-name list costs unbound real memory; show each
-      list's size, warn on small machines, and check the RPZ zone
-      against unbound's limits before loading.
+- [ ] **Memory and reload time.** Measured on 7.9: Hagezi Pro's RPZ and
+      OISD small (575,000 entries) take unbound to 782 MB and 14 s before
+      it answers at all. Show each list's size and what it will cost,
+      warn against more than the machine's memory allows (check
+      `hw.physmem`), and suggest a lighter list (Hagezi's Light or
+      Normal) for small machines.
+- [ ] **Don't reload unbound whole for a change that doesn't need it**:
+      a commit that changes unbound.conf runs `rcctl reload unbound`,
+      which reloads every zone, so with big lists DNS stops answering
+      for as long as that load takes. Reload just the zones that changed
+      (`unbound-control auth_zone_reload`), and only reload the whole
+      server for settings that need it, saying so in the review.
 
 ## Services
 

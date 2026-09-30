@@ -90,7 +90,7 @@ func newEnv(t *testing.T, timeout time.Duration) *env {
 	// unbound's trust anchor made.
 	for _, a := range model.Firewall.Aliases {
 		if a.Type == pf.AliasURL {
-			write(pf.TablePath(a.Name), []byte("192.0.2.0/24\n"))
+			write(pf.TablePath(a.Name), []byte("# Downloaded by OPF from "+a.URL+" at 2026-01-01T00:00:00Z\n192.0.2.0/24\n"))
 		}
 	}
 	write(pf.RootKeyPath, []byte(". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"))

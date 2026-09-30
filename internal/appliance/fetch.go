@@ -1,9 +1,11 @@
 package appliance
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -77,6 +79,24 @@ func (m *Manager) fetchLines(ctx context.Context, url string) ([]string, error) 
 		return nil, errors.New(printable(msg, maxMessageRunes))
 	}
 	return lines, nil
+}
+
+// downloadedFrom reads the URL a saved list says it came from (its
+// first line, "# Downloaded by OPF from <url> at <time>"), or "" if the
+// file isn't there or doesn't say.
+func downloadedFrom(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	line, _ := bufio.NewReader(f).ReadString('\n')
+	rest, ok := strings.CutPrefix(line, "# Downloaded by OPF from ")
+	if !ok {
+		return ""
+	}
+	url, _, _ := strings.Cut(rest, " at ")
+	return url
 }
 
 // emptyListError says why a download had nothing usable in it.

@@ -116,7 +116,9 @@ func exists(path string) bool {
 // rc.d/unbound does before unbound first starts.
 func (m *Manager) prepareCommit(ctx context.Context, model *pf.Model) error {
 	for _, a := range model.Firewall.Aliases {
-		if a.Type != pf.AliasURL || exists(m.store.SystemPath(pf.TablePath(a.Name))) {
+		// A list already downloaded from this URL is used as it is; one
+		// from another URL (the alias was changed) is downloaded again.
+		if a.Type != pf.AliasURL || downloadedFrom(m.store.SystemPath(pf.TablePath(a.Name))) == a.URL {
 			continue
 		}
 		res, err := m.fetchList(ctx, a.URL)

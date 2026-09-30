@@ -94,9 +94,10 @@ func parseDomainList(lines []string) DomainList {
 			}
 			continue
 		}
-		// A wildcard name, as some lists write them.
+		// A wildcard name, as some lists write them: the name and
+		// everything under it (RPZ's "*." alone is only what's under).
 		if f := strings.Fields(l); len(f) == 1 && strings.HasPrefix(f[0], "*.") && pf.IsBlockName(f[0]) && strings.Count(f[0], ".") >= 2 {
-			add(blocked, f[0])
+			add(blocked, f[0], strings.TrimPrefix(f[0], "*."))
 			continue
 		}
 		// Adblock rules.
@@ -299,7 +300,9 @@ func (m *Manager) prepareDNSLists(ctx context.Context, model *pf.Model) error {
 			continue
 		}
 		res, _, err := m.readDNSList(l.ID)
-		if err != nil {
+		// Downloaded again if it isn't there or came from another URL
+		// (the list was changed).
+		if err != nil || downloadedFrom(m.dnsNamesPath(l.ID)) != l.URL {
 			if res, err = m.fetchDNSList(ctx, l.URL); err != nil {
 				return &Error{Code: CodeCheckFailed, Message: fmt.Sprintf("couldn't download the DNS blocklist %s from %s: %s; nothing was changed", l.Name, l.URL, err),
 					Details: []Detail{{Path: filepath.Join(pf.DNSListsDir, l.ID), Message: err.Error()}}}
