@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ListState } from '../components/ListState';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import { IconDots, IconDownload, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
-import { formatAgo } from '../lib/format';
 import type { TableStatus } from '../lib/api';
 import type { Alias, Model } from '../model/types';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
@@ -25,7 +25,7 @@ const typeHelp: Record<Alias['type'], string> = {
   networks: 'A fixed list of networks in CIDR form.',
   ports: 'A fixed list of ports, for the port field of rules.',
   table: 'Starts empty (or with the entries below) and is filled at runtime, for example by a rule’s connection limits. Entries survive rule reloads.',
-  url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it; download it again from its menu whenever you want the latest.',
+  url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it, again on the schedule below, and from its menu whenever you want the latest.',
 };
 
 function usedBy(m: Model, name: string): number {
@@ -65,7 +65,12 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
 
   return (
     <Modal opened={opened} onClose={onClose} title={<Text fw={600}>{alias ? `Edit ${alias.name}` : 'Add alias'}</Text>} size="md">
-      <form onSubmit={form.onSubmit((v) => { onSave(v); onClose(); })}>
+      <form onSubmit={form.onSubmit((v) => {
+        // An emptied number field is ''; unset is every 24 hours.
+        const hours = v.refreshHours as number | string | undefined;
+        onSave({ ...v, refreshHours: v.type === 'url' && typeof hours === 'number' ? hours : undefined });
+        onClose();
+      })}>
         <Stack>
           <TextInput label="Name" description={t === 'ports' ? undefined : `Used in pf as <${form.values.name || 'name'}>`} placeholder="cameras" {...form.getInputProps('name')} />
           <Select label="Type" data={Object.entries(typeLabel).map(([value, label]) => ({ value, label }))} allowDeselect={false} {...form.getInputProps('type')} />
@@ -73,6 +78,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
           {t === 'url' ? (
             <>
               <TextInput label="List URL" description="One address or network a line; comments after # or ; are fine" inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
+              <NumberInput label="Download it again every" suffix=" hours" min={1} max={8760} placeholder="24" {...form.getInputProps('refreshHours')} />
             </>
           ) : (
             <TagsInput label={t === 'table' ? 'Initial entries' : 'Entries'} description="Press Enter after each one" placeholder={placeholder} {...form.getInputProps('entries')} />
@@ -108,17 +114,6 @@ function useTables(applied: Model) {
     }
   };
   return { tables, refreshing, refresh };
-}
-
-function ListState({ alias, tables, applied }: { alias: Alias; tables?: TableStatus[]; applied: Model }) {
-  const t = tables?.find((x) => x.name === alias.name);
-  const live = applied.firewall.aliases.find((a) => a.name === alias.name && a.type === 'url');
-  let state: string;
-  if (!tables) state = '…';
-  else if (!live) state = 'Downloaded when you apply it';
-  else if (!t?.fetched) state = 'Not downloaded yet; it will be with the next change you apply';
-  else state = `${t.entries.toLocaleString()} entries, downloaded ${formatAgo((Date.now() - Date.parse(t.fetched)) / 1000)}`;
-  return <Text size="xs" c="dimmed">{state}</Text>;
 }
 
 export function Aliases() {
@@ -160,7 +155,11 @@ export function Aliases() {
                       {a.type === 'url' ? (
                         <Stack gap={2}>
                           <Text size="xs" className="mono" c="dimmed" truncate="end" maw={320}>{a.url}</Text>
-                          <ListState alias={a} tables={tables} applied={applied} />
+                          {(() => {
+                            const t = tables?.find((x) => x.name === a.name);
+                            const live = applied.firewall.aliases.some((x) => x.name === a.name && x.type === 'url');
+                            return tables ? <ListState applied={live} fetched={t?.fetched} count={t && `${t.entries.toLocaleString()} entries`} refresh={t?.refresh} /> : <Text size="xs" c="dimmed">…</Text>;
+                          })()}
                         </Stack>
                       ) : a.type === 'table' && !a.entries.length ? (
                         <Text size="xs" c="dimmed">Filled at runtime</Text>

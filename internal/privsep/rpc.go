@@ -130,6 +130,14 @@ type (
 		Result
 		Table *appliance.TableStatus
 	}
+	DNSListsReply struct {
+		Result
+		Lists []appliance.DNSListStatus
+	}
+	DNSListReply struct {
+		Result
+		List *appliance.DNSListStatus
+	}
 	NameArgs    struct{ Name string }
 	ToolRunArgs struct {
 		ID   string
@@ -270,6 +278,20 @@ func (s *Service) RefreshAlias(a NameArgs, r *TableReply) error {
 	var err error
 	r.Table, err = s.api.RefreshAlias(a.Name)
 	r.set("RefreshAlias", err)
+	return nil
+}
+
+func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
+	var err error
+	r.Lists, err = s.api.DNSLists()
+	r.set("DNSLists", err)
+	return nil
+}
+
+func (s *Service) RefreshDNSList(a IDArgs, r *DNSListReply) error {
+	var err error
+	r.List, err = s.api.RefreshDNSList(a.ID)
+	r.set("RefreshDNSList", err)
 	return nil
 }
 
@@ -624,6 +646,18 @@ func (c *Client) RefreshAlias(name string) (*appliance.TableStatus, error) {
 	var r TableReply
 	err := c.call("RefreshAlias", NameArgs{name}, &r)
 	return r.Table, err
+}
+
+func (c *Client) DNSLists() ([]appliance.DNSListStatus, error) {
+	var r DNSListsReply
+	err := c.call("DNSLists", None{}, &r)
+	return nonNil(r.Lists), err
+}
+
+func (c *Client) RefreshDNSList(id string) (*appliance.DNSListStatus, error) {
+	var r DNSListReply
+	err := c.call("RefreshDNSList", IDArgs{id}, &r)
+	return r.List, err
 }
 
 func nonNil[T any](s []T) []T {

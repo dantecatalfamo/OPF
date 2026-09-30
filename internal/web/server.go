@@ -29,6 +29,8 @@
 //	GET    /api/logs/firewall             packets pf logged, newest first
 //	GET    /api/firewall/tables           URL aliases' downloaded lists
 //	POST   /api/firewall/aliases/{name}/refresh  download one again and load it
+//	GET    /api/dns/blocklists            DNS blocklists' downloads
+//	POST   /api/dns/blocklists/{id}/refresh  download one again and reload it
 //	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
 //	GET    /api/diagnostics/runs/{id}     a run and its output, from ?from=N on
 //	POST   /api/diagnostics/runs/{id}/cancel  stop it
@@ -101,6 +103,11 @@ func New(api appliance.API, ui fs.FS) *Server {
 		return tablesBody{t}, err
 	}))
 	s.mux.HandleFunc("POST /api/firewall/aliases/{name}/refresh", s.refreshAlias)
+	s.mux.HandleFunc("GET /api/dns/blocklists", getter(func() (dnsListsBody, error) {
+		l, err := s.api.DNSLists()
+		return dnsListsBody{l}, err
+	}))
+	s.mux.HandleFunc("POST /api/dns/blocklists/{id}/refresh", s.refreshDNSList)
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
@@ -408,6 +415,19 @@ func (s *Server) killState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type dnsListsBody struct {
+	Lists []appliance.DNSListStatus `json:"lists"`
+}
+
+func (s *Server) refreshDNSList(w http.ResponseWriter, r *http.Request) {
+	l, err := s.api.RefreshDNSList(r.PathValue("id"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
 }
 
 type tablesBody struct {

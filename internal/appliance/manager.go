@@ -75,6 +75,9 @@ type Manager struct {
 	gwCache *GatewaysStatus
 	gwAt    time.Time
 
+	refMu sync.Mutex
+	refs  map[string]refreshRecord // list downloads (refresh.go)
+
 	diagOnce sync.Once
 	diag     *diag.Runs
 

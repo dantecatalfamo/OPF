@@ -74,12 +74,7 @@ peer
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
-		var b strings.Builder
-		b.WriteString("; Sample DROP list\n; Last-Modified: " + time.Now().UTC().Format(time.RFC1123) + "\n")
-		for i := range 40 {
-			fmt.Fprintf(&b, "%d.%d.%d.0/24 ; SBL%d\n", 45+i%7, 90+i, (i*37)%250, 100000+i)
-		}
-		out = b.String()
+		out = mockList(argv[len(argv)-1])
 	case len(argv) == 7 && argv[0] == "pfctl" && argv[1] == "-t" && argv[3] == "-T" && argv[4] == "replace":
 		out = "40 addresses added.\n"
 	case cmd == "pfctl -s memory":
@@ -328,4 +323,41 @@ func mockPing(addr string, t float64) ([]byte, error) {
 3 packets transmitted, %[2]d packets received, %.1[3]f%% packet loss
 round-trip min/avg/max/std-dev = %.3[4]f/%.3[5]f/%.3[6]f/0.412 ms
 `, addr, got, float64(lost)*100/3, rtt-0.6, rtt, rtt+0.9)), nil
+}
+
+// mockList is a list as its publisher would serve it, in the format its
+// URL suggests, so every parser gets exercised.
+func mockList(url string) string {
+	var b strings.Builder
+	names := []string{"ads", "tracker", "metrics", "pixel", "beacon", "adserver", "telemetry", "banner"}
+	sites := []string{"example.com", "example.net", "example.org", "ads.example", "track.example"}
+	switch {
+	case strings.Contains(url, "hosts"):
+		b.WriteString("# Sample hosts blocklist\n127.0.0.1 localhost\n::1 localhost\n0.0.0.0 0.0.0.0\n")
+		for i := range 60 {
+			fmt.Fprintf(&b, "0.0.0.0 %s%d.%s\n", names[i%len(names)], i, sites[i%len(sites)])
+		}
+	case strings.Contains(url, "easylist"), strings.Contains(url, "adblock"), strings.Contains(url, "adguard"):
+		b.WriteString("[Adblock Plus 2.0]\n! Title: Sample list\n")
+		for i := range 40 {
+			fmt.Fprintf(&b, "||%s%d.%s^\n", names[i%len(names)], i, sites[i%len(sites)])
+		}
+		b.WriteString("@@||cdn.example.com^\n||example.com^$third-party\n/banner/ads/*\nexample.com##.ad-slot\n||example.net/ads/^\n")
+	case strings.Contains(url, "rpz"):
+		b.WriteString("$TTL 300\n@ SOA localhost. root.localhost. 1 3600 600 86400 300\n  NS localhost.\n")
+		for i := range 50 {
+			fmt.Fprintf(&b, "%s%d.%s CNAME .\n*.%s%d.%s CNAME .\n", names[i%len(names)], i, sites[i%len(sites)], names[i%len(names)], i, sites[i%len(sites)])
+		}
+	case strings.Contains(url, "domains"):
+		b.WriteString("# Sample domain list\n")
+		for i := range 70 {
+			fmt.Fprintf(&b, "%s%d.%s\n", names[i%len(names)], i, sites[i%len(sites)])
+		}
+	default:
+		b.WriteString("; Sample DROP list\n; Last-Modified: " + time.Now().UTC().Format(time.RFC1123) + "\n")
+		for i := range 40 {
+			fmt.Fprintf(&b, "%d.%d.%d.0/24 ; SBL%d\n", 45+i%7, 90+i, (i*37)%250, 100000+i)
+		}
+	}
+	return b.String()
 }

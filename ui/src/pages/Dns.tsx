@@ -9,6 +9,7 @@ import { useNow } from '../lib/useNow';
 import type { Dns as DnsSettings } from '../model/types';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
+import { DnsBlocklists } from './DnsBlocklists';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
@@ -257,6 +258,7 @@ export function Dns() {
                 <Empty>No local host names.</Empty>
               )}
             </Card>
+            <DnsBlocklists />
             <LeaseNames />
           </Stack>
         </Grid.Col>

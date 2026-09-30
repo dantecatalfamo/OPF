@@ -354,11 +354,6 @@ In order. Each step's details are in the section it points to.
       ones that need it.
 - [ ] Check whether reloading pf empties `persist` tables such as
       `<bruteforce>`; if so, save and restore their contents.
-- [ ] Refresh URL aliases' lists on a schedule. A commit downloads a
-      list that isn't there and Aliases can download one again on
-      demand; the model's `refreshHours` (no longer shown on the page)
-      is for this. Keep the last good list when a scheduled download
-      fails, and say so on the Aliases page.
 - [ ] Run downloads as a dedicated `_opffetch` user created at install,
       rather than the web process's user, so the fetcher can't signal
       the web process or the other way round.
@@ -500,38 +495,19 @@ Types, roughly in order of usefulness:
 DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
 in 7.9 has RPZ, response policy zones, through its respip module):
 
-- [ ] **One "DNS blocklists" list on the DNS resolver page**: a URL, the
-      format (detected), and how names on it are answered: `0.0.0.0`
-      and `::` by default, as Pi-hole does (some apps retry harder, or
-      fall back to another resolver, on NXDOMAIN), or NXDOMAIN. Every
-      list a Pi-hole takes should work here, since its adlists are the
-      formats below. Two ways in, chosen by format:
-  - **RPZ lists** (OISD, Hagezi and others publish them): an `rpz:`
-    section with `url:`, and unbound downloads, refreshes (on the zone's
-    SOA timers) and applies it itself, in its chroot as `_unbound`, so
-    OPF never touches the data. First check on OpenBSD that unbound's
-    HTTPS download works in the chroot (it needs a CA bundle to verify
-    certificates, `tls-cert-bundle`).
-  - **Everything else**, converted by OPF into one local RPZ zone file
-    that unbound loads, with the downloader the pf lists use (ftp as an
-    unprivileged user, only lines that parse kept, size-capped),
-    downloaded at commit when missing and again on demand, then
-    `unbound-control reload`: hosts files (`0.0.0.0 ads.example.com`,
-    StevenBlack), plain domain lists, and the domain rules of adblock
-    lists (`||ads.example.com^` blocks, `@@||example.com^` excepts).
-- [ ] **Adblock-format lists (EasyList and the like) only partly apply**:
-      element-hiding rules (`##.banner`) and path rules
-      (`example.com/ads/*`) can't be done by DNS, which only sees names,
-      and neither can rules narrowed by options (`$script`,
-      `$third-party`). Use a rule only when it blocks a whole domain; say
-      on the page how many rules were used and how many skipped, and
-      why, and suggest the DNS-oriented lists built from the same
-      sources (AdGuard DNS filter, OISD, Hagezi), which cover far more.
-- [ ] Your own entries beside the lists, to block or to allow: exact
-      names (`ads.example.com`) and wildcards (`*.example.com`, the name
-      and everything under it). Allowed entries win over every list, and
-      a name can be allowed from the blocked-queries log ("this broke
-      something").
+- The downloader is built (Done): OPF downloads every list, whatever
+  its format, and writes the zones. Still to do:
+- [ ] Let unbound download RPZ-format lists itself (`rpz:` with `url:`),
+      in its chroot as `_unbound`, so OPF never touches their data.
+      Check first that unbound's HTTPS download works in the chroot (it
+      needs a CA bundle, `tls-cert-bundle`); the status then comes from
+      `unbound-control list_auth_zones`.
+- [ ] A blocklist that's turned off keeps its downloaded copy and
+      zones; remove them when a list is removed from the model (after
+      the commit is confirmed, so a revert still finds them), and the
+      same for pf URL aliases' files.
+- [ ] Allow a name from the blocked-queries log ("this broke
+      something"). Your own blocked and allowed names are built (Done).
   - Regex entries, which Pi-hole has, aren't possible with OpenBSD's
     unbound: RPZ and local zones match exact names and wildcards only,
     and it's built without the Python module (`--without-pythonmodule`)
@@ -1242,6 +1218,22 @@ Commit engine:
 
 Live data:
 
+- [x] DNS blocklists: hosts files, name lists, the domain rules of
+      adblock lists (EasyList's rules for whole names, with the rest
+      counted and explained) and RPZ zones, downloaded by OPF at commit
+      when missing, then on a schedule and on demand, and loaded into
+      unbound as response policy zones, one per list; a refresh reloads
+      just its zone. Your own blocked and allowed names (exact or
+      `*.name`) come first, so an allowed name wins. Blocked names answer
+      0.0.0.0 and :: (checked on 7.9: unbound can't do that as an
+      override, so each answer has its own zone file) or NXDOMAIN. The
+      parser is tested on the first 300 lines of Steven Black's hosts,
+      the AdGuard DNS filter, Hagezi's domains, wildcard and RPZ lists,
+      OISD's RPZ and EasyList.
+- [x] Downloaded lists (pf URL aliases and DNS blocklists) are
+      downloaded again every so many hours (24 by default); a failure
+      keeps the list and retries an hour later, and the pages say when
+      the next download is and what went wrong.
 - [x] URL aliases' lists: a commit downloads a list that isn't there
       yet (refusing the commit, with ftp's reason, if it can't) and uses
       one that is; Aliases shows when each was downloaded and how many

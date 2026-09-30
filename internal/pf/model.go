@@ -554,7 +554,39 @@ type DNS struct {
 	// model (the sample, import, the first-run wizard) must set it.
 	RewriteInvalidLeaseNames bool           `json:"rewriteInvalidLeaseNames"`
 	Overrides                []HostOverride `json:"overrides"`
+
+	// Blocklists are lists of names to block (ads, trackers), downloaded
+	// by OPF and loaded into unbound as response policy zones.
+	Blocklists []DNSBlocklist `json:"blocklists,omitempty"`
+	// Blocked and Allowed are names of your own, exact ("ads.example.com")
+	// or with everything under them ("*.example.com"). Allowed wins over
+	// every list; Blocked is blocked whatever the lists say.
+	Blocked []string `json:"blocked,omitempty"`
+	Allowed []string `json:"allowed,omitempty"`
+	// BlockAnswer is how a blocked name is answered: "" (0.0.0.0 and
+	// ::, as Pi-hole does, since some apps retry harder or change
+	// resolver on NXDOMAIN) or "nxdomain" (no such name).
+	BlockAnswer BlockAnswer `json:"blockAnswer,omitempty"`
 }
+
+// DNSBlocklist is a list of names the resolver blocks, in any of the
+// formats DNS blockers use: hosts files, plain names, the domain rules
+// of adblock lists, or RPZ zones.
+type DNSBlocklist struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	URL     string `json:"url"`
+	Enabled bool   `json:"enabled"`
+	// RefreshHours is how often it's downloaded again; nil is 24.
+	RefreshHours *int `json:"refreshHours,omitempty"`
+}
+
+type BlockAnswer string
+
+const (
+	BlockAnswerNull     BlockAnswer = ""
+	BlockAnswerNXDomain BlockAnswer = "nxdomain"
+)
 
 type ClientRoutes string
 

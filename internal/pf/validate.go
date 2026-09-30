@@ -519,10 +519,7 @@ func (v *validator) firewall() {
 		case AliasTable:
 		case AliasURL:
 			// Written into a pf.conf comment and fetched by the parent.
-			u, err := url.Parse(a.URL)
-			if err != nil || u.Scheme != "https" || u.Host == "" || strings.ContainsFunc(a.URL, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) {
-				v.fail(p+".url", "must be an https:// URL")
-			}
+			v.httpsURL(p+".url", a.URL)
 			if a.RefreshHours != nil {
 				v.intRange(p+".refreshHours", *a.RefreshHours, 1, 8760)
 			}
@@ -753,6 +750,14 @@ func (v *validator) dhcp() {
 	}
 }
 
+// httpsURL checks a URL OPF downloads from and writes into comments.
+func (v *validator) httpsURL(path, s string) {
+	u, err := url.Parse(s)
+	if err != nil || u.Scheme != "https" || u.Host == "" || strings.ContainsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) {
+		v.fail(path, "must be an https:// URL")
+	}
+}
+
 func (v *validator) dns() {
 	d := v.m.DNS
 	v.oneOf("dns.mode", string(d.Mode), string(ResolverModeRecursive), string(ResolverModeForward))
@@ -772,6 +777,73 @@ func (v *validator) dns() {
 		v.addr(p+".ip", o.IP, false)
 		v.text(p+".description", o.Description, 200, false)
 	}
+
+	v.oneOf("dns.blockAnswer", string(d.BlockAnswer), string(BlockAnswerNull), string(BlockAnswerNXDomain))
+	lists := map[string]bool{}
+	for i, l := range d.Blocklists {
+		p := at("dns.blocklists", i)
+		// The id names the list's files and its zone in unbound.conf.
+		v.re(p+".id", l.ID, blocklistIDRE, "a lowercase id")
+		v.unique(p+".id", lists, l.ID, "list id")
+		v.text(p+".name", l.Name, 60, true)
+		if strings.ContainsAny(l.Name, `"\`) {
+			v.fail(p+".name", "can't contain quotes or backslashes")
+		}
+		v.httpsURL(p+".url", l.URL)
+		if l.RefreshHours != nil {
+			v.intRange(p+".refreshHours", *l.RefreshHours, 1, 8760)
+		}
+	}
+	own := map[string]string{}
+	for _, set := range []struct {
+		path  string
+		names []string
+	}{{"dns.blocked", d.Blocked}, {"dns.allowed", d.Allowed}} {
+		if len(set.names) > MaxOwnDNSNames {
+			v.fail(set.path, "at most %d", MaxOwnDNSNames)
+		}
+		for i, n := range set.names {
+			p := at(set.path, i)
+			if !IsBlockName(n) {
+				v.fail(p, "%q isn't a name, or *. and a name", n)
+				continue
+			}
+			if prev, ok := own[strings.ToLower(n)]; ok {
+				v.fail(p, "%s is already in %s", n, prev)
+				continue
+			}
+			own[strings.ToLower(n)] = set.path
+		}
+	}
+}
+
+// blocklistIDRE is what a DNS blocklist's id may be: it names files and
+// an unbound zone.
+var blocklistIDRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
+
+// MaxOwnDNSNames bounds your own blocked and allowed names, each.
+const MaxOwnDNSNames = 10000
+
+// IsBlockName says whether s is a DNS name, or "*." and one: letters,
+// digits, hyphens and underscores in labels of up to 63, 253 in all,
+// no label starting or ending with a hyphen.
+func IsBlockName(s string) bool {
+	s = strings.TrimPrefix(s, "*.")
+	s = strings.TrimSuffix(s, ".")
+	if s == "" || len(s) > 253 {
+		return false
+	}
+	for _, l := range strings.Split(s, ".") {
+		if l == "" || len(l) > 63 || l[0] == '-' || l[len(l)-1] == '-' {
+			return false
+		}
+		for _, r := range l {
+			if !(r == '-' || r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 var fingerprintsRE = regexp.MustCompile(`^/[A-Za-z0-9._/-]{1,254}$`)

@@ -286,6 +286,22 @@ export interface Dns {
   /** Turn names that aren't valid ("Priya's iPad") into valid ones instead of refusing them. */
   rewriteInvalidLeaseNames: boolean;
   overrides: HostOverride[];
+  /** Lists of names to block, downloaded and loaded into unbound as response policy zones. */
+  blocklists?: DnsBlocklist[];
+  /** Your own names, exact or "*.name" (the name and everything under it). Allowed wins over every list. */
+  blocked?: string[];
+  allowed?: string[];
+  /** How a blocked name is answered: 0.0.0.0 and :: (the default, as Pi-hole does) or "no such name". */
+  blockAnswer?: '' | 'nxdomain';
+}
+
+export interface DnsBlocklist {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  /** How often it's downloaded again; 24 when unset. */
+  refreshHours?: number;
 }
 
 export interface Peer {

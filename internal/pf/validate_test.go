@@ -151,3 +151,45 @@ func TestValidPortExpr(t *testing.T) {
 
 // wg returns interface i's tunnel, for breaking it.
 func wg(m *Model, i int) *WireGuard { return m.Interfaces[i].WireGuard }
+
+func TestValidateDNSBlocklists(t *testing.T) {
+	good := func() *Model {
+		m, _ := loadSampleModel(t)
+		m.DNS.Blocklists = []DNSBlocklist{{ID: "hagezi-pro", Name: "Hagezi Pro", URL: "https://example.org/pro.txt", Enabled: true}}
+		m.DNS.Blocked = []string{"ads.example.com", "*.tracker.example"}
+		m.DNS.Allowed = []string{"cdn.example.com"}
+		return m
+	}
+	if errs := Validate(good()); len(errs) != 0 {
+		t.Fatalf("valid model refused: %v", errs)
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(*Model)
+		path string
+	}{
+		{"id with a dot", func(m *Model) { m.DNS.Blocklists[0].ID = "a.b" }, "dns.blocklists[0].id"},
+		{"uppercase id", func(m *Model) { m.DNS.Blocklists[0].ID = "Pro" }, "dns.blocklists[0].id"},
+		{"id with a slash", func(m *Model) { m.DNS.Blocklists[0].ID = "../x" }, "dns.blocklists[0].id"},
+		{"quote in name", func(m *Model) { m.DNS.Blocklists[0].Name = "a\"b" }, "dns.blocklists[0].name"},
+		{"http url", func(m *Model) { m.DNS.Blocklists[0].URL = "http://example.org/x" }, "dns.blocklists[0].url"},
+		{"file url", func(m *Model) { m.DNS.Blocklists[0].URL = "file:///etc/passwd" }, "dns.blocklists[0].url"},
+		{"refresh 0", func(m *Model) { h := 0; m.DNS.Blocklists[0].RefreshHours = &h }, "dns.blocklists[0].refreshHours"},
+		{"duplicate id", func(m *Model) { m.DNS.Blocklists = append(m.DNS.Blocklists, m.DNS.Blocklists[0]) }, "dns.blocklists[1].id"},
+		{"bad name", func(m *Model) { m.DNS.Blocked = []string{"ads example"} }, "dns.blocked[0]"},
+		{"newline in name", func(m *Model) { m.DNS.Blocked = []string{"a.example\nb.example"} }, "dns.blocked[0]"},
+		{"blocked and allowed", func(m *Model) { m.DNS.Allowed = []string{"ADS.example.com"} }, "dns.allowed[0]"},
+		{"unknown answer", func(m *Model) { m.DNS.BlockAnswer = "refuse" }, "dns.blockAnswer"},
+	} {
+		m := good()
+		tc.edit(m)
+		errs := Validate(m)
+		found := false
+		for _, e := range errs {
+			found = found || e.Path == tc.path
+		}
+		if !found {
+			t.Errorf("%s: want an error at %s, got %v", tc.name, tc.path, errs)
+		}
+	}
+}

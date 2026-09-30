@@ -13,7 +13,7 @@ import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsListStatus, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -233,13 +233,30 @@ export const localApi = {
   ruleCounters: async (): Promise<RuleCountersResource> => sampleRuleCounters(live),
   firewallLog: async (): Promise<FirewallLogResource> => sampleFirewallLog(live),
   tables: async (): Promise<TableStatus[]> =>
-    live.firewall.aliases.filter((a) => a.type === 'url').map((a) => ({ name: a.name, url: a.url ?? '', fetched: tableFetched.get(a.name) ?? new Date(Date.now() - 5 * 3600_000).toISOString(), entries: 1184 })),
+    live.firewall.aliases.filter((a) => a.type === 'url').map((a) => {
+      const fetched = tableFetched.get(a.name) ?? new Date(Date.now() - 5 * 3600_000).toISOString();
+      return { name: a.name, url: a.url ?? '', fetched, entries: 1184, refresh: sampleRefresh(fetched, a.refreshHours) };
+    }),
+  dnsLists: async (): Promise<DnsListStatus[]> =>
+    (live.dns.blocklists ?? []).map((l) => {
+      const fetched = tableFetched.get('dns:' + l.id) ?? new Date(Date.now() - 3 * 3600_000).toISOString();
+      return { id: l.id, name: l.name, url: l.url, enabled: l.enabled, fetched, blocked: 48213, allowed: 12, skipped: {}, refresh: sampleRefresh(fetched, l.refreshHours) };
+    }),
+  refreshDnsList: async (id: string): Promise<DnsListStatus> => {
+    const l = (live.dns.blocklists ?? []).find((x) => x.id === id);
+    if (!l) throw new ApiError(404, 'not_found', `no DNS blocklist "${id}" in the applied configuration`);
+    await new Promise((r) => setTimeout(r, 700));
+    const fetched = new Date().toISOString();
+    tableFetched.set('dns:' + id, fetched);
+    return { id, name: l.name, url: l.url, enabled: l.enabled, fetched, blocked: 48240, allowed: 12, skipped: {}, refresh: sampleRefresh(fetched, l.refreshHours) };
+  },
   refreshAlias: async (name: string): Promise<TableStatus> => {
     const a = live.firewall.aliases.find((x) => x.name === name && x.type === 'url');
     if (!a) throw new ApiError(404, 'not_found', `no downloaded list called "${name}" in the applied configuration`);
     await new Promise((r) => setTimeout(r, 700));
-    tableFetched.set(name, new Date().toISOString());
-    return { name, url: a.url ?? '', fetched: tableFetched.get(name), entries: 1191 };
+    const fetched = new Date().toISOString();
+    tableFetched.set(name, fetched);
+    return { name, url: a.url ?? '', fetched, entries: 1191, refresh: sampleRefresh(fetched, a.refreshHours) };
   },
   startTool: async (req: ToolRequest): Promise<ToolRun> => startLocalTool(req),
   toolRun: async (id: string, from: number): Promise<ToolRun> => localToolRun(id, from),
@@ -248,6 +265,11 @@ export const localApi = {
 
 // When the sample's lists were refreshed on the Aliases page.
 const tableFetched = new Map<string, string>();
+
+function sampleRefresh(fetched: string, hours?: number): RefreshState {
+  const every = hours ?? 24;
+  return { everyHours: every, next: new Date(Date.parse(fetched) + every * 3600_000).toISOString() };
+}
 
 // Connections closed on the Connections page, gone from the sample.
 const closedStates = new Set<string>();

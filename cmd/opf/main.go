@@ -125,6 +125,7 @@ func main() {
 	api.OnChange(watcher.Kick)
 	api.SetLeaseWatcher(watcher)
 	go watcher.Run(sigCtx)
+	go api.RunRefresher(sigCtx, time.Minute) // downloaded lists, as they fall due
 
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{

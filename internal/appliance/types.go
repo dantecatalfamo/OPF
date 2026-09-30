@@ -50,6 +50,8 @@ type API interface {
 	CancelTool(id string) error
 	Tables() ([]TableStatus, error)
 	RefreshAlias(name string) (*TableStatus, error)
+	DNSLists() ([]DNSListStatus, error)
+	RefreshDNSList(id string) (*DNSListStatus, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

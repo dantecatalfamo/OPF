@@ -13,29 +13,12 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
-	"github.com/dantecatalfamo/OPF/internal/run"
 )
 
-// URL aliases are tables pf loads from a file OPF downloads: the first
-// time a commit needs one, and again when asked. The download is the
-// one time OPF talks to the internet on its own, so it runs ftp(1) as an
-// unprivileged user (Fetcher), and this process only reads the lines it
-// prints: each must be an address or network, anything else is
-// skipped, and the whole is capped.
-
-// Limits on a downloaded list.
-const (
-	maxListBytes = 32 << 20
-	fetchTimeout = 2 * time.Minute
-)
-
-// fetcher runs downloads: Fetcher, or else the Manager's runner.
-func (m *Manager) fetcher() run.Runner {
-	if m.Fetcher != nil {
-		return m.Fetcher
-	}
-	return m.runner()
-}
+// URL aliases are tables pf loads from a file OPF downloads (fetch.go):
+// the first time a commit needs one, on a schedule (refresh.go), and
+// when asked. Each line must be an address or network; anything else is
+// skipped.
 
 // ListResult is a downloaded list: its addresses, and how many lines
 // weren't addresses and were left out.
@@ -44,63 +27,16 @@ type ListResult struct {
 	Skipped int
 }
 
-// fetchList downloads a list and reads the addresses in it.
+// fetchList downloads a pf list and reads the addresses in it.
 func (m *Manager) fetchList(ctx context.Context, url string) (ListResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
-	defer cancel()
 	var res ListResult
-	var lines []string
-	size := 0
-	tooBig := false
-	line := func(l string) {
-		if tooBig {
-			return
-		}
-		if size += len(l) + 1; size > maxListBytes {
-			tooBig = true
-			cancel()
-			return
-		}
-		lines = append(lines, l)
-	}
-	// -V: no progress meter. The URL comes from a validated model
-	// (https:// only), and "--" ends the options before it.
-	argv := []string{"ftp", "-V", "-o", "-", "--", url}
-	var err error
-	if s, ok := m.fetcher().(run.Streamer); ok {
-		err = s.Stream(ctx, line, argv...)
-	} else {
-		var out []byte
-		out, err = m.fetcher().Run(ctx, argv...)
-		for _, l := range strings.Split(string(out), "\n") {
-			line(l)
-		}
-	}
-	if tooBig {
-		return res, fmt.Errorf("the list is bigger than %d MB", maxListBytes>>20)
-	}
+	lines, err := m.fetchLines(ctx, url)
 	if err != nil {
-		// ftp's error is its last line of output ("ftp: Error retrieving
-		// ...: 404 Not Found").
-		msg := ""
-		for i := len(lines) - 1; i >= 0 && msg == ""; i-- {
-			msg = strings.TrimSpace(lines[i])
-		}
-		if msg == "" {
-			msg = err.Error()
-		}
-		return res, errors.New(printable(msg, maxMessageRunes))
+		return res, err
 	}
 	res.Entries, res.Skipped = parseList(lines)
 	if len(res.Entries) == 0 {
-		if res.Skipped > 0 {
-			lines := "lines that aren't addresses"
-			if res.Skipped == 1 {
-				lines = "line that isn't an address"
-			}
-			return res, fmt.Errorf("it has no addresses in it, just %d %s; is it the right URL?", res.Skipped, lines)
-		}
-		return res, errors.New("it's empty")
+		return res, emptyListError(res.Skipped, "address", "addresses")
 	}
 	return res, nil
 }
@@ -192,6 +128,9 @@ func (m *Manager) prepareCommit(ctx context.Context, model *pf.Model) error {
 			return err
 		}
 	}
+	if err := m.prepareDNSLists(ctx, model); err != nil {
+		return err
+	}
 	if model.DNS.Enabled && model.DNS.DNSSEC {
 		key := m.store.SystemPath(pf.RootKeyPath)
 		if !exists(key) {
@@ -212,10 +151,11 @@ func (m *Manager) prepareCommit(ctx context.Context, model *pf.Model) error {
 // TableStatus is a URL alias's list: when it was downloaded and how
 // many entries it has.
 type TableStatus struct {
-	Name    string     `json:"name"`
-	URL     string     `json:"url"`
-	Fetched *time.Time `json:"fetched,omitempty"` // nil: not downloaded yet
-	Entries int        `json:"entries"`
+	Name    string       `json:"name"`
+	URL     string       `json:"url"`
+	Fetched *time.Time   `json:"fetched,omitempty"` // nil: not downloaded yet
+	Entries int          `json:"entries"`
+	Refresh RefreshState `json:"refresh"`
 	// Warning says what went wrong after a refresh downloaded the list,
 	// such as pf not taking it.
 	Warning string `json:"warning,omitempty"`
@@ -236,13 +176,15 @@ func (m *Manager) Tables() ([]TableStatus, error) {
 	return out, nil
 }
 
-func (m *Manager) tableStatus(a pf.Alias) TableStatus {
-	st := TableStatus{Name: a.Name, URL: a.URL}
+func (m *Manager) tableStatus(a pf.Alias) (st TableStatus) {
+	st = TableStatus{Name: a.Name, URL: a.URL}
 	path := m.store.SystemPath(pf.TablePath(a.Name))
 	fi, err := os.Stat(path)
 	if err != nil {
+		st.Refresh = m.refreshState(aliasKey(a.Name), nil, a.RefreshHours)
 		return st
 	}
+	defer func() { st.Refresh = m.refreshState(aliasKey(a.Name), st.Fetched, a.RefreshHours) }()
 	t := fi.ModTime()
 	st.Fetched = &t
 	if data, err := os.ReadFile(path); err == nil {
@@ -272,21 +214,30 @@ func (m *Manager) RefreshAlias(name string) (*TableStatus, error) {
 	if alias == nil {
 		return nil, errorf(CodeNotFound, "no downloaded list called %q in the applied configuration", name)
 	}
-	ctx := context.Background()
-	res, err := m.fetchList(ctx, alias.URL)
+	warning, err := m.refreshAlias(context.Background(), *alias)
 	if err != nil {
 		return nil, errorf(CodeCheckFailed, "couldn't download %s: %s; the list already there is still in use", alias.URL, err)
 	}
-	if err := m.writeList(*alias, res); err != nil {
-		return nil, err
-	}
 	st := m.tableStatus(*alias)
+	st.Warning = warning
+	return &st, nil
+}
+
+func (m *Manager) refreshAlias(ctx context.Context, a pf.Alias) (warning string, err error) {
+	defer func() { m.noteRefresh(aliasKey(a.Name), err) }()
+	res, err := m.fetchList(ctx, a.URL)
+	if err != nil {
+		return "", err
+	}
+	if err := m.writeList(a, res); err != nil {
+		return "", err
+	}
 	// pf only reads the file when the ruleset loads; replace the table's
 	// contents now.
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
-	if out, err := m.actions().Run(ctx, "pfctl", "-t", alias.Name, "-T", "replace", "-f", m.store.SystemPath(pf.TablePath(alias.Name))); err != nil {
-		st.Warning = "downloaded, but pf didn't take it: " + firstLine(string(out))
+	if out, err := m.actions().Run(ctx, "pfctl", "-t", a.Name, "-T", "replace", "-f", m.store.SystemPath(pf.TablePath(a.Name))); err != nil {
+		return "downloaded, but pf didn't take it: " + firstLine(string(out)), nil
 	}
-	return &st, nil
+	return "", nil
 }

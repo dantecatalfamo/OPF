@@ -315,6 +315,30 @@ export interface ToolRun {
   truncated?: boolean;
 }
 
+/** When a downloaded list is fetched next, and how the last try went. */
+export interface RefreshState {
+  everyHours: number;
+  next?: string;
+  lastAttempt?: string;
+  lastError?: string;
+}
+
+/** A DNS blocklist's download (GET /api/dns/blocklists). */
+export interface DnsListStatus {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  /** When it was last downloaded; missing if it hasn't been yet. */
+  fetched?: string;
+  blocked: number;
+  allowed: number;
+  /** Lines left out, by why. */
+  skipped: Record<string, number>;
+  refresh: RefreshState;
+  warning?: string;
+}
+
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
 export interface TableStatus {
   name: string;
@@ -322,6 +346,7 @@ export interface TableStatus {
   /** When it was last downloaded; missing if it hasn't been yet. */
   fetched?: string;
   entries: number;
+  refresh: RefreshState;
   /** What went wrong after a refresh downloaded it. */
   warning?: string;
 }
@@ -454,6 +479,9 @@ export const api = {
   tables: async () => (await request<{ tables: TableStatus[] }>('GET', '/firewall/tables')).tables,
   /** Downloads a URL alias's list again and loads it into pf. */
   refreshAlias: (name: string) => request<TableStatus>('POST', `/firewall/aliases/${enc(name)}/refresh`),
+  dnsLists: async () => (await request<{ lists: DnsListStatus[] }>('GET', '/dns/blocklists')).lists,
+  /** Downloads a DNS blocklist again and reloads it in the resolver. */
+  refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),
   startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
   toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),
   cancelTool: (id: string) => request<void>('POST', `/diagnostics/runs/${enc(id)}/cancel`),

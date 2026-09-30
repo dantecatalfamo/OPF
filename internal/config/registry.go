@@ -152,6 +152,15 @@ func DefaultFiles() []File {
 			Mode: 0644,
 		},
 		{
+			// Before unbound.conf, so the zone it names is in place when
+			// unbound reloads. unbound-checkconf doesn't read zone files;
+			// the generator writes it from checked names.
+			Name: "opf-own.rpz", Path: "/var/unbound/db/opf-own.rpz",
+			Desc:    "DNS names you block or allow",
+			Service: "unbound", ServiceAction: "reload",
+			Mode: 0644,
+		},
+		{
 			Name: "unbound.conf", Path: "/var/unbound/etc/unbound.conf",
 			Desc:    "Recursive DNS resolver",
 			Check:   []string{"unbound-checkconf", "{}"},

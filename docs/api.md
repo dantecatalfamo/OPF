@@ -307,6 +307,31 @@ address or network (comments after `#` or `;` are fine), at most 32 MB.
   `warning` if pf didn't take it. If the download fails (422), the list
   already there stays in use.
 
+Every downloaded list (pf's and DNS's) is downloaded again every
+`refreshHours` (24 by default) since the last download; a failed
+attempt keeps the list already there and is tried again an hour later.
+Each status has `refresh`: `{"everyHours", "next", "lastAttempt",
+"lastError"}`.
+
+- `GET /api/dns/blocklists`: `{"lists": [{"id", "name", "url",
+  "enabled", "fetched", "blocked", "allowed", "skipped", "refresh",
+  "warning"}]}` for the applied configuration's DNS blocklists.
+  `blocked` and `allowed` count names (`*.name` is one), and `skipped`
+  counts the lines OPF couldn't use, by why (element hiding, a path or
+  pattern, narrowed by options, an address, not a name).
+- `POST /api/dns/blocklists/{id}/refresh`: downloads it again and
+  reloads its zone in unbound (`unbound-control auth_zone_reload`,
+  which keeps the cache and the DHCP names). 422 if the download fails;
+  the list already there stays in use.
+
+A DNS blocklist can be a hosts file, a list of names (`*.name` for the
+name and everything under it), an adblock list (only `||name^` rules,
+and `@@||name^` exceptions, are used) or an RPZ zone. OPF keeps its own
+copy of the names in `/var/opf/dns-lists/<id>` and writes a response
+policy zone for unbound per answer, `/var/unbound/db/opf/<id>.<answer>.rpz`;
+unbound.conf names the one in use, so a revert that changes the answer
+back finds its zone still there.
+
 A commit that turns on DNSSEC also creates unbound's trust anchor
 (`unbound-anchor`) when there isn't one, as rc.d/unbound does before
 unbound first starts.

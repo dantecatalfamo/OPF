@@ -13,6 +13,57 @@ import (
 // or network a line; pf.conf loads the table from it.
 func TablePath(name string) string { return "/var/opf/tables/" + name }
 
+// Where the resolver's blocklists live. unbound runs chrooted in
+// /var/unbound and reads these paths inside it.
+const (
+	// OwnZonePath is the zone of your own blocked and allowed names,
+	// generated from the model like any other file.
+	OwnZonePath = "/var/unbound/db/opf-own.rpz"
+	OwnZoneName = "opf-own."
+	// DNSListsDir holds each downloaded list's names (OPF's copy, in
+	// its own format), from which the zones are written.
+	DNSListsDir = "/var/opf/dns-lists"
+)
+
+// DNSListZoneName is a blocklist's zone in unbound.
+func DNSListZoneName(id string) string { return "opf-list-" + id + "." }
+
+// DNSListZonePath is a blocklist's zone file for an answer. The answer
+// is in the zone's records (0.0.0.0 can't be an override), so each
+// answer has its own file, and unbound.conf names the one in use: a
+// revert that changes the answer back finds its file still there.
+func DNSListZonePath(id string, a BlockAnswer) string {
+	return "/var/unbound/db/opf/" + id + "." + a.name() + ".rpz"
+}
+
+func (a BlockAnswer) name() string {
+	if a == BlockAnswerNXDomain {
+		return "nxdomain"
+	}
+	return "null"
+}
+
+// RPZZone writes a response policy zone: each blocked name answered as
+// a says, each allowed one passed through (and no later zone
+// consulted). Names are "example.com" or "*.example.com", written
+// relative to the zone.
+func RPZZone(blocked, allowed []string, a BlockAnswer) string {
+	var b strings.Builder
+	b.WriteString("$TTL 3600\n@ SOA localhost. nobody.invalid. 1 3600 600 86400 3600\n  NS localhost.\n")
+	for _, n := range allowed {
+		fmt.Fprintf(&b, "%s CNAME rpz-passthru.\n", strings.ToLower(strings.TrimSuffix(n, ".")))
+	}
+	for _, n := range blocked {
+		n = strings.ToLower(strings.TrimSuffix(n, "."))
+		if a == BlockAnswerNXDomain {
+			fmt.Fprintf(&b, "%s CNAME .\n", n)
+		} else {
+			fmt.Fprintf(&b, "%s A 0.0.0.0\n%s AAAA ::\n", n, n)
+		}
+	}
+	return b.String()
+}
+
 // RootKeyPath is unbound's DNSSEC trust anchor, which unbound-anchor
 // creates (rc.d/unbound does it before unbound first starts).
 const RootKeyPath = "/var/unbound/db/root.key"
@@ -1125,9 +1176,34 @@ func GenerateUnboundConf(m *Model) string {
 		}
 	}
 
-	// Dynamic leases are added at runtime, over a control socket that
+	// Blocklists are response policy zones, which need the respip
+	// module. Your own entries come first: unbound applies the first
+	// zone that matches, so an allowed name wins over every list.
+	var lists []DNSBlocklist
+	for _, l := range d.Blocklists {
+		if l.Enabled {
+			lists = append(lists, l)
+		}
+	}
+	own := len(d.Blocked)+len(d.Allowed) > 0
+	if own || len(lists) > 0 {
+		lines = append(lines, "\tmodule-config: \"respip validator iterator\"")
+	}
+	if own {
+		lines = append(lines, "", "rpz:", "\tname: \""+OwnZoneName+"\"", "\tzonefile: \""+OwnZonePath+"\"", "\trpz-log: yes", "\trpz-log-name: \"Your entries\"")
+	}
+	for _, l := range lists {
+		lines = append(lines, "", "rpz:",
+			fmt.Sprintf("\tname: \"%s\"", DNSListZoneName(l.ID)),
+			fmt.Sprintf("\tzonefile: \"%s\"", DNSListZonePath(l.ID, d.BlockAnswer)),
+			"\trpz-log: yes",
+			fmt.Sprintf("\trpz-log-name: \"%s\"", l.Name))
+	}
+
+	// Dynamic leases are added at runtime, and a blocklist's zone is
+	// reloaded when it's downloaded again, over a control socket that
 	// only root can use.
-	if d.RegisterDynamicLeases {
+	if d.RegisterDynamicLeases || len(lists) > 0 {
 		lines = append(lines, "", "remote-control:", "\tcontrol-enable: yes", "\tcontrol-interface: /var/run/unbound.sock")
 	}
 
@@ -1157,6 +1233,12 @@ func GenerateFiles(m *Model) []GeneratedFile {
 		{Path: "/etc/dhcpd.conf", Content: GenerateDHCPdConf(m)},
 		{Path: "/var/unbound/etc/unbound.conf", Content: GenerateUnboundConf(m)},
 		{Path: "/etc/rc.conf.local", Content: GenerateRcConfLocal(m)},
+	}
+
+	// Your own blocked and allowed names; the downloaded lists' zones
+	// are data, written by the appliance (DNSListZonePath).
+	if len(m.DNS.Blocked)+len(m.DNS.Allowed) > 0 {
+		files = append(files, GeneratedFile{Path: OwnZonePath, Content: RPZZone(m.DNS.Blocked, m.DNS.Allowed, m.DNS.BlockAnswer)})
 	}
 
 	// Default gateway
