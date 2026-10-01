@@ -712,6 +712,8 @@ export const api = {
   logout: () => request<void>('DELETE', '/session'),
   sessions: () => request<{ sessions: SessionInfo[] }>('GET', '/sessions'),
   endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
+  newTunnelKey: () => request<{ publicKey: string }>('POST', '/wireguard/keys').then((r) => r.publicKey),
+  newDeviceKey: () => request<{ privateKey: string; publicKey: string }>('POST', '/wireguard/device-keys'),
   reauth: (password: string) => request<void>('POST', '/session/reauth', { password }),
   changeOwnPassword: (current: string, next: string) => request<void>('PUT', '/session/password', { current, new: next }),
   users: () => request<UsersResource>('GET', '/users'),

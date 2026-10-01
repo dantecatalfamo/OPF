@@ -7,6 +7,7 @@ import type { Model, Rule } from '../model/types';
 import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
+import { browserKeyPair } from './wgkeys';
 import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleSystemLog, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
@@ -120,6 +121,9 @@ export const localApi = {
   logout: async (): Promise<void> => {},
   sessions: async (): Promise<{ sessions: SessionInfo[] }> => ({ sessions: [] }),
   endSession: async (): Promise<void> => {},
+  // The preview keeps no private key: only a public one is needed.
+  newTunnelKey: async (): Promise<string> => (await browserKeyPair())?.publicKey ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+  newDeviceKey: async () => (await browserKeyPair()) ?? { privateKey: '', publicKey: '' },
   reauth: async (): Promise<void> => {},
   changeOwnPassword: async (): Promise<void> => {},
   users: async (): Promise<UsersResource> => ({ users: [], candidates: [] }),

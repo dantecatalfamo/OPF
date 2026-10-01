@@ -47,7 +47,7 @@ var methodRoles = map[string]auth.Role{
 	"Confirm": auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
-	"SetWebhookSecret": auth.RoleAdmin,
+	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin,
 	// Who can sign in, which also asks for the password again
 	// (allowRecent).
 	"Users": auth.RoleAdmin, "CreateUser": auth.RoleAdmin, "SetUserRole": auth.RoleAdmin,
@@ -545,4 +545,47 @@ func (c *Client) Reauth(password, source string) error {
 func (c *Client) ChangeOwnPassword(current, new, source string) error {
 	var r EmptyReply
 	return c.call("ChangeOwnPassword", OwnPassword{current, new, source}, &r)
+}
+
+type (
+	TunnelKeyReply struct {
+		Result
+		PublicKey string
+	}
+	DeviceKeyReply struct {
+		Result
+		Key *appliance.DeviceKey
+	}
+)
+
+func (s *Service) NewTunnelKey(c Call[None], r *TunnelKeyReply) error {
+	if s.allow("NewTunnelKey", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.PublicKey, err = s.api.NewTunnelKey()
+	r.set("NewTunnelKey", err)
+	return nil
+}
+
+func (s *Service) NewDeviceKey(c Call[None], r *DeviceKeyReply) error {
+	if s.allow("NewDeviceKey", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Key, err = s.api.NewDeviceKey()
+	r.set("NewDeviceKey", err)
+	return nil
+}
+
+func (c *Client) NewTunnelKey() (string, error) {
+	var r TunnelKeyReply
+	err := c.call("NewTunnelKey", None{}, &r)
+	return r.PublicKey, err
+}
+
+func (c *Client) NewDeviceKey() (*appliance.DeviceKey, error) {
+	var r DeviceKeyReply
+	err := c.call("NewDeviceKey", None{}, &r)
+	return r.Key, err
 }

@@ -5,7 +5,8 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
-import { newId, useStore } from '../model/store';
+import { backend, newId, useStore } from '../model/store';
+import { deviceKeyPair } from '../lib/wgkeys';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { tunnels, upstream, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
 import { useDerived } from '../lib/generated';
@@ -19,13 +20,6 @@ import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
 
 // Stand-in for a real key pair; the appliance generates these like wg(8).
-function fakeKey(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let s = '';
-  for (let i = 0; i < 42; i++) s += chars[Math.floor(Math.random() * 64)];
-  // The 43rd character carries only 4 bits of the 32-byte key.
-  return s + 'AEIMQUYcgkosw048'[Math.floor(Math.random() * 16)] + '=';
-}
 
 // Where devices reach the tunnel: its public address when it has one
 // (OPF behind a router that forwards the port), or the WAN's address
@@ -138,7 +132,22 @@ function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () 
     form.clearErrors();
   }, [opened]); // form is stable
 
-  const submit = form.onSubmit((v) => {
+  const [making, setMaking] = useState(false);
+  const [keyError, setKeyError] = useState<string>();
+  const submit = form.onSubmit(async (v) => {
+    // The tunnel's key is made on the firewall, which keeps the private
+    // half; the model only gets the public one.
+    setMaking(true);
+    setKeyError(undefined);
+    let publicKey: string;
+    try {
+      publicKey = await backend.newTunnelKey();
+    } catch (e) {
+      setKeyError(`Couldn’t make the tunnel’s key: ${e instanceof Error ? e.message : String(e)}`);
+      setMaking(false);
+      return;
+    }
+    setMaking(false);
     const devices = new Set(staged.interfaces.map((i) => i.device));
     let n = 0;
     while (devices.has(`wg${n}`)) n++;
@@ -148,7 +157,7 @@ function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () 
     const tunnel: Tunnel = {
       id, name: v.name.trim(), device, role: 'vpn', enabled: true,
       ipv4: { mode: 'static', address: v.address, prefix: Number(v.prefix) }, ipv6: 'none',
-      wireguard: { listenPort: port, publicKey: fakeKey(), peers: [] },
+      wireguard: { listenPort: port, publicKey, peers: [] },
     };
     edit('interfaces', `Added WireGuard tunnel “${tunnel.name}” (${device}, ${tunnelNet(tunnel)}, port ${port})`, (m) => ({ ...m, interfaces: [...m.interfaces, tunnel] }));
     if (v.allow && wan) {
@@ -176,9 +185,10 @@ function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () 
             <NumberInput label="Prefix" description="Size of the tunnel network." min={8} max={30} {...form.getInputProps('prefix')} />
           </Group>
           {wan && <Checkbox label={`Allow connections to this port from ${wan.name}`} {...form.getInputProps('allow', { type: 'checkbox' })} />}
+          {keyError && <Alert color="red" variant="light" p="sm">{keyError}</Alert>}
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Add tunnel</Button>
+            <Button type="submit" loading={making}>Add tunnel</Button>
           </Group>
         </Stack>
       </form>
@@ -190,6 +200,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
   const { staged, edit } = useStore();
   const wg = tunnel.wireguard;
   const [keys, setKeys] = useState({ priv: '', pub: '' });
+  const [keyError, setKeyError] = useState<string>();
   const [created, setCreated] = useState<Peer | null>(null);
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '' },
@@ -200,7 +211,9 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
   });
   useEffect(() => {
     if (!opened) return;
-    setKeys({ priv: fakeKey(), pub: fakeKey() });
+    setKeys({ priv: '', pub: '' });
+    setKeyError(undefined);
+    deviceKeyPair().then((k) => setKeys({ priv: k.privateKey, pub: k.publicKey }), (e) => setKeyError(e instanceof Error ? e.message : String(e)));
     setCreated(null);
     form.setValues({ name: '', address: nextAddress(tunnel), clientRoutes: 'split', networks: [], endpoint: '' });
   }, [opened]); // form is stable
@@ -282,9 +295,10 @@ PersistentKeepalive = 25`;
                 <TextInput label="Its public address" description="Optional. Lets OPF start the connection." placeholder="branch.example.net:51820" {...form.getInputProps('endpoint')} />
               </>
             )}
-            <Group justify="flex-end" mt="sm">
+            {keyError && <Alert color="red" variant="light" p="sm">Couldn’t make the device’s keys: {keyError}</Alert>}
+              <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button type="submit">Create device</Button>
+              <Button type="submit" disabled={!keys.pub} loading={!keys.pub && !keyError}>Create device</Button>
             </Group>
           </Stack>
         </form>

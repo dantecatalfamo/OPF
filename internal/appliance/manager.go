@@ -446,6 +446,9 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		}
 		return nil, e
 	}
+	if missing := m.checkTunnelKeys(req.Model, liveModel); len(missing) > 0 {
+		return nil, &Error{Code: CodeInvalid, Message: "a tunnel's private key isn't on the firewall", Details: missing}
+	}
 	data, err := EncodeModel(req.Model)
 	if err != nil {
 		return nil, err

@@ -497,8 +497,27 @@ Types, roughly in order of usefulness:
       usually no NAT) and remote-access ones (clients NATed out) need
       different defaults for automatic NAT and generated rules. Today
       every tunnel's network gets automatic NAT.
-- [ ] Private keys: `hostname.wgN` gets a placeholder `wgkey` today; one
-      key per tunnel needs generating and storing (Security).
+- [x] Real WireGuard keys. A tunnel's pair is made by the parent
+      (X25519) when it's created; the private key is kept root-only in
+      /var/opf/wireguard, named for the public key, and `hostname.wgN`
+      reads it as it comes up (`!ifconfig $if wgkey "$(cat …)"`), so
+      it's never in the model, a generated file, a diff or history.
+      Staging refuses a new tunnel key the firewall didn't make, and
+      unused key files go once a commit is final. A device's pair is
+      made by the browser (WebCrypto X25519), so its private key never
+      reaches the firewall; a browser without it gets one from the
+      firewall, which keeps nothing. Tried live on openbsd-dev (7.9): a
+      tunnel and device made in the UI, `hostname.wgN` brought up by
+      netstart, a stand-in device in another routing domain from the
+      device configuration; both key pairs matched, the handshake
+      completed, and pings crossed the tunnel. Before this the keys were
+      random strings and no tunnel could have worked.
+  - [ ] A new key for a tunnel (after a leak), with its devices told.
+  - [ ] The key is on ifconfig's command line for an instant as the
+        interface comes up, as with any wgkey; ifconfig can't read it
+        from a file.
+  - [ ] The sample model's tunnels have made-up public keys with no
+        private key behind them, so in the mock only new tunnels work.
 
 ## DHCP and DNS
 

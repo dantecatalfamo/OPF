@@ -1,6 +1,8 @@
 package pf
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"regexp"
@@ -12,6 +14,19 @@ import (
 // TablePath is where a URL alias's downloaded list is kept, one address
 // or network a line; pf.conf loads the table from it.
 func TablePath(name string) string { return "/var/opf/tables/" + name }
+
+// WGKeyDir holds each tunnel's private key, a file named for its public
+// key (WGKeyPath), readable only by root. hostname.wgN reads it when the
+// interface comes up, so the key is never in a generated file, a diff or
+// history.
+const WGKeyDir = "/var/opf/wireguard"
+
+// WGKeyPath is the file holding the private key of a tunnel whose public
+// key is pub.
+func WGKeyPath(pub string) string {
+	sum := sha256.Sum256([]byte(pub))
+	return WGKeyDir + "/" + hex.EncodeToString(sum[:8]) + ".key"
+}
 
 // Where the resolver's blocklists live. unbound runs chrooted in
 // /var/unbound and reads these paths inside it.
@@ -1062,7 +1077,8 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 	}
 
 	if wg := i.WireGuard; i.Role == RoleVPN && wg != nil {
-		lines = append(lines, "wgkey <private key stored by OPF>", fmt.Sprintf("wgport %d", wg.ListenPort))
+		// netstart evals each line; this one reads the key from its file.
+		lines = append(lines, fmt.Sprintf(`!ifconfig $if wgkey "$(cat %s)"`, WGKeyPath(wg.PublicKey)), fmt.Sprintf("wgport %d", wg.ListenPort))
 		for _, p := range wg.Peers {
 			aips := []string{fmt.Sprintf("wgaip %s", p.Address)}
 			for _, net := range p.Networks {

@@ -160,6 +160,7 @@ func (m *Manager) pruneDownloads() {
 		}
 	}
 	m.prune(filepath.Dir(pf.TablePath("x")), tables)
+	m.prune(pf.WGKeyDir, wgKeyFiles(models...))
 	m.prune(pf.DNSListsDir, lists)
 	m.prune(filepath.Dir(pf.DNSListZonePath("x", pf.BlockAnswerNull)), lists)
 }

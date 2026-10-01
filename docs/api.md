@@ -527,6 +527,17 @@ every 10 minutes for a week and every hour for the month.
   VPN device or list id, a MAC address, a daemon or a commit id. The
   newest 5,000 are kept, none older than 90 days.
 
+### WireGuard keys
+
+- `POST /api/wireguard/keys`: makes a tunnel's key pair on the
+  firewall (201, `{"publicKey"}`) for a new tunnel's model. The private
+  key stays on the firewall, root-only, and staging a tunnel whose key
+  it didn't make is `invalid`. Admins only.
+- `POST /api/wireguard/device-keys`: makes a device's key pair (201,
+  `{"privateKey", "publicKey"}`), kept nowhere, for a browser that
+  can't make one itself (the UI uses WebCrypto's X25519). Sent
+  uncompressed. Admins only.
+
 ### Webhooks
 
 Which webhooks there are and which events each gets are in the model

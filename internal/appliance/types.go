@@ -61,6 +61,11 @@ type API interface {
 	DNSTool(DNSToolRequest) (*DNSToolResult, error)
 	Webhooks() ([]WebhookStatus, error)
 	SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error)
+	// NewTunnelKey makes a WireGuard tunnel's key pair, keeping the
+	// private key on the firewall; NewDeviceKey makes one for a device
+	// and keeps nothing (wgkeys.go).
+	NewTunnelKey() (string, error)
+	NewDeviceKey() (*DeviceKey, error)
 	TestWebhook(id string) (*WebhookStatus, error)
 }
 
