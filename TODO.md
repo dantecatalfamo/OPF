@@ -1084,8 +1084,46 @@ Still to do:
       says no. Hide or disable what the role can't do, and say why.
 - [ ] A page listing your sessions (and an admin's, everyone's), with
       ending them; the API is there.
-- [ ] Re-authentication for sensitive actions, the account pages, API
-      tokens and two-factor, as below.
+- [ ] **User and role management** (System › Users, admins only; the
+      design is "Managing accounts from the UI" below):
+  - OPF's groups don't exist until someone makes them. Create
+    `_opfadmin`, `_opfoperator` and `_opfview` at install (or first
+    start), and say on the sign-in page, until someone's in one, how to
+    add the first admin from the console (`usermod -G _opfadmin name`).
+  - List who can sign in: each member of the three groups with their
+    role, whether the account is locked or expired, its login class
+    and style, and when they last signed in (from the event log).
+  - Add an account: name, full name, role, password (twice), and
+    whether it can also log in over SSH (a shell) or only here
+    (`/sbin/nologin`). Through `useradd` with the password hashed by
+    `encrypt(1)` on stdin, so only the hash is ever on a command line.
+  - Give an existing system account a role, or take it away, without
+    touching anything else about it: OPF only changes membership of
+    its own groups, never wheel or other groups.
+  - Set someone's password (an admin), or your own (everyone, asking
+    for the current one); lock and unlock (`usermod -Z`/`-U`); remove
+    an account OPF created. Removing an account it didn't create only
+    takes away its role.
+  - Guards: the last admin can't be removed, locked or demoted, nobody
+    can take away their own admin role, and root and the system's own
+    accounts (uid below 1000, `_`-prefixed daemons) can't be given a
+    role.
+  - Applied straight away, not staged: accounts aren't the network
+    configuration and don't belong in its history or its revert. Each
+    change goes in the event log (kind `login`, or its own) with who
+    made it, and asks for the admin's password again (re-auth below).
+  - Ending sessions follows: a role taken away or a password changed
+    ends that person's sessions at once, not at the next minute's
+    check.
+  - Each operation an RPC method of its own, admin-only in
+    `methodRoles`, with the arguments checked in the parent (names by
+    the same pattern as `auth.BSDAuth`, roles from the fixed three):
+    the web process can't name a file, a group or a command.
+  - Open: whether to keep three fixed roles, or later per-area
+    permissions (DNS only, firewall read-only); and the first-run
+    wizard making the first admin.
+- [ ] Re-authentication for sensitive actions, API tokens and
+      two-factor, as below.
 
 The design: Today anyone who can
 reach the port can do anything, and a compromised web process could
