@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Accordion, Alert, Badge, Button, Card, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
-import { LocalNames } from './DnsRecords';
+import { LocalDomains, LocalNames } from './DnsRecords';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
@@ -169,9 +169,10 @@ export function Dns() {
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="resolver">
-          {/* What's happening, how it's set up, then the names: the DHCP
-              devices' list grows on its own, beside the settings rather
-              than above them. */}
+          {/* What's happening, how it's set up (the settings, and how
+              each local domain answers), then the names you add, across
+              the page for their columns, and last the DHCP devices',
+              a list that grows on its own. */}
           <DnsStatsCard />
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 5 }}>
@@ -221,12 +222,17 @@ export function Dns() {
               </Card>
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 7 }}>
-              <Stack gap="md">
-                <Card>
-                  <LocalNames />
-                </Card>
-                <LeaseNames />
-              </Stack>
+              <Card>
+                <LocalDomains />
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <Card>
+                <LocalNames />
+              </Card>
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <LeaseNames />
             </Grid.Col>
           </Grid>
         </Tabs.Panel>

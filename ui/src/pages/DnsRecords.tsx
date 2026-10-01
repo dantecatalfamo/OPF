@@ -150,20 +150,29 @@ export function LocalNames() {
         Local names
       </SectionTitle>
       {list.length ? (
-        <Table.ScrollContainer minWidth={480}>
+        <Table.ScrollContainer minWidth={640}>
           <Table verticalSpacing={6}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Name</Table.Th>
+                <Table.Th>Type</Table.Th>
+                <Table.Th>Answer</Table.Th>
+                <Table.Th>Description</Table.Th>
+                <Table.Th w={40} />
+              </Table.Tr>
+            </Table.Thead>
             <Table.Tbody>
               {list.map((r) => (
                 <Table.Tr key={r.key}>
                   <Table.Td style={{ overflowWrap: 'anywhere' }}>
                     <Mono>{r.name}</Mono>
-                    {r.description && <Text size="xs" c="dimmed">{r.description}</Text>}
                   </Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
                   <Table.Td style={{ overflowWrap: 'anywhere' }}>
                     <Mono>{r.value}</Mono>
                     {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
                   </Table.Td>
+                  <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
                   <Table.Td w={40}>
                     <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove)}>
                       <IconTrash size={16} />
@@ -177,15 +186,15 @@ export function LocalNames() {
       ) : (
         <Empty>No local names.</Empty>
       )}
-      <Domains />
       <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
       <RecordModal type={adding && adding !== 'host' ? adding : null} onClose={() => setAdding(null)} />
     </>
   );
 }
 
-// How each domain answers a name it has no record for.
-function Domains() {
+// How each domain answers a name it has no record for: a setting, so
+// it sits beside the resolver's others.
+export function LocalDomains() {
   const { staged, edit } = useStore();
   const [name, setName] = useState('');
   const sys = staged.system.domain;
@@ -202,9 +211,9 @@ function Domains() {
   const taken = list.some((z) => lower(z.name) === lower(n));
   const bad = n !== '' && (!isHost(n) || taken || /^((in-addr|ip6)\.)?arpa$/i.test(n));
   return (
-    <Stack gap="xs" mt="lg">
-      <Text size="sm" fw={500}>Domains</Text>
-      <Text size="xs" c="dimmed">
+    <Stack gap="xs">
+      <SectionTitle>Local domains</SectionTitle>
+      <Text size="sm" c="dimmed" mt={-8}>
         What a domain answers for a name without a record here. “Only these” suits a domain that exists only on your network: a mistyped name is “no such name” straight away. “These, then the internet” suits one that exists outside too: your names win, the rest are looked up as usual.
       </Text>
       {list.map((z) => (
