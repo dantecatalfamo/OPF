@@ -138,6 +138,11 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 	}
 	go api.RunCollector(context.Background())
 	go api.RunUpdateChecker(context.Background())
+	// Webhooks really are sent, by this binary, unsandboxed.
+	if exe, err := os.Executable(); err == nil {
+		api.Sender, api.Exe = run.Exec{}, exe
+	}
+	go api.RunWebhooks(context.Background())
 
 	log.Printf("mock: files in %s (kept on exit); file operations are logged with the real path first", dir)
 	log.Printf("mock: API on http://%s; `make mock` also starts the UI, whose dev server proxies to 127.0.0.1:18080", listen)

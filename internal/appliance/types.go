@@ -57,6 +57,9 @@ type API interface {
 	DNSBlocked() (*DNSBlocked, error)
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)
+	Webhooks() ([]WebhookStatus, error)
+	SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error)
+	TestWebhook(id string) (*WebhookStatus, error)
 }
 
 // NoVersion is the version of a configuration that doesn't exist yet.

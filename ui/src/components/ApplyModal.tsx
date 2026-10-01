@@ -9,7 +9,7 @@ import { sectionIcon } from '../lib/sectionIcons';
 import { UnifiedDiff } from './UnifiedDiff';
 import { ResolverReloadNotice } from '../pages/DnsActivity';
 
-const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard'];
+const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard', 'notifications'];
 
 function ChangeList() {
   const { changes } = useStore();

@@ -5,6 +5,7 @@ package run
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -44,6 +45,30 @@ func (e Exec) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	out, err := e.command(ctx, argv).CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("%s: %w", strings.Join(argv, " "), err)
+	}
+	return out, nil
+}
+
+// Feeder runs a command with input on its stdin and only the given
+// environment: for handing a helper what it mustn't see on its command
+// line, which any user can read with ps.
+type Feeder interface {
+	RunInput(ctx context.Context, input []byte, env []string, argv ...string) ([]byte, error)
+}
+
+func (e Exec) RunInput(ctx context.Context, input []byte, env []string, argv ...string) ([]byte, error) {
+	if len(argv) == 0 {
+		return nil, fmt.Errorf("run: empty command")
+	}
+	cmd := e.command(ctx, argv)
+	cmd.Stdin = bytes.NewReader(input)
+	cmd.Env = env
+	if cmd.Env == nil {
+		cmd.Env = []string{} // not the caller's
+	}
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return out, fmt.Errorf("%s: %w", argv[0], err)
 	}
 	return out, nil
 }

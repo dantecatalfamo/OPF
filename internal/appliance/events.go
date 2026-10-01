@@ -58,6 +58,8 @@ type Event struct {
 }
 
 type eventLog struct {
+	// notify, if set, is told of each event as it's recorded (webhooks).
+	notify func(Event)
 	mu     sync.Mutex
 	events []Event              // oldest first
 	known  map[string]time.Time // MAC addresses seen, and when first
@@ -70,7 +72,7 @@ type eventsFileBody struct {
 }
 
 func (m *Manager) eventLog() *eventLog {
-	m.eventsOnce.Do(func() { m.events = &eventLog{known: map[string]time.Time{}} })
+	m.eventsOnce.Do(func() { m.events = &eventLog{known: map[string]time.Time{}, notify: m.notify} })
 	return m.events
 }
 
@@ -79,10 +81,14 @@ func (l *eventLog) record(e Event) {
 	e.Message = printable(e.Message, maxMessageRunes)
 	e.Subject = printable(e.Subject, 80)
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	l.events = append(l.events, e)
 	l.trim(time.Now())
 	l.dirty = true
+	notify := l.notify
+	l.mu.Unlock()
+	if notify != nil {
+		notify(e)
+	}
 }
 
 func (l *eventLog) trim(now time.Time) {

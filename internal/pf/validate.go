@@ -40,7 +40,34 @@ func Validate(m *Model) []FieldError {
 	v.dhcp()
 	v.dns()
 	v.wireguard()
+	v.notifications()
 	return v.errs
+}
+
+func (v *validator) notifications() {
+	n := v.m.Notifications
+	if n == nil {
+		return
+	}
+	if len(n.Webhooks) > MaxWebhooks {
+		v.fail("notifications.webhooks", "at most %d", MaxWebhooks)
+	}
+	kinds := map[string]bool{}
+	for _, k := range EventKinds {
+		kinds[k] = true
+	}
+	ids := map[string]bool{}
+	for i, w := range n.Webhooks {
+		p := at("notifications.webhooks", i)
+		v.re(p+".id", w.ID, blocklistIDRE, "a lowercase id")
+		v.unique(p+".id", ids, w.ID, "webhook id")
+		v.text(p+".name", w.Name, 60, true)
+		for j, k := range w.Kinds {
+			if !kinds[k] {
+				v.fail(at(p+".kinds", j), "%q isn't a kind of event", k)
+			}
+		}
+	}
 }
 
 type validator struct {

@@ -66,6 +66,22 @@ func sandboxChild() error {
 	return pledge("stdio rpath inet")
 }
 
+// SandboxSender limits the webhook sender (cmd/opf) to making
+// connections: it sees only the CA certificates, the resolver's
+// configuration and /etc/hosts, and can't write or run anything.
+func SandboxSender() error {
+	preload()
+	for _, p := range []string{"/etc/ssl/cert.pem", "/etc/resolv.conf", "/etc/hosts"} {
+		if err := unveil(p, "r"); err != nil {
+			return err
+		}
+	}
+	if err := unix.UnveilBlock(); err != nil {
+		return fmt.Errorf("unveil: %w", err)
+	}
+	return pledge("stdio rpath inet dns")
+}
+
 // preload triggers lazy file reads in the standard library before the
 // filesystem disappears.
 func preload() {

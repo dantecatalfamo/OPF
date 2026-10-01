@@ -11,3 +11,6 @@ func SandboxParent(writable, readable []string, exe string) error {
 }
 
 func sandboxChild() error { return nil }
+
+// SandboxSender is a no-op outside OpenBSD.
+func SandboxSender() error { return nil }

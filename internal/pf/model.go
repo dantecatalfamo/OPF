@@ -11,7 +11,34 @@ type Model struct {
 	Firewall   Firewall       `json:"firewall"`
 	DHCP       []DHCPScope    `json:"dhcp"`
 	DNS        DNS            `json:"dns"`
+	// Notifications are where OPF sends its events; absent, nowhere.
+	Notifications *Notifications `json:"notifications,omitempty"`
 }
+
+// Notifications are the webhooks OPF sends events to.
+type Notifications struct {
+	Webhooks []Webhook `json:"webhooks"`
+}
+
+// Webhook is where to send events and which. Its URL and signing key
+// aren't here: they're secrets, kept apart from the model so they're
+// never in an API answer, the history or its diffs (appliance's
+// webhook secrets).
+type Webhook struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+	// Kinds are the kinds of event it gets (EventKinds); none, all.
+	Kinds []string `json:"kinds,omitempty"`
+	// ProblemsOnly sends only events that are something going wrong.
+	ProblemsOnly bool `json:"problemsOnly,omitempty"`
+}
+
+// EventKinds are the kinds of event OPF records (appliance's Event).
+var EventKinds = []string{"opf", "link", "address", "gateway", "device", "vpn", "service", "list", "updates", "commit"}
+
+// MaxWebhooks bounds Notifications.Webhooks.
+const MaxWebhooks = 16
 
 type SystemSettings struct {
 	Hostname   string   `json:"hostname"`

@@ -114,6 +114,12 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
 	s.mux.HandleFunc("GET /api/metrics", s.metrics)
 	s.mux.HandleFunc("GET /api/events", s.events)
+	s.mux.HandleFunc("GET /api/webhooks", getter(func() (webhooksBody, error) {
+		w, err := s.api.Webhooks()
+		return webhooksBody{w}, err
+	}))
+	s.mux.HandleFunc("PUT /api/webhooks/{id}/secret", s.setWebhookSecret)
+	s.mux.HandleFunc("POST /api/webhooks/{id}/test", s.testWebhook)
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s.api.DNSBlocked))
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
@@ -480,6 +486,35 @@ func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
+}
+
+type webhooksBody struct {
+	Webhooks []appliance.WebhookStatus `json:"webhooks"`
+}
+
+// setWebhookSecret sets a webhook's URL and key. Its answer can carry a
+// generated key, a secret, so it's never compressed (gzip.go).
+func (s *Server) setWebhookSecret(w http.ResponseWriter, r *http.Request) {
+	var req appliance.WebhookSecretRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	res, err := s.api.SetWebhookSecret(r.PathValue("id"), req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	noCompression(w)
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) testWebhook(w http.ResponseWriter, r *http.Request) {
+	st, err := s.api.TestWebhook(r.PathValue("id"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, st)
 }
 
 // events answers ?kind=link,gateway&q=<search>&before=<RFC 3339 time>&limit=.

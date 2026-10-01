@@ -53,6 +53,7 @@ const nav: NavGroup[] = [
   {
     label: 'System', icon: IconSettings, items: [
       { label: 'General', to: '/system/general' },
+      { label: 'Notifications', to: '/system/notifications' },
       { label: 'Change history', to: '/system/history' },
     ],
   },

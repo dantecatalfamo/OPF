@@ -78,6 +78,13 @@ type Manager struct {
 	collect     *collector
 	eventsOnce  sync.Once
 	events      *eventLog
+	hooksOnce   sync.Once
+	webhooks    *webhooks
+
+	// Sender runs the webhook sender, Exe (OPF's own binary), as the
+	// unprivileged user; without them webhooks can't send.
+	Sender run.Feeder
+	Exe    string
 
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus

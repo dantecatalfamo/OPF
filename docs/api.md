@@ -418,6 +418,31 @@ every 10 minutes for a week and every hour for the month.
   VPN device or list id, a MAC address, a daemon or a commit id. The
   newest 5,000 are kept, none older than 90 days.
 
+### Webhooks
+
+Which webhooks there are and which events each gets are in the model
+(`notifications.webhooks`: `{"id", "name", "enabled", "kinds",
+"problemsOnly"}`). A webhook's URL and signing key are secrets, never in
+the model, an answer or the history:
+
+- `GET /api/webhooks`: `{"webhooks": [{"id", "target", "signed",
+  "lastAttempt", "lastOk", "lastError", "queued", "dropped"}]}` for the
+  live and staged models' webhooks. `target` is the URL's scheme and
+  host only.
+- `PUT /api/webhooks/{id}/secret`: `{"url", "signing": "keep" | "none" |
+  "generate" | "set", "key"}` sets the URL (http or https, no user or
+  password, no fragment) and key, taking effect at once. With
+  `generate`, the answer's `key` is the new key, the only time it's
+  shown; that answer is never compressed.
+- `POST /api/webhooks/{id}/test`: sends a test event now and answers
+  with the status.
+
+A delivery is a POST of `{"source": "opf", "host", "test", "event":
+{…}}` with `X-OPF-Timestamp` (unix seconds) and, with a key,
+`X-OPF-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<body>">`.
+Failures are retried after 10 s, 1 min, 5 min, 30 min and 2 h, then
+dropped; redirects aren't followed.
+
 ### Diagnostic tools
 
 The tools run in the privileged process. A request is a form, never a

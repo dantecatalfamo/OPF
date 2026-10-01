@@ -1,7 +1,7 @@
 // The configuration model. This is what the appliance stores (as
 // /var/opf/config.json) and generates every OpenBSD config file from.
 
-export type Section = 'system' | 'interfaces' | 'routing' | 'firewall' | 'dhcp' | 'dns' | 'wireguard';
+export type Section = 'system' | 'interfaces' | 'routing' | 'firewall' | 'dhcp' | 'dns' | 'wireguard' | 'notifications';
 
 export type IfaceRole = 'wan' | 'lan' | 'opt' | 'vpn';
 
@@ -340,7 +340,18 @@ export interface GraphLimits {
   rules?: number;
 }
 
+/** Where OPF sends its events. A webhook's URL and key are secrets, not in the model (PUT /api/webhooks/{id}/secret). */
+export interface Webhook {
+  id: string;
+  name: string;
+  enabled: boolean;
+  /** The kinds of event it gets; none, all. */
+  kinds?: string[];
+  problemsOnly?: boolean;
+}
+
 export interface Model {
+  notifications?: { webhooks: Webhook[] };
   system: SystemSettings;
   interfaces: Iface[];
   routing: Routing;

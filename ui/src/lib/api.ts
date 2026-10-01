@@ -482,6 +482,25 @@ export interface EventsResource {
   more?: boolean;
 }
 
+/** A webhook's URL as far as it may be shown (scheme and host), and how its deliveries are going. */
+export interface WebhookStatus {
+  id: string;
+  target?: string;
+  signed?: boolean;
+  lastAttempt?: string;
+  lastOk?: string;
+  lastError?: string;
+  queued?: number;
+  dropped?: number;
+}
+
+/** Sets a webhook's URL and signing: keep its key, none, generate one (returned once), or set one. */
+export interface WebhookSecretRequest {
+  url: string;
+  signing: 'keep' | 'none' | 'generate' | 'set';
+  key?: string;
+}
+
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
 export interface TableStatus {
   name: string;
@@ -636,6 +655,10 @@ export const api = {
   /** Downloads a DNS blocklist again and reloads it in the resolver. */
   refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),
   dnsStats: () => request<DnsStatsResource>('GET', '/dns/stats'),
+  webhooks: async () => (await request<{ webhooks: WebhookStatus[] }>('GET', '/webhooks')).webhooks,
+  /** Sets a webhook's URL and key now; the answer has a generated key, the only time it's shown. */
+  setWebhookSecret: (id: string, r: WebhookSecretRequest) => request<WebhookStatus & { key?: string }>('PUT', `/webhooks/${enc(id)}/secret`, r),
+  testWebhook: (id: string) => request<WebhookStatus>('POST', `/webhooks/${enc(id)}/test`),
   events: (r: EventsRequest = {}) => {
     const q = new URLSearchParams();
     if (r.kinds?.length) q.set('kind', r.kinds.join(','));

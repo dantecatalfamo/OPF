@@ -24,6 +24,7 @@ const sectionOf: Record<Section, (m: Model) => unknown> = {
   dhcp: (m) => m.dhcp,
   dns: (m) => m.dns,
   wireguard: (m) => m.interfaces.filter((i) => i.wireguard).map((i) => [i.id, i.wireguard]),
+  notifications: (m) => m.notifications ?? null,
 };
 
 export function changedSections(a: Model, b: Model): Section[] {

@@ -951,6 +951,20 @@ them, so they can be graphed and compared):
   OPF starting, and every commit (from history). The newest 5,000, none
   older than 90 days, in the state directory; OPF's first look takes
   what's there as known. Graphs mark the events about what they show.
+- Webhooks send events as signed JSON (System › Notifications;
+  `internal/webhook`, `internal/appliance/webhooks.go`). Which webhooks
+  and which events are in the model; each URL and key are secrets in
+  the state directory's `secrets.json` (root only), never in an API
+  answer, the history or its diffs, set at once and shown after only as
+  scheme and host. The sender is OPF's binary as the unprivileged user,
+  pledged to stdio, rpath, inet and dns and unveiled to the CA bundle and
+  resolver files, handed the delivery on stdin; redirects aren't
+  followed. Retries at 10 s, 1 min, 5 min, 30 min and 2 h, then dropped.
+- [ ] Other destinations as presets over the same sender: Slack, Discord,
+      ntfy, Microsoft Teams, Pushover, email (smtpd), each formatting the
+      event as its service wants.
+- [ ] WireGuard private keys (Security › Secret storage) could live in
+      the same write-only store as webhook secrets.
 - [ ] More events: CARP state changes, media changes (a link falling to
       100 Mbit/s), a pool running out of leases, a login once there are
       accounts, a disk filling, a sensor too hot.
@@ -1220,6 +1234,10 @@ Stop it by the PID it wrote; never pkill.
       itself is as unbound 1.26.1 wrote it on 7.9 (captured from its
       own logfile, to keep the host's syslog untouched); the prefix
       follows unbound's log.c and syslogd.
+- [ ] The webhook sender on OpenBSD: pledge and unveil with Go's TLS
+      and resolver (the CA bundle, resolv.conf, hosts), started by the
+      parent as the unprivileged user; openbsd-dev was unreachable when
+      it was built.
 - [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
       `-vv -s states` prints it.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors

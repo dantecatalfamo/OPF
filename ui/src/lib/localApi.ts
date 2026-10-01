@@ -13,7 +13,7 @@ import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type MetricsResource, type EventsRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type MetricsResource, type EventsRequest, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -254,6 +254,20 @@ export const localApi = {
     }),
   dnsStats: async (): Promise<DnsStatsResource> => sampleDnsStats(live, (live.dns.blocklists ?? []).filter((l) => l.enabled).length * 48225),
   dnsBlocked: async (): Promise<DnsBlockedResource> => sampleDnsBlocked(live),
+  // The preview can't send anything: webhooks' URLs are remembered, and
+  // a test says why nothing went.
+  webhooks: async (): Promise<WebhookStatus[]> => (live.notifications?.webhooks ?? []).concat(staged?.notifications?.webhooks ?? []).map((w) => ({ id: w.id, ...previewHooks.get(w.id) })),
+  setWebhookSecret: async (id: string, r: WebhookSecretRequest): Promise<WebhookStatus & { key?: string }> => {
+    const u = new URL(r.url);
+    const st = { id, target: `${u.protocol}//${u.host}`, signed: r.signing !== 'none' };
+    previewHooks.set(id, st);
+    return { ...st, key: r.signing === 'generate' ? 'preview-key-not-secret-0123456789abcdef0123456789abcdef0123456789' : undefined };
+  },
+  testWebhook: async (id: string): Promise<WebhookStatus> => {
+    const st = { ...previewHooks.get(id), id, lastAttempt: new Date().toISOString(), lastError: 'The preview can’t send anything; on a firewall this would.' };
+    previewHooks.set(id, st);
+    return st;
+  },
   events: async (r: EventsRequest = {}): Promise<EventsResource> => {
     const all = sampleEvents(live)
       .filter((e) => !r.kinds?.length || r.kinds.includes(e.kind))
@@ -283,6 +297,9 @@ export const localApi = {
   toolRun: async (id: string, from: number): Promise<ToolRun> => localToolRun(id, from),
   cancelTool: async (id: string): Promise<void> => cancelLocalTool(id),
 };
+
+// Webhooks' shown URLs in the preview.
+const previewHooks = new Map<string, WebhookStatus>();
 
 // When the sample's lists were refreshed on the Aliases page.
 const tableFetched = new Map<string, string>();

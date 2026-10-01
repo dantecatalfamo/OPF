@@ -1,4 +1,4 @@
-import { IconArrowsSplit2, IconNetwork, IconRouter, IconServer2, IconSettings, IconShieldHalf, IconWorldWww } from '@tabler/icons-react';
+import { IconBell, IconArrowsSplit2, IconNetwork, IconRouter, IconServer2, IconSettings, IconShieldHalf, IconWorldWww } from '@tabler/icons-react';
 import type { Section } from '../model/types';
 
 export const sectionIcon: Record<Section, typeof IconNetwork> = {
@@ -9,4 +9,5 @@ export const sectionIcon: Record<Section, typeof IconNetwork> = {
   dhcp: IconRouter,
   dns: IconWorldWww,
   wireguard: IconServer2,
+  notifications: IconBell,
 };

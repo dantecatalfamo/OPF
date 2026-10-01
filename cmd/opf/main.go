@@ -8,7 +8,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -25,10 +28,15 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
+	"github.com/dantecatalfamo/OPF/internal/webhook"
 	"github.com/dantecatalfamo/OPF/ui"
 )
 
 func main() {
+	if os.Getenv(appliance.SenderEnv) == "1" {
+		sendWebhook()
+		return
+	}
 	if privsep.IsChild() {
 		serveWeb()
 		return
@@ -109,6 +117,8 @@ func main() {
 	// Downloads handle what a server on the internet sends: run them as
 	// the unprivileged user too (a dedicated one is in TODO).
 	api.Fetcher = run.Exec{Credential: cred}
+	// So does the webhook sender, this binary started again.
+	api.Sender, api.Exe = run.Exec{Credential: cred}, exe
 	// Unveil skips a directory that doesn't exist, and then nothing can
 	// be created in it; make the ones OPF writes before hiding the rest.
 	for _, d := range store.WritableDirs() {
@@ -135,6 +145,7 @@ func main() {
 	go api.RunRefresher(sigCtx, time.Minute) // downloaded lists, as they fall due
 	go api.RunCollector(sigCtx)              // the graphs' history
 	go api.RunUpdateChecker(sigCtx)          // security patches, every couple of hours
+	go api.RunWebhooks(sigCtx)               // events to webhooks
 
 	log.Printf("listening on http://%s", ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
@@ -164,6 +175,26 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+// sendWebhook is the webhook sender: started by the parent as the
+// unprivileged user, it reads one delivery on stdin, sends it, and
+// says how that went on stdout, exiting 1 if it failed.
+func sendWebhook() {
+	if err := privsep.SandboxSender(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	var req webhook.Request
+	if err := json.NewDecoder(io.LimitReader(os.Stdin, webhook.MaxRequest)).Decode(&req); err != nil {
+		fmt.Println("couldn't read the delivery")
+		os.Exit(1)
+	}
+	if err := webhook.Send(context.Background(), req, time.Now()); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println("delivered")
 }
 
 func serveWeb() {

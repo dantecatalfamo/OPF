@@ -139,6 +139,22 @@ type (
 		Result
 		List *appliance.DNSListStatus
 	}
+	WebhooksReply struct {
+		Result
+		Webhooks []appliance.WebhookStatus
+	}
+	WebhookReply struct {
+		Result
+		Webhook *appliance.WebhookStatus
+	}
+	WebhookSecretArgs struct {
+		ID      string
+		Request appliance.WebhookSecretRequest
+	}
+	WebhookSecretReply struct {
+		Result
+		Secret *appliance.WebhookSecretResult
+	}
 	EventsReply struct {
 		Result
 		Events *appliance.Events
@@ -309,6 +325,27 @@ func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
 	var err error
 	r.Lists, err = s.api.DNSLists()
 	r.set("DNSLists", err)
+	return nil
+}
+
+func (s *Service) Webhooks(_ None, r *WebhooksReply) error {
+	var err error
+	r.Webhooks, err = s.api.Webhooks()
+	r.set("Webhooks", err)
+	return nil
+}
+
+func (s *Service) SetWebhookSecret(a WebhookSecretArgs, r *WebhookSecretReply) error {
+	var err error
+	r.Secret, err = s.api.SetWebhookSecret(a.ID, a.Request)
+	r.set("SetWebhookSecret", err)
+	return nil
+}
+
+func (s *Service) TestWebhook(a IDArgs, r *WebhookReply) error {
+	var err error
+	r.Webhook, err = s.api.TestWebhook(a.ID)
+	r.set("TestWebhook", err)
 	return nil
 }
 
@@ -719,6 +756,24 @@ func (c *Client) RefreshDNSList(id string) (*appliance.DNSListStatus, error) {
 	var r DNSListReply
 	err := c.call("RefreshDNSList", IDArgs{id}, &r)
 	return r.List, err
+}
+
+func (c *Client) Webhooks() ([]appliance.WebhookStatus, error) {
+	var r WebhooksReply
+	err := c.call("Webhooks", None{}, &r)
+	return nonNil(r.Webhooks), err
+}
+
+func (c *Client) SetWebhookSecret(id string, req appliance.WebhookSecretRequest) (*appliance.WebhookSecretResult, error) {
+	var r WebhookSecretReply
+	err := c.call("SetWebhookSecret", WebhookSecretArgs{id, req}, &r)
+	return r.Secret, err
+}
+
+func (c *Client) TestWebhook(id string) (*appliance.WebhookStatus, error) {
+	var r WebhookReply
+	err := c.call("TestWebhook", IDArgs{id}, &r)
+	return r.Webhook, err
 }
 
 func (c *Client) Events(req appliance.EventsRequest) (*appliance.Events, error) {

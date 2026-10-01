@@ -8,4 +8,5 @@ export const sectionLabel: Record<Section, string> = {
   dhcp: 'DHCP server',
   dns: 'DNS resolver',
   wireguard: 'WireGuard VPN',
+  notifications: 'Notifications',
 };
