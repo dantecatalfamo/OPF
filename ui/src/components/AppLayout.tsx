@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import {
-  ActionIcon, AppShell, Avatar, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip,
+  ActionIcon, Alert, AppShell, Avatar, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip,
   useComputedColorScheme, useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconActivity, IconArrowRight, IconChecks, IconClockHour4, IconGauge, IconLogout, IconMoon, IconNetwork,
+  IconActivity, IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconGauge, IconLogout, IconMoon, IconNetwork,
   IconServer2, IconSettings, IconShieldHalf, IconSun, IconUser,
 } from '@tabler/icons-react';
 import { Brand } from './Brand';
 import { ApplyModal } from './ApplyModal';
 import { ConfirmModal } from './ConfirmModal';
 import { useStore } from '../model/store';
+import { useSession } from '../lib/session';
+import { offline } from '../lib/api';
 import { useNow } from '../lib/useNow';
+import type { Role } from '../lib/api';
+
+const roleLabel: Record<Role, string> = { admin: 'admin', operator: 'operator', view: 'read-only' };
 
 interface NavItem {
   label: string;
@@ -150,6 +155,7 @@ export function AppLayout() {
   const [reviewOpened, review] = useDisclosure();
   const [confirmOpened, setConfirmOpened] = useState(false);
   const { staged, confirming, release } = useStore();
+  const { accounts, session, signOut } = useSession();
   const { setColorScheme } = useMantineColorScheme();
   const scheme = useComputedColorScheme('light');
 
@@ -193,11 +199,11 @@ export function AppLayout() {
                 </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Label>Signed in as admin</Menu.Label>
+                <Menu.Label>{session ? `Signed in as ${session.user} (${roleLabel[session.role]})` : 'No accounts on this server'}</Menu.Label>
                 <Menu.Item component={Link} to="/system/general" leftSection={<IconSettings size={16} />}>
                   Settings
                 </Menu.Item>
-                <Menu.Item leftSection={<IconLogout size={16} />}>Sign out</Menu.Item>
+                {accounts && <Menu.Item leftSection={<IconLogout size={16} />} onClick={signOut}>Sign out</Menu.Item>}
               </Menu.Dropdown>
             </Menu>
           </Group>
@@ -217,6 +223,11 @@ export function AppLayout() {
 
       <AppShell.Main>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+          {!accounts && !offline && (
+            <Alert color="yellow" variant="light" mb="md" icon={<IconAlertTriangle size={18} />}>
+              This is the development server: it has no accounts, so anyone who can reach it can change everything. It only listens on this machine.
+            </Alert>
+          )}
           <Outlet />
         </div>
       </AppShell.Main>

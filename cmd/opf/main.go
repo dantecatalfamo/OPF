@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -18,15 +19,18 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
+	"github.com/dantecatalfamo/OPF/internal/tlscert"
 	"github.com/dantecatalfamo/OPF/internal/web"
 	"github.com/dantecatalfamo/OPF/internal/webhook"
 	"github.com/dantecatalfamo/OPF/ui"
@@ -49,8 +53,10 @@ func main() {
 	dry := flag.Bool("dry", false, "log commands that change the system instead of running them (state is still read, and diagnostic tools still run)")
 	timeout := flag.Duration("confirm-timeout", 60*time.Second, "how long to wait for confirmation before reverting")
 	webUser := flag.String("user", "_opf", "unprivileged user for the web process")
+	tlsMode := flag.String("tls", "auto", "serve HTTPS: on, off (only on a loopback address, for ssh -L), or auto (on unless the address is loopback)")
 	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
 	seed := flag.String("seed", "ui/src/model/sample-model.json", "model the mock server starts from")
+	mockLogin := flag.String("mock-login", "", "with -mock, require signing in, as name:password (an admin); without it the mock has no accounts")
 	flag.Parse()
 	log.SetPrefix("opf: ")
 
@@ -61,7 +67,7 @@ func main() {
 				addr = *listen
 			}
 		})
-		log.Fatal(runMock(addr, *seed, *timeout))
+		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin))
 	}
 
 	exe, err := executable()
@@ -94,6 +100,10 @@ func main() {
 	}
 	cancel()
 
+	useTLS, err := wantTLS(*tlsMode, *listen)
+	if err != nil {
+		log.Fatal(err)
+	}
 	ln, err := net.Listen("tcp", *listen)
 	if err != nil {
 		log.Fatal(err)
@@ -104,6 +114,17 @@ func main() {
 	}
 	api.Actions = runner // dry-run with -dry
 	leasesFile := filepath.Join(*root, leases.Path)
+
+	// Who can sign in: the system's accounts in OPF's groups.
+	sessions := auth.NewSessions(auth.SystemBSDAuth)
+	sessions.Log = func(e auth.Event) { recordSignIn(api, e) }
+	var tlsPair *privsep.TLSPair
+	if useTLS {
+		tlsPair, err = certificate(api, *stateDir, *listen)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	// Before the sandbox: the lookup reads /etc/passwd, and making the
 	// listener's file needs "inet", which the parent doesn't pledge.
 	cred, err := privsep.Credential(*webUser)
@@ -126,7 +147,10 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	if err := privsep.SandboxParent(store.WritableDirs(), []string{leasesFile}, exe); err != nil {
+	// Checking a password reads the account files; the login helpers
+	// are run (SandboxParent's exec directories).
+	readable := []string{leasesFile, "/etc/master.passwd", "/etc/group", "/etc/login.conf"}
+	if err := privsep.SandboxParent(store.WritableDirs(), readable, exe); err != nil {
 		log.Fatal(err)
 	}
 
@@ -147,9 +171,15 @@ func main() {
 	go api.RunUpdateChecker(sigCtx)          // security patches, every couple of hours
 	go api.RunWebhooks(sigCtx)               // events to webhooks
 
-	log.Printf("listening on http://%s", ln.Addr())
+	scheme := "http"
+	if useTLS {
+		scheme = "https"
+	}
+	log.Printf("listening on %s://%s", scheme, ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
 		API:        api,
+		Sessions:   sessions,
+		TLS:        tlsPair,
 		Listener:   lf,
 		Credential: cred,
 		Executable: exe,
@@ -199,9 +229,24 @@ func sendWebhook() {
 
 func serveWeb() {
 	log.SetPrefix("opf web: ")
-	err := privsep.RunChild(func(api appliance.API, ln net.Listener) error {
+	err := privsep.RunChild(func(c *privsep.Client, ln net.Listener) error {
+		pair, err := c.TLS()
+		if err != nil {
+			return err
+		}
+		srv := web.New(c, ui.Files())
+		fingerprint := ""
+		if pair != nil {
+			cert, err := tls.X509KeyPair(pair.Cert, pair.Key)
+			if err != nil {
+				return err
+			}
+			ln = tls.NewListener(ln, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12})
+			fingerprint = tlscert.Fingerprint(pair.Cert)
+		}
+		srv.RequireAuth(web.AuthOf(c.Login, c.WithToken), fingerprint)
 		hs := &http.Server{
-			Handler:           http.NewCrossOriginProtection().Handler(web.New(api, ui.Files())),
+			Handler:           http.NewCrossOriginProtection().Handler(srv),
 			ReadHeaderTimeout: 10 * time.Second,
 		}
 		return hs.Serve(ln)
@@ -225,4 +270,82 @@ func executable() (string, error) {
 		return "", err
 	}
 	return filepath.EvalSymlinks(exe)
+}
+
+// wantTLS decides whether to serve HTTPS. Passwords cross the
+// connection, so plain HTTP is only allowed on a loopback address,
+// reached with ssh -L.
+func wantTLS(mode, listen string) (bool, error) {
+	host, _, err := net.SplitHostPort(listen)
+	if err != nil {
+		return false, err
+	}
+	ip := net.ParseIP(host)
+	loopback := host == "localhost" || ip != nil && ip.IsLoopback()
+	switch mode {
+	case "on":
+		return true, nil
+	case "auto":
+		return !loopback, nil
+	case "off":
+		if !loopback {
+			return false, fmt.Errorf("-tls off is only allowed on a loopback address, not %s: passwords would cross the network in the clear", listen)
+		}
+		return false, nil
+	}
+	return false, fmt.Errorf("-tls is on, off or auto, not %q", mode)
+}
+
+// certificate is the web interface's, made self-signed on first start
+// for the firewall's names and the address listened on.
+func certificate(api *appliance.Manager, stateDir, listen string) (*privsep.TLSPair, error) {
+	hosts := []string{}
+	if c, err := api.Live(); err == nil && c.Model != nil {
+		s := c.Model.System
+		if s.Hostname != "" && s.Domain != "" {
+			hosts = append(hosts, s.Hostname+"."+s.Domain)
+		}
+		if s.Hostname != "" {
+			hosts = append(hosts, s.Hostname)
+		}
+		for _, i := range c.Model.Interfaces {
+			if i.Role != pf.RoleWAN && i.IPv4.Address != "" {
+				hosts = append(hosts, i.IPv4.Address)
+			}
+		}
+	}
+	if host, _, err := net.SplitHostPort(listen); err == nil && host != "" && net.ParseIP(host) != nil && !net.ParseIP(host).IsUnspecified() {
+		hosts = append(hosts, host)
+	}
+	hosts = append(hosts, "localhost", "127.0.0.1")
+	cert, key, made, err := tlscert.Ensure(filepath.Join(stateDir, "tls"), hosts, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("the web interface's certificate: %w", err)
+	}
+	if made {
+		log.Printf("made a self-signed certificate for %s", strings.Join(hosts, ", "))
+	}
+	// To compare with what the browser shows before trusting it.
+	log.Printf("certificate SHA-256 %s", tlscert.Fingerprint(cert))
+	return &privsep.TLSPair{Cert: cert, Key: key}, nil
+}
+
+// recordSignIn puts a sign-in, refusal or sign-out in the event log,
+// and in OPF's own log.
+func recordSignIn(api *appliance.Manager, e auth.Event) {
+	msg := ""
+	warning := false
+	switch e.Kind {
+	case "login":
+		msg = fmt.Sprintf("%s %s, from %s", e.User, e.Message, e.Source)
+	case "refused":
+		msg = fmt.Sprintf("Refused signing in as %q from %s: %s", e.User, e.Source, e.Message)
+		warning = true
+	case "logout":
+		msg = fmt.Sprintf("%s signed out", e.User)
+	default:
+		msg = fmt.Sprintf("%s's %s", e.User, e.Message)
+	}
+	log.Print(msg)
+	api.RecordEvent(appliance.Event{Kind: appliance.EventLogin, Warning: warning, Subject: e.User, Message: msg})
 }

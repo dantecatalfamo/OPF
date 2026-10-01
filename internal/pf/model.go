@@ -46,7 +46,7 @@ const (
 )
 
 // EventKinds are the kinds of event OPF records (appliance's Event).
-var EventKinds = []string{"opf", "link", "address", "gateway", "device", "vpn", "service", "list", "updates", "commit"}
+var EventKinds = []string{"opf", "link", "address", "gateway", "device", "vpn", "service", "list", "updates", "commit", "login"}
 
 // MaxWebhooks bounds Notifications.Webhooks.
 const MaxWebhooks = 16

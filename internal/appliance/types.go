@@ -114,6 +114,9 @@ type CommitRequest struct {
 	Staged  string              `json:"staged"`
 	Message string              `json:"message"`
 	Changes []config.ChangeNote `json:"changes"`
+	// Author is who's signed in, set by the privileged process from the
+	// session; never read from a request.
+	Author string `json:"-"`
 }
 
 type CommitStatus string
@@ -134,6 +137,7 @@ type Commit struct {
 	Status   CommitStatus        `json:"status"`
 	Deadline *time.Time          `json:"deadline,omitempty"` // while pending
 	Message  string              `json:"message"`
+	Author   string              `json:"author,omitempty"`
 	Changes  []config.ChangeNote `json:"changes"`
 	Files    []CommitFile        `json:"files"`
 }
@@ -424,8 +428,22 @@ const (
 	CodeCheckFailed     Code = "check_failed"     // a validator rejected a generated file
 	CodeUnsupported     Code = "unsupported"      // something OPF can't do yet
 	CodeBusy            Code = "busy"             // too much is running; try again soon
+	CodeUnauthorized    Code = "unauthorized"     // not signed in, or the name or password is wrong
+	CodeForbidden       Code = "forbidden"        // signed in, but the role doesn't allow it
+	CodeRateLimited     Code = "rate_limited"     // too many failed sign-ins; try again later
 	CodeInternal        Code = "internal"
 )
+
+// Session is someone signed in, as the API shows it. The token that
+// proves it is a cookie, never in a body.
+type Session struct {
+	ID       string    `json:"id"`
+	User     string    `json:"user"`
+	Role     string    `json:"role"` // view, operator or admin
+	Source   string    `json:"source"`
+	Created  time.Time `json:"created"`
+	LastUsed time.Time `json:"lastUsed"`
+}
 
 // Error is the only error type API methods return.
 type Error struct {

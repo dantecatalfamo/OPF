@@ -408,5 +408,6 @@ export interface HistoryEntry {
   time: number;
   status: 'applying' | 'pending' | 'applied' | 'confirmed' | 'reverted' | 'failed';
   message: string;
+  author?: string;
   changes: Change[];
 }

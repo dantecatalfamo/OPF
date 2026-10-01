@@ -47,6 +47,7 @@ export function History() {
                           {new Date(h.time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                         </Text>
                         <Badge color={s.color} size="sm">{s.label}</Badge>
+                        {h.author && <Text size="xs" c="dimmed">by {h.author}</Text>}
                       </Group>
                       {h.message && !(h.changes.length === 1 && h.changes[0].summary === h.message) && (
                         <Text size="sm" fw={500}>{h.message}</Text>

@@ -721,7 +721,7 @@ func (m *Manager) commit(req CommitRequest) (*Commit, error) {
 	if err := m.prepareCommit(ctx, model); err != nil {
 		return nil, err
 	}
-	e, err := m.store.Commit(ctx, config.CommitInfo{Message: req.Message, Changes: req.Changes})
+	e, err := m.store.Commit(ctx, config.CommitInfo{Message: req.Message, Author: req.Author, Changes: req.Changes})
 	var ce *config.CheckError
 	var de *config.DriftError
 	switch {
@@ -805,13 +805,17 @@ func (m *Manager) pendingIs(id string) error {
 	return nil
 }
 
-func (m *Manager) Confirm(id string) (*Commit, error) {
+func (m *Manager) Confirm(id string) (*Commit, error) { return m.ConfirmBy(id, "") }
+
+// ConfirmBy is Confirm by someone signed in, recorded in the commit's
+// log.
+func (m *Manager) ConfirmBy(id, by string) (*Commit, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.pendingIs(id); err != nil {
 		return nil, apiError(err)
 	}
-	if err := m.store.Confirm(); err != nil {
+	if err := m.store.ConfirmBy(by); err != nil {
 		if errors.Is(err, config.ErrNoPending) {
 			return nil, errorf(CodeNotPending, "commit %s was reverted before it was confirmed", id)
 		}
@@ -821,7 +825,10 @@ func (m *Manager) Confirm(id string) (*Commit, error) {
 	return m.commitByID(id)
 }
 
-func (m *Manager) Revert(id string) (*Commit, error) {
+func (m *Manager) Revert(id string) (*Commit, error) { return m.RevertBy(id, "") }
+
+// RevertBy is Revert by someone signed in, recorded in the commit's log.
+func (m *Manager) RevertBy(id, by string) (*Commit, error) {
 	defer m.changed() // after unlocking
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -830,7 +837,7 @@ func (m *Manager) Revert(id string) (*Commit, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
-	if err := m.store.Revert(ctx); err != nil {
+	if err := m.store.RevertBy(ctx, by); err != nil {
 		if errors.Is(err, config.ErrNoPending) {
 			return nil, errorf(CodeNotPending, "commit %s was already reverted", id)
 		}
@@ -882,7 +889,7 @@ func (m *Manager) commitConfig(id string, which Which) (*Config, error) {
 
 func commitOf(e *config.Entry) *Commit {
 	c := &Commit{
-		ID: e.ID, Time: e.Time, Status: CommitStatus(e.Status), Message: e.Message,
+		ID: e.ID, Time: e.Time, Status: CommitStatus(e.Status), Message: e.Message, Author: e.Author,
 		Changes: e.Changes, Files: []CommitFile{},
 	}
 	if c.Changes == nil {

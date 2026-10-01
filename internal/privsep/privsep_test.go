@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
@@ -23,7 +24,12 @@ import (
 // HTTP handler backed by the parent's API.
 func TestMain(m *testing.M) {
 	if IsChild() {
-		err := RunChild(func(api appliance.API, ln net.Listener) error {
+		err := RunChild(func(c *Client, ln net.Listener) error {
+			tok, _, err := c.Login("admin", "admin-pass", "test")
+			if err != nil {
+				return err
+			}
+			api := c.WithToken(tok, true)
 			return http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/crash" {
 					os.Exit(3)
@@ -103,13 +109,45 @@ func newAPIRunner(t *testing.T) (*appliance.Manager, *failRunner) {
 	return api, r
 }
 
-func newClient(t *testing.T, api *appliance.Manager) *Client {
+// testSessions has an admin, an operator and a viewer, and root, who's
+// in none of OPF's groups.
+func testSessions(t *testing.T) *auth.Sessions {
+	t.Helper()
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "master.passwd"), []byte(
+		"root:$2b$r:0:0:daemon:0:0:root:/root:/bin/ksh\n"+
+			"admin:$2b$a:1000:1000::0:0:Admin:/home/admin:/bin/ksh\n"+
+			"op:$2b$o:1001:1001::0:0:Operator:/home/op:/bin/ksh\n"+
+			"viewer:$2b$v:1002:1002::0:0:Viewer:/home/viewer:/bin/ksh\n"), 0600)
+	os.WriteFile(filepath.Join(dir, "group"), []byte("wheel:*:0:root\n_opfadmin:*:900:admin\n_opfoperator:*:901:op\n_opfview:*:902:viewer\n"), 0644)
+	s := auth.NewSessions(auth.Static{"root": "root-pass", "admin": "admin-pass", "op": "op-pass", "viewer": "viewer-pass"})
+	s.Passwd, s.Group = filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
+	s.MinFail = 0
+	return s
+}
+
+// newConn is a client of a Service, not signed in.
+func newConn(t *testing.T, api *appliance.Manager) *Client {
 	t.Helper()
 	a, b := net.Pipe()
-	go Serve(api, a)
+	go Serve(api, testSessions(t), &TLSPair{Cert: []byte("cert"), Key: []byte("key")}, a)
 	c := NewClient(b)
 	t.Cleanup(func() { c.Close() })
 	return c
+}
+
+func signIn(t *testing.T, c *Client, user string) *Client {
+	t.Helper()
+	tok, s, err := c.Login(user, user+"-pass", "192.0.2.1")
+	if err != nil || s.User != user {
+		t.Fatalf("signing in as %s: %+v %v", user, s, err)
+	}
+	return c.WithToken(tok, true)
+}
+
+// newClient is a client signed in as an admin.
+func newClient(t *testing.T, api *appliance.Manager) *Client {
+	return signIn(t, newConn(t, api), "admin")
 }
 
 func code(err error) appliance.Code {
@@ -223,7 +261,7 @@ func TestRPCInternalErrorsAreSanitized(t *testing.T) {
 func TestWaitReturnsWhenParentGoesAway(t *testing.T) {
 	api := newAPI(t)
 	a, b := net.Pipe()
-	go Serve(api, a)
+	go Serve(api, testSessions(t), nil, a)
 	c := NewClient(b)
 	done := make(chan error)
 	go func() { done <- c.Wait() }()
@@ -251,7 +289,9 @@ func TestParentRunsAndRestartsChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go func() { stopped <- RunParent(ctx, ParentOptions{API: api, Listener: lf, Executable: exe}) }()
+	go func() {
+		stopped <- RunParent(ctx, ParentOptions{API: api, Sessions: testSessions(t), Listener: lf, Executable: exe})
+	}()
 
 	base := "http://" + ln.Addr().String()
 	hc := &http.Client{Timeout: 2 * time.Second}

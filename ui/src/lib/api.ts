@@ -11,7 +11,7 @@ export const offline = import.meta.env.MODE === 'preview';
 
 export type ErrorCode =
   | 'invalid' | 'conflict' | 'not_found' | 'nothing_staged' | 'commit_pending' | 'not_pending'
-  | 'modified_outside' | 'check_failed' | 'unsupported' | 'busy' | 'internal';
+  | 'modified_outside' | 'check_failed' | 'unsupported' | 'busy' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'internal';
 
 export interface ErrorDetail {
   path: string;
@@ -64,6 +64,8 @@ export interface CommitResource {
   status: CommitStatus;
   deadline?: string;
   message: string;
+  /** Who made it, when the server has accounts. */
+  author?: string;
   changes: ChangeNote[];
   files: { path: string; created?: boolean; removed?: boolean; needsConfirm?: boolean; model?: boolean }[];
 }
@@ -492,7 +494,7 @@ export interface SystemLogRequest {
   limit?: number;
 }
 
-export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit';
+export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit' | 'login';
 
 /** Something that happened (GET /api/events). */
 export interface OpfEvent {
@@ -615,12 +617,48 @@ export interface StatusResource {
   release?: string;
 }
 
+// When someone last used the page. Requests made within a minute of
+// it say so (X-OPF-Active), and only those count as the session being
+// used: a page left open, polling, still signs out after 30 minutes.
+let lastActivity = Date.now();
+if (typeof window !== 'undefined') {
+  for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+    window.addEventListener(ev, () => { lastActivity = Date.now(); }, { capture: true, passive: true });
+  }
+}
+
+/** Fired on window when a request finds the session gone. */
+export const SIGNED_OUT_EVENT = 'opf:signed-out';
+
+export type Role = 'view' | 'operator' | 'admin';
+
+/** Someone signed in. The token proving it is a cookie scripts can't read. */
+export interface SessionInfo {
+  id: string;
+  user: string;
+  role: Role;
+  source: string;
+  created: string;
+  lastUsed: string;
+}
+
+/** GET /api/session: whether the server has accounts, who's signed in, and the certificate's SHA-256. */
+export interface SessionResource {
+  accounts: boolean;
+  session?: SessionInfo;
+  tls?: string;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = body === undefined ? {} : { 'Content-Type': 'application/json' };
+  if (Date.now() - lastActivity < 60_000) headers['X-OPF-Active'] = '1';
   const response = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+    headers,
+    credentials: 'same-origin',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (response.status === 401 && path !== '/session') window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
   if (response.status === 204) return undefined as T;
   const text = await response.text();
   let data: unknown;
@@ -639,6 +677,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 const enc = encodeURIComponent;
 
 export const api = {
+  session: () => request<SessionResource>('GET', '/session'),
+  login: (user: string, password: string) => request<SessionResource>('POST', '/session', { user, password }),
+  logout: () => request<void>('DELETE', '/session'),
+  sessions: () => request<{ sessions: SessionInfo[] }>('GET', '/sessions'),
+  endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
   status: () => request<StatusResource>('GET', '/status'),
   live: () => request<ConfigResource>('GET', '/config'),
   /** The staged model, or null when nothing is staged. */

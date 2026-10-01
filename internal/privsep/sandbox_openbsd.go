@@ -15,7 +15,9 @@ import (
 
 // Directories searched for the commands the parent runs. Commands are
 // only restricted until they exec; after that they run unconfined.
-var execDirs = []string{"/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/local/sbin"}
+var execDirs = []string{"/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/local/sbin",
+	"/usr/libexec/auth", // checking passwords (auth.BSDAuth)
+}
 
 // SandboxParent limits the privileged process to the directories it
 // writes, the files it only reads, the commands it runs, and

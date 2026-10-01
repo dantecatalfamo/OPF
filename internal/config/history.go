@@ -36,6 +36,7 @@ type Entry struct {
 	Status   Status       `json:"status"`
 	Deadline time.Time    `json:"deadline,omitzero"`
 	Message  string       `json:"message,omitempty"`
+	Author   string       `json:"author,omitempty"` // who signed in made it
 	Changes  []ChangeNote `json:"changes,omitempty"`
 	Files    []EntryFile  `json:"files"`
 	Log      string       `json:"log"`
@@ -44,6 +45,7 @@ type Entry struct {
 // CommitInfo describes a commit for the people reading history later.
 type CommitInfo struct {
 	Message string
+	Author  string
 	Changes []ChangeNote
 }
 

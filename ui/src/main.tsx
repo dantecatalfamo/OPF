@@ -14,14 +14,17 @@ import { Notifications } from '@mantine/notifications';
 import { theme } from './theme';
 import { App } from './App';
 import { StoreProvider } from './model/store';
+import { SessionGate } from './lib/session';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="top-right" />
-      <StoreProvider>
-        <App />
-      </StoreProvider>
+      <SessionGate>
+        <StoreProvider>
+          <App />
+        </StoreProvider>
+      </SessionGate>
     </MantineProvider>
   </StrictMode>,
 );

@@ -78,6 +78,7 @@ function historyOf(c: CommitResource): HistoryEntry {
     time: Date.parse(c.time),
     status: c.status,
     message: c.message,
+    author: c.author,
     changes: c.changes.map((n, i) => ({ id: -1 - i, section: (sections.has(n.area) ? n.area : 'system') as Section, summary: n.summary })),
   };
 }

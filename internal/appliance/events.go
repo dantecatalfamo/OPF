@@ -34,6 +34,7 @@ const (
 	EventList    = "list"    // a downloaded list failed or recovered
 	EventUpdates = "updates" // security patches became available
 	EventCommit  = "commit"  // a change was applied, confirmed, reverted or failed
+	EventLogin   = "login"   // someone signed in or out, or was refused
 )
 
 const (
@@ -129,6 +130,17 @@ func (l *eventLog) seen(mac string, now time.Time, first bool) bool {
 
 // SeedEvents adds events that happened before now, for the mock's
 // history.
+// RecordEvent adds an event from outside the appliance: someone
+// signing in or being refused. Its text is made printable.
+func (m *Manager) RecordEvent(e Event) {
+	if e.Time.IsZero() {
+		e.Time = time.Now()
+	}
+	e.Message = printable(e.Message, maxMessageRunes)
+	e.Subject = printable(e.Subject, 64)
+	m.eventLog().record(e)
+}
+
 func (m *Manager) SeedEvents(es []Event) {
 	for _, e := range es {
 		m.eventLog().record(e)
@@ -204,6 +216,7 @@ func (m *Manager) loadEvents() {
 var eventKinds = map[string]bool{
 	EventOPF: true, EventLink: true, EventAddress: true, EventGateway: true, EventDevice: true,
 	EventVPN: true, EventService: true, EventList: true, EventUpdates: true, EventCommit: true,
+	EventLogin: true,
 }
 
 func isMAC(s string) bool {

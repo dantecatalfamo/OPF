@@ -10,12 +10,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
+	"github.com/dantecatalfamo/OPF/internal/privsep"
 	"github.com/dantecatalfamo/OPF/internal/run"
 	"github.com/dantecatalfamo/OPF/internal/web"
 	"github.com/dantecatalfamo/OPF/ui"
@@ -26,13 +29,13 @@ import (
 // one process with the real generators, parser and staging engine, but
 // nothing outside a scratch directory is read or written and commands
 // are logged instead of run.
-func runMock(listen, seedPath string, timeout time.Duration) error {
+func runMock(listen, seedPath string, timeout time.Duration, login string) error {
 	host, _, err := net.SplitHostPort(listen)
 	if err != nil {
 		return err
 	}
 	if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-		return fmt.Errorf("the mock server has no authentication and only listens on loopback, not %s", host)
+		return fmt.Errorf("the mock server is for development and only listens on loopback, not %s", host)
 	}
 
 	seed, err := os.ReadFile(seedPath)
@@ -115,6 +118,13 @@ func runMock(listen, seedPath string, timeout time.Duration) error {
 		return n
 	}, next: run.Dry{Log: log.Default()}}
 	srv := web.New(api, ui.Files())
+	if login != "" {
+		// Accounts, enforced as on OpenBSD: the privileged side's RPC
+		// service, over a pipe, with one admin whose password is given.
+		if srv, err = mockAccounts(api, dir, login); err != nil {
+			return err
+		}
+	}
 
 	watcher := &leases.Watcher{
 		File:     filepath.Join(root, leases.Path),
@@ -193,4 +203,30 @@ func mockLeases(now time.Time) []byte {
 			c.ip, stamp(start), stamp(now.Add(c.left)), c.mac, c.name)
 	}
 	return b.Bytes()
+}
+
+// mockAccounts is the web server in front of the RPC service, as the
+// web process is, with one admin: login is "name:password".
+func mockAccounts(api *appliance.Manager, dir, login string) (*web.Server, error) {
+	user, password, ok := strings.Cut(login, ":")
+	if !ok || user == "" || password == "" {
+		return nil, fmt.Errorf("-mock-login is name:password, not %q", login)
+	}
+	passwd, group := filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
+	if err := os.WriteFile(passwd, []byte(user+":$2b$mock:1000:1000::0:0:Mock admin:/home/"+user+":/bin/ksh\n"), 0600); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(group, []byte("_opfadmin:*:900:"+user+"\n"), 0644); err != nil {
+		return nil, err
+	}
+	sessions := auth.NewSessions(auth.Static{user: password})
+	sessions.Passwd, sessions.Group = passwd, group
+	sessions.Log = func(e auth.Event) { recordSignIn(api, e) }
+	a, b := net.Pipe()
+	go privsep.Serve(api, sessions, nil, a)
+	c := privsep.NewClient(b)
+	srv := web.New(c, ui.Files())
+	srv.RequireAuth(web.AuthOf(c.Login, c.WithToken), "")
+	log.Printf("mock: signing in as %s, an admin", user)
+	return srv, nil
 }

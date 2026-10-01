@@ -58,7 +58,7 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		}
 	}
 
-	e := &Entry{ID: newID(time.Now()), Time: time.Now(), Status: StatusApplying, Message: info.Message, Changes: info.Changes}
+	e := &Entry{ID: newID(time.Now()), Time: time.Now(), Status: StatusApplying, Message: info.Message, Author: info.Author, Changes: info.Changes}
 	if _, err := os.Stat(s.historyDir(e.ID)); err == nil {
 		return nil, fmt.Errorf("commit %s already exists; try again", e.ID)
 	}
@@ -201,7 +201,10 @@ func (s *Store) Pending() *Entry {
 }
 
 // Confirm installs the confirmable files of the pending commit.
-func (s *Store) Confirm() error {
+func (s *Store) Confirm() error { return s.ConfirmBy("") }
+
+// ConfirmBy is Confirm, saying in the commit's log who confirmed it.
+func (s *Store) ConfirmBy(by string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending == nil {
@@ -227,20 +230,30 @@ func (s *Store) Confirm() error {
 	s.pending.timer.Stop()
 	s.pending = nil
 	e.Status = StatusConfirmed
-	e.Log += "\nConfirmed.\n" + logBuf.String()
+	if by != "" {
+		e.Log += "\nConfirmed by " + by + ".\n" + logBuf.String()
+	} else {
+		e.Log += "\nConfirmed.\n" + logBuf.String()
+	}
 	return s.saveEntry(e)
 }
 
 // Revert undoes the pending commit now instead of waiting for the
 // timeout. Its changes are staged again.
-func (s *Store) Revert(ctx context.Context) error {
+func (s *Store) Revert(ctx context.Context) error { return s.RevertBy(ctx, "") }
+
+// RevertBy is Revert, saying in the commit's log who reverted it.
+func (s *Store) RevertBy(ctx context.Context, by string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending == nil {
 		return ErrNoPending
 	}
 	s.pending.timer.Stop()
-	return s.revertPending(ctx, "Reverted by user.")
+	if by == "" {
+		by = "user"
+	}
+	return s.revertPending(ctx, "Reverted by "+by+".")
 }
 
 func (s *Store) expire(p *pendingCommit) {

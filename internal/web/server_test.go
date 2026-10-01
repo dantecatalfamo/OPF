@@ -20,7 +20,9 @@ import (
 	"testing/fstest"
 )
 
-func newServer(t *testing.T) *Server {
+func newServer(t *testing.T) *Server { return New(newManager(t), nil) }
+
+func newManager(t *testing.T) *appliance.Manager {
 	t.Helper()
 	data, err := os.ReadFile("../../ui/src/model/sample-model.json")
 	if err != nil {
@@ -59,7 +61,7 @@ func newServer(t *testing.T) *Server {
 		t.Fatal(err)
 	}
 	api.Runner = run.Dry{} // tests never run the system's commands
-	return New(api, nil)
+	return api
 }
 
 type client struct {

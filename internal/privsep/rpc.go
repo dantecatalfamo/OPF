@@ -5,8 +5,10 @@ import (
 	"io"
 	"log"
 	"net/rpc"
+	"sync/atomic"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/metrics"
 )
@@ -187,287 +189,443 @@ type (
 	EmptyReply struct{ Result }
 )
 
-// Service exposes an appliance.Manager over net/rpc.
+// Service exposes an appliance.Manager over net/rpc, to people signed
+// in (auth.go).
 type Service struct {
-	api  *appliance.Manager
-	done chan struct{} // closed when the connection ends
+	api      *appliance.Manager
+	sessions *auth.Sessions
+	tls      *TLSPair
+	tlsGiven atomic.Bool
+	done     chan struct{} // closed when the connection ends
 }
 
-func (s *Service) Status(_ None, r *StatusReply) error {
+func (s *Service) Status(c Call[None], r *StatusReply) error {
+	if s.allow("Status", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Status, err = s.api.Status()
 	r.set("Status", err)
 	return nil
 }
 
-func (s *Service) LeaseNames(_ None, r *LeaseNamesReply) error {
+func (s *Service) LeaseNames(c Call[None], r *LeaseNamesReply) error {
+	if s.allow("LeaseNames", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Names, err = s.api.LeaseNames()
 	r.set("LeaseNames", err)
 	return nil
 }
 
-func (s *Service) DHCPLeases(_ None, r *DHCPLeasesReply) error {
+func (s *Service) DHCPLeases(c Call[None], r *DHCPLeasesReply) error {
+	if s.allow("DHCPLeases", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Leases, err = s.api.DHCPLeases()
 	r.set("DHCPLeases", err)
 	return nil
 }
 
-func (s *Service) ARPTable(_ None, r *ARPTableReply) error {
+func (s *Service) ARPTable(c Call[None], r *ARPTableReply) error {
+	if s.allow("ARPTable", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Table, err = s.api.ARPTable()
 	r.set("ARPTable", err)
 	return nil
 }
 
-func (s *Service) RoutingTable(_ None, r *RoutingTableReply) error {
+func (s *Service) RoutingTable(c Call[None], r *RoutingTableReply) error {
+	if s.allow("RoutingTable", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Table, err = s.api.RoutingTable()
 	r.set("RoutingTable", err)
 	return nil
 }
 
-func (s *Service) System(_ None, r *SystemReply) error {
+func (s *Service) System(c Call[None], r *SystemReply) error {
+	if s.allow("System", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.System, err = s.api.System()
 	r.set("System", err)
 	return nil
 }
 
-func (s *Service) Interfaces(_ None, r *InterfacesReply) error {
+func (s *Service) Interfaces(c Call[None], r *InterfacesReply) error {
+	if s.allow("Interfaces", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Interfaces, err = s.api.Interfaces()
 	r.set("Interfaces", err)
 	return nil
 }
 
-func (s *Service) Gateways(_ None, r *GatewaysReply) error {
+func (s *Service) Gateways(c Call[None], r *GatewaysReply) error {
+	if s.allow("Gateways", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Gateways, err = s.api.Gateways()
 	r.set("Gateways", err)
 	return nil
 }
 
-func (s *Service) Updates(_ None, r *UpdatesReply) error {
+func (s *Service) Updates(c Call[None], r *UpdatesReply) error {
+	if s.allow("Updates", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Updates, err = s.api.Updates()
 	r.set("Updates", err)
 	return nil
 }
 
-func (s *Service) CheckUpdates(_ None, r *UpdatesReply) error {
+func (s *Service) CheckUpdates(c Call[None], r *UpdatesReply) error {
+	if s.allow("CheckUpdates", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Updates, err = s.api.CheckUpdates()
 	r.set("CheckUpdates", err)
 	return nil
 }
 
-func (s *Service) PfStatus(_ None, r *PfStatusReply) error {
+func (s *Service) PfStatus(c Call[None], r *PfStatusReply) error {
+	if s.allow("PfStatus", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Status, err = s.api.PfStatus()
 	r.set("PfStatus", err)
 	return nil
 }
 
-func (s *Service) PfStates(a appliance.PfStatesRequest, r *PfStatesReply) error {
+func (s *Service) PfStates(c Call[appliance.PfStatesRequest], r *PfStatesReply) error {
+	if s.allow("PfStates", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.States, err = s.api.PfStates(a)
 	r.set("PfStates", err)
 	return nil
 }
 
-func (s *Service) KillState(a appliance.KillStateRequest, r *EmptyReply) error {
+func (s *Service) KillState(c Call[appliance.KillStateRequest], r *EmptyReply) error {
+	if s.allow("KillState", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	r.set("KillState", s.api.KillState(a))
 	return nil
 }
 
-func (s *Service) RuleCounters(_ None, r *RuleCountersReply) error {
+func (s *Service) RuleCounters(c Call[None], r *RuleCountersReply) error {
+	if s.allow("RuleCounters", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Counters, err = s.api.RuleCounters()
 	r.set("RuleCounters", err)
 	return nil
 }
 
-func (s *Service) FirewallLog(_ None, r *FirewallLogReply) error {
+func (s *Service) FirewallLog(c Call[None], r *FirewallLogReply) error {
+	if s.allow("FirewallLog", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Log, err = s.api.FirewallLog()
 	r.set("FirewallLog", err)
 	return nil
 }
 
-func (s *Service) StartTool(a diag.Request, r *ToolRunReply) error {
+func (s *Service) StartTool(c Call[diag.Request], r *ToolRunReply) error {
+	if s.allow("StartTool", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Run, err = s.api.StartTool(a)
 	r.set("StartTool", err)
 	return nil
 }
 
-func (s *Service) ToolRun(a ToolRunArgs, r *ToolRunReply) error {
+func (s *Service) ToolRun(c Call[ToolRunArgs], r *ToolRunReply) error {
+	if s.allow("ToolRun", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Run, err = s.api.ToolRun(a.ID, a.From)
 	r.set("ToolRun", err)
 	return nil
 }
 
-func (s *Service) CancelTool(a IDArgs, r *EmptyReply) error {
+func (s *Service) CancelTool(c Call[IDArgs], r *EmptyReply) error {
+	if s.allow("CancelTool", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	r.set("CancelTool", s.api.CancelTool(a.ID))
 	return nil
 }
 
-func (s *Service) Tables(_ None, r *TablesReply) error {
+func (s *Service) Tables(c Call[None], r *TablesReply) error {
+	if s.allow("Tables", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Tables, err = s.api.Tables()
 	r.set("Tables", err)
 	return nil
 }
 
-func (s *Service) RefreshAlias(a NameArgs, r *TableReply) error {
+func (s *Service) RefreshAlias(c Call[NameArgs], r *TableReply) error {
+	if s.allow("RefreshAlias", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Table, err = s.api.RefreshAlias(a.Name)
 	r.set("RefreshAlias", err)
 	return nil
 }
 
-func (s *Service) DNSLists(_ None, r *DNSListsReply) error {
+func (s *Service) DNSLists(c Call[None], r *DNSListsReply) error {
+	if s.allow("DNSLists", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Lists, err = s.api.DNSLists()
 	r.set("DNSLists", err)
 	return nil
 }
 
-func (s *Service) Webhooks(_ None, r *WebhooksReply) error {
+func (s *Service) Webhooks(c Call[None], r *WebhooksReply) error {
+	if s.allow("Webhooks", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Webhooks, err = s.api.Webhooks()
 	r.set("Webhooks", err)
 	return nil
 }
 
-func (s *Service) SetWebhookSecret(a WebhookSecretArgs, r *WebhookSecretReply) error {
+func (s *Service) SetWebhookSecret(c Call[WebhookSecretArgs], r *WebhookSecretReply) error {
+	if s.allow("SetWebhookSecret", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Secret, err = s.api.SetWebhookSecret(a.ID, a.Request)
 	r.set("SetWebhookSecret", err)
 	return nil
 }
 
-func (s *Service) TestWebhook(a IDArgs, r *WebhookReply) error {
+func (s *Service) TestWebhook(c Call[IDArgs], r *WebhookReply) error {
+	if s.allow("TestWebhook", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Webhook, err = s.api.TestWebhook(a.ID)
 	r.set("TestWebhook", err)
 	return nil
 }
 
-func (s *Service) DNSTool(a appliance.DNSToolRequest, r *DNSToolReply) error {
+func (s *Service) DNSTool(c Call[appliance.DNSToolRequest], r *DNSToolReply) error {
+	sess := s.allow("DNSTool", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
+	// Looking is anyone's; forgetting cached answers is an operator's.
+	if a.Tool != "lookup" && a.Tool != "cache" && a.Tool != "local" && sess.Role < auth.RoleOperator {
+		r.Err = &appliance.Error{Code: appliance.CodeForbidden, Message: "your role (" + sess.Role.String() + ") can't do this; it needs operator"}
+		return nil
+	}
 	var err error
 	r.Output, err = s.api.DNSTool(a)
 	r.set("DNSTool", err)
 	return nil
 }
 
-func (s *Service) SystemLog(a appliance.SystemLogRequest, r *SystemLogReply) error {
+func (s *Service) SystemLog(c Call[appliance.SystemLogRequest], r *SystemLogReply) error {
+	if s.allow("SystemLog", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Log, err = s.api.SystemLog(a)
 	r.set("SystemLog", err)
 	return nil
 }
 
-func (s *Service) Events(a appliance.EventsRequest, r *EventsReply) error {
+func (s *Service) Events(c Call[appliance.EventsRequest], r *EventsReply) error {
+	if s.allow("Events", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Events, err = s.api.Events(a)
 	r.set("Events", err)
 	return nil
 }
 
-func (s *Service) Metrics(a appliance.MetricsRequest, r *MetricsReply) error {
+func (s *Service) Metrics(c Call[appliance.MetricsRequest], r *MetricsReply) error {
+	if s.allow("Metrics", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Metrics, err = s.api.Metrics(a)
 	r.set("Metrics", err)
 	return nil
 }
 
-func (s *Service) DNSStats(_ None, r *DNSStatsReply) error {
+func (s *Service) DNSStats(c Call[None], r *DNSStatsReply) error {
+	if s.allow("DNSStats", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Stats, err = s.api.DNSStats()
 	r.set("DNSStats", err)
 	return nil
 }
 
-func (s *Service) DNSBlocked(_ None, r *DNSBlockedReply) error {
+func (s *Service) DNSBlocked(c Call[None], r *DNSBlockedReply) error {
+	if s.allow("DNSBlocked", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Blocked, err = s.api.DNSBlocked()
 	r.set("DNSBlocked", err)
 	return nil
 }
 
-func (s *Service) RefreshDNSList(a IDArgs, r *DNSListReply) error {
+func (s *Service) RefreshDNSList(c Call[IDArgs], r *DNSListReply) error {
+	if s.allow("RefreshDNSList", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.List, err = s.api.RefreshDNSList(a.ID)
 	r.set("RefreshDNSList", err)
 	return nil
 }
 
-func (s *Service) Live(_ None, r *ConfigReply) error {
+func (s *Service) Live(c Call[None], r *ConfigReply) error {
+	if s.allow("Live", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Config, err = s.api.Live()
 	r.set("Live", err)
 	return nil
 }
 
-func (s *Service) Staged(_ None, r *StagedReply) error {
+func (s *Service) Staged(c Call[None], r *StagedReply) error {
+	if s.allow("Staged", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Staged, err = s.api.Staged()
 	r.set("Staged", err)
 	return nil
 }
 
-func (s *Service) Stage(a appliance.StageRequest, r *StagedReply) error {
+func (s *Service) Stage(c Call[appliance.StageRequest], r *StagedReply) error {
+	if s.allow("Stage", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Staged, err = s.api.Stage(a)
 	r.set("Stage", err)
 	return nil
 }
 
-func (s *Service) Discard(_ None, r *EmptyReply) error {
+func (s *Service) Discard(c Call[None], r *EmptyReply) error {
+	if s.allow("Discard", c, &r.Result) == nil {
+		return nil
+	}
 	r.set("Discard", s.api.Discard())
 	return nil
 }
 
-func (s *Service) Commit(a appliance.CommitRequest, r *CommitReply) error {
+func (s *Service) Commit(c Call[appliance.CommitRequest], r *CommitReply) error {
+	sess := s.allow("Commit", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
+	a.Author = sess.User // whoever the session is, whatever was sent
 	var err error
 	r.Commit, err = s.api.Commit(a)
 	r.set("Commit", err)
 	return nil
 }
 
-func (s *Service) Commits(_ None, r *CommitsReply) error {
+func (s *Service) Commits(c Call[None], r *CommitsReply) error {
+	if s.allow("Commits", c, &r.Result) == nil {
+		return nil
+	}
 	var err error
 	r.Commits, err = s.api.Commits()
 	r.set("Commits", err)
 	return nil
 }
 
-func (s *Service) GetCommit(a IDArgs, r *DetailReply) error {
+func (s *Service) GetCommit(c Call[IDArgs], r *DetailReply) error {
+	if s.allow("GetCommit", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Detail, err = s.api.GetCommit(a.ID)
 	r.set("GetCommit", err)
 	return nil
 }
 
-func (s *Service) Confirm(a IDArgs, r *CommitReply) error {
+func (s *Service) Confirm(c Call[IDArgs], r *CommitReply) error {
+	sess := s.allow("Confirm", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
-	r.Commit, err = s.api.Confirm(a.ID)
+	r.Commit, err = s.api.ConfirmBy(a.ID, sess.User)
 	r.set("Confirm", err)
 	return nil
 }
 
-func (s *Service) Revert(a IDArgs, r *CommitReply) error {
+func (s *Service) Revert(c Call[IDArgs], r *CommitReply) error {
+	sess := s.allow("Revert", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
-	r.Commit, err = s.api.Revert(a.ID)
+	r.Commit, err = s.api.RevertBy(a.ID, sess.User)
 	r.set("Revert", err)
 	return nil
 }
 
-func (s *Service) CommitConfig(a CommitConfigArgs, r *ConfigReply) error {
+func (s *Service) CommitConfig(c Call[CommitConfigArgs], r *ConfigReply) error {
+	if s.allow("CommitConfig", c, &r.Result) == nil {
+		return nil
+	}
+	a := c.Args
 	var err error
 	r.Config, err = s.api.CommitConfig(a.ID, a.Which)
 	r.set("CommitConfig", err)
@@ -481,10 +639,11 @@ func (s *Service) Wait(_ None, _ *None) error {
 	return fmt.Errorf("shutting down")
 }
 
-// Serve answers calls on conn until it is closed.
-func Serve(api *appliance.Manager, conn io.ReadWriteCloser) {
+// Serve answers calls on conn until it is closed, to the sessions'
+// users.
+func Serve(api *appliance.Manager, sessions *auth.Sessions, tls *TLSPair, conn io.ReadWriteCloser) {
 	srv := rpc.NewServer()
-	svc := &Service{api: api, done: make(chan struct{})}
+	svc := &Service{api: api, sessions: sessions, tls: tls, done: make(chan struct{})}
 	if err := srv.RegisterName("OPF", svc); err != nil {
 		panic(err) // only fails if Service's method set is malformed
 	}
@@ -494,9 +653,12 @@ func Serve(api *appliance.Manager, conn io.ReadWriteCloser) {
 	close(svc.done)
 }
 
-// Client implements appliance.API by calling a Service.
+// Client implements appliance.API by calling a Service, as whoever its
+// token's session is (WithToken).
 type Client struct {
-	rpc *rpc.Client
+	rpc    *rpc.Client
+	token  string
+	active bool
 }
 
 var _ appliance.API = (*Client)(nil)
@@ -506,7 +668,7 @@ func NewClient(conn io.ReadWriteCloser) *Client {
 }
 
 func (c *Client) call(method string, args any, reply interface{ remoteErr() error }) error {
-	if err := c.rpc.Call("OPF."+method, args, reply); err != nil {
+	if err := c.rpc.Call("OPF."+method, Call[any]{Token: c.token, Active: c.active, Args: args}, reply); err != nil {
 		return &appliance.Error{Code: appliance.CodeInternal, Message: "privileged process: " + err.Error()}
 	}
 	return reply.remoteErr()

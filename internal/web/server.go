@@ -66,16 +66,24 @@ import (
 const maxBody = 4 << 20
 
 type Server struct {
-	api  appliance.API
-	ui   fs.FS // the built web interface, or nil
+	api  appliance.API // without Auth; with it, each request's caller (apiFor)
+	ui   fs.FS         // the built web interface, or nil
 	mux  *http.ServeMux
 	uiGz uiGzip // the UI's files, compressed
+
+	auth           Auth // session.go
+	tlsFingerprint string
 }
 
 // New returns a Server for the API and, unless ui is nil, the built web
 // interface (package ui) at every other path.
 func New(api appliance.API, ui fs.FS) *Server {
 	s := &Server{api: api, ui: ui, mux: http.NewServeMux()}
+	s.mux.HandleFunc("GET /api/session", s.getSession)
+	s.mux.HandleFunc("POST /api/session", s.login)
+	s.mux.HandleFunc("DELETE /api/session", s.logout)
+	s.mux.HandleFunc("GET /api/sessions", s.listSessions)
+	s.mux.HandleFunc("DELETE /api/sessions/{id}", s.endSession)
 	s.mux.HandleFunc("GET /api/status", s.status)
 	s.mux.HandleFunc("GET /api/config", s.getLive)
 	s.mux.HandleFunc("GET /api/config/staged", s.getStaged)
@@ -91,38 +99,38 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/leases", s.leaseNames)
 	s.mux.HandleFunc("GET /api/network/arp", s.arpTable)
 	s.mux.HandleFunc("GET /api/network/routes", s.routingTable)
-	s.mux.HandleFunc("GET /api/network/interfaces", getter(s.api.Interfaces))
-	s.mux.HandleFunc("GET /api/network/gateways", getter(s.api.Gateways))
-	s.mux.HandleFunc("GET /api/system", getter(s.api.System))
-	s.mux.HandleFunc("GET /api/system/updates", getter(s.api.Updates))
-	s.mux.HandleFunc("POST /api/system/updates/check", getter(s.api.CheckUpdates))
-	s.mux.HandleFunc("GET /api/pf/status", getter(s.api.PfStatus))
+	s.mux.HandleFunc("GET /api/network/interfaces", getter(s, appliance.API.Interfaces))
+	s.mux.HandleFunc("GET /api/network/gateways", getter(s, appliance.API.Gateways))
+	s.mux.HandleFunc("GET /api/system", getter(s, appliance.API.System))
+	s.mux.HandleFunc("GET /api/system/updates", getter(s, appliance.API.Updates))
+	s.mux.HandleFunc("POST /api/system/updates/check", getter(s, appliance.API.CheckUpdates))
+	s.mux.HandleFunc("GET /api/pf/status", getter(s, appliance.API.PfStatus))
 	s.mux.HandleFunc("GET /api/pf/states", s.pfStates)
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
-	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s.api.RuleCounters))
-	s.mux.HandleFunc("GET /api/logs/firewall", getter(s.api.FirewallLog))
-	s.mux.HandleFunc("GET /api/firewall/tables", getter(func() (tablesBody, error) {
-		t, err := s.api.Tables()
+	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s, appliance.API.RuleCounters))
+	s.mux.HandleFunc("GET /api/logs/firewall", getter(s, appliance.API.FirewallLog))
+	s.mux.HandleFunc("GET /api/firewall/tables", getter(s, func(api appliance.API) (tablesBody, error) {
+		t, err := api.Tables()
 		return tablesBody{t}, err
 	}))
 	s.mux.HandleFunc("POST /api/firewall/aliases/{name}/refresh", s.refreshAlias)
-	s.mux.HandleFunc("GET /api/dns/blocklists", getter(func() (dnsListsBody, error) {
-		l, err := s.api.DNSLists()
+	s.mux.HandleFunc("GET /api/dns/blocklists", getter(s, func(api appliance.API) (dnsListsBody, error) {
+		l, err := api.DNSLists()
 		return dnsListsBody{l}, err
 	}))
 	s.mux.HandleFunc("POST /api/dns/blocklists/{id}/refresh", s.refreshDNSList)
-	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
+	s.mux.HandleFunc("GET /api/dns/stats", getter(s, appliance.API.DNSStats))
 	s.mux.HandleFunc("GET /api/metrics", s.metrics)
 	s.mux.HandleFunc("GET /api/events", s.events)
 	s.mux.HandleFunc("GET /api/logs/system/{log}", s.systemLog)
 	s.mux.HandleFunc("POST /api/dns/tools", s.dnsTool)
-	s.mux.HandleFunc("GET /api/webhooks", getter(func() (webhooksBody, error) {
-		w, err := s.api.Webhooks()
+	s.mux.HandleFunc("GET /api/webhooks", getter(s, func(api appliance.API) (webhooksBody, error) {
+		w, err := api.Webhooks()
 		return webhooksBody{w}, err
 	}))
 	s.mux.HandleFunc("PUT /api/webhooks/{id}/secret", s.setWebhookSecret)
 	s.mux.HandleFunc("POST /api/webhooks/{id}/test", s.testWebhook)
-	s.mux.HandleFunc("GET /api/dns/blocked", getter(s.api.DNSBlocked))
+	s.mux.HandleFunc("GET /api/dns/blocked", getter(s, appliance.API.DNSBlocked))
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
@@ -210,6 +218,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	if strings.HasPrefix(r.URL.Path, "/api/") {
+		r, ok := s.authorize(w, r)
+		if !ok {
+			return
+		}
 		withGzip(w, r, s.mux.ServeHTTP)
 		return
 	}
@@ -243,8 +255,12 @@ func statusFor(c appliance.Code) int {
 		return http.StatusNotFound
 	case appliance.CodeConflict, appliance.CodePending, appliance.CodeNotPending, appliance.CodeModifiedOutside:
 		return http.StatusConflict
-	case appliance.CodeBusy:
+	case appliance.CodeBusy, appliance.CodeRateLimited:
 		return http.StatusTooManyRequests
+	case appliance.CodeUnauthorized:
+		return http.StatusUnauthorized
+	case appliance.CodeForbidden:
+		return http.StatusForbidden
 	}
 	return http.StatusInternalServerError
 }
@@ -296,7 +312,7 @@ func setETag(w http.ResponseWriter, version string) {
 // ---------- configuration ----------
 
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {
-	st, err := s.api.Status()
+	st, err := s.apiFor(r).Status()
 	if err != nil {
 		fail(w, err)
 		return
@@ -305,7 +321,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getLive(w http.ResponseWriter, r *http.Request) {
-	c, err := s.api.Live()
+	c, err := s.apiFor(r).Live()
 	if err != nil {
 		fail(w, err)
 		return
@@ -315,7 +331,7 @@ func (s *Server) getLive(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getStaged(w http.ResponseWriter, r *http.Request) {
-	st, err := s.api.Staged()
+	st, err := s.apiFor(r).Staged()
 	if err != nil {
 		fail(w, err)
 		return
@@ -329,7 +345,7 @@ func (s *Server) putStaged(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	st, err := s.api.Stage(req)
+	st, err := s.apiFor(r).Stage(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -349,7 +365,7 @@ type stageResult struct {
 }
 
 func (s *Server) deleteStaged(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.Discard(); err != nil {
+	if err := s.apiFor(r).Discard(); err != nil {
 		fail(w, err)
 		return
 	}
@@ -359,7 +375,7 @@ func (s *Server) deleteStaged(w http.ResponseWriter, r *http.Request) {
 // ---------- commits ----------
 
 func (s *Server) listCommits(w http.ResponseWriter, r *http.Request) {
-	list, err := s.api.Commits()
+	list, err := s.apiFor(r).Commits()
 	if err != nil {
 		fail(w, err)
 		return
@@ -375,7 +391,7 @@ func (s *Server) createCommit(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	c, err := s.api.Commit(req)
+	c, err := s.apiFor(r).Commit(req)
 	if err != nil {
 		if e := appliance.AsError(err); e.Code == appliance.CodeNothingStaged {
 			writeError(w, http.StatusConflict, e) // the resource exists; its state is wrong
@@ -389,7 +405,7 @@ func (s *Server) createCommit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getCommit(w http.ResponseWriter, r *http.Request) {
-	d, err := s.api.GetCommit(r.PathValue("id"))
+	d, err := s.apiFor(r).GetCommit(r.PathValue("id"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -398,7 +414,7 @@ func (s *Server) getCommit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) confirm(w http.ResponseWriter, r *http.Request) {
-	c, err := s.api.Confirm(r.PathValue("id"))
+	c, err := s.apiFor(r).Confirm(r.PathValue("id"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -407,7 +423,7 @@ func (s *Server) confirm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) revert(w http.ResponseWriter, r *http.Request) {
-	c, err := s.api.Revert(r.PathValue("id"))
+	c, err := s.apiFor(r).Revert(r.PathValue("id"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -423,7 +439,7 @@ func (s *Server) getCommitConfig(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, &appliance.Error{Code: appliance.CodeNotFound, Message: "no such resource"})
 		return
 	}
-	c, err := s.api.CommitConfig(r.PathValue("id"), which)
+	c, err := s.apiFor(r).CommitConfig(r.PathValue("id"), which)
 	if err != nil {
 		fail(w, err)
 		return
@@ -435,7 +451,7 @@ func (s *Server) getCommitConfig(w http.ResponseWriter, r *http.Request) {
 // ---------- DHCP and DNS ----------
 
 func (s *Server) dhcpLeases(w http.ResponseWriter, r *http.Request) {
-	l, err := s.api.DHCPLeases()
+	l, err := s.apiFor(r).DHCPLeases()
 	if err != nil {
 		fail(w, err)
 		return
@@ -444,7 +460,7 @@ func (s *Server) dhcpLeases(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) leaseNames(w http.ResponseWriter, r *http.Request) {
-	n, err := s.api.LeaseNames()
+	n, err := s.apiFor(r).LeaseNames()
 	if err != nil {
 		fail(w, err)
 		return
@@ -457,7 +473,7 @@ func (s *Server) killState(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	if err := s.api.KillState(req); err != nil {
+	if err := s.apiFor(r).KillState(req); err != nil {
 		fail(w, err)
 		return
 	}
@@ -469,7 +485,7 @@ type dnsListsBody struct {
 }
 
 func (s *Server) refreshDNSList(w http.ResponseWriter, r *http.Request) {
-	l, err := s.api.RefreshDNSList(r.PathValue("id"))
+	l, err := s.apiFor(r).RefreshDNSList(r.PathValue("id"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -482,7 +498,7 @@ type tablesBody struct {
 }
 
 func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
-	t, err := s.api.RefreshAlias(r.PathValue("name"))
+	t, err := s.apiFor(r).RefreshAlias(r.PathValue("name"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -501,7 +517,7 @@ func (s *Server) setWebhookSecret(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	res, err := s.api.SetWebhookSecret(r.PathValue("id"), req)
+	res, err := s.apiFor(r).SetWebhookSecret(r.PathValue("id"), req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -511,7 +527,7 @@ func (s *Server) setWebhookSecret(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) testWebhook(w http.ResponseWriter, r *http.Request) {
-	st, err := s.api.TestWebhook(r.PathValue("id"))
+	st, err := s.apiFor(r).TestWebhook(r.PathValue("id"))
 	if err != nil {
 		fail(w, err)
 		return
@@ -524,7 +540,7 @@ func (s *Server) dnsTool(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	res, err := s.api.DNSTool(req)
+	res, err := s.apiFor(r).DNSTool(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -544,7 +560,7 @@ func (s *Server) systemLog(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Limit = n
 	}
-	l, err := s.api.SystemLog(req)
+	l, err := s.apiFor(r).SystemLog(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -575,7 +591,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Limit = n
 	}
-	ev, err := s.api.Events(req)
+	ev, err := s.apiFor(r).Events(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -597,7 +613,7 @@ func (s *Server) pfStates(w http.ResponseWriter, r *http.Request) {
 			*dst = n
 		}
 	}
-	st, err := s.api.PfStates(req)
+	st, err := s.apiFor(r).PfStates(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -623,7 +639,7 @@ func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	m, err := s.api.Metrics(req)
+	m, err := s.apiFor(r).Metrics(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -636,7 +652,7 @@ func (s *Server) startTool(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	run, err := s.api.StartTool(req)
+	run, err := s.apiFor(r).StartTool(req)
 	if err != nil {
 		fail(w, err)
 		return
@@ -654,7 +670,7 @@ func (s *Server) toolRun(w http.ResponseWriter, r *http.Request) {
 		}
 		from = n
 	}
-	run, err := s.api.ToolRun(r.PathValue("id"), from)
+	run, err := s.apiFor(r).ToolRun(r.PathValue("id"), from)
 	if err != nil {
 		fail(w, err)
 		return
@@ -663,7 +679,7 @@ func (s *Server) toolRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) cancelTool(w http.ResponseWriter, r *http.Request) {
-	if err := s.api.CancelTool(r.PathValue("id")); err != nil {
+	if err := s.apiFor(r).CancelTool(r.PathValue("id")); err != nil {
 		fail(w, err)
 		return
 	}
@@ -671,9 +687,9 @@ func (s *Server) cancelTool(w http.ResponseWriter, r *http.Request) {
 }
 
 // getter serves what a read-only API call returns.
-func getter[T any](get func() (T, error)) http.HandlerFunc {
+func getter[T any](s *Server, get func(appliance.API) (T, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		v, err := get()
+		v, err := get(s.apiFor(r))
 		if err != nil {
 			fail(w, err)
 			return
@@ -683,7 +699,7 @@ func getter[T any](get func() (T, error)) http.HandlerFunc {
 }
 
 func (s *Server) arpTable(w http.ResponseWriter, r *http.Request) {
-	t, err := s.api.ARPTable()
+	t, err := s.apiFor(r).ARPTable()
 	if err != nil {
 		fail(w, err)
 		return
@@ -692,7 +708,7 @@ func (s *Server) arpTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routingTable(w http.ResponseWriter, r *http.Request) {
-	t, err := s.api.RoutingTable()
+	t, err := s.apiFor(r).RoutingTable()
 	if err != nil {
 		fail(w, err)
 		return

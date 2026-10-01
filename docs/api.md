@@ -5,7 +5,9 @@ unprivileged web process (`internal/web`) and backed by the root
 process (`internal/appliance`, over `internal/privsep`), which validates
 everything it's given.
 
-There is no authentication yet; see TODO.md.
+Every request but signing in needs a session (see Signing in). The
+mock server (`opf -mock`) has no accounts unless it's started with
+`-mock-login name:password`.
 
 ## Conventions
 
@@ -36,7 +38,53 @@ There is no authentication yet; see TODO.md.
 | `commit_pending` | 409 | a commit is waiting for confirmation; nothing else can change until it's kept or reverted |
 | `not_pending` | 409 | the commit isn't the one waiting (perhaps it just timed out) |
 | `modified_outside` | 409 | files were edited outside OPF; `details[].path` lists them |
+| `unauthorized` | 401 | not signed in, the session ended, or the name or password is wrong |
+| `forbidden` | 403 | signed in, but the role doesn't allow it |
+| `rate_limited` | 429 | too many failed sign-ins from this name or address; the message says when to try again |
 | `internal` | 500 | logged on the server; the message says only "internal error" |
+
+## Signing in
+
+Accounts are OpenBSD's own, checked by the privileged process with the
+account's login style (bsd_auth's `login_<style>`, from login.conf's
+`auth-opf` or `auth`). A user's groups give their role:
+
+| group | role | may |
+|---|---|---|
+| `_opfadmin` | `admin` | everything |
+| `_opfoperator` | `operator` | look; confirm or revert a commit; run tools; refresh lists; kill states; forget cached DNS answers; test webhooks |
+| `_opfview` | `view` | look |
+
+Anyone in none of them can't sign in, root included.
+
+- `GET /api/session`: `{"accounts", "session", "tls"}`. `accounts` is
+  false on a server without them; `session` (`{"id", "user", "role",
+  "source", "created", "lastUsed"}`) is there when signed in; `tls` is
+  the SHA-256 of the certificate served, which OPF also logs at start,
+  to compare before trusting it.
+- `POST /api/session` with `{"user", "password"}`: signs in, answering
+  as `GET` does, with the session in a cookie, `__Host-opf`: `Secure`,
+  `HttpOnly`, `SameSite=Strict`, for the path `/`. The token is never
+  in a body. A wrong name, a wrong password and an account in none of
+  the groups all answer the same `unauthorized`, after at least a
+  second. After a failure, the name and the address each wait a second
+  before the next try, doubling up to five minutes (`rate_limited`).
+- `DELETE /api/session`: signs out (204) and clears the cookie.
+- `GET /api/sessions`: `{"sessions"}`, your own; an admin's,
+  everyone's.
+- `DELETE /api/sessions/{id}`: ends one of yours; an admin, anyone's.
+
+A session ends after 30 minutes unused or 12 hours in all, when OPF
+restarts, and when its account changes: a new password, leaving the
+groups, or expiring (checked each minute). Only requests marked
+`X-OPF-Active: 1` count as using it; the UI marks those made within a
+minute of someone touching the page, so a page left open, polling,
+still signs out. A commit records its author from the session, and its
+log who confirmed or reverted it.
+
+Plain HTTP is only served on a loopback address (for `ssh -L`); on any
+other, `opf` serves HTTPS with a self-signed certificate it makes on
+first start (`<state>/tls`), or one put there in its place.
 
 ## Making a change
 

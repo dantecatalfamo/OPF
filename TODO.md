@@ -256,7 +256,9 @@ diffs, whether confirmation is needed, and the server's objections.
   stats are live, with a month of history for traffic, the system, pf,
   DNS and gateways. `ui/src/model/live.ts` only feeds the offline
   preview.
-- **Missing:** authentication, importing an existing system.
+- **Missing:** importing an existing system. Accounts and sessions are
+  built (Security › User accounts), not yet tried with a right password
+  on OpenBSD.
 - **On OpenBSD:** runs under pledge and unveil on 7.9 with `-dry
   -checks` (Verify on real OpenBSD); real commits haven't been made on a
   machine yet.
@@ -1051,9 +1053,40 @@ them, so they can be graphed and compared):
   next to text an attacker influences (BREACH). Sessions go in cookies,
   which aren't compressed.
 
-### User accounts (sketch)
+### User accounts
 
-A first design, to argue with before building. Today anyone who can
+Built (2026-09-30), as sketched below: system accounts in `_opfadmin`,
+`_opfoperator` and `_opfview`, checked in the parent with the
+account's login style (`internal/auth`); sessions in the parent, every
+RPC carrying its token and checked against a role per method
+(`internal/privsep/auth.go`, a test makes sure no method is left out);
+the `__Host-opf` cookie; backoff per name and address, failures
+padded to a second; the session ending idle (only active use counts),
+at 12 hours, and when the account changes; TLS with a self-signed
+certificate unless on loopback; the sign-in page; commits' authors
+and who confirmed or reverted, from the session; sign-ins in the event
+log (kind `login`, so webhooks can send them). See docs/api.md.
+
+Still to do:
+
+- [ ] Sign in with a right password on OpenBSD. Wrong passwords,
+      unknown users and paths as names are refused by the real
+      `login_passwd` on openbsd-dev; accepting one needs an account
+      with a known password there (ask first).
+- [ ] No HSTS: with a self-signed certificate it would stop anyone
+      clicking through the browser's warning, and so lock them out.
+      Send it once the certificate is one they put there (or ACME).
+- [ ] Sign-ins go to OPF's log and the event log, not syslog's
+      authlog: the parent's pledge has no "unix" for /dev/log.
+      sendsyslog(2) is allowed under "stdio"; use it.
+- [ ] The UI shows every control to every role, and the server's 403
+      says no. Hide or disable what the role can't do, and say why.
+- [ ] A page listing your sessions (and an admin's, everyone's), with
+      ending them; the API is there.
+- [ ] Re-authentication for sensitive actions, the account pages, API
+      tokens and two-factor, as below.
+
+The design: Today anyone who can
 reach the port can do anything, and a compromised web process could
 call Stage and Commit directly, so accounts have to be enforced in the
 parent, and the web process must never be the one deciding who
@@ -1142,12 +1175,12 @@ later. bsd_auth's YubiKey style already works through system logins.
 **Development.** The mock keeps working without accounts, loopback
 only, with a banner saying so; `-dry` on OpenBSD can use real accounts.
 
-- [ ] Build the above, starting with system accounts in `_opfadmin`,
-      sessions checked in the parent, the cookie, TLS and the sign-in
-      page; then roles, re-authentication, the account pages, API
-      tokens and two-factor.
-- [ ] Check the bsd_auth helper protocol and pledge/unveil needs on
-      OpenBSD before choosing it over cgo.
+- [x] The bsd_auth helper rather than cgo: `login_<style> -s response` with
+      "\0password\0" on descriptor 3, answering "authorize" or
+      "reject" there; checked on 7.9. The parent unveils
+      /usr/libexec/auth to run it, and reads master.passwd (the login
+      class), group and login.conf. An unknown user is refused in 0.02 s
+      against bcrypt's 0.07 s, hence the padding to a second.
 - [ ] Anyone who can commit can get root: rc.conf.local is sourced by
       rc(8), and sshd_config and httpd.conf are powerful. That comes with
       the product, but it's why authentication and audit logging matter.
