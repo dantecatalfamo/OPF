@@ -3,7 +3,7 @@
 // server: localApi answers the status calls with these, in the API's
 // shapes, for its own live model.
 import type {
-  BlockedName, DnsBlockedResource, GraphGroup, OpfEvent, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
+  BlockedName, DnsBlockedResource, GraphGroup, LogLine, OpfEvent, SystemLogName, MetricSeries, MetricsResource, DnsStatsResource, FirewallLogEntry, FirewallLogResource, GatewaysResource, InterfaceState, InterfacesResource, PfState, PfStatesResource, PfStatusResource,
   RuleCountersResource, SystemResource, UpdatesResource,
 } from '../lib/api';
 import type { Iface, Model } from './types';
@@ -370,4 +370,27 @@ export function sampleEvents(m: Model): OpfEvent[] {
     { time: at(now - 6 * day), kind: 'opf', message: 'OPF started' },
   ];
   return es.sort((a, b) => (a.time < b.time ? 1 : -1));
+}
+
+// The preview's system logs: a day of an office firewall's, newest first.
+const sampleLogSources: Record<Exclude<SystemLogName, 'dmesg'>, [string, number, string[]][]> = {
+  messages: [['/bsd', 0, ['em1: link state changed to UP', 'vlan20: link state changed to UP']], ['ntpd', 1234, ['peer 162.159.200.1 now valid', 'clock is now synced']], ['dhcpleased', 3321, ['em0: 203.0.113.24 lease renewed']]],
+  daemon: [['dhcpd', 5512, ['DHCPACK on 192.168.1.40 to 3c:22:fb:10:aa:01 via em1', 'DHCPREQUEST for 192.168.1.112 from 3c:22:fb:91:04:7d via em1']], ['unbound', 0, ['[29114:0] info: start of service (unbound 1.26.1).']]],
+  authlog: [['sshd', 88213, ['Accepted publickey for admin from 192.168.1.112 port 51022 ssh2', 'Invalid user oracle from 45.95.147.10 port 40122', 'Failed password for root from 162.142.125.9 port 58821 ssh2']], ['doas', 0, ['admin ran command rcctl restart unbound as root from /home/admin']]],
+  maillog: [['smtpd', 7780, ['info: OpenSMTPD 7.9.0 starting']]],
+};
+
+export function sampleSystemLog(log: SystemLogName): LogLine[] {
+  if (log === 'dmesg') {
+    return ['OpenBSD 7.9 (GENERIC.MP) #15: Sun Sep 27 02:47:36 MDT 2026', 'real mem = 4261412864 (4063MB)', 'cpu0: AMD GX-412TC SOC, 998.28 MHz', 'em0 at pci1 dev 0 function 0 "Intel I210" rev 0x03, msi', 'em1 at pci2 dev 0 function 0 "Intel I210" rev 0x03, msi', 'sd0: 30533MB, 512 bytes/sector, 62533296 sectors', 'root on sd0a swap on sd0b dump on sd0b']
+      .reverse().map((message) => ({ message }));
+  }
+  const r = rng(log.length * 131);
+  const srcs = sampleLogSources[log];
+  const out: LogLine[] = [];
+  for (let i = 0; i < 160; i++) {
+    const [program, pid, lines] = srcs[Math.floor(r() * srcs.length)];
+    out.push({ time: new Date(Date.now() - i * 9 * 60_000 - Math.floor(r() * 60_000)).toISOString(), host: 'gw', program, pid: pid || undefined, message: lines[Math.floor(r() * lines.length)] });
+  }
+  return out;
 }

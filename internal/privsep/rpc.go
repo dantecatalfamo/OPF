@@ -155,6 +155,10 @@ type (
 		Result
 		Secret *appliance.WebhookSecretResult
 	}
+	SystemLogReply struct {
+		Result
+		Log *appliance.SystemLog
+	}
 	EventsReply struct {
 		Result
 		Events *appliance.Events
@@ -346,6 +350,13 @@ func (s *Service) TestWebhook(a IDArgs, r *WebhookReply) error {
 	var err error
 	r.Webhook, err = s.api.TestWebhook(a.ID)
 	r.set("TestWebhook", err)
+	return nil
+}
+
+func (s *Service) SystemLog(a appliance.SystemLogRequest, r *SystemLogReply) error {
+	var err error
+	r.Log, err = s.api.SystemLog(a)
+	r.set("SystemLog", err)
 	return nil
 }
 
@@ -774,6 +785,15 @@ func (c *Client) TestWebhook(id string) (*appliance.WebhookStatus, error) {
 	var r WebhookReply
 	err := c.call("TestWebhook", IDArgs{id}, &r)
 	return r.Webhook, err
+}
+
+func (c *Client) SystemLog(req appliance.SystemLogRequest) (*appliance.SystemLog, error) {
+	var r SystemLogReply
+	err := c.call("SystemLog", req, &r)
+	if l := r.Log; l != nil {
+		l.Lines, l.Programs = nonNil(l.Lines), nonNil(l.Programs)
+	}
+	return r.Log, err
 }
 
 func (c *Client) Events(req appliance.EventsRequest) (*appliance.Events, error) {

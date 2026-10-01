@@ -8,12 +8,12 @@ import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
 import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
-import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
+import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleSystemLog, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type MetricsResource, type EventsRequest, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type MetricsResource, type EventsRequest, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -267,6 +267,12 @@ export const localApi = {
     const st = { ...previewHooks.get(id), id, lastAttempt: new Date().toISOString(), lastError: 'The preview can’t send anything; on a firewall this would.' };
     previewHooks.set(id, st);
     return st;
+  },
+  systemLog: async (log: SystemLogName, r: SystemLogRequest = {}): Promise<SystemLogResource> => {
+    const all = sampleSystemLog(log);
+    const q = r.query?.toLowerCase();
+    const match = all.filter((l) => (!r.program || l.program === r.program) && (!q || `${l.program ?? ''} ${l.message}`.toLowerCase().includes(q)));
+    return { log, lines: match.slice(0, r.limit || 300), matched: match.length, read: all.length, programs: [...new Set(all.map((l) => l.program).filter((p): p is string => !!p))].sort() };
   },
   events: async (r: EventsRequest = {}): Promise<EventsResource> => {
     const all = sampleEvents(live)

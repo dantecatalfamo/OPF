@@ -1,0 +1,65 @@
+[
+  {
+    "time": "2026-09-30T09:12:01Z",
+    "host": "gw",
+    "program": "syslogd",
+    "pid": 43102,
+    "message": "restart"
+  },
+  {
+    "time": "2026-09-30T09:12:01Z",
+    "host": "gw",
+    "program": "/bsd",
+    "message": "em1: link state changed to UP"
+  },
+  {
+    "time": "2026-09-30T09:14:22Z",
+    "host": "gw",
+    "program": "sshd",
+    "pid": 88213,
+    "message": "Accepted publickey for admin from 192.168.1.112 port 51022 ssh2: ED25519 SHA256:x"
+  },
+  {
+    "time": "2026-09-30T09:14:22Z",
+    "host": "gw",
+    "program": "sshd",
+    "pid": 88213,
+    "message": "pam_unix(sshd:session): session opened"
+  },
+  {
+    "time": "2026-09-30T09:20:05Z",
+    "host": "gw",
+    "program": "doas",
+    "message": "admin ran command rcctl restart unbound as root from /home/admin"
+  },
+  {
+    "time": "2026-09-30T09:20:05Z",
+    "host": "gw",
+    "message": "last message repeated 2 times"
+  },
+  {
+    "time": "2026-09-01T10:00:00Z",
+    "host": "gw",
+    "program": "ntpd",
+    "pid": 1234,
+    "message": "clock is now synced"
+  },
+  {
+    "time": "2026-09-30T09:21:00Z",
+    "host": "gw",
+    "program": "unbound",
+    "message": "[29114:0] info: rpz: applied [opf:list:ads] *.example.net. rpz-local-data 192.0.2.10@53211 ads.example.net. A IN"
+  },
+  {
+    "time": "2026-09-30T09:22:00Z",
+    "host": "gw",
+    "program": "dhcpd",
+    "pid": 5512,
+    "message": "DHCPACK on 192.168.1.40 to 3c:22:fb:10:aa:01 (priya-ipad) via em1"
+  },
+  {
+    "time": "2026-09-30T09:23:00Z",
+    "host": "gw",
+    "message": "sshd[bad]: odd pid"
+  }
+]

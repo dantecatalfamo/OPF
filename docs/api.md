@@ -403,6 +403,17 @@ every 10 minutes for a week and every hour for the month.
   because the group is full. Lowering a cap forgets the things updated
   least recently beyond it.
 
+### System logs
+
+- `GET /api/logs/system/{log}?q=<search>&program=<name>&limit=`: `log` is
+  `messages`, `daemon`, `authlog`, `maillog` or `dmesg`. `{"log",
+  "lines": [{"time", "host", "program", "pid", "message"}], "matched",
+  "read", "programs"}`: the last 5,000 lines of the log, parsed, those
+  of `program` containing `q` (case-insensitive), newest first, at most
+  `limit` (300 by default, 1000 at most). The kernel's (`dmesg`) have
+  only `message`. Lines are cleaned of control characters and capped at
+  2,000 characters.
+
 ### Events
 
 - `GET /api/events?kind=link,gateway&q=<search>&before=<RFC 3339 time>&limit=`:

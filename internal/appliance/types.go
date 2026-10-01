@@ -57,6 +57,7 @@ type API interface {
 	DNSBlocked() (*DNSBlocked, error)
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)
+	SystemLog(SystemLogRequest) (*SystemLog, error)
 	Webhooks() ([]WebhookStatus, error)
 	SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error)
 	TestWebhook(id string) (*WebhookStatus, error)

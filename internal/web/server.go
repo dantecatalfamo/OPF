@@ -114,6 +114,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/stats", getter(s.api.DNSStats))
 	s.mux.HandleFunc("GET /api/metrics", s.metrics)
 	s.mux.HandleFunc("GET /api/events", s.events)
+	s.mux.HandleFunc("GET /api/logs/system/{log}", s.systemLog)
 	s.mux.HandleFunc("GET /api/webhooks", getter(func() (webhooksBody, error) {
 		w, err := s.api.Webhooks()
 		return webhooksBody{w}, err
@@ -515,6 +516,26 @@ func (s *Server) testWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
+}
+
+// systemLog answers ?q=<search>&program=<name>&limit=.
+func (s *Server) systemLog(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := appliance.SystemLogRequest{Log: r.PathValue("log"), Query: q.Get("q"), Program: q.Get("program")}
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			badRequest(w, http.StatusBadRequest, "limit is a number")
+			return
+		}
+		req.Limit = n
+	}
+	l, err := s.api.SystemLog(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, l)
 }
 
 // events answers ?kind=link,gateway&q=<search>&before=<RFC 3339 time>&limit=.

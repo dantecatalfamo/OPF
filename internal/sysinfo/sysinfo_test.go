@@ -252,6 +252,7 @@ func FuzzParsers(f *testing.F) {
 		ParseUnboundStats(s)
 		ParseRPZLog(s, time.Now())
 		ParseProcessRSS(s, "unbound")
+		ParseSyslog(s, time.Now())
 	})
 }
 
@@ -411,4 +412,11 @@ func TestParseProcessRSS(t *testing.T) {
 	if _, ok := ParseProcessRSS(" 12 init\n", "unbound"); ok {
 		t.Error("found a process that isn't there")
 	}
+}
+
+func TestParseSyslog(t *testing.T) {
+	now := time.Date(2026, 9, 30, 17, 0, 0, 0, time.UTC)
+	eachFixture(t, "syslog_messages.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "syslog_messages", ParseSyslog(out, now))
+	})
 }

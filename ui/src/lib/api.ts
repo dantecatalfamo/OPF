@@ -455,6 +455,35 @@ export interface MetricsResource {
   groups: GraphGroup[];
 }
 
+export type SystemLogName = 'messages' | 'daemon' | 'authlog' | 'maillog' | 'dmesg';
+
+/** A line of a system log; the kernel's have no time or program. */
+export interface LogLine {
+  time?: string;
+  host?: string;
+  program?: string;
+  pid?: number;
+  message: string;
+}
+
+/** A page of a system log (GET /api/logs/system/{log}), newest first. */
+export interface SystemLogResource {
+  log: SystemLogName;
+  lines: LogLine[];
+  /** How many of the lines read match. */
+  matched: number;
+  /** How many lines were read from the end of the log. */
+  read: number;
+  programs: string[];
+  error?: string;
+}
+
+export interface SystemLogRequest {
+  query?: string;
+  program?: string;
+  limit?: number;
+}
+
 export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit';
 
 /** Something that happened (GET /api/events). */
@@ -659,6 +688,13 @@ export const api = {
   /** Sets a webhook's URL and key now; the answer has a generated key, the only time it's shown. */
   setWebhookSecret: (id: string, r: WebhookSecretRequest) => request<WebhookStatus & { key?: string }>('PUT', `/webhooks/${enc(id)}/secret`, r),
   testWebhook: (id: string) => request<WebhookStatus>('POST', `/webhooks/${enc(id)}/test`),
+  systemLog: (log: SystemLogName, r: SystemLogRequest = {}) => {
+    const q = new URLSearchParams();
+    if (r.query) q.set('q', r.query);
+    if (r.program) q.set('program', r.program);
+    if (r.limit) q.set('limit', String(r.limit));
+    return request<SystemLogResource>('GET', `/logs/system/${log}${q.size ? `?${q}` : ''}`);
+  },
   events: (r: EventsRequest = {}) => {
     const q = new URLSearchParams();
     if (r.kinds?.length) q.set('kind', r.kinds.join(','));

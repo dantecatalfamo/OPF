@@ -719,8 +719,15 @@ Network, VPN and logs:
       (dpinger-like, in the collector) would keep loss and latency over
       time and could drive gateway-group failover (Models and
       generators › Multi-WAN).
-- [ ] System logs → `GET /api/logs/{dmesg,messages,daemon,authlog}`: a
-      Diagnostics › System logs page with a tab each.
+- [x] System logs (Diagnostics › System logs, `GET /api/logs/system/{log}`):
+      messages, daemon, authlog, maillog and dmesg, the last 5,000
+      lines read as root, filtered by text and program on the firewall,
+      cleaned, newest first (the kernel's in its order), with follow.
+      Read correctly on openbsd-dev.
+- [ ] The rotated copies (`messages.0.gz` ...) for further back, and a
+      download of a whole log.
+- [ ] Logins (authlog) are personal data: once there are accounts, only
+      admins read them (Security › User accounts).
 
 Diagnostics tools (everything in the base system that helps someone
 work out what's wrong, each with a form rather than a command line):

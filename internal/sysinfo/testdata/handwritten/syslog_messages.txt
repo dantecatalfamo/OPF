@@ -1,0 +1,12 @@
+Sep 30 09:12:01 gw syslogd[43102]: restart
+Sep 30 09:12:01 gw /bsd: em1: link state changed to UP
+Sep 30 09:14:22 gw sshd[88213]: Accepted publickey for admin from 192.168.1.112 port 51022 ssh2: ED25519 SHA256:x
+Sep 30 09:14:22 gw sshd[88213]: pam_unix(sshd:session): session opened
+Sep 30 09:20:05 gw doas: admin ran command rcctl restart unbound as root from /home/admin
+Sep 30 09:20:05 gw last message repeated 2 times
+Sep  1 10:00:00 gw ntpd[1234]: clock is now synced
+Sep 30 09:21:00 gw unbound: [29114:0] info: rpz: applied [opf:list:ads] *.example.net. rpz-local-data 192.0.2.10@53211 ads.example.net. A IN
+Sep 30 09:22:00 gw dhcpd[5512]: DHCPACK on 192.168.1.40 to 3c:22:fb:10:aa:01 (priya-ipad) via em1
+not a syslog line
+Sep 30 09:23:00 gw sshd[bad]: odd pid
+	continuation of something
