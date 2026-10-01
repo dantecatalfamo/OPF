@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -67,7 +68,14 @@ type Store struct {
 
 	mu      sync.Mutex
 	pending *pendingCommit
+	// expired is called, without the lock, after a commit that wasn't
+	// confirmed in time has been reverted.
+	expired atomic.Pointer[func()]
 }
+
+// OnExpire sets a function called after a commit that wasn't confirmed
+// in time has been reverted: what the system runs may have reloaded.
+func (s *Store) OnExpire(f func()) { s.expired.Store(&f) }
 
 type Options struct {
 	Root     string

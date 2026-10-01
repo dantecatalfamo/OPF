@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -182,7 +183,10 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		p.timer = time.AfterFunc(s.confirmTimeout, func() { s.expire(p) })
 		s.pending = p
 	}
-	return e, nil
+	// A copy: the confirm timeout may revert the entry meanwhile.
+	out := *e
+	out.Files = slices.Clone(e.Files)
+	return &out, nil
 }
 
 // Pending returns the commit waiting for confirmation, if any.
@@ -240,16 +244,26 @@ func (s *Store) Revert(ctx context.Context) error {
 }
 
 func (s *Store) expire(p *pendingCommit) {
+	if !s.expireLocked(p) {
+		return
+	}
+	if f := s.expired.Load(); f != nil {
+		(*f)()
+	}
+}
+
+func (s *Store) expireLocked(p *pendingCommit) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending != p {
-		return // confirmed or reverted in the meantime
+		return false // confirmed or reverted in the meantime
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	if err := s.revertPending(ctx, "Not confirmed in time; reverted."); err != nil {
 		log.Printf("config: reverting %s: %v", p.entry.ID, err)
 	}
+	return true
 }
 
 func (s *Store) revertPending(ctx context.Context, reason string) error {

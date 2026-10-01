@@ -582,3 +582,30 @@ func TestRcConfLocalKeepsOtherLines(t *testing.T) {
 		t.Errorf("hand-disabled dhcpd: %v", err)
 	}
 }
+
+// A commit reverted because nobody confirmed it reports the change, so
+// the lease watcher puts DHCP names back in the reloaded resolver.
+func TestTimeoutRevertReportsChange(t *testing.T) {
+	e := newEnv(t, 50*time.Millisecond)
+	changed := make(chan struct{}, 4)
+	e.m.OnChange(func() { changed <- struct{}{} })
+	m := e.live().Model
+	m.Firewall.Rules[0].Description += " (edited)"
+	st, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: m})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version})
+	if err != nil || c.Status != "pending" {
+		t.Fatalf("%+v %v", c, err)
+	}
+	<-changed // the commit's
+	select {
+	case <-changed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("no change reported after the confirm timeout")
+	}
+	if e.m.store.Pending() != nil {
+		t.Error("still pending")
+	}
+}

@@ -251,8 +251,9 @@ func printable(s string, max int) string {
 }
 
 // OnChange sets a function called, without the lock held, after each
-// commit or revert has been attempted: something the system runs may
-// have been reloaded. Set it before serving.
+// commit or revert has been attempted, the confirm timeout's included:
+// something the system runs may have been reloaded. Set it before
+// serving.
 func (m *Manager) OnChange(f func()) { m.onChange = f }
 
 func (m *Manager) changed() {
@@ -273,7 +274,10 @@ func New(store *config.Store) (*Manager, error) {
 	if _, err := store.LookupPath(pf.RcPath); err != nil {
 		return nil, fmt.Errorf("appliance: the file registry has no %s", pf.RcPath)
 	}
-	return &Manager{store: store}, nil
+	m := &Manager{store: store}
+	// A revert by the confirm timeout reloads things too.
+	store.OnExpire(m.changed)
+	return m, nil
 }
 
 // EncodeModel is the model file's exact contents for a model.
@@ -744,6 +748,9 @@ func (m *Manager) commit(req CommitRequest) (*Commit, error) {
 	if model.DNS.Enabled && reloadsResolver(e) {
 		m.timeReload()
 	}
+	if m.store.Pending() == nil {
+		go m.pruneDownloads() // once this returns and unlocks
+	}
 	return commitOf(e), nil
 }
 
@@ -810,6 +817,7 @@ func (m *Manager) Confirm(id string) (*Commit, error) {
 		}
 		return nil, apiError(err)
 	}
+	go m.pruneDownloads() // once this returns and unlocks
 	return m.commitByID(id)
 }
 

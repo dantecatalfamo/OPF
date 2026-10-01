@@ -291,3 +291,69 @@ func TestOwnNamesReloadOnlyTheirZone(t *testing.T) {
 		t.Errorf("own names alone: %q", cmds)
 	}
 }
+
+// A list's downloads go once it's out of the configuration for good:
+// not while it's only turned off, nor while the commit removing it can
+// still be reverted.
+func TestPruneDownloads(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	e.m.Fetcher = &fetch{body: "ads.example.com\n"}
+	if err := stageCommit(t, e, withDNSList(t, e, pf.BlockAnswerNull)); err != nil {
+		t.Fatal(err)
+	}
+	files := []string{filepath.Join(pf.DNSListsDir, "hosts"), pf.DNSListZonePath("hosts", pf.BlockAnswerNull)}
+	there := func(want bool) {
+		t.Helper()
+		e.m.pruneDownloads()
+		for _, f := range files {
+			if got := e.read(f) != "<missing>"; got != want {
+				t.Errorf("%s there = %v, want %v", f, got, want)
+			}
+		}
+	}
+	there(true)
+
+	// Turned off: kept.
+	m := e.live().Model
+	m.DNS.Blocklists[0].Enabled = false
+	if err := stageCommit(t, e, m); err != nil {
+		t.Fatal(err)
+	}
+	there(true)
+
+	// Removed, but the commit can still be reverted: kept.
+	m = e.live().Model
+	m.DNS.Blocklists = nil
+	m.DNS.Blocked, m.DNS.Allowed = nil, nil
+	m.Firewall.Rules[0].Description += " (edited)" // pf.conf: confirmed
+	st, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: m})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Status != "pending" {
+		t.Fatalf("commit %s, not waiting for confirmation", c.Status)
+	}
+	there(true)
+	if _, err := e.m.Confirm(c.ID); err != nil {
+		t.Fatal(err)
+	}
+	there(false)
+	// Another alias's table, or a file being written, is left alone.
+	if e.read(pf.TablePath(sampleURLAlias(t, e))) == "<missing>" {
+		t.Error("removed a URL alias's table that's still in the configuration")
+	}
+}
+
+func sampleURLAlias(t *testing.T, e *env) string {
+	for _, a := range e.live().Model.Firewall.Aliases {
+		if a.Type == pf.AliasURL {
+			return a.Name
+		}
+	}
+	t.Fatal("the sample has no URL alias")
+	return ""
+}

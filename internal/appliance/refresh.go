@@ -3,6 +3,9 @@ package appliance
 import (
 	"context"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -83,6 +86,7 @@ func (m *Manager) RunRefresher(ctx context.Context, interval time.Duration) {
 	defer t.Stop()
 	for {
 		m.refreshDue(ctx)
+		m.pruneDownloads()
 		select {
 		case <-ctx.Done():
 			return
@@ -111,5 +115,71 @@ func (m *Manager) refreshDue(ctx context.Context) {
 				log.Printf("refreshing DNS blocklist %s: %v", l.Name, err)
 			}
 		}
+	}
+}
+
+// pruneDownloads removes what was downloaded for lists the
+// configuration no longer has: a URL alias's table, a blocklist's names
+// and zones. A list that's only turned off keeps them, and so does one
+// in the staged configuration. Nothing is removed while a commit waits
+// for confirmation, since reverting it needs its lists, and the lock
+// keeps a commit from downloading lists for its model, not yet live,
+// meanwhile.
+func (m *Manager) pruneDownloads() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.store.Pending() != nil {
+		return
+	}
+	live, _, err := m.live()
+	if err != nil || live == nil {
+		return
+	}
+	models := []*pf.Model{live}
+	if data, staged, err := m.stagedModel(); err == nil && staged {
+		if sm, err := decodeModel(data); err == nil {
+			models = append(models, sm)
+		} else {
+			return // unsure what's wanted: keep everything
+		}
+	} else if err != nil {
+		return
+	}
+	tables, lists := map[string]bool{}, map[string]bool{}
+	for _, md := range models {
+		for _, a := range md.Firewall.Aliases {
+			if a.Type == pf.AliasURL {
+				tables[filepath.Base(pf.TablePath(a.Name))] = true
+			}
+		}
+		for _, l := range md.DNS.Blocklists {
+			lists[l.ID] = true
+			for _, a := range []pf.BlockAnswer{pf.BlockAnswerNull, pf.BlockAnswerNXDomain} {
+				lists[filepath.Base(pf.DNSListZonePath(l.ID, a))] = true
+			}
+		}
+	}
+	m.prune(filepath.Dir(pf.TablePath("x")), tables)
+	m.prune(pf.DNSListsDir, lists)
+	m.prune(filepath.Dir(pf.DNSListZonePath("x", pf.BlockAnswerNull)), lists)
+}
+
+// prune removes the files in dir (a system path) not in keep. Files
+// being written (writeAtomic's dot files) and directories are left.
+func (m *Manager) prune(dir string, keep map[string]bool) {
+	entries, err := os.ReadDir(m.store.SystemPath(dir))
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if keep[e.Name()] || strings.HasPrefix(e.Name(), ".") || !e.Type().IsRegular() {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if err := os.Remove(m.store.SystemPath(path)); err != nil {
+			log.Printf("removing %s: %v", path, err)
+			continue
+		}
+		log.Printf("removed %s: its list isn't in the configuration any more", path)
 	}
 }
