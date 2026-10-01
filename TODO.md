@@ -1240,11 +1240,21 @@ Stop it by the PID it wrote; never pkill.
       checked against a 7.9 capture with pf's default ruleset, which has
       none of these. Capture them and move them to
       `testdata/openbsd-<release>/`.
-- [ ] The syslog prefix of unbound's rpz-log lines in `/var/log/daemon`
-      (`Sep 29 10:00:00 host unbound: [pid:tid] info: ...`). The message
-      itself is as unbound 1.26.1 wrote it on 7.9 (captured from its
-      own logfile, to keep the host's syslog untouched); the prefix
-      follows unbound's log.c and syslogd.
+- [ ] unbound's lines in `/var/log/daemon`, as syslogd writes them.
+      The DNS page's "Blocked most" (`DNSBlocked`, `sysinfo.ParseRPZLog`)
+      and System logs › Daemons read them, expecting
+      `Sep 29 10:00:00 host unbound: [pid:tid] info: rpz: applied
+      [opf:list:<id>] <entry>. rpz-local-data <client>@<port> <name>. A IN`.
+      The message is as unbound 1.26.1 wrote it on 7.9 (captured from its
+      own logfile, to keep the host's syslog untouched); the prefix before
+      it (`unbound: [pid:tid] info:`) is only what unbound's log.c and
+      syslogd should write, never seen. If it differs, no blocked name is
+      ever counted, silently. To check, on a host where it's fine to
+      write to the system log: run unbound with `use-syslog: yes` and
+      OPF's rpz sections (or let OPF run the real resolver with a
+      blocklist), look up a listed name, then read the line in System
+      logs › Daemons and see "Blocked most" count it. Keep a captured
+      line as a fixture in `testdata/openbsd-7.9/`.
 - [x] The webhook sender on OpenBSD 7.9 (`-dry` on openbsd-dev): under
       its pledge and unveil it resolved names and made a verified TLS
       connection (example.com), refused unknown hosts, closed ports and
