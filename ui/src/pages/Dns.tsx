@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Grid, Group, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Badge, Button, Card, Divider, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
-import { LocalNames } from './DnsRecords';
+import { LocalDomains, LocalNames } from './DnsRecords';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
@@ -40,12 +40,14 @@ function describeSettings(before: Settings, after: Settings): string {
 // How often the page asks what the lease watcher found; it looks every 15 s.
 const LEASE_POLL_MS = 15_000;
 
-// The names DHCP devices have in DNS right now, and the ones that were
-// refused. The server keeps them up to date; this only shows them.
-function LeaseNames() {
+// The names DHCP devices have in DNS right now, and the ones refused,
+// one card with a switch between them. The server keeps them up to
+// date; this only shows them.
+function DeviceNames() {
   const { applied } = useStore();
   const [data, setData] = useState<LeaseNamesResource | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [view, setView] = useState<'given' | 'refused'>('given');
   const now = useNow(5000);
   useEffect(() => {
     let live = true;
@@ -62,55 +64,62 @@ function LeaseNames() {
   const domain = applied.system.domain;
   if (!applied.dns.registerDynamicLeases && !data?.enabled) return null;
   const refused = data?.refused ?? [];
+  const showing = refused.length ? view : 'given';
   return (
-    <>
-      <Grid.Col span={{ base: 12, lg: 6 }}>
-        <Card h="100%">
-          <SectionTitle right={data?.checked && <Text size="xs" c="dimmed">Checked {formatAgo((now - Date.parse(data.checked)) / 1000)}</Text>}>
-            DHCP devices by name
-          </SectionTitle>
-          <Stack gap="sm">
-            {failed && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
-            {data?.error && <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
-            {data && !data.enabled && <Text size="sm" c="dimmed">Starts once “Add other DHCP devices by name” is applied.</Text>}
-            {data?.enabled && (
-              <>
-                <Text size="sm" c="dimmed">
-                  Names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
-                </Text>
-                {data.registered.length ? (
-                  <Table.ScrollContainer minWidth={360}>
-                    <Table>
-                      <Table.Tbody>
-                        {data.registered.map((r) => (
-                          <Table.Tr key={r.name}>
-                            <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                              <Mono>{r.name}</Mono>
-                              {/* Chosen by the device; shown as text, never markup. */}
-                              {r.from && <Text size="xs" c="dimmed">from “{r.from}”</Text>}
-                            </Table.Td>
-                            <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  </Table.ScrollContainer>
-                ) : (
-                  <Empty>No devices have names from their leases yet.</Empty>
-                )}
-                {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
-              </>
+    <Card>
+      <SectionTitle
+        right={
+          <Group gap="sm">
+            {data?.checked && <Text size="xs" c="dimmed">Checked {formatAgo((now - Date.parse(data.checked)) / 1000)}</Text>}
+            {refused.length > 0 && (
+              <SegmentedControl size="xs" value={showing} onChange={(v) => setView(v as 'given' | 'refused')}
+                data={[{ value: 'given', label: `Given ${data?.registered.length ?? 0}` }, { value: 'refused', label: `Refused ${refused.length}` }]} />
             )}
-          </Stack>
-        </Card>
-      </Grid.Col>
-      {data?.enabled && refused.length > 0 && (
-        <Grid.Col span={{ base: 12, lg: 6 }}>
-          <Card h="100%">
-            <SectionTitle>Names not given</SectionTitle>
-            <Text size="sm" c="dimmed" mb="sm">Devices that asked for a name they didn’t get, and why.</Text>
+          </Group>
+        }
+      >
+        Devices’ names
+      </SectionTitle>
+      <Stack gap="sm">
+        {failed && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
+        {data?.error && <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
+        {data && !data.enabled && <Text size="sm" c="dimmed">Starts once “Add other DHCP devices by name” is applied.</Text>}
+        {data?.enabled && showing === 'given' && (
+          <>
+            <Text size="sm" c="dimmed">
+              The names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
+            </Text>
+            {data.registered.length ? (
+              <Table.ScrollContainer minWidth={420}>
+                <Table>
+                  <Table.Thead>
+                    <Table.Tr><Table.Th>Name</Table.Th><Table.Th>Address</Table.Th><Table.Th>Asked for</Table.Th></Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {data.registered.map((r) => (
+                      <Table.Tr key={r.name}>
+                        <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.name}</Mono></Table.Td>
+                        <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
+                        {/* Chosen by the device; shown as text, never markup. */}
+                        <Table.Td><Text size="sm" c="dimmed">{r.from ? `“${r.from}”` : ''}</Text></Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            ) : (
+              <Empty>No devices have names from their leases yet.</Empty>
+            )}
+          </>
+        )}
+        {data?.enabled && showing === 'refused' && (
+          <>
+            <Text size="sm" c="dimmed">Devices that asked for a name they didn’t get, and why.</Text>
             <Table.ScrollContainer minWidth={420}>
               <Table>
+                <Table.Thead>
+                  <Table.Tr><Table.Th>Asked for</Table.Th><Table.Th>Address</Table.Th><Table.Th>Why not</Table.Th></Table.Tr>
+                </Table.Thead>
                 <Table.Tbody>
                   {refused.map((r) => (
                     <Table.Tr key={r.ip}>
@@ -123,20 +132,19 @@ function LeaseNames() {
                 </Table.Tbody>
               </Table>
             </Table.ScrollContainer>
-            {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
-          </Card>
-        </Grid.Col>
-      )}
-    </>
+          </>
+        )}
+        {data?.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
+      </Stack>
+    </Card>
   );
 }
 
-export function Dns() {
-  const { staged, applied, edit } = useStore();
+// How names are looked up, and how devices get names: one form, saved
+// together.
+function DnsSettingsForm() {
+  const { staged, edit } = useStore();
   const dns = staged.dns;
-  const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'blocking' || params.get('tab') === 'tools' ? params.get('tab')! : 'resolver';
-  const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
   const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
   const form = useForm<Settings>({
     initialValues: pick(dns),
@@ -146,16 +154,99 @@ export function Dns() {
     form.setValues(pick(dns));
     form.resetDirty();
   }, [dns]); // form is stable
+  const domain = staged.system.domain;
+  return (
+    <Card maw={760}>
+      <form onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}>
+        <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Resolver</SectionTitle>
+        <Stack gap="lg">
+          <Stack gap="md">
+            <Stack gap={6}>
+              <Text size="sm" fw={500}>How to look up names</Text>
+              <SegmentedControl
+                data={[{ value: 'recursive', label: 'Directly' }, { value: 'forward', label: 'Through a provider' }]}
+                {...form.getInputProps('mode')}
+              />
+              <Text size="xs" c="dimmed">
+                {form.values.mode === 'recursive'
+                  ? 'OPF asks the internet’s authoritative servers itself. Nobody else sees your full lookup history.'
+                  : 'OPF sends lookups to the servers below, such as Quad9 or your ISP.'}
+              </Text>
+            </Stack>
+            {form.values.mode === 'forward' && (
+              <>
+                <TagsInput label="Upstream servers" placeholder="9.9.9.9" {...form.getInputProps('forwarders')} />
+                <Switch label="Encrypt lookups (DNS over TLS)" {...form.getInputProps('forwardTls', { type: 'checkbox' })} />
+              </>
+            )}
+            <Switch label="Verify answers with DNSSEC" description="Rejects answers that have been tampered with." {...form.getInputProps('dnssec', { type: 'checkbox' })} />
+          </Stack>
+          <Divider />
+          <Stack gap="md">
+            <Text size="sm" fw={600}>Devices by name</Text>
+            <Switch label="Add reserved devices by name" description={`Devices with a DHCP reservation can be reached as name.${domain}.`} {...form.getInputProps('registerReservations', { type: 'checkbox' })} />
+            <Switch
+              label="Add other DHCP devices by name"
+              description={`Devices can be reached by the name they give themselves, as name.${domain}. Any device can pick any name, so names used by this configuration, and names claimed by two devices, are never added.`}
+              {...form.getInputProps('registerDynamicLeases', { type: 'checkbox' })}
+            />
+            <Switch
+              label="Fix names that aren’t valid"
+              description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${domain}. Turned off, devices with names like that get none.`}
+              disabled={!form.values.registerDynamicLeases}
+              {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
+            />
+          </Stack>
+          <Group justify="flex-end">
+            <Button type="submit" disabled={!form.isDirty()}>Save</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Card>
+  );
+}
+
+const tabs = ['overview', 'names', 'settings', 'blocking', 'tools'] as const;
+type Tab = (typeof tabs)[number];
+
+export function Dns() {
+  const { staged, applied } = useStore();
+  const dns = staged.dns;
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('tab');
+  // The page used to have one "resolver" tab for all of these.
+  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : 'overview';
+  const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
+  const names = dns.overrides.length + (dns.records ?? []).length;
 
   return (
     <>
       <PageHeader title="DNS resolver" description="Answers name lookups for devices on your networks, and caches the results so browsing feels faster." />
-      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'resolver' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
+      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'overview' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="md">
-          <Tabs.Tab value="resolver">Resolver and names</Tabs.Tab>
+          <Tabs.Tab value="overview">Overview</Tabs.Tab>
+          <Tabs.Tab value="names" rightSection={names ? <Badge size="xs" variant="light" circle>{names}</Badge> : undefined}>Local names</Tabs.Tab>
+          <Tabs.Tab value="settings">Settings</Tabs.Tab>
           <Tabs.Tab value="blocking" rightSection={enabledLists ? <Badge size="xs" variant="light" circle>{enabledLists}</Badge> : undefined}>Blocking</Tabs.Tab>
           <Tabs.Tab value="tools">Tools</Tabs.Tab>
         </Tabs.List>
+        <Tabs.Panel value="overview">
+          {/* What's happening, then the names devices gave themselves, a
+              list that grows on its own. */}
+          <Stack gap="md">
+            <DnsStatsCard />
+            <DeviceNames />
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="names">
+          <Stack gap="md">
+            <Card><LocalNames /></Card>
+            <Card><LocalDomains /></Card>
+          </Stack>
+        </Tabs.Panel>
+        <Tabs.Panel value="settings">
+          <DnsSettingsForm />
+        </Tabs.Panel>
         <Tabs.Panel value="blocking">
           {/* The lists and your own names, then what they blocked, a list
               that changes by itself. */}
@@ -170,71 +261,6 @@ export function Dns() {
             </Grid>
             <DnsBlockedNames />
           </Stack>
-        </Tabs.Panel>
-        <Tabs.Panel value="resolver">
-          {/* What's happening, how it's set up, then the names you add
-              (and what a domain answers for a name that isn't there),
-              and last the DHCP devices' names and the ones refused,
-              lists that grow on their own. */}
-          <DnsStatsCard />
-          <Grid gutter="md">
-            <Grid.Col span={12}>
-              <Card>
-                <form
-                  onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}
-                >
-                  <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Settings</SectionTitle>
-                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing="md">
-                  <Stack>
-                    <Stack gap={6}>
-                      <Text size="sm" fw={500}>How to look up names</Text>
-                      <SegmentedControl
-                        fullWidth
-                        data={[{ value: 'recursive', label: 'Directly' }, { value: 'forward', label: 'Through a provider' }]}
-                        {...form.getInputProps('mode')}
-                      />
-                      <Text size="xs" c="dimmed">
-                        {form.values.mode === 'recursive'
-                          ? 'OPF asks the internet’s authoritative servers itself. Nobody else sees your full lookup history.'
-                          : 'OPF sends lookups to the servers below, such as Quad9 or your ISP.'}
-                      </Text>
-                    </Stack>
-                    {form.values.mode === 'forward' && (
-                      <>
-                        <TagsInput label="Upstream servers" placeholder="9.9.9.9" {...form.getInputProps('forwarders')} />
-                        <Switch label="Encrypt lookups (DNS over TLS)" {...form.getInputProps('forwardTls', { type: 'checkbox' })} />
-                      </>
-                    )}
-                    <Switch label="Verify answers with DNSSEC" description="Rejects answers that have been tampered with." {...form.getInputProps('dnssec', { type: 'checkbox' })} />
-                  </Stack>
-                  <Stack>
-                    <Switch label="Add reserved devices by name" description={`Devices with a DHCP reservation can be reached as name.${staged.system.domain}.`} {...form.getInputProps('registerReservations', { type: 'checkbox' })} />
-                    <Switch
-                      label="Add other DHCP devices by name"
-                      description={`Devices can be reached by the name they give themselves, as name.${staged.system.domain}. Any device can pick any name, so names used by this configuration, and names claimed by two devices, are never added.`}
-                      {...form.getInputProps('registerDynamicLeases', { type: 'checkbox' })}
-                    />
-                    <Switch
-                      label="Fix names that aren’t valid"
-                      description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${staged.system.domain}. Turned off, devices with names like that get none.`}
-                      disabled={!form.values.registerDynamicLeases}
-                      {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
-                    />
-                  </Stack>
-                  </SimpleGrid>
-                  <Group justify="flex-end" mt="md">
-                    <Button type="submit" disabled={!form.isDirty()}>Save</Button>
-                  </Group>
-                </form>
-              </Card>
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Card>
-                <LocalNames />
-              </Card>
-            </Grid.Col>
-            <LeaseNames />
-          </Grid>
         </Tabs.Panel>
         <Tabs.Panel value="tools">
           {applied.dns.enabled ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}

@@ -209,16 +209,15 @@ export function LocalNames() {
       ) : (
         <Empty>No local names.</Empty>
       )}
-      <LocalDomains />
       <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
       <RecordModal type={adding && adding !== 'host' && adding !== 'firewall' ? adding : null} onClose={() => setAdding(null)} />
     </>
   );
 }
 
-// How each domain answers a name it has no record for, under the names
-// themselves: it's what happens to one that isn't in the list.
-function LocalDomains() {
+// How each domain answers a name it has no record for: what happens to
+// one that isn't in Local names.
+export function LocalDomains() {
   const { staged, edit } = useStore();
   const [adding, setAdding] = useState(false);
   const sys = staged.system.domain;
@@ -233,10 +232,9 @@ function LocalDomains() {
     });
   return (
     <>
-      <Group justify="space-between" mt="xl" mb="xs">
-        <Text fw={600}>Local domains</Text>
-        <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setAdding(true)}>Add domain</Button>
-      </Group>
+      <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setAdding(true)}>Add domain</Button>}>
+        Local domains
+      </SectionTitle>
       <Grid gutter="xl">
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Table verticalSpacing={8}>
