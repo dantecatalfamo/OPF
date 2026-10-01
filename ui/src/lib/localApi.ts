@@ -13,7 +13,7 @@ import {
   ApiError, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type MetricsResource, type EventsRequest, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -267,6 +267,12 @@ export const localApi = {
     const st = { ...previewHooks.get(id), id, lastAttempt: new Date().toISOString(), lastError: 'The preview can’t send anything; on a firewall this would.' };
     previewHooks.set(id, st);
     return st;
+  },
+  dnsTool: async (tool: DnsToolName, name?: string): Promise<DnsToolResult> => {
+    if (tool === 'local') return { lines: [`${live.system.domain}. static`, ...live.dns.overrides.map((o) => `${o.host}.${o.domain}.\t3600\tIN\tA\t${o.ip}`)] };
+    if (tool === 'lookup') return { lines: [`The following name servers are used for lookup of ${name}.`, 'com.\t172800\tIN\tNS\ta.gtld-servers.net.'] };
+    if (tool === 'cache') return { lines: [`${name}.\t2400\tIN\tA\t192.0.2.10`] };
+    return { lines: ['ok'] };
   },
   systemLog: async (log: SystemLogName, r: SystemLogRequest = {}): Promise<SystemLogResource> => {
     const all = sampleSystemLog(log);

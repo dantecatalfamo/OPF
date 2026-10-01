@@ -149,3 +149,29 @@ func mockUnboundRSS(names int) string {
 	kb := 38*1024 + names*1400/1024
 	return fmt.Sprintf(" 1204 init\n%5d unbound\n18220 opf\n", kb)
 }
+
+// mockUnboundControl answers the resolver tools' commands as unbound
+// would: a cache of the sample's usual names, the model's local names.
+func mockUnboundControl(m *pf.Model, args []string) string {
+	switch args[0] {
+	case "lookup":
+		return "The following name servers are used for lookup of " + args[1] + "\n;rrset 172800 4 0 8 0\ncom.\t172800\tIN\tNS\ta.gtld-servers.net.\ncom.\t172800\tIN\tNS\tb.gtld-servers.net.\nDelegation with 4 names, of which 4 can be examined to query further addresses.\nIt provides 8 IP addresses.\n192.5.6.30 \trto 42 msec, ttl 812, ping 38 var 1 rtt 42, tA 0, tAAAA 0, tother 0, EDNS 0 probed.\n"
+	case "dump_cache":
+		var b strings.Builder
+		b.WriteString("START_RRSET_CACHE\n")
+		for _, r := range [][2]string{{"www.openbsd.org.", "A\t199.185.178.80"}, {"openbsd.org.", "A\t199.185.178.80"}, {"github.com.", "A\t140.82.112.4"}, {"api.github.com.", "A\t140.82.113.6"}, {"pool.ntp.org.", "A\t162.159.200.1"}} {
+			fmt.Fprintf(&b, ";rrset 2400 1 0 8 3\n%s\t2400\tIN\t%s\n", r[0], r[1])
+		}
+		b.WriteString("END_RRSET_CACHE\nSTART_MSG_CACHE\nmsg www.openbsd.org. IN A 33152 1 2400 3 1 0 0\nmsg github.com. IN A 33152 1 2400 3 1 0 0\nEND_MSG_CACHE\nEOF\n")
+		return b.String()
+	case "list_local_zones":
+		return m.System.Domain + ". static\n"
+	case "list_local_data":
+		var b strings.Builder
+		for _, o := range m.DNS.Overrides {
+			fmt.Fprintf(&b, "%s.%s.\t3600\tIN\tA\t%s\n", o.Host, o.Domain, o.IP)
+		}
+		return b.String()
+	}
+	return "ok\n" // the flushes
+}

@@ -155,6 +155,10 @@ type (
 		Result
 		Secret *appliance.WebhookSecretResult
 	}
+	DNSToolReply struct {
+		Result
+		Output *appliance.DNSToolResult
+	}
 	SystemLogReply struct {
 		Result
 		Log *appliance.SystemLog
@@ -350,6 +354,13 @@ func (s *Service) TestWebhook(a IDArgs, r *WebhookReply) error {
 	var err error
 	r.Webhook, err = s.api.TestWebhook(a.ID)
 	r.set("TestWebhook", err)
+	return nil
+}
+
+func (s *Service) DNSTool(a appliance.DNSToolRequest, r *DNSToolReply) error {
+	var err error
+	r.Output, err = s.api.DNSTool(a)
+	r.set("DNSTool", err)
 	return nil
 }
 
@@ -785,6 +796,15 @@ func (c *Client) TestWebhook(id string) (*appliance.WebhookStatus, error) {
 	var r WebhookReply
 	err := c.call("TestWebhook", IDArgs{id}, &r)
 	return r.Webhook, err
+}
+
+func (c *Client) DNSTool(req appliance.DNSToolRequest) (*appliance.DNSToolResult, error) {
+	var r DNSToolReply
+	err := c.call("DNSTool", req, &r)
+	if t := r.Output; t != nil {
+		t.Lines = nonNil(t.Lines)
+	}
+	return r.Output, err
 }
 
 func (c *Client) SystemLog(req appliance.SystemLogRequest) (*appliance.SystemLog, error) {

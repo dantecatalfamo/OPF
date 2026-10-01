@@ -770,12 +770,16 @@ Reachability:
 
 DNS:
 
-- [ ] unbound (`unbound-control`): what it would answer (`lookup`),
-      the cache for a name (`dump_cache` filtered), local data
-      (`list_local_data`, the lease names), and flushing a name or zone
-      (`flush`, `flush_zone`, `flush_bogus`). Its statistics are the DNS
-      stats above. Needs `remote-control` on a local socket in
-      unbound.conf.
+- [x] Resolver tools, the DNS page's Tools tab: where unbound would
+      ask for a name (`lookup`), what it has cached for it and under it
+      (`dump_cache`, filtered on the firewall), its local zones and data,
+      and forgetting a name, a zone, failed DNSSEC answers or "no such
+      name" answers (`flush`, `flush_zone`, `flush_bogus`,
+      `flush_negative`), each after saying what it does. Forgetting runs
+      as an action, so `-dry` logs it; a name is checked as a DNS name
+      so it can't be read as an option. Tried only against the mock:
+      the `dump_cache` filter wants a look at real output on
+      openbsd-dev (a cache with CNAMEs and `msg` lines).
 - [ ] `unbound-checkconf` output on the DNS page when unbound refuses
       its configuration.
 

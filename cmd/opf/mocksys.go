@@ -129,6 +129,12 @@ peer
 		out = mockDaemonLog(m, time.Now())
 	case cmd == "dmesg":
 		out = mockDmesg
+	case len(argv) >= 4 && argv[0] == "unbound-control" && strings.HasPrefix(argv[3], "list_local_") || len(argv) >= 4 && argv[0] == "unbound-control" && (argv[3] == "lookup" || argv[3] == "dump_cache" || strings.HasPrefix(argv[3], "flush")):
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		out = mockUnboundControl(m, argv[3:])
 	case cmd == "unbound-control -c /var/unbound/etc/unbound.conf status":
 		out = "version: 1.26.1\nverbosity: 1\nthreads: 1\nmodules: 3 [ respip validator iterator ]\nuptime: 4000 seconds\noptions: control(ssl)\nunbound (pid 29114) is running...\n"
 	case cmd == "ps -A -o rss=,comm=":

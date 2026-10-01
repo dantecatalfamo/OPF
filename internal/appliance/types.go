@@ -58,6 +58,7 @@ type API interface {
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)
 	SystemLog(SystemLogRequest) (*SystemLog, error)
+	DNSTool(DNSToolRequest) (*DNSToolResult, error)
 	Webhooks() ([]WebhookStatus, error)
 	SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error)
 	TestWebhook(id string) (*WebhookStatus, error)

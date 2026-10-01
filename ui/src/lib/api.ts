@@ -455,6 +455,14 @@ export interface MetricsResource {
   groups: GraphGroup[];
 }
 
+export type DnsToolName = 'lookup' | 'cache' | 'local' | 'flush' | 'flush_zone' | 'flush_bogus' | 'flush_negative';
+
+/** What a resolver tool printed (POST /api/dns/tools). */
+export interface DnsToolResult {
+  lines: string[];
+  truncated?: boolean;
+}
+
 export type SystemLogName = 'messages' | 'daemon' | 'authlog' | 'maillog' | 'dmesg';
 
 /** A line of a system log; the kernel's have no time or program. */
@@ -688,6 +696,7 @@ export const api = {
   /** Sets a webhook's URL and key now; the answer has a generated key, the only time it's shown. */
   setWebhookSecret: (id: string, r: WebhookSecretRequest) => request<WebhookStatus & { key?: string }>('PUT', `/webhooks/${enc(id)}/secret`, r),
   testWebhook: (id: string) => request<WebhookStatus>('POST', `/webhooks/${enc(id)}/test`),
+  dnsTool: (tool: DnsToolName, name?: string) => request<DnsToolResult>('POST', '/dns/tools', { tool, ...(name ? { name } : {}) }),
   systemLog: (log: SystemLogName, r: SystemLogRequest = {}) => {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);

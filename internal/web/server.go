@@ -115,6 +115,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/metrics", s.metrics)
 	s.mux.HandleFunc("GET /api/events", s.events)
 	s.mux.HandleFunc("GET /api/logs/system/{log}", s.systemLog)
+	s.mux.HandleFunc("POST /api/dns/tools", s.dnsTool)
 	s.mux.HandleFunc("GET /api/webhooks", getter(func() (webhooksBody, error) {
 		w, err := s.api.Webhooks()
 		return webhooksBody{w}, err
@@ -516,6 +517,19 @@ func (s *Server) testWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
+}
+
+func (s *Server) dnsTool(w http.ResponseWriter, r *http.Request) {
+	var req appliance.DNSToolRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	res, err := s.api.DNSTool(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 // systemLog answers ?q=<search>&program=<name>&limit=.

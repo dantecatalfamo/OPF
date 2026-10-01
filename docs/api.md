@@ -366,6 +366,17 @@ unbound first starts.
   (`{"name", "count", "last", "list", "entry"}`; `list` is absent for
   your own entries). Only DNS names are listed, and which device asked
   isn't kept.
+- `POST /api/dns/tools` with `{"tool", "name"}`: asks unbound over its
+  control socket, and answers `{"lines", "truncated"}` (at most 1,000
+  lines). `lookup` (the servers it would ask for `name`), `cache` (the
+  cached records and messages for `name` and the names under it) and
+  `local` (its local zones and data) only read; `flush` (forget
+  `name`), `flush_zone` (forget it and everything under it),
+  `flush_bogus` (answers that failed DNSSEC) and `flush_negative` ("no
+  such name" and empty answers) change unbound's cache, and aren't a
+  change to the configuration. `name` is a DNS name; `invalid` when it
+  isn't, the tool isn't one, or the resolver isn't running, and
+  `internal` when unbound-control doesn't answer.
 
 ### History
 

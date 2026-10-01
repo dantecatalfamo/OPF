@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Accordion, ActionIcon, Alert, Badge, Button, Card, Grid, Group, Modal, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { DnsTools } from './DnsTools';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
@@ -166,11 +167,11 @@ function OverrideModal({ opened, onClose }: { opened: boolean; onClose: () => vo
 }
 
 export function Dns() {
-  const { staged, edit } = useStore();
+  const { staged, applied, edit } = useStore();
   const dns = staged.dns;
   const [modal, setModal] = useState(false);
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'blocking' ? 'blocking' : 'resolver';
+  const tab = params.get('tab') === 'blocking' || params.get('tab') === 'tools' ? params.get('tab')! : 'resolver';
   const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
   const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
   const form = useForm<Settings>({
@@ -185,10 +186,11 @@ export function Dns() {
   return (
     <>
       <PageHeader title="DNS resolver" description="Answers name lookups for devices on your networks, and caches the results so browsing feels faster." />
-      <Tabs value={tab} onChange={(v) => setParams(v === 'blocking' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
+      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'resolver' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="resolver">Resolver and names</Tabs.Tab>
           <Tabs.Tab value="blocking" rightSection={enabledLists ? <Badge size="xs" variant="light" circle>{enabledLists}</Badge> : undefined}>Blocking</Tabs.Tab>
+          <Tabs.Tab value="tools">Tools</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="blocking">
           {/* The lists and your own names, then what they blocked, a list
@@ -292,6 +294,9 @@ export function Dns() {
               </Stack>
             </Grid.Col>
           </Grid>
+        </Tabs.Panel>
+        <Tabs.Panel value="tools">
+          {applied.dns.enabled ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}
         </Tabs.Panel>
       </Tabs>
       <OverrideModal opened={modal} onClose={() => setModal(false)} />
