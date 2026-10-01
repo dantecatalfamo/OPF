@@ -271,7 +271,13 @@ In order. Each step's details are in the section it points to.
 2. **Run on OpenBSD** (Verify on real OpenBSD). Dry runs with the real
    validators work on 7.9 (`openbsd-dev`, user `opfdev`; ask before
    using it); next are real commits on a VM that can be locked out
-   safely.
+   safely. That VM exists: `opfvm`, a clean 7.9 install under vmd on
+   `openbsd-dev` (`~opfdev/opf-test/vm`). It runs on an overlay over a
+   read-only base image, so `vm.sh reset` undoes everything in about 3
+   minutes. Use `vm.sh ssh` (root by key, 100.64.1.3). `vm.sh type`
+   and `vm.sh log` reach its serial console, which still works when a
+   commit cuts the network; root's password is in `root-password`
+   there.
 3. **Import** (Parser and import), then the first-run wizard.
 4. **Live data** (Live data and monitoring): the pages read the real
    system now; what's left is history over time and the rest of the
