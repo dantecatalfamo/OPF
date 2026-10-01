@@ -502,9 +502,9 @@ Types, roughly in order of usefulness:
       names (PTR) and certificate authorities (CAA), each checked for
       its type and written as single-quoted unbound `local-data`
       (`local-data-ptr` for reverse names). Per domain, `dns.zones` says
-      how names without a record answer: "local only" (static, the
-      system domain's default) or "local, then internet"
-      (transparent). A host name with an IPv6 address is now AAAA; it
+      how names without a record answer, shown at the head of each
+      domain's names: "don't exist" (static, the system domain's
+      default) or "are looked up on the internet" (transparent). A host name with an IPv6 address is now AAAA; it
       was written as an A record, which unbound refuses. Checked with a
       scratch unbound on openbsd-dev (7.9, 1.26.1):
   - A CNAME in local-data is answered alone, in a static or a

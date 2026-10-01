@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Divider, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
-import { LocalDomains, LocalNames } from './DnsRecords';
+import { LocalNames } from './DnsRecords';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
@@ -241,7 +241,6 @@ export function Dns() {
         <Tabs.Panel value="names">
           <Stack gap="md">
             <Card><LocalNames /></Card>
-            <Card><LocalDomains /></Card>
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="settings">

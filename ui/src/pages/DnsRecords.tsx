@@ -2,14 +2,14 @@
 // resolver answers itself, and how each local domain answers names it
 // has no record for. The firewall checks everything again; the checks
 // here are for saying what's wrong while typing.
-import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Anchor, Badge, Button, Grid, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Textarea, Tooltip } from '@mantine/core';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { ActionIcon, Anchor, Badge, Button, Group, Menu, Modal, NumberInput, Select, Stack, Table, Text, TextInput, Textarea, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconChevronDown, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconChevronDown, IconSettings, IconTrash } from '@tabler/icons-react';
 import { Link } from 'react-router';
 import { newId, useStore } from '../model/store';
 import type { DnsRecord, DnsRecordType, DnsZone, Model } from '../model/types';
-import { Empty, Mono, SectionTitle } from '../components/ui';
+import { Mono, SectionTitle } from '../components/ui';
 
 type Kind = 'host' | 'firewall' | DnsRecordType;
 
@@ -140,10 +140,77 @@ function rows(m: Model): Row[] {
   return out.sort((a, b) => sortKey(a).localeCompare(sortKey(b)) || a.kind.localeCompare(b.kind));
 }
 
+// Names grouped by domain, each domain headed by what happens to a name
+// in it that isn't listed: so the rule sits on top of the names it's
+// about. Names in a domain without a rule of its own are grouped by the
+// domain they're in, looked up on the internet as usual; choosing
+// "don't exist" there gives the domain its rule.
+interface DomainGroup {
+  domain: string;
+  /** In the configuration's zones (the firewall's domain always is). */
+  declared: boolean;
+  system: boolean;
+  type: DnsZone['type'];
+  reverse?: boolean;
+  rows: Row[];
+}
+
+function groups(m: Model, list: Row[]): DomainGroup[] {
+  const sys = m.system.domain;
+  const declared = new Map<string, DomainGroup>();
+  declared.set(lower(sys), { domain: sys, declared: true, system: true, type: systemZoneType(m), rows: [] });
+  for (const z of m.dns.zones ?? []) {
+    if (lower(z.name) !== lower(sys)) declared.set(lower(z.name), { domain: z.name, declared: true, system: false, type: z.type, rows: [] });
+  }
+  const others = new Map<string, DomainGroup>();
+  const reverse: DomainGroup = { domain: 'Reverse names', declared: false, system: false, type: 'transparent', reverse: true, rows: [] };
+  for (const r of list) {
+    if (r.kind === 'PTR') {
+      reverse.rows.push(r);
+      continue;
+    }
+    const z = zoneOf(m, r.name);
+    if (z && declared.has(lower(z.name))) {
+      declared.get(lower(z.name))!.rows.push(r);
+      continue;
+    }
+    const parent = r.name.split('.').slice(1).join('.') || r.name;
+    if (!others.has(lower(parent))) others.set(lower(parent), { domain: parent, declared: false, system: false, type: 'transparent', rows: [] });
+    others.get(lower(parent))!.rows.push(r);
+  }
+  const byName = (a: DomainGroup, b: DomainGroup) => a.domain.localeCompare(b.domain);
+  const [first, ...rest] = [...declared.values()];
+  return [first, ...rest.sort(byName), ...[...others.values()].sort(byName), ...(reverse.rows.length ? [reverse] : [])];
+}
+
+// The choice, as the end of "Names here that aren't listed …".
+const unlisted: { value: DnsZone['type']; label: string }[] = [
+  { value: 'static', label: 'don’t exist' },
+  { value: 'transparent', label: 'are looked up on the internet' },
+];
+const unlistedExample = (type: DnsZone['type'], domain: string) =>
+  type === 'static' ? `A device asking for anything else in ${domain} is told there’s no such name.` : `Anything else in ${domain} is looked up on the internet, as usual.`;
+
 export function LocalNames() {
   const { staged, edit } = useStore();
-  const [adding, setAdding] = useState<Kind | null>(null);
+  const [adding, setAdding] = useState<Kind | 'domain' | null>(null);
   const list = useMemo(() => rows(staged), [staged]);
+  const grouped = useMemo(() => groups(staged, list), [staged, list]);
+  const setType = (g: DomainGroup, type: DnsZone['type']) => {
+    if (type === g.type) return;
+    const what = `${g.domain}: names not listed ${type === 'static' ? 'don’t exist' : 'are looked up on the internet'}`;
+    edit('dns', what, (m) => {
+      const rest = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(g.domain));
+      // The firewall's domain is "don't exist" unless listed.
+      const keep = g.system && type === 'static' ? rest : [...rest, { name: g.domain, type }];
+      return { ...m, dns: { ...m.dns, zones: keep.length ? keep : undefined } };
+    });
+  };
+  const removeDomain = (g: DomainGroup) =>
+    edit('dns', `Removed the rule for ${g.domain}`, (m) => {
+      const zs = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(g.domain));
+      return { ...m, dns: { ...m.dns, zones: zs.length ? zs : undefined } };
+    });
   return (
     <>
       <SectionTitle
@@ -158,135 +225,104 @@ export function LocalNames() {
                   <Text size="sm">{k.label}</Text>
                 </Menu.Item>
               ))}
+              <Menu.Divider />
+              <Menu.Item onClick={() => setAdding('domain')}>
+                <Text size="sm">Domain</Text>
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         }
       >
         Local names
       </SectionTitle>
-      {list.length ? (
-        <Table.ScrollContainer minWidth={640}>
-          <Table verticalSpacing={6}>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Answer</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th w={40} />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {list.map((r) => (
-                <Table.Tr key={r.key}>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                    <Mono>{r.name}</Mono>
-                  </Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : r.kind === 'firewall' ? 'blue' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
-                  <Table.Td style={{ overflowWrap: 'anywhere' }}>
-                    <Mono>{r.value}</Mono>
-                    {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
-                  </Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
-                  <Table.Td w={40}>
-                    {r.remove ? (
-                      <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove!)}>
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    ) : (
-                      <Tooltip label="Its name is set in System › General" withinPortal>
-                        <ActionIcon component={Link} to="/system/general" variant="subtle" color="gray" aria-label="Change the firewall’s name in System › General">
-                          <IconSettings size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
+      <Table.ScrollContainer minWidth={640}>
+        <Table verticalSpacing={6}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Name</Table.Th>
+              <Table.Th>Type</Table.Th>
+              <Table.Th>Answer</Table.Th>
+              <Table.Th>Description</Table.Th>
+              <Table.Th w={40} />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {grouped.map((g) => (
+              <Fragment key={g.domain}>
+                <Table.Tr style={{ background: 'var(--mantine-color-default-hover)' }}>
+                  <Table.Td colSpan={5} py="sm">
+                    <Group justify="space-between" align="flex-start" gap="sm">
+                      <div>
+                        <Text fw={600} className={g.reverse ? undefined : 'mono'} size="sm">{g.domain}</Text>
+                        {g.system && (
+                          <Text size="xs" c="dimmed">
+                            The firewall’s domain, set in <Anchor component={Link} to="/system/general" size="xs">System › General</Anchor>
+                          </Text>
+                        )}
+                        {g.reverse && <Text size="xs" c="dimmed">The name an address gives when a program asks what it’s called.</Text>}
+                      </div>
+                      {!g.reverse && (
+                        <Stack gap={2} align="flex-end">
+                          <Group gap="xs" wrap="nowrap">
+                            <Text size="sm" c="dimmed">Names here that aren’t listed</Text>
+                            <Select size="xs" w={230} data={unlisted} value={g.type} allowDeselect={false} disabled={!g.declared && !isHost(g.domain)}
+                              onChange={(v) => v && setType(g, v as DnsZone['type'])} aria-label={`What happens to names in ${g.domain} that aren’t listed`} />
+                            {g.declared && !g.system ? (
+                              <Tooltip label="Forget this domain’s rule" withinPortal>
+                                <ActionIcon variant="subtle" color="gray" aria-label={`Forget the rule for ${g.domain}`} onClick={() => removeDomain(g)}>
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Tooltip>
+                            ) : <span style={{ width: 28 }} />}
+                          </Group>
+                          <Text size="xs" c="dimmed" pr={36}>{unlistedExample(g.type, g.domain)}</Text>
+                        </Stack>
+                      )}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      ) : (
-        <Empty>No local names.</Empty>
-      )}
-      <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
-      <RecordModal type={adding && adding !== 'host' && adding !== 'firewall' ? adding : null} onClose={() => setAdding(null)} />
-    </>
-  );
-}
-
-// How each domain answers a name it has no record for: what happens to
-// one that isn't in Local names.
-export function LocalDomains() {
-  const { staged, edit } = useStore();
-  const [adding, setAdding] = useState(false);
-  const sys = staged.system.domain;
-  const zones = staged.dns.zones ?? [];
-  const list: DnsZone[] = [{ name: sys, type: systemZoneType(staged) }, ...zones.filter((z) => lower(z.name) !== lower(sys))];
-  const setType = (z: DnsZone, type: DnsZone['type']) =>
-    edit('dns', `${z.name} is now ${zoneLabel[type].toLowerCase()}`, (m) => {
-      const rest = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
-      // The system's domain is local only unless listed.
-      const keep = lower(z.name) === lower(m.system.domain) && type === 'static' ? rest : [...rest, { name: z.name, type }];
-      return { ...m, dns: { ...m.dns, zones: keep.length ? keep : undefined } };
-    });
-  return (
-    <>
-      <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setAdding(true)}>Add domain</Button>}>
-        Local domains
-      </SectionTitle>
-      <Grid gutter="xl">
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Table verticalSpacing={8}>
-            <Table.Tbody>
-              {list.map((z) => (
-                <Table.Tr key={z.name}>
-                  <Table.Td>
-                    <Mono>{z.name}</Mono>
-                    {z.name === sys && (
-                  <Text size="xs" c="dimmed">
-                    The firewall’s domain, set in <Anchor component={Link} to="/system/general" size="xs" style={{ whiteSpace: 'nowrap' }}>System › General</Anchor>
-                  </Text>
+                {g.rows.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={5}><Text size="sm" c="dimmed">No names here yet.</Text></Table.Td>
+                  </Table.Tr>
                 )}
-                  </Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }} ta="right">
-                    <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />
-                  </Table.Td>
-                  <Table.Td w={40}>
-                    {z.name !== sys && (
-                      <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${z.name}`} onClick={() => edit('dns', `Removed domain ${z.name}`, (m) => {
-                        const zs = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
-                        return { ...m, dns: { ...m.dns, zones: zs.length ? zs : undefined } };
-                      })}>
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    )}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap={6}>
-            <Text size="sm" c="dimmed">When a device asks for a name in one of these domains that isn’t in Local names:</Text>
-            <Text size="sm" c="dimmed"><Text span fw={600} c="var(--mantine-color-text)">{zoneLabel.static}</Text>: {zoneAbout.static}</Text>
-            <Text size="sm" c="dimmed"><Text span fw={600} c="var(--mantine-color-text)">{zoneLabel.transparent}</Text>: {zoneAbout.transparent}</Text>
-            <Text size="sm" c="dimmed">Any other domain is looked up on the internet, apart from the names you add for it.</Text>
-          </Stack>
-        </Grid.Col>
-      </Grid>
-      <DomainModal opened={adding} onClose={() => setAdding(false)} taken={list.map((z) => lower(z.name))} />
+                {g.rows.map((r) => (
+                  <Table.Tr key={r.key}>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                      <Mono>{r.name}</Mono>
+                    </Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : r.kind === 'firewall' ? 'blue' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
+                    <Table.Td style={{ overflowWrap: 'anywhere' }}>
+                      <Mono>{r.value}</Mono>
+                      {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
+                    </Table.Td>
+                    <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
+                    <Table.Td w={40}>
+                      {r.remove ? (
+                        <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove!)}>
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      ) : (
+                        <Tooltip label="Its name is set in System › General" withinPortal>
+                          <ActionIcon component={Link} to="/system/general" variant="subtle" color="gray" aria-label="Change the firewall’s name in System › General">
+                            <IconSettings size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Fragment>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+      <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
+      <RecordModal type={adding && adding !== 'host' && adding !== 'firewall' && adding !== 'domain' ? adding : null} onClose={() => setAdding(null)} />
+      <DomainModal opened={adding === 'domain'} onClose={() => setAdding(null)} taken={grouped.filter((g) => g.declared).map((g) => lower(g.domain))} />
     </>
   );
 }
-
-const zoneLabel: Record<DnsZone['type'], string> = { static: 'Local only', transparent: 'Local, then internet' };
-const zoneAbout: Record<DnsZone['type'], string> = {
-  static: 'it’s told the name doesn’t exist. For a domain that exists only on your network, like office.arpa.',
-  transparent: 'it’s looked up on the internet as usual. For a real domain such as your company’s, when you only want to change a few of its names here.',
-};
-const zoneChoices = (['static', 'transparent'] as const).map((value) => ({ value, label: zoneLabel[value] }));
 
 function DomainModal({ opened, onClose, taken }: { opened: boolean; onClose: () => void; taken: string[] }) {
   const { edit } = useStore();
@@ -305,21 +341,20 @@ function DomainModal({ opened, onClose, taken }: { opened: boolean; onClose: () 
     if (opened) form.reset();
   }, [opened]); // form is stable
   return (
-    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Add a local domain</Text>}>
+    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Add a domain</Text>}>
       <form
         onSubmit={form.onSubmit((v) => {
           const name = v.name.trim().replace(/\.$/, '');
-          edit('dns', `Added domain ${name}, ${zoneLabel[v.type].toLowerCase()}`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name, type: v.type }] } }));
+          edit('dns', `Added a rule for ${name}: names not listed ${v.type === 'static' ? 'don’t exist' : 'are looked up on the internet'}`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name, type: v.type }] } }));
           onClose();
         })}
       >
         <Stack>
           <TextInput label="Domain" placeholder="lab.example.com" data-autofocus spellCheck={false} {...form.getInputProps('name')} />
-          <Stack gap={6}>
-            <Text size="sm" fw={500}>A name that isn’t in Local names</Text>
-            <SegmentedControl fullWidth data={zoneChoices} {...form.getInputProps('type')} />
-            <Text size="xs" c="dimmed">{zoneAbout[form.values.type].replace(/^./, (c) => c.toUpperCase())}</Text>
-          </Stack>
+          <Select label="Names in it that aren’t listed" data={unlisted} allowDeselect={false}
+            description={unlistedExample(form.values.type, form.values.name.trim() || 'it')}
+            inputWrapperOrder={['label', 'input', 'description', 'error']} {...form.getInputProps('type')} />
+          <Text size="xs" c="dimmed">“Don’t exist” suits a domain that only exists on your network. “Looked up on the internet” suits a real one, such as your company’s, when you only want to change a few of its names here.</Text>
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit">Add</Button>
