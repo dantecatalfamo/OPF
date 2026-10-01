@@ -45,7 +45,7 @@ export function DnsStatsCard() {
   const blocking = (applied.dns.blocklists ?? []).some((l) => l.enabled) || (applied.dns.blocked ?? []).length > 0;
   const physmem = sys?.memory?.total;
   return (
-    <Card mb="md">
+    <Card>
       <SectionTitle right={s && <Text size="xs" c="dimmed">Counting since unbound started {formatDuration(s.uptime)} ago</Text>}>Right now</SectionTitle>
       <Stack gap="sm">
         {error && !data && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {error}</Alert>}
