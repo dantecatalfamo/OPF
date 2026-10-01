@@ -134,6 +134,8 @@ func TestRecordValidation(t *testing.T) {
 		{"zone over every reverse name", "dns.zones[0].name", []DNSZone{{Name: "in-addr.arpa", Type: DNSZoneStatic}}},
 		{"zone type unbound would take differently", "dns.zones[0].type", []DNSZone{{Name: "lab.example", Type: "always_nxdomain"}}},
 		{"zone twice", "dns.zones[1].name", []DNSZone{{Name: "lab.example", Type: DNSZoneStatic}, {Name: "LAB.example", Type: DNSZoneStatic}}},
+		// It would hide every .com name.
+		{"a top-level domain answering only its own names", "dns.zones[0].type", []DNSZone{{Name: "com", Type: DNSZoneStatic}}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, _ := loadSampleModel(t)
@@ -175,5 +177,17 @@ func TestFirewallNameAndReverse(t *testing.T) {
 	m.DNS.RegisterReservations = false
 	if strings.Contains(GenerateUnboundConf(m), "192.168.1.40 printer") {
 		t.Error("reverse name for a reservation that isn't in DNS")
+	}
+}
+
+func TestTopLevelZones(t *testing.T) {
+	for _, z := range []DNSZone{{Name: "internal", Type: DNSZoneStatic}, {Name: "lan", Type: DNSZoneStatic}, {Name: "com", Type: DNSZoneTransparent}, {Name: "google.com", Type: DNSZoneStatic}} {
+		m, _ := loadSampleModel(t)
+		m.DNS.Zones = []DNSZone{z}
+		for _, e := range Validate(m) {
+			if strings.HasPrefix(e.Path, "dns.zones") {
+				t.Errorf("%+v refused: %v", z, e)
+			}
+		}
 	}
 }

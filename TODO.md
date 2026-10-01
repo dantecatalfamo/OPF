@@ -521,6 +521,12 @@ Types, roughly in order of usefulness:
     `#` and `;` inside a quoted TXT are fine; text over 255 bytes is
     split into several strings.
   - Leases can't take a record's name.
+  - A record with no zone above it gets one from unbound, transparent
+    at the record's own name, which behaves as "looked up on the
+    internet", so that choice is only written as a zone where it's an
+    exception inside a "don't exist" domain. A top-level domain (com,
+    org; not internal, lan, home and the like) can't be made "don't
+    exist", which would hide every name under it.
   - Not done: NS records. In local-data they only answer NS
     questions; they don't delegate, which is what anyone adding one
     wants (that's a `stub-zone`). Nor an authoritative server: no

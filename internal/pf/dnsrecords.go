@@ -205,6 +205,19 @@ func deref(p *int) int {
 	return *p
 }
 
+// PrivateTopLevel are single-label names used for networks of one's own,
+// which may answer only their own names: ICANN's .internal, the
+// reserved test names, and ones commonly used inside networks.
+var PrivateTopLevel = []string{"internal", "lan", "home", "corp", "intranet", "private", "localdomain", "test", "example", "invalid"}
+
+// IsTopLevel is a single-label name that may be the internet's: a
+// domain answering only its own names there would hide every name
+// under it (com, org, uk).
+func IsTopLevel(name string) bool {
+	name = strings.ToLower(strings.TrimSuffix(name, "."))
+	return name != "" && !strings.Contains(name, ".") && !slices.Contains(PrivateTopLevel, name)
+}
+
 // isRecordName is a name a record can have: labels of letters, digits,
 // hyphens and underscores (_sip._tcp, _dmarc), no final dot, no
 // wildcard.
@@ -253,6 +266,8 @@ func (v *validator) dnsRecords() {
 			v.fail(p+".name", "%q isn't a domain", z.Name)
 		case n == "arpa" || n == "in-addr.arpa" || n == "ip6.arpa":
 			v.fail(p+".name", "%s holds every reverse name; use a domain under it", z.Name)
+		case z.Type == DNSZoneStatic && IsTopLevel(n):
+			v.fail(p+".type", "%s is a top-level domain: answering only your names in it would hide every name under it", z.Name)
 		}
 		v.unique(p+".name", zones, n, "domain")
 		v.oneOf(p+".type", string(z.Type), string(DNSZoneStatic), string(DNSZoneTransparent))

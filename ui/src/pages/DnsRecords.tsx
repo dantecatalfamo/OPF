@@ -174,14 +174,22 @@ function groups(m: Model, list: Row[]): DomainGroup[] {
       declared.get(lower(z.name))!.rows.push(r);
       continue;
     }
-    const parent = r.name.split('.').slice(1).join('.') || r.name;
-    if (!others.has(lower(parent))) others.set(lower(parent), { domain: parent, declared: false, system: false, type: 'transparent', rows: [] });
-    others.get(lower(parent))!.rows.push(r);
+    // A name's domain, but never a top-level one: google.com is its own.
+    const parent = r.name.split('.').slice(1).join('.');
+    const domainOf = parent.includes('.') ? parent : r.name;
+    if (!others.has(lower(domainOf))) others.set(lower(domainOf), { domain: domainOf, declared: false, system: false, type: 'transparent', rows: [] });
+    others.get(lower(domainOf))!.rows.push(r);
   }
   const byName = (a: DomainGroup, b: DomainGroup) => a.domain.localeCompare(b.domain);
   const [first, ...rest] = [...declared.values()];
   return [first, ...rest.sort(byName), ...[...others.values()].sort(byName), ...(reverse.rows.length ? [reverse] : [])];
 }
+
+// Single-label names for networks of one's own, which may answer only
+// their own names (pf.PrivateTopLevel). Any other single label may be
+// the internet's: com, org, uk.
+const privateTopLevel = ['internal', 'lan', 'home', 'corp', 'intranet', 'private', 'localdomain', 'test', 'example', 'invalid'];
+const isTopLevel = (name: string) => !name.includes('.') && !privateTopLevel.includes(lower(name));
 
 // The choice, as the end of "Names here that aren't listed …".
 const unlisted: { value: DnsZone['type']; label: string }[] = [
@@ -189,7 +197,7 @@ const unlisted: { value: DnsZone['type']; label: string }[] = [
   { value: 'transparent', label: 'are looked up on the internet' },
 ];
 const unlistedExample = (type: DnsZone['type'], domain: string) =>
-  type === 'static' ? `A device asking for anything else in ${domain} is told there’s no such name.` : `Anything else in ${domain} is looked up on the internet, as usual.`;
+  isTopLevel(domain) ? `${domain} is a top-level domain: answering only your names in it would hide every name under it.` : type === 'static' ? `A device asking for anything else in ${domain} is told there’s no such name.` : `Anything else in ${domain} is looked up on the internet, as usual.`;
 
 export function LocalNames() {
   const { staged, edit } = useStore();
@@ -201,8 +209,14 @@ export function LocalNames() {
     const what = `${g.domain}: names not listed ${type === 'static' ? 'don’t exist' : 'are looked up on the internet'}`;
     edit('dns', what, (m) => {
       const rest = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(g.domain));
-      // The firewall's domain is "don't exist" unless listed.
-      const keep = g.system && type === 'static' ? rest : [...rest, { name: g.domain, type }];
+      // "Looked up on the internet" is what a domain without a rule does
+      // anyway, so it needs a rule only as an exception inside a domain
+      // whose other names don't exist (the firewall's, for one). The
+      // firewall's own domain is "don't exist" unless it has a rule.
+      const parent = g.domain.split('.').slice(1).join('.');
+      const inside = parent && zoneOf(m, parent)?.type === 'static';
+      const needed = g.system ? type === 'transparent' : type === 'static' || inside;
+      const keep = needed ? [...rest, { name: g.domain, type }] : rest;
       return { ...m, dns: { ...m.dns, zones: keep.length ? keep : undefined } };
     });
   };
@@ -265,7 +279,8 @@ export function LocalNames() {
                         <Group gap="xs" wrap="nowrap" align="flex-start">
                             <Text size="sm" c="dimmed" mt={4}>Names here that aren’t listed</Text>
                             {/* What the choice means, right under it. */}
-                            <Select size="xs" w={280} data={unlisted} value={g.type} allowDeselect={false} disabled={!g.declared && !isHost(g.domain)}
+                            <Select size="xs" w={280} value={g.type}
+                              data={unlisted.map((o) => (o.value === 'static' && isTopLevel(g.domain) ? { ...o, disabled: true } : o))} allowDeselect={false} disabled={!g.declared && !isHost(g.domain)}
                               description={unlistedExample(g.type, g.domain)} inputWrapperOrder={['input', 'description']}
                               styles={{ description: { marginTop: 4, fontSize: 'var(--mantine-font-size-xs)' } }}
                               onChange={(v) => v && setType(g, v as DnsZone['type'])} aria-label={`What happens to names in ${g.domain} that aren’t listed`} />
@@ -336,6 +351,7 @@ function DomainModal({ opened, onClose, taken }: { opened: boolean; onClose: () 
         if (/^((in-addr|ip6)\.)?arpa$/.test(n)) return 'That holds every reverse name; use a domain under it';
         return taken.includes(n) ? 'Already listed' : null;
       },
+      type: (v, f) => (v === 'static' && isTopLevel(f.name.trim().replace(/\.$/, '')) ? 'A top-level domain can’t answer only your names: that would hide every name under it' : null),
     },
   });
   useEffect(() => {
