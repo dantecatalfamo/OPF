@@ -241,8 +241,8 @@ export function LocalNames() {
             <Table.Tr>
               <Table.Th>Name</Table.Th>
               <Table.Th>Type</Table.Th>
-              <Table.Th>Answer</Table.Th>
-              <Table.Th>Description</Table.Th>
+              <Table.Th w="34%">Answer</Table.Th>
+              <Table.Th w="26%">Description</Table.Th>
               <Table.Th w={40} />
             </Table.Tr>
           </Table.Thead>
@@ -262,10 +262,12 @@ export function LocalNames() {
                         {g.reverse && <Text size="xs" c="dimmed">The name an address gives when a program asks what it’s called.</Text>}
                       </div>
                       {!g.reverse && (
-                        <Stack gap={2} align="flex-end">
-                          <Group gap="xs" wrap="nowrap">
-                            <Text size="sm" c="dimmed">Names here that aren’t listed</Text>
-                            <Select size="xs" w={230} data={unlisted} value={g.type} allowDeselect={false} disabled={!g.declared && !isHost(g.domain)}
+                        <Group gap="xs" wrap="nowrap" align="flex-start">
+                            <Text size="sm" c="dimmed" mt={4}>Names here that aren’t listed</Text>
+                            {/* What the choice means, right under it. */}
+                            <Select size="xs" w={280} data={unlisted} value={g.type} allowDeselect={false} disabled={!g.declared && !isHost(g.domain)}
+                              description={unlistedExample(g.type, g.domain)} inputWrapperOrder={['input', 'description']}
+                              styles={{ description: { marginTop: 4, fontSize: 'var(--mantine-font-size-xs)' } }}
                               onChange={(v) => v && setType(g, v as DnsZone['type'])} aria-label={`What happens to names in ${g.domain} that aren’t listed`} />
                             {g.declared && !g.system ? (
                               <Tooltip label="Forget this domain’s rule" withinPortal>
@@ -274,9 +276,7 @@ export function LocalNames() {
                                 </ActionIcon>
                               </Tooltip>
                             ) : <span style={{ width: 28 }} />}
-                          </Group>
-                          <Text size="xs" c="dimmed" pr={36}>{unlistedExample(g.type, g.domain)}</Text>
-                        </Stack>
+                        </Group>
                       )}
                     </Group>
                   </Table.Td>
@@ -293,7 +293,8 @@ export function LocalNames() {
                     </Table.Td>
                     <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : r.kind === 'firewall' ? 'blue' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
                     <Table.Td style={{ overflowWrap: 'anywhere' }}>
-                      <Mono>{r.value}</Mono>
+                      {/* Each address whole: a list breaks only between them. */}
+                      <Mono>{r.value.split(', ').map((v, i, all) => <span key={i} style={{ whiteSpace: 'nowrap' }}>{v}{i < all.length - 1 ? ', ' : ''}</span>)}</Mono>
                       {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
                     </Table.Td>
                     <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
