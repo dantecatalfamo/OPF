@@ -155,7 +155,13 @@ func (w *Watcher) Sync(ctx context.Context) error {
 	if err != nil {
 		return w.failed(now, "unbound isn’t answering on its control socket", err)
 	}
-	if err := w.reconcile(ctx, Zone(m), Static(m), want, have); err != nil {
+	// An address the configuration gives a reverse name keeps it; a
+	// lease's name only becomes one where there's none.
+	named := map[netip.Addr]bool{}
+	for _, r := range pf.ReverseNames(m) {
+		named[r.IP] = true
+	}
+	if err := w.reconcile(ctx, Zone(m), Static(m), named, want, have); err != nil {
 		return w.failed(now, "some names couldn’t be updated in unbound", err)
 	}
 	w.update(func(s *State) { *s = State{Enabled: true, Checked: now, Registered: want, Refused: skipped} })
@@ -168,7 +174,10 @@ func (w *Watcher) read() ([]Lease, error) { return Read(w.File) }
 // aren't the configuration's (static) are exactly want. Records in the
 // zone that the configuration doesn't define are taken to be a lease's,
 // so ones left from before a restart, or added by hand, are removed.
-func (w *Watcher) reconcile(ctx context.Context, zone string, static map[string]bool, want, have []Record) error {
+func (w *Watcher) reconcile(ctx context.Context, zone string, static map[string]bool, named map[netip.Addr]bool, want, have []Record) error {
+	unnamed := func(ips []netip.Addr) []netip.Addr {
+		return slices.DeleteFunc(slices.Clone(ips), func(ip netip.Addr) bool { return named[ip] })
+	}
 	wanted := map[string]netip.Addr{}
 	for _, r := range want {
 		wanted[r.Name] = r.IP
@@ -187,7 +196,7 @@ func (w *Watcher) reconcile(ctx context.Context, zone string, static map[string]
 			delete(wanted, name) // already right
 			continue
 		}
-		if err := w.Resolver.Remove(ctx, name); err != nil {
+		if err := w.Resolver.Remove(ctx, name, unnamed(ips)); err != nil {
 			errs = append(errs, err)
 			delete(wanted, name) // don't add beside a stale record
 			continue
@@ -198,7 +207,7 @@ func (w *Watcher) reconcile(ctx context.Context, zone string, static map[string]
 	}
 	for _, name := range sortedKeys(wanted) {
 		r := Record{Name: name, IP: wanted[name]}
-		if err := w.Resolver.Add(ctx, r); err != nil {
+		if err := w.Resolver.Add(ctx, r, !named[r.IP]); err != nil {
 			errs = append(errs, err)
 			continue
 		}
@@ -243,7 +252,7 @@ func (m *Memory) List(context.Context) ([]Record, error) {
 	return slices.Clone(m.records), nil
 }
 
-func (m *Memory) Add(_ context.Context, r Record) error {
+func (m *Memory) Add(_ context.Context, r Record, reverse bool) error {
 	if !ok(r.Name) {
 		return fmt.Errorf("refusing to register %q", r.Name)
 	}
@@ -252,16 +261,24 @@ func (m *Memory) Add(_ context.Context, r Record) error {
 	m.records = append(m.records, r)
 	if m.Log != nil {
 		m.Log.Printf("dry-run: unbound-control local_data %s %d IN A %s", r.Name, TTL, r.IP)
+		if reverse && r.IP.Is4() {
+			m.Log.Printf("dry-run: unbound-control local_data %s %d IN PTR %s", reverseName(r.IP), TTL, r.Name)
+		}
 	}
 	return nil
 }
 
-func (m *Memory) Remove(_ context.Context, name string) error {
+func (m *Memory) Remove(_ context.Context, name string, reverse []netip.Addr) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.records = slices.DeleteFunc(m.records, func(r Record) bool { return r.Name == name })
 	if m.Log != nil {
 		m.Log.Printf("dry-run: unbound-control local_data_remove %s", name)
+		for _, ip := range reverse {
+			if ip.Is4() {
+				m.Log.Printf("dry-run: unbound-control local_data_remove %s", reverseName(ip))
+			}
+		}
 	}
 	return nil
 }

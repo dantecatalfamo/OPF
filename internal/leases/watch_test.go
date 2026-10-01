@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -48,16 +49,18 @@ func TestUnbound(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("List = %+v, %v", got, err)
 	}
-	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}); err != nil {
+	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := u.Remove(ctx, "phone.office.arpa."); err != nil {
+	if err := u.Remove(ctx, "phone.office.arpa.", []netip.Addr{netip.MustParseAddr("192.168.1.102")}); err != nil {
 		t.Fatal(err)
 	}
 	wantCalls := [][]string{
 		{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "list_local_data"},
 		{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "local_data", "phone.office.arpa.", "300", "IN", "A", "192.168.1.102"},
+		{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "local_data", "102.1.168.192.in-addr.arpa.", "300", "IN", "PTR", "phone.office.arpa."},
 		{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "local_data_remove", "phone.office.arpa."},
+		{"unbound-control", "-c", "/var/unbound/etc/unbound.conf", "local_data_remove", "102.1.168.192.in-addr.arpa."},
 	}
 	if !reflect.DeepEqual(f.calls, wantCalls) {
 		t.Errorf("calls\n%q\nwant\n%q", f.calls, wantCalls)
@@ -66,11 +69,11 @@ func TestUnbound(t *testing.T) {
 	// Names that didn't come from Records never reach unbound-control.
 	f.calls = nil
 	for _, name := range []string{"phone.office.arpa", "a b.office.arpa.", "x.office.arpa.\n", "phone.", ".", "a..b."} {
-		if u.Add(ctx, Record{Name: name, IP: netip.MustParseAddr("192.168.1.102")}) == nil || u.Remove(ctx, name) == nil {
+		if u.Add(ctx, Record{Name: name, IP: netip.MustParseAddr("192.168.1.102")}, true) == nil || u.Remove(ctx, name, nil) == nil {
 			t.Errorf("accepted %q", name)
 		}
 	}
-	if u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("fe80::1")}) == nil {
+	if u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("fe80::1")}, true) == nil {
 		t.Error("accepted an IPv6 address for an A record")
 	}
 	if len(f.calls) != 0 {
@@ -78,7 +81,7 @@ func TestUnbound(t *testing.T) {
 	}
 
 	f.reply = "error name not in zone\n"
-	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}); err == nil {
+	if err := u.Add(ctx, Record{Name: "phone.office.arpa.", IP: netip.MustParseAddr("192.168.1.102")}, true); err == nil {
 		t.Error("an unexpected reply wasn't an error")
 	}
 	f.err = errors.New("exit status 1")
@@ -148,12 +151,12 @@ func TestWatcher(t *testing.T) {
 
 	// Records from the configuration are in unbound too; they're never
 	// touched, even when a lease claims the name.
-	e.dns.Add(ctx, Record{Name: "gw.office.arpa.", IP: netip.MustParseAddr("192.168.1.1")})
-	e.dns.Add(ctx, Record{Name: "wiki.office.arpa.", IP: netip.MustParseAddr("192.168.1.25")})
+	e.dns.Add(ctx, Record{Name: "gw.office.arpa.", IP: netip.MustParseAddr("192.168.1.1")}, false)
+	e.dns.Add(ctx, Record{Name: "wiki.office.arpa.", IP: netip.MustParseAddr("192.168.1.25")}, false)
 	// Records in other zones aren't ours either.
-	e.dns.Add(ctx, Record{Name: "host.example.com.", IP: netip.MustParseAddr("10.0.0.1")})
+	e.dns.Add(ctx, Record{Name: "host.example.com.", IP: netip.MustParseAddr("10.0.0.1")}, false)
 	// One left over from before a restart, or added by hand, is.
-	e.dns.Add(ctx, Record{Name: "stale.office.arpa.", IP: netip.MustParseAddr("192.168.1.199")})
+	e.dns.Add(ctx, Record{Name: "stale.office.arpa.", IP: netip.MustParseAddr("192.168.1.199")}, false)
 
 	e.leases("192.168.1.101", "laptop", "192.168.1.102", "phone", "192.168.1.103", "gw")
 	e.sync()
@@ -171,7 +174,7 @@ func TestWatcher(t *testing.T) {
 	e.expect(base + "laptop.office.arpa.=192.168.1.151 wiki.office.arpa.=192.168.1.25")
 
 	// unbound reloaded and forgot runtime data: it's put back.
-	e.dns.Remove(ctx, "laptop.office.arpa.")
+	e.dns.Remove(ctx, "laptop.office.arpa.", nil)
 	e.sync()
 	e.expect(base + "laptop.office.arpa.=192.168.1.151 wiki.office.arpa.=192.168.1.25")
 
@@ -242,5 +245,31 @@ func TestWatcherState(t *testing.T) {
 	e.sync()
 	if st := e.w.State(); st.Enabled || st.Error != "" || len(st.Registered) != 0 || st.Checked.IsZero() {
 		t.Errorf("turned off: %+v", st)
+	}
+}
+
+// A lease's name becomes its address's reverse name, unless the
+// configuration gives the address one.
+func TestWatcherReverseNames(t *testing.T) {
+	e := newWatcher(t)
+	var logged strings.Builder
+	e.dns.Log = log.New(&logged, "", 0)
+	e.model.DNS.Overrides = append(e.model.DNS.Overrides, pf.HostOverride{ID: "h9", Host: "printer2", Domain: "office.arpa", IP: "192.168.1.102"})
+	e.leases("192.168.1.101", "laptop", "192.168.1.102", "phone")
+	e.sync()
+	e.leases()
+	e.sync()
+	got := logged.String()
+	for _, want := range []string{
+		"local_data phone.office.arpa. 300 IN A 192.168.1.102\n",
+		"local_data 101.1.168.192.in-addr.arpa. 300 IN PTR laptop.office.arpa.\n",
+		"local_data_remove 101.1.168.192.in-addr.arpa.\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "102.1.168.192") {
+		t.Errorf("changed the reverse name the configuration gives:\n%s", got)
 	}
 }

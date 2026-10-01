@@ -488,8 +488,13 @@ Types, roughly in order of usefulness:
 - [ ] `rewriteInvalidLeaseNames` is meant to be on by default, but a
       model that leaves it out has it off. Import and the first-run
       wizard must set it.
-- [ ] No PTR records for leases or reservations: reverse lookups of DHCP
-      clients fail.
+- [x] Reverse names (PTR): one per address, a reverse name record's
+      first, then the firewall's on each inside network, host names and
+      reserved devices'; a DHCP lease's name becomes its address's
+      reverse name at runtime when the address has none of those.
+      Checked on 7.9: `unbound-control local_data` for a PTR answers
+      inside unbound's default private reverse zones, and
+      `local_data_remove` takes it away.
 - [x] **Local DNS records**: the DNS page's "Local names" card lists
       host names beside the other records, which are `dns.records`:
       aliases, mail servers (MX), text (TXT), services (SRV), reverse
@@ -520,14 +525,18 @@ Types, roughly in order of usefulness:
     wants (that's a `stub-zone`). Nor an authoritative server: no
     DNSSEC signing, dynamic updates or zone transfers; for a public
     domain served from here, that's nsd (Services).
-- [ ] The firewall's own name (`gw.office.arpa`) has no record, so in
-      the static system domain it's "no such name". It needs the
-      address of each inside interface, answered by the interface the
-      question came in on (unbound views, or `local-data` per network
-      with `access-control-view`).
-- [ ] A commit reverted by the confirm timeout doesn't kick the lease
-      watcher, so names are missing for up to 15 s after unbound
-      reloads.
+- [x] The firewall's own name (`gw.office.arpa`) answers with the
+      firewall's address on the network asking: a view per inside
+      network (`access-control-view`, `view-first: yes`, so everything
+      else falls through). Checked on 7.9; `interface-view`, by the
+      address asked, didn't apply there, with or without the port. It's
+      listed in Local names. The firewall asking itself (127.0.0.1)
+      still gets "no such name".
+- [x] A commit reverted by the confirm timeout now reports the change
+      too, so the lease watcher puts names back straight away. (Found on
+      the way: Commit returned the pending entry itself, which the
+      timeout's revert then changed under its reader; it returns a copy
+      now.)
 - [ ] `resolv.conf` isn't managed: OPF's own DNS client configuration
       (OpenBSD uses `resolv.conf.tail` with resolvd).
 
@@ -541,10 +550,12 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       Check first that unbound's HTTPS download works in the chroot (it
       needs a CA bundle, `tls-cert-bundle`); the status then comes from
       `unbound-control list_auth_zones`.
-- [ ] A blocklist that's turned off keeps its downloaded copy and
-      zones; remove them when a list is removed from the model (after
-      the commit is confirmed, so a revert still finds them), and the
-      same for pf URL aliases' files.
+- [x] A list removed from the configuration loses its downloads (a
+      blocklist's names and zones, a URL alias's table) once that's
+      final: after its commit is confirmed, or applied without needing
+      it, and on each refresher pass. Not while a commit is pending, and
+      a list that's only turned off, or is in the staged configuration,
+      keeps them.
 - [ ] Allow a name from the blocked-queries log ("this broke
       something"). Your own blocked and allowed names are built (Done).
   - Regex entries, which Pi-hole has, aren't possible with OpenBSD's
@@ -789,9 +800,9 @@ DNS:
       name" answers (`flush`, `flush_zone`, `flush_bogus`,
       `flush_negative`), each after saying what it does. Forgetting runs
       as an action, so `-dry` logs it; a name is checked as a DNS name
-      so it can't be read as an option. Tried only against the mock:
-      the `dump_cache` filter wants a look at real output on
-      openbsd-dev (a cache with CNAMEs and `msg` lines).
+      so it can't be read as an option. The cache view is tested
+      against 7.9's own `dump_cache` (records without their signatures,
+      and each kept answer as one line).
 - [ ] `unbound-checkconf` output on the DNS page when unbound refuses
       its configuration.
 

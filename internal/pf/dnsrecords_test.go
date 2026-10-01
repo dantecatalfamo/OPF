@@ -147,3 +147,33 @@ func TestRecordValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestFirewallNameAndReverse(t *testing.T) {
+	m := withRecords(t, DNSRecord{ID: "p", Name: "192.168.1.25", Type: DNSRecordPTR, Value: "wiki.office.arpa"})
+	conf := GenerateUnboundConf(m)
+	for _, want := range []string{
+		// Each inside network asks its own view, which answers with the
+		// firewall's address there.
+		"\taccess-control-view: 192.168.1.0/24 opf-net-lan\n",
+		"\nview:\n\tname: \"opf-net-lan\"\n\tview-first: yes\n\tlocal-data: \"gw.office.arpa. IN A 192.168.1.1\"\n",
+		"\nview:\n\tname: \"opf-net-iot\"\n\tview-first: yes\n\tlocal-data: \"gw.office.arpa. IN A 192.168.20.1\"\n",
+		// Reverse names: the firewall's, a host name's, a reserved device's.
+		"\tlocal-data-ptr: \"192.168.1.1 gw.office.arpa.\"\n",
+		"\tlocal-data-ptr: \"192.168.1.20 files.office.arpa.\"\n",
+		"\tlocal-data-ptr: \"192.168.1.40 printer.office.arpa.\"\n",
+		// A record wins over a host name (wiki) and a reservation (build).
+		"\tlocal-data-ptr: \"192.168.1.25 3600 wiki.office.arpa.\"\n",
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("missing %q in\n%s", want, conf)
+		}
+	}
+	if strings.Contains(conf, "opf-net-wan") || strings.Count(conf, "192.168.1.25 ") != 1 || strings.Count(conf, "local-data-ptr: \"192.168.1.20 ") != 1 {
+		t.Errorf("a WAN view, or an address with two reverse names:\n%s", conf)
+	}
+	// Reserved devices' reverse names follow their names into DNS.
+	m.DNS.RegisterReservations = false
+	if strings.Contains(GenerateUnboundConf(m), "192.168.1.40 printer") {
+		t.Error("reverse name for a reservation that isn't in DNS")
+	}
+}

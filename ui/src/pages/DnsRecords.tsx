@@ -3,17 +3,19 @@
 // has no record for. The firewall checks everything again; the checks
 // here are for saying what's wrong while typing.
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Grid, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Textarea } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Grid, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Textarea, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconChevronDown, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconChevronDown, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react';
+import { Link } from 'react-router';
 import { newId, useStore } from '../model/store';
 import type { DnsRecord, DnsRecordType, DnsZone, Model } from '../model/types';
 import { Empty, Mono, SectionTitle } from '../components/ui';
 
-type Kind = 'host' | DnsRecordType;
+type Kind = 'host' | 'firewall' | DnsRecordType;
 
 const kinds: { kind: Kind; label: string; badge: string; about: string }[] = [
   { kind: 'host', label: 'Host name', badge: 'Host', about: 'A name for an address: devices using OPF for DNS find it by name.' },
+  { kind: 'firewall', label: 'The firewall', badge: 'Firewall', about: '' },
   { kind: 'CNAME', label: 'Alias', badge: 'Alias', about: 'Another name for a name that exists already.' },
   { kind: 'MX', label: 'Mail server', badge: 'Mail', about: 'Where mail for a domain goes (MX).' },
   { kind: 'TXT', label: 'Text', badge: 'Text', about: 'Text for programs to read: SPF, domain verification (TXT).' },
@@ -89,16 +91,29 @@ interface Row {
   value: string;
   detail?: string;
   description?: string;
-  remove: (m: Model) => Model;
+  /** Absent for the firewall's own name, which is the system's. */
+  remove?: (m: Model) => Model;
   what: string;
 }
 
 function rows(m: Model): Row[] {
-  const out: Row[] = m.dns.overrides.map((o) => ({
+  const out: Row[] = [];
+  // The firewall answers with its address on the network asking.
+  const inside = m.interfaces.filter((i) => i.role !== 'wan' && i.ipv4.mode === 'static' && i.ipv4.address);
+  if (m.system.hostname && m.system.domain && inside.length) {
+    out.push({
+      key: 'firewall', name: `${m.system.hostname}.${m.system.domain}`, kind: 'firewall',
+      value: inside.map((i) => i.ipv4.address).join(', '),
+      detail: 'the address on the network asking',
+      description: 'The firewall itself',
+      what: 'the firewall’s name',
+    });
+  }
+  out.push(...m.dns.overrides.map((o): Row => ({
     key: o.id, name: `${o.host}.${o.domain}`, kind: 'host', value: o.ip, description: o.description,
     what: `host name ${o.host}.${o.domain}`,
     remove: (x) => ({ ...x, dns: { ...x.dns, overrides: x.dns.overrides.filter((y) => y.id !== o.id) } }),
-  }));
+  })));
   const local = localAddresses(m);
   for (const r of m.dns.records ?? []) {
     let value = r.value;
@@ -138,7 +153,7 @@ export function LocalNames() {
               <Button size="xs" variant="light" rightSection={<IconChevronDown size={14} />}>Add</Button>
             </Menu.Target>
             <Menu.Dropdown>
-              {kinds.map((k) => (
+              {kinds.filter((k) => k.kind !== 'firewall').map((k) => (
                 <Menu.Item key={k.kind} onClick={() => setAdding(k.kind)}>
                   <Text size="sm">{k.label}</Text>
                 </Menu.Item>
@@ -167,16 +182,24 @@ export function LocalNames() {
                   <Table.Td style={{ whiteSpace: 'nowrap' }}>
                     <Mono>{r.name}</Mono>
                   </Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : r.kind === 'firewall' ? 'blue' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
                   <Table.Td style={{ overflowWrap: 'anywhere' }}>
                     <Mono>{r.value}</Mono>
                     {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
                   </Table.Td>
                   <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
                   <Table.Td w={40}>
-                    <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove)}>
-                      <IconTrash size={16} />
-                    </ActionIcon>
+                    {r.remove ? (
+                      <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove!)}>
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    ) : (
+                      <Tooltip label="Its name is set in System › General" withinPortal>
+                        <ActionIcon component={Link} to="/system/general" variant="subtle" color="gray" aria-label="Change the firewall’s name in System › General">
+                          <IconSettings size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -188,7 +211,7 @@ export function LocalNames() {
       )}
       <LocalDomains />
       <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
-      <RecordModal type={adding && adding !== 'host' ? adding : null} onClose={() => setAdding(null)} />
+      <RecordModal type={adding && adding !== 'host' && adding !== 'firewall' ? adding : null} onClose={() => setAdding(null)} />
     </>
   );
 }
@@ -222,7 +245,11 @@ function LocalDomains() {
                 <Table.Tr key={z.name}>
                   <Table.Td>
                     <Mono>{z.name}</Mono>
-                    {z.name === sys && <Text size="xs" c="dimmed">The firewall’s domain</Text>}
+                    {z.name === sys && (
+                  <Text size="xs" c="dimmed">
+                    The firewall’s domain, set in <Anchor component={Link} to="/system/general" size="xs" style={{ whiteSpace: 'nowrap' }}>System › General</Anchor>
+                  </Text>
+                )}
                   </Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }} ta="right">
                     <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />

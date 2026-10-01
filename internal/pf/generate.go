@@ -1208,6 +1208,8 @@ func GenerateUnboundConf(m *Model) string {
 		}
 	}
 	lines = append(lines, recordLines(m)...)
+	lines = append(lines, reverseLines(m)...)
+	lines = append(lines, firewallViewLines(m, insideNonWAN)...)
 
 	// Blocklists are response policy zones, which need the respip
 	// module. Your own entries come first: unbound applies the first
@@ -1237,6 +1239,8 @@ func GenerateUnboundConf(m *Model) string {
 			"\trpz-log: yes",
 			fmt.Sprintf("\trpz-log-name: \"%s\"", DNSListLogName(l.ID)))
 	}
+
+	lines = append(lines, firewallViews(m, insideNonWAN)...)
 
 	// Over a control socket only root can use, OPF reads the stats,
 	// adds dynamic leases' names and reloads a blocklist's zone when

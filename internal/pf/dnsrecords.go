@@ -418,3 +418,117 @@ func (v *validator) dnsAlias(p string, r DNSRecord, local map[string][]string, t
 		}
 	}
 }
+
+// The firewall's own name, answered on each inside network with the
+// firewall's address there. unbound picks the answers by the network
+// the question comes from (access-control-view); with view-first, every
+// other name falls through to the zones above. (interface-view, by the
+// address asked, didn't apply on 7.9.)
+
+// firewallView is the view for an inside interface's network.
+func firewallView(i Iface) string { return "opf-net-" + i.ID }
+
+// firewallName is the firewall's name, fully qualified without the
+// final dot, or "" when it has none.
+func firewallName(m *Model) string {
+	if m.System.Hostname == "" || m.System.Domain == "" {
+		return ""
+	}
+	return m.System.Hostname + "." + m.System.Domain
+}
+
+// firewallViewLines are the server: lines that put each inside
+// network in its view.
+func firewallViewLines(m *Model, inside []Iface) []string {
+	if firewallName(m) == "" {
+		return nil
+	}
+	var lines []string
+	for _, i := range inside {
+		lines = append(lines, fmt.Sprintf("\taccess-control-view: %s/%d %s", networkAddr(i.IPv4.Address, *i.IPv4.Prefix), *i.IPv4.Prefix, firewallView(i)))
+	}
+	return lines
+}
+
+// firewallViews are the views themselves.
+func firewallViews(m *Model, inside []Iface) []string {
+	name := firewallName(m)
+	if name == "" {
+		return nil
+	}
+	var lines []string
+	for _, i := range inside {
+		lines = append(lines, "", "view:",
+			fmt.Sprintf("\tname: \"%s\"", firewallView(i)),
+			"\tview-first: yes",
+			fmt.Sprintf("\tlocal-data: \"%s. IN A %s\"", name, i.IPv4.Address))
+	}
+	return lines
+}
+
+// ReverseName is an address's reverse (PTR) name.
+type ReverseName struct {
+	IP   netip.Addr
+	Name string // fully qualified, without the final dot
+}
+
+// ReverseNames are the reverse names the configuration gives, one per
+// address: a reverse name record's first, then the firewall's on each
+// inside network, host names, and reserved devices' when they're in
+// DNS. A lease's name only gets a reverse name when its address has
+// none of these.
+func ReverseNames(m *Model) []ReverseName {
+	var out []ReverseName
+	seen := map[netip.Addr]bool{}
+	add := func(ip, name string) {
+		a, err := netip.ParseAddr(ip)
+		if err != nil || seen[a] || name == "" {
+			return
+		}
+		seen[a] = true
+		out = append(out, ReverseName{IP: a, Name: name})
+	}
+	for _, r := range m.DNS.Records {
+		if r.Type == DNSRecordPTR {
+			add(r.Name, r.Value)
+		}
+	}
+	if name := firewallName(m); name != "" {
+		for _, i := range staticIfaces(m) {
+			if i.Role != RoleWAN {
+				add(i.IPv4.Address, name)
+			}
+		}
+	}
+	for _, o := range m.DNS.Overrides {
+		add(o.IP, o.Host+"."+o.Domain)
+	}
+	if m.DNS.RegisterReservations && m.System.Domain != "" {
+		for _, s := range m.DHCP {
+			for _, r := range s.Reservations {
+				if r.Hostname != "" {
+					add(r.IP, r.Hostname+"."+m.System.Domain)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// reverseLines are local-data-ptr lines for the reverse names that
+// aren't records (recordLines writes those, with their TTL).
+func reverseLines(m *Model) []string {
+	explicit := map[netip.Addr]bool{}
+	for _, r := range m.DNS.Records {
+		if a, err := netip.ParseAddr(r.Name); err == nil && r.Type == DNSRecordPTR {
+			explicit[a] = true
+		}
+	}
+	var lines []string
+	for _, r := range ReverseNames(m) {
+		if !explicit[r.IP] {
+			lines = append(lines, fmt.Sprintf("\tlocal-data-ptr: \"%s %s.\"", r.IP, r.Name))
+		}
+	}
+	return lines
+}
