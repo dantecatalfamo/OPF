@@ -66,6 +66,7 @@ type API interface {
 	// and keeps nothing (wgkeys.go).
 	NewTunnelKey() (string, error)
 	NewDeviceKey() (*DeviceKey, error)
+	SetPresharedKey(PresharedKeyRequest) (*PresharedKey, error)
 	TestWebhook(id string) (*WebhookStatus, error)
 }
 

@@ -183,7 +183,45 @@ func (m *Manager) Interfaces() (*InterfacesStatus, error) {
 		}
 		res.Interfaces = append(res.Interfaces, st)
 	}
+	m.addLastSeen(res.Interfaces)
 	return res, nil
+}
+
+// addLastSeen gives each VPN device when it was last seen and from
+// where: what it says now, or what OPF remembers when the interface has
+// forgotten (reloaded since).
+func (m *Manager) addLastSeen(ifs []InterfaceState) {
+	if m.store == nil {
+		return // reading only (tests of the parsers)
+	}
+	model, _, err := m.live()
+	if err != nil || model == nil {
+		return
+	}
+	ids := tunnelPeers(model)
+	l := m.eventLog()
+	now := time.Now()
+	for i := range ifs {
+		wg := ifs[i].WireGuard
+		if wg == nil {
+			continue
+		}
+		for j := range wg.Peers {
+			p := &wg.Peers[j]
+			id, ok := ids[p.PublicKey]
+			if !ok {
+				continue
+			}
+			if p.HandshakeAgo != nil {
+				at := now.Add(-time.Duration(*p.HandshakeAgo) * time.Second).Truncate(time.Second)
+				p.LastSeen, p.LastFrom = &at, endpointHost(p.Endpoint)
+			}
+			if s, ok := l.device(id); ok && (p.LastSeen == nil || s.At.After(*p.LastSeen)) {
+				at := s.At
+				p.LastSeen, p.LastFrom = &at, s.From
+			}
+		}
+	}
 }
 
 // gatewayCacheFor is how long a gateway's ping result is reused, so

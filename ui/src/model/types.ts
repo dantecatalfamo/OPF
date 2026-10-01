@@ -360,6 +360,8 @@ export interface Peer {
   endpoint?: string;
   keepalive?: number;
   clientRoutes: 'split' | 'full' | 'site'; // what the peer sends through the tunnel
+  /** The id of a preshared key it shares with the tunnel, kept on the firewall; never the key. */
+  presharedKey?: string;
 }
 
 // A tunnel's settings. Its address and whether it's up are its

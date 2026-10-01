@@ -81,6 +81,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s := &Server{api: api, ui: ui, mux: http.NewServeMux()}
 	s.mux.HandleFunc("POST /api/wireguard/keys", s.newTunnelKey)
 	s.mux.HandleFunc("POST /api/wireguard/device-keys", s.newDeviceKey)
+	s.mux.HandleFunc("POST /api/wireguard/preshared-keys", s.setPresharedKey)
 	s.mux.HandleFunc("GET /api/session", s.getSession)
 	s.mux.HandleFunc("POST /api/session", s.login)
 	s.mux.HandleFunc("DELETE /api/session", s.logout)
@@ -859,6 +860,23 @@ func (s *Server) newTunnelKey(w http.ResponseWriter, r *http.Request) {
 // a secret.
 func (s *Server) newDeviceKey(w http.ResponseWriter, r *http.Request) {
 	k, err := s.apiFor(r).NewDeviceKey()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	noCompression(w)
+	writeJSON(w, http.StatusCreated, k)
+}
+
+// setPresharedKey keeps a preshared key, given or made, and answers it
+// once with the id the device's model names it by: {"id", "key"}. Not
+// compressed: it carries a secret.
+func (s *Server) setPresharedKey(w http.ResponseWriter, r *http.Request) {
+	var req appliance.PresharedKeyRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	k, err := s.apiFor(r).SetPresharedKey(req)
 	if err != nil {
 		fail(w, err)
 		return

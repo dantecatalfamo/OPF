@@ -5,6 +5,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Interface is one interface as `ifconfig -A` shows it.
@@ -64,6 +65,12 @@ type WGPeer struct {
 	// hasn't been one.
 	HandshakeAgo *int64   `json:"handshakeAgo,omitempty"`
 	AllowedIPs   []string `json:"allowedIps"`
+	// LastSeen and LastFrom are when the device last shook hands and
+	// where it connected from, as OPF remembers them: kept across the
+	// interface being reloaded, which forgets its handshakes. Filled in
+	// by the appliance, not ifconfig.
+	LastSeen *time.Time `json:"lastSeen,omitempty"`
+	LastFrom string     `json:"lastFrom,omitempty"`
 }
 
 // ParseIfconfig reads `ifconfig -A` output: a header line per interface

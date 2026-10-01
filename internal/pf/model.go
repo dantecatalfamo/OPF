@@ -672,6 +672,10 @@ type Peer struct {
 	Endpoint     string       `json:"endpoint,omitempty"`
 	Keepalive    *int         `json:"keepalive,omitempty"`
 	ClientRoutes ClientRoutes `json:"clientRoutes"`
+	// PresharedKey names the preshared key the device and the tunnel
+	// share too (wgpsk), when they do: an id for its file (WGPSKPath),
+	// never the key. A new key gets a new id, so a revert finds the old.
+	PresharedKey string `json:"presharedKey,omitempty"`
 }
 
 // WireGuard is one tunnel, what its interface's hostname.wgN sets up.

@@ -512,7 +512,26 @@ Types, roughly in order of usefulness:
       device configuration; both key pairs matched, the handshake
       completed, and pings crossed the tunnel. Before this the keys were
       random strings and no tunnel could have worked.
-  - [ ] A new key for a tunnel (after a leak), with its devices told.
+  - [x] New keys: a tunnel's (made on the firewall; then each device's
+        configuration with the tunnel's new public key, keeping its own
+        keys) and a device's (made in the browser; its whole new
+        configuration, once). Revert-safe: a new tunnel key is a new
+        file, and the old one stays until the commit is final.
+  - [x] Preshared keys: added when making a device, or later (made on
+        the firewall, or one you have), replaced, removed. Each is a
+        file of its own named by an id in the model, never the key, so
+        a revert finds the old one; `hostname.wgN` reads it with
+        `!ifconfig $if wgpeer <key> wgpsk "$(cat …)"`, and it's in the
+        device's configuration once.
+  - [x] When a device was last seen, and where from, kept across the
+        interface reloading (which forgets its handshakes) with the
+        event log, and shown on the tunnel's devices.
+  - Tried live on openbsd-dev: a tunnel made a new key and a device
+    given new keys and a preshared key in the UI; netstart brought up
+    the generated `hostname.wgN`, its public key the one the device was
+    told; with the preshared key 12 of 12 pings crossed, with a wrong
+    one none did. A handshake can take a retry (five seconds) to
+    complete: a test should wait for it.
   - [ ] The key is on ifconfig's command line for an instant as the
         interface comes up, as with any wgkey; ifconfig can't read it
         from a file.

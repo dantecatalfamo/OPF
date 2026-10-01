@@ -533,6 +533,14 @@ every 10 minutes for a week and every hour for the month.
   firewall (201, `{"publicKey"}`) for a new tunnel's model. The private
   key stays on the firewall, root-only, and staging a tunnel whose key
   it didn't make is `invalid`. Admins only.
+- `POST /api/wireguard/preshared-keys` with `{"key"}`, or `{}` for
+  the firewall to make one: keeps a preshared key, in a file of its
+  own, and answers `{"id", "key"}` once (uncompressed). A device's
+  `presharedKey` in the model is the id, never the key; staging one
+  that isn't on the firewall is `invalid`. Admins only.
+- A VPN device in `GET /api/network/interfaces` has `lastSeen` and
+  `lastFrom`: when it last shook hands and where from, as OPF
+  remembers across the interface reloading.
 - `POST /api/wireguard/device-keys`: makes a device's key pair (201,
   `{"privateKey", "publicKey"}`), kept nowhere, for a browser that
   can't make one itself (the UI uses WebCrypto's X25519). Sent

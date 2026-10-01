@@ -124,6 +124,10 @@ export const localApi = {
   // The preview keeps no private key: only a public one is needed.
   newTunnelKey: async (): Promise<string> => (await browserKeyPair())?.publicKey ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
   newDeviceKey: async () => (await browserKeyPair()) ?? { privateKey: '', publicKey: '' },
+  setPresharedKey: async (key?: string) => ({
+    id: [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join(''),
+    key: key ?? btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))),
+  }),
   reauth: async (): Promise<void> => {},
   changeOwnPassword: async (): Promise<void> => {},
   users: async (): Promise<UsersResource> => ({ users: [], candidates: [] }),

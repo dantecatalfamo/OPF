@@ -85,6 +85,9 @@ func (m *Manager) watchInterfaces(model *pf.Model, ifs []sysinfo.Interface, now 
 		if s.WireGuard != nil {
 			for _, p := range s.WireGuard.Peers {
 				id, ok := peerIDs[p.PublicKey]
+				if ok && p.HandshakeAgo != nil {
+					l.sawDevice(id, now.Add(-time.Duration(*p.HandshakeAgo)*time.Second), endpointHost(p.Endpoint))
+				}
 				if !ok || p.Endpoint == "" {
 					continue
 				}

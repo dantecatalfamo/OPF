@@ -47,7 +47,7 @@ var methodRoles = map[string]auth.Role{
 	"Confirm": auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
-	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin,
+	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,
 	// Who can sign in, which also asks for the password again
 	// (allowRecent).
 	"Users": auth.RoleAdmin, "CreateUser": auth.RoleAdmin, "SetUserRole": auth.RoleAdmin,
@@ -587,5 +587,26 @@ func (c *Client) NewTunnelKey() (string, error) {
 func (c *Client) NewDeviceKey() (*appliance.DeviceKey, error) {
 	var r DeviceKeyReply
 	err := c.call("NewDeviceKey", None{}, &r)
+	return r.Key, err
+}
+
+type PresharedKeyReply struct {
+	Result
+	Key *appliance.PresharedKey
+}
+
+func (s *Service) SetPresharedKey(c Call[appliance.PresharedKeyRequest], r *PresharedKeyReply) error {
+	if s.allow("SetPresharedKey", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Key, err = s.api.SetPresharedKey(c.Args)
+	r.set("SetPresharedKey", err)
+	return nil
+}
+
+func (c *Client) SetPresharedKey(req appliance.PresharedKeyRequest) (*appliance.PresharedKey, error) {
+	var r PresharedKeyReply
+	err := c.call("SetPresharedKey", req, &r)
 	return r.Key, err
 }

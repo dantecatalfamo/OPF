@@ -198,12 +198,12 @@ function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () 
 
 function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; onClose: () => void }) {
   const { staged, edit } = useStore();
-  const wg = tunnel.wireguard;
   const [keys, setKeys] = useState({ priv: '', pub: '' });
   const [keyError, setKeyError] = useState<string>();
   const [created, setCreated] = useState<Peer | null>(null);
+  const [psk, setPsk] = useState<string>();
   const form = useForm({
-    initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '' },
+    initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', psk: false },
     validate: {
       name: (v) => (v.trim() ? null : 'Name the device, like “Alex phone”'),
       networks: (v, vals) => (vals.clientRoutes !== 'site' || (v.length && v.every(isCIDR)) ? null : 'Enter the networks behind this router, like 10.30.0.0/16'),
@@ -215,23 +215,14 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
     setKeyError(undefined);
     deviceKeyPair().then((k) => setKeys({ priv: k.privateKey, pub: k.publicKey }), (e) => setKeyError(e instanceof Error ? e.message : String(e)));
     setCreated(null);
-    form.setValues({ name: '', address: nextAddress(tunnel), clientRoutes: 'split', networks: [], endpoint: '' });
+    form.setValues({ name: '', address: nextAddress(tunnel), clientRoutes: 'split', networks: [], endpoint: '', psk: false });
+    setPsk(undefined);
   }, [opened]); // form is stable
 
   const v = form.values;
   const endpoint = useEndpoint(tunnel);
   const local = useDerived(staged).data?.localNetworks ?? [];
-  const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
-  const clientConfig = `[Interface]
-PrivateKey = ${keys.priv}
-Address = ${v.address}
-DNS = ${tunnel.ipv4.address}
-
-[Peer]
-PublicKey = ${wg.publicKey}
-Endpoint = ${endpoint}
-AllowedIPs = ${allowed}
-PersistentKeepalive = 25`;
+  const clientConfig = deviceConfig(local, endpoint, tunnel, created ?? { address: v.address, clientRoutes: v.clientRoutes }, { privateKey: keys.priv, presharedKey: psk });
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">Add a device to {tunnel.name}</Text>}>
@@ -252,11 +243,23 @@ PersistentKeepalive = 25`;
         </Stack>
       ) : (
         <form
-          onSubmit={form.onSubmit((x) => {
+          onSubmit={form.onSubmit(async (x) => {
             const peer: Peer = {
               id: newId('p'), name: x.name.trim(), publicKey: keys.pub, address: x.address, keepalive: 25, clientRoutes: x.clientRoutes,
               networks: x.clientRoutes === 'site' ? x.networks : [], ...(x.endpoint ? { endpoint: x.endpoint } : {}),
             };
+            // The preshared key is kept on the firewall before the device
+            // is added, and shown once, in its configuration.
+            if (x.psk) {
+              try {
+                const k = await backend.setPresharedKey();
+                setPsk(k.key);
+                peer.presharedKey = k.id;
+              } catch (e) {
+                setKeyError(`the preshared key: ${e instanceof Error ? e.message : String(e)}`);
+                return;
+              }
+            }
             edit('wireguard', `Added VPN device “${peer.name}” to ${tunnel.name} (${peer.address}${peer.networks.length ? `, routes ${peer.networks.join(', ')}` : ''})`, (m) =>
               withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: [...t.wireguard.peers, peer] } })));
             if (peer.networks.length) {
@@ -295,6 +298,8 @@ PersistentKeepalive = 25`;
                 <TextInput label="Its public address" description="Optional. Lets OPF start the connection." placeholder="branch.example.net:51820" {...form.getInputProps('endpoint')} />
               </>
             )}
+            <Checkbox label="Add a preshared key" description="A second secret the device and the tunnel share, on top of their keys: protection should their keys ever be broken (quantum computers, say). The firewall makes and keeps it; it’s in the device’s configuration once."
+              {...form.getInputProps('psk', { type: 'checkbox' })} />
             {keyError && <Alert color="red" variant="light" p="sm">Couldn’t make the device’s keys: {keyError}</Alert>}
               <Group justify="flex-end" mt="sm">
               <Button variant="default" onClick={onClose}>Cancel</Button>
@@ -388,6 +393,7 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   const { staged, edit } = useStore();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const [rekeying, setRekeying] = useState(false);
   const vpns = tunnels(staged);
   const form = useForm({
     initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '' },
@@ -445,7 +451,10 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
             </Group>
           </Stack>
           <Stack gap={2}>
-            <Text size="sm" fw={500}>Public key</Text>
+            <Group justify="space-between">
+              <Text size="sm" fw={500}>Public key</Text>
+              <Button size="compact-xs" variant="subtle" onClick={() => setRekeying(true)}>Make a new key</Button>
+            </Group>
             <Copyable value={tunnel.wireguard.publicKey} />
           </Stack>
           <Group justify="space-between">
@@ -455,22 +464,92 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
         </Stack>
       </form>
       <DeleteInterface iface={tunnel} kind="WireGuard tunnel" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/services/wireguard')} />
+      <Rekey tunnel={tunnel} opened={rekeying} onClose={() => setRekeying(false)} />
     </Card>
   );
 }
 
 // The device's configuration after an edit. Its private key is the one
 // it already has: OPF never sees it again after creating the device.
-function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
+// A new key for the tunnel, after a leak or to be safe: made on the
+// firewall like the first, and then every device's configuration, which
+// needs the tunnel's new public key.
+function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; onClose: () => void }) {
+  const { staged, edit } = useStore();
+  const local = useDerived(staged).data?.localNetworks ?? [];
+  const endpoint = useEndpoint(tunnel);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const [done, setDone] = useState(false);
+  useEffect(() => { if (opened) { setDone(false); setError(undefined); } }, [opened]);
+  const make = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const publicKey = await backend.newTunnelKey();
+      edit('wireguard', `A new key for WireGuard tunnel “${tunnel.name}”`, (m) => withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, publicKey } })));
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const peers = tunnel.wireguard.peers;
+  return (
+    <Modal opened={opened} onClose={onClose} size={done ? 'xl' : 'md'} title={<Text fw={600}>{done ? `Update ${tunnel.name}’s devices` : `A new key for ${tunnel.name}`}</Text>}>
+      {!done ? (
+        <Stack>
+          <Text size="sm">
+            The firewall makes a new key pair for the tunnel and keeps the private half; the old one stops working once this is applied.
+            {peers.length ? ` Each of its ${peers.length} device${peers.length === 1 ? '' : 's'} then needs the tunnel’s new public key in its configuration, or it can’t connect.` : ''}
+          </Text>
+          {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button color="red" loading={busy} onClick={make}>Make a new key</Button>
+          </Group>
+        </Stack>
+      ) : (
+        <Stack>
+          <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />}>
+            Apply the change, then give each device its new configuration: only the tunnel’s public key has changed, so each keeps its own private key{peers.some((p) => p.presharedKey) ? ' and preshared key' : ''}.
+          </Alert>
+          {peers.map((p) => {
+            const conf = deviceConfig(local, endpoint, staged.interfaces.find((i) => i.id === tunnel.id) as Tunnel ?? tunnel, p);
+            return (
+              <Stack key={p.id} gap={4}>
+                <Group justify="space-between">
+                  <Text size="sm" fw={500}>{p.name}</Text>
+                  <CopyButton value={conf}>
+                    {({ copied, copy }) => <Button size="compact-xs" variant="light" leftSection={copied ? <IconCheck size={14} /> : <IconCopy size={14} />} onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>}
+                  </CopyButton>
+                </Group>
+                <Code block>{conf}</Code>
+              </Stack>
+            );
+          })}
+          <Group justify="flex-end"><Button onClick={onClose}>Done</Button></Group>
+        </Stack>
+      )}
+    </Modal>
+  );
+}
+
+// The device's configuration. Its keys are given only when they're new
+// (OPF keeps neither the device's private key nor shows a preshared key
+// twice); otherwise the lines say to keep the ones it has.
+function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes' | 'presharedKey'>, keys: { privateKey?: string; presharedKey?: string } = {}): string {
   const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
+  const psk = keys.presharedKey ?? (p.presharedKey ? '<the device’s existing preshared key>' : undefined);
   return `[Interface]
-PrivateKey = <the device’s existing private key>
+PrivateKey = ${keys.privateKey ?? '<the device’s existing private key>'}
 Address = ${p.address}
 DNS = ${t.ipv4.address}
 
 [Peer]
 PublicKey = ${t.wireguard.publicKey}
-Endpoint = ${endpoint}
+${psk ? `PresharedKey = ${psk}\n` : ''}Endpoint = ${endpoint}
 AllowedIPs = ${allowed}
 PersistentKeepalive = 25`;
 }
@@ -502,9 +581,20 @@ function syncPeerRouting(m: Model, t: Tunnel, before: Peer, after: Peer): Model 
   return { ...m, routing: { ...m.routing, gateways, routes } };
 }
 
+// What the device needs after an edit: its configuration, with its new
+// keys when they're new (shown this once), and why.
+interface Saved {
+  peer: Peer;
+  keys?: { privateKey?: string; presharedKey?: string };
+  why: string;
+}
+
 function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null; onClose: () => void }) {
   const { staged, edit } = useStore();
-  const [saved, setSaved] = useState<Peer | null>(null);
+  const [saved, setSaved] = useState<Saved | null>(null);
+  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyError, setKeyError] = useState<string>();
+  const [ownPsk, setOwnPsk] = useState<string | null>(null);
   const local = useDerived(staged).data?.localNetworks ?? [];
   const wan = useEndpoint(tunnel);
   const form = useForm({
@@ -519,6 +609,8 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   useEffect(() => {
     if (!peer) return;
     setSaved(null);
+    setKeyError(undefined);
+    setOwnPsk(null);
     form.setValues({ name: peer.name, address: peer.address, clientRoutes: peer.clientRoutes, networks: peer.networks, endpoint: peer.endpoint ?? '', keepalive: peer.keepalive ?? '' });
     form.resetDirty();
   }, [peer]); // form is stable
@@ -535,8 +627,39 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
     edit('wireguard', `Edited VPN device “${after.name}” on ${tunnel.name}`, (m) =>
       syncPeerRouting(withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.map((p) => (p.id === peer.id ? after : p)) } })), tunnel, peer, after));
     // The device only needs a new configuration when what it's told changes.
-    if (after.address !== peer.address || after.clientRoutes !== peer.clientRoutes) setSaved(after);
-    else onClose();
+    if (after.address !== peer.address || after.clientRoutes !== peer.clientRoutes) {
+      setSaved({ peer: after, why: 'Its address or what it sends through the VPN changed, so the device needs the new settings below. Keep the keys it already has.' });
+    } else onClose();
+  });
+
+  // A change to the device's keys, applied at once (staged), then its
+  // configuration with the new ones.
+  const rekey = async (what: string, change: () => Promise<{ after: Peer; keys: Saved['keys']; why: string }>) => {
+    setKeyBusy(true);
+    setKeyError(undefined);
+    try {
+      const { after, keys, why } = await change();
+      edit('wireguard', `${what} for VPN device “${peer.name}” on ${tunnel.name}`, (m) =>
+        withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, peers: t.wireguard.peers.map((p) => (p.id === peer.id ? after : p)) } })));
+      setSaved({ peer: after, keys, why });
+    } catch (e) {
+      setKeyError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+  const newDeviceKeys = () => rekey('New keys', async () => {
+    const k = await deviceKeyPair();
+    return { after: { ...peer, publicKey: k.publicKey }, keys: { privateKey: k.privateKey }, why: 'The device has new keys: put this whole configuration on it. Its old configuration stops working once this is applied.' };
+  });
+  const setPresharedKey = (given?: string) => rekey(peer.presharedKey ? 'A new preshared key' : 'A preshared key', async () => {
+    const k = await backend.setPresharedKey(given);
+    return { after: { ...peer, presharedKey: k.id }, keys: { presharedKey: k.key }, why: 'The device shares a new preshared key with the tunnel: add its PresharedKey line to the device, keeping its private key. It’s shown this once.' };
+  });
+  const removePresharedKey = () => rekey('No preshared key', async () => {
+    const after = { ...peer };
+    delete after.presharedKey;
+    return { after, keys: undefined, why: 'The device no longer has a preshared key: take the PresharedKey line out of its configuration.' };
   });
 
   return (
@@ -544,11 +667,11 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
       {saved ? (
         <Stack>
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Update the device too">
-            Its address or what it sends through the VPN changed, so the device needs the new settings below. Keep the private key it already has.
+            {saved.why}
           </Alert>
-          <Code block>{deviceConfig(local, wan, tunnel, saved)}</Code>
+          <Code block>{deviceConfig(local, wan, tunnel, saved.peer, saved.keys)}</Code>
           <Group justify="flex-end">
-            <CopyButton value={deviceConfig(local, wan, tunnel, saved)}>
+            <CopyButton value={deviceConfig(local, wan, tunnel, saved.peer, saved.keys)}>
               {({ copied, copy }) => (
                 <Button variant="light" leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />} onClick={copy}>{copied ? 'Copied' : 'Copy configuration'}</Button>
               )}
@@ -575,7 +698,26 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
               </>
             )}
             <NumberInput label="Keepalive" description="Seconds between keepalive packets; empty for none." min={0} max={65535} {...form.getInputProps('keepalive')} />
-            <Text size="xs" c="dimmed">The device’s key stays the same. To replace it, remove the device and add it again.</Text>
+            <Stack gap={6}>
+              <Text size="sm" fw={500}>Keys</Text>
+              <Text size="xs" c="dimmed">
+                {peer.presharedKey ? 'It has its own key pair and shares a preshared key with the tunnel.' : 'It has its own key pair, and no preshared key.'} New ones take effect when applied; the device then needs its new configuration.
+              </Text>
+              <Group gap="xs">
+                <Button size="xs" variant="default" loading={keyBusy} onClick={newDeviceKeys}>New keys for this device</Button>
+                <Button size="xs" variant="default" loading={keyBusy} onClick={() => setPresharedKey()}>{peer.presharedKey ? 'New preshared key' : 'Add a preshared key'}</Button>
+                <Button size="xs" variant="subtle" onClick={() => setOwnPsk(ownPsk === null ? '' : null)}>Use a preshared key you have</Button>
+                {peer.presharedKey && <Button size="xs" variant="subtle" color="red" loading={keyBusy} onClick={removePresharedKey}>Remove the preshared key</Button>}
+              </Group>
+              {ownPsk !== null && (
+                <Group gap="xs" align="flex-start">
+                  <TextInput size="xs" placeholder="Base64, as wg genpsk prints" value={ownPsk} onChange={(e) => setOwnPsk(e.currentTarget.value.trim())} style={{ flex: 1 }} spellCheck={false} autoComplete="off"
+                    error={ownPsk && !/^[A-Za-z0-9+/]{43}=$/.test(ownPsk) ? 'A preshared key is 44 characters of base64' : undefined} />
+                  <Button size="xs" disabled={!/^[A-Za-z0-9+/]{43}=$/.test(ownPsk)} loading={keyBusy} onClick={() => setPresharedKey(ownPsk)}>Use it</Button>
+                </Group>
+              )}
+              {keyError && <Alert color="red" variant="light" p="sm">{keyError}</Alert>}
+            </Stack>
             <HistoryCard
               title="Traffic"
               series={[{ key: `wg.${peer.id}.rx`, label: 'From the device', color: 'harbor.6' }, { key: `wg.${peer.id}.tx`, label: 'To the device', color: 'amber.6' }]}
@@ -627,8 +769,11 @@ function Devices({ tunnel, onAdd }: { tunnel: Tunnel; onAdd: () => void }) {
               return (
                 <Table.Tr key={p.id}>
                   <Table.Td>
-                    <StatusDot ok={online ? true : s ? 'warn' : false} label={p.name} />
-                    <Text size="xs" c="dimmed" ml={16}>{s?.endpoint ?? p.endpoint ?? 'Not connected yet'}</Text>
+                    <StatusDot ok={online ? true : s?.lastSeen ? 'warn' : false} label={p.name} />
+                    <Text size="xs" c="dimmed" ml={16}>
+                      {s?.endpoint ? `From ${s.endpoint.replace(/:\d+$/, '')}` : s?.lastFrom ? `Last from ${s.lastFrom}` : p.endpoint ?? 'Not connected yet'}
+                      {p.presharedKey ? ' · preshared key' : ''}
+                    </Text>
                   </Table.Td>
                   <Table.Td>
                     <Mono>{p.address}</Mono>
@@ -636,7 +781,12 @@ function Devices({ tunnel, onAdd }: { tunnel: Tunnel; onAdd: () => void }) {
                   </Table.Td>
                   <Table.Td><Badge color={p.clientRoutes === 'full' ? 'amber' : 'gray'}>{routesLabel[p.clientRoutes]}</Badge></Table.Td>
                   <Table.Td>
-                    {s?.handshakeAgo !== undefined ? (online ? <Badge color="teal">Online</Badge> : <Text size="sm" c="dimmed">{formatAgo(s.handshakeAgo)}</Text>) : <Text size="sm" c="dimmed">{live ? 'Never' : '…'}</Text>}
+                    {online ? <Badge color="teal">Online</Badge>
+                      : s?.lastSeen ? (
+                        <Tooltip label={new Date(s.lastSeen).toLocaleString()} withinPortal>
+                          <Text size="sm" c="dimmed">{formatAgo((Date.now() - Date.parse(s.lastSeen)) / 1000)}</Text>
+                        </Tooltip>
+                      ) : <Text size="sm" c="dimmed">{live ? 'Never' : '…'}</Text>}
                   </Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num">{s ? `↓ ${formatBytes(s.txBytes)} · ↑ ${formatBytes(s.rxBytes)}` : '—'}</Text></Table.Td>
                   <Table.Td w={88}>

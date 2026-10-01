@@ -64,16 +64,30 @@ type eventLog struct {
 	mu     sync.Mutex
 	events []Event              // oldest first
 	known  map[string]time.Time // MAC addresses seen, and when first
-	dirty  bool
+	// seen is each VPN device's last handshake and where from, by
+	// device id.
+	devices map[string]DeviceSeen
+	dirty   bool
 }
 
+// DeviceSeen is when a VPN device last shook hands, and from where.
+type DeviceSeen struct {
+	At   time.Time `json:"at"`
+	From string    `json:"from,omitempty"`
+}
+
+const maxSeen = 5000 // VPN devices remembered
+
 type eventsFileBody struct {
-	Events []Event              `json:"events"`
-	Known  map[string]time.Time `json:"known"`
+	Events []Event               `json:"events"`
+	Known  map[string]time.Time  `json:"known"`
+	Seen   map[string]DeviceSeen `json:"seen,omitempty"`
 }
 
 func (m *Manager) eventLog() *eventLog {
-	m.eventsOnce.Do(func() { m.events = &eventLog{known: map[string]time.Time{}, notify: m.notify} })
+	m.eventsOnce.Do(func() {
+		m.events = &eventLog{known: map[string]time.Time{}, devices: map[string]DeviceSeen{}, notify: m.notify}
+	})
 	return m.events
 }
 
@@ -159,7 +173,7 @@ func (m *Manager) saveEvents() error {
 		l.mu.Unlock()
 		return nil
 	}
-	data, err := json.Marshal(eventsFileBody{Events: l.events, Known: l.known})
+	data, err := json.Marshal(eventsFileBody{Events: l.events, Known: l.known, Seen: l.devices})
 	l.dirty = false
 	l.mu.Unlock()
 	if err != nil {
@@ -208,6 +222,12 @@ func (m *Manager) loadEvents() {
 	for mac, t := range body.Known {
 		if len(l.known) < maxKnown && isMAC(mac) {
 			l.known[mac] = t
+		}
+	}
+	for id, s := range body.Seen {
+		if len(l.devices) < maxSeen && len(id) <= 64 && !s.At.After(now.Add(time.Minute)) {
+			s.From = printable(s.From, 80)
+			l.devices[id] = s
 		}
 	}
 	l.trim(now)
@@ -334,4 +354,29 @@ func (m *Manager) commitEvents() []Event {
 		out = append(out, ev)
 	}
 	return out
+}
+
+// sawDevice remembers a VPN device's handshake, if it's newer than the
+// one remembered.
+func (l *eventLog) sawDevice(id string, at time.Time, from string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if old, ok := l.devices[id]; ok && !at.After(old.At) {
+		return // only a newer handshake says something new
+	}
+	if _, ok := l.devices[id]; !ok && len(l.devices) >= maxSeen {
+		return
+	}
+	if from == "" {
+		from = l.devices[id].From
+	}
+	l.devices[id] = DeviceSeen{At: at.Truncate(time.Second), From: printable(from, 80)}
+	l.dirty = true
+}
+
+func (l *eventLog) device(id string) (DeviceSeen, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	s, ok := l.devices[id]
+	return s, ok
 }

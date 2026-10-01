@@ -891,6 +891,9 @@ func IsBlockName(s string) bool {
 	return true
 }
 
+// pskIDRE is a preshared key's id: it names the key's file.
+var pskIDRE = regexp.MustCompile(`^[0-9a-f]{16,32}$`)
+
 var fingerprintsRE = regexp.MustCompile(`^/[A-Za-z0-9._/-]{1,254}$`)
 
 // options checks the less common pf options: each a value pf accepts,
@@ -1055,6 +1058,9 @@ func (v *validator) wireguard() {
 			v.unique(p+".id", peerIDs, pr.ID, "peer id")
 			v.re(p+".name", pr.Name, plainNameRE, "name (letters, digits, spaces, _ . -)")
 			v.wgKey(p+".publicKey", pr.PublicKey)
+			if pr.PresharedKey != "" && !pskIDRE.MatchString(pr.PresharedKey) {
+				v.fail(p+".presharedKey", "isn't a preshared key's id")
+			}
 			v.unique(p+".publicKey", peerKeys, pr.PublicKey, "public key")
 
 			if a, err := netip.ParsePrefix(pr.Address); err != nil || !a.Addr().Is4() {

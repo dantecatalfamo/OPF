@@ -151,6 +151,9 @@ export interface WgPeerState {
   /** Seconds since the last handshake; missing if there hasn't been one. */
   handshakeAgo?: number;
   allowedIps: string[];
+  /** When it last shook hands and where from, as OPF remembers across the interface reloading. */
+  lastSeen?: string;
+  lastFrom?: string;
 }
 
 /** An interface as the system has it, by device name. */
@@ -714,6 +717,8 @@ export const api = {
   endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
   newTunnelKey: () => request<{ publicKey: string }>('POST', '/wireguard/keys').then((r) => r.publicKey),
   newDeviceKey: () => request<{ privateKey: string; publicKey: string }>('POST', '/wireguard/device-keys'),
+  /** Keeps a preshared key on the firewall, made there unless one's given: its id for the model, and the key to show once. */
+  setPresharedKey: (key?: string) => request<{ id: string; key: string }>('POST', '/wireguard/preshared-keys', key ? { key } : {}),
   reauth: (password: string) => request<void>('POST', '/session/reauth', { password }),
   changeOwnPassword: (current: string, next: string) => request<void>('PUT', '/session/password', { current, new: next }),
   users: () => request<UsersResource>('GET', '/users'),

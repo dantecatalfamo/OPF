@@ -21,6 +21,10 @@ func TablePath(name string) string { return "/var/opf/tables/" + name }
 // history.
 const WGKeyDir = "/var/opf/wireguard"
 
+// WGPSKPath is the file holding a preshared key, by its id (Peer's
+// PresharedKey, validated as hex).
+func WGPSKPath(id string) string { return WGKeyDir + "/psk-" + id + ".key" }
+
 // WGKeyPath is the file holding the private key of a tunnel whose public
 // key is pub.
 func WGKeyPath(pub string) string {
@@ -1093,6 +1097,10 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 			}
 			line += fmt.Sprintf(" wgdescr \"%s\"", p.Name)
 			lines = append(lines, line)
+			if p.PresharedKey != "" {
+				// Read from its file, as the tunnel's key is.
+				lines = append(lines, fmt.Sprintf(`!ifconfig $if wgpeer %s wgpsk "$(cat %s)"`, p.PublicKey, WGPSKPath(p.PresharedKey)))
+			}
 		}
 	}
 
