@@ -479,6 +479,7 @@ export function RuleDrawer({
                               clearable
                               data={getIcmpCodeOptions(v.icmpType, v.protocol === 'icmp6')}
                               description="Optional: filter by specific code"
+                              inputWrapperOrder={['label', 'input', 'description', 'error']}
                             />
                           )}
                         </SimpleGrid>

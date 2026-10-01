@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { useEffect } from 'react';
+import { Button, Card, Code, Grid, Group, List, Select, Stack, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { refreshLive, useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { GraphSettings } from './GraphSettings';
+import { useSession } from '../lib/session';
+import type { Role } from '../lib/api';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -61,47 +62,33 @@ function Updates() {
   );
 }
 
-function Password() {
-  const [opened, setOpened] = useState(false);
-  const form = useForm({
-    initialValues: { current: '', next: '', confirm: '' },
-    validate: {
-      current: (v) => (v ? null : 'Enter your current password'),
-      next: (v) => (v.length >= 12 ? null : 'Use at least 12 characters'),
-      confirm: (v, vals) => (v === vals.next ? null : 'The passwords don’t match'),
-    },
-  });
+// Who's signed in. Passwords are the system's own: until there's a
+// page for accounts (TODO.md › User and role management), they're
+// changed with passwd(1) on the firewall.
+function Account() {
+  const { accounts, session, signOut } = useSession();
   return (
     <Card>
-      <SectionTitle>Administrator</SectionTitle>
-      <Stack gap="sm">
-        <Text size="sm" c="dimmed">You’re signed in as admin. Sessions end after 4 hours without activity.</Text>
-        <Group justify="flex-end">
-          <Button variant="default" onClick={() => setOpened(true)}>Change password</Button>
-        </Group>
-      </Stack>
-      <Modal opened={opened} onClose={() => setOpened(false)} title={<Text fw={600}>Change password</Text>}>
-        <form
-          onSubmit={form.onSubmit(() => {
-            setOpened(false);
-            form.reset();
-            notifications.show({ color: 'teal', title: 'Password changed', message: 'Use the new password next time you sign in.' });
-          })}
-        >
-          <Stack>
-            <PasswordInput label="Current password" {...form.getInputProps('current')} />
-            <PasswordInput label="New password" {...form.getInputProps('next')} />
-            <PasswordInput label="Repeat new password" {...form.getInputProps('confirm')} />
-            <Group justify="flex-end" mt="sm">
-              <Button variant="default" onClick={() => setOpened(false)}>Cancel</Button>
-              <Button type="submit">Change password</Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+      <SectionTitle right={accounts && <Button size="xs" variant="default" onClick={signOut}>Sign out</Button>}>Your account</SectionTitle>
+      {accounts && session ? (
+        <Stack gap={6}>
+          <Text size="sm">Signed in as <b>{session.user}</b>, {roleAbout[session.role]}.</Text>
+          <Text size="sm" c="dimmed">
+            A session ends after 30 minutes without use, or 12 hours in all, and when your password or groups change. Your password is this OpenBSD account’s: change it with <Code>passwd</Code> on the firewall.
+          </Text>
+        </Stack>
+      ) : (
+        <Text size="sm" c="dimmed">This server has no accounts: it’s the development server, and anyone who can reach it can change everything.</Text>
+      )}
     </Card>
   );
 }
+
+const roleAbout: Record<Role, string> = {
+  admin: 'an admin (_opfadmin): you can change everything',
+  operator: 'an operator (_opfoperator): you can look, keep or undo changes, and run tools, but not make changes',
+  view: 'read-only (_opfview): you can look at everything',
+};
 
 export function SystemGeneral() {
   const { staged, edit } = useStore();
@@ -139,7 +126,7 @@ export function SystemGeneral() {
               <Stack>
                 <Group grow align="flex-start">
                   <TextInput label="Hostname" {...form.getInputProps('hostname')} />
-                  <TextInput label="Domain" description="Used for local device names" {...form.getInputProps('domain')} />
+                  <TextInput label="Domain" description="Used for local device names" inputWrapperOrder={['label', 'input', 'description', 'error']} {...form.getInputProps('domain')} />
                 </Group>
                 <Select label="Time zone" data={zones} searchable allowDeselect={false} {...form.getInputProps('timezone')} />
                 <TagsInput label="Time servers" {...form.getInputProps('ntpServers')} />
@@ -155,7 +142,7 @@ export function SystemGeneral() {
         <Grid.Col span={{ base: 12, lg: 5 }}>
           <Stack gap="md">
             <Updates />
-            <Password />
+            <Account />
           </Stack>
         </Grid.Col>
       </Grid>
