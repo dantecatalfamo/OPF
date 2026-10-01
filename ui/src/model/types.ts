@@ -273,6 +273,36 @@ export interface HostOverride {
   description: string;
 }
 
+export type DnsRecordType = 'CNAME' | 'MX' | 'TXT' | 'SRV' | 'PTR' | 'CAA';
+
+/**
+ * A local record beyond host names. `name` is the full name without the
+ * final dot, or for a PTR the address; `value` is what the type points
+ * at (the alias's target, the mail server, the text, the SRV target or
+ * "." for none, the PTR's name, what a CAA allows).
+ */
+export interface DnsRecord {
+  id: string;
+  name: string;
+  type: DnsRecordType;
+  value: string;
+  /** MX preference, SRV priority. */
+  priority?: number;
+  weight?: number;
+  port?: number;
+  /** CAA: issue, issuewild or iodef. */
+  tag?: string;
+  /** Seconds; absent is 3600. */
+  ttl?: number;
+  description?: string;
+}
+
+/** How a domain answers names it has no record for: only yours (static), or yours and then the internet's (transparent). */
+export interface DnsZone {
+  name: string;
+  type: 'static' | 'transparent';
+}
+
 export interface Dns {
   enabled: boolean;
   mode: 'recursive' | 'forward';
@@ -286,6 +316,9 @@ export interface Dns {
   /** Turn names that aren't valid ("Priya's iPad") into valid ones instead of refusing them. */
   rewriteInvalidLeaseNames: boolean;
   overrides: HostOverride[];
+  records?: DnsRecord[];
+  /** The system's domain is static unless listed here. */
+  zones?: DnsZone[];
   /** Lists of names to block, downloaded and loaded into unbound as response policy zones. */
   blocklists?: DnsBlocklist[];
   /** Your own names, exact or "*.name" (the name and everything under it). Allowed wins over every list. */

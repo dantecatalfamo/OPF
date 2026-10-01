@@ -815,6 +815,7 @@ func (v *validator) dns() {
 		v.addr(p+".ip", o.IP, false)
 		v.text(p+".description", o.Description, 200, false)
 	}
+	v.dnsRecords()
 
 	v.oneOf("dns.blockAnswer", string(d.BlockAnswer), string(BlockAnswerNull), string(BlockAnswerNXDomain))
 	lists := map[string]bool{}

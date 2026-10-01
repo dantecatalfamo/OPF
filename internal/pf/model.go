@@ -610,6 +610,11 @@ type DNS struct {
 	// model (the sample, import, the first-run wizard) must set it.
 	RewriteInvalidLeaseNames bool           `json:"rewriteInvalidLeaseNames"`
 	Overrides                []HostOverride `json:"overrides"`
+	// Records are the other local records: aliases, mail servers, text
+	// and the rest (see dnsrecords.go). Zones say how a domain answers
+	// names without one.
+	Records []DNSRecord `json:"records,omitempty"`
+	Zones   []DNSZone   `json:"zones,omitempty"`
 
 	// Blocklists are lists of names to block (ads, trackers), downloaded
 	// by OPF and loaded into unbound as response policy zones.

@@ -164,12 +164,20 @@ func mockUnboundControl(m *pf.Model, args []string) string {
 		}
 		b.WriteString("END_RRSET_CACHE\nSTART_MSG_CACHE\nmsg www.openbsd.org. IN A 33152 1 2400 3 1 0 0\nmsg github.com. IN A 33152 1 2400 3 1 0 0\nEND_MSG_CACHE\nEOF\n")
 		return b.String()
-	case "list_local_zones":
-		return m.System.Domain + ". static\n"
-	case "list_local_data":
+	case "list_local_zones", "list_local_data":
+		// What the generated unbound.conf gives it.
 		var b strings.Builder
-		for _, o := range m.DNS.Overrides {
-			fmt.Fprintf(&b, "%s.%s.\t3600\tIN\tA\t%s\n", o.Host, o.Domain, o.IP)
+		for _, l := range strings.Split(pf.GenerateUnboundConf(m), "\n") {
+			l = strings.TrimSpace(l)
+			if z, ok := strings.CutPrefix(l, "local-zone: "); ok && args[0] == "list_local_zones" {
+				b.WriteString(strings.ReplaceAll(z, `"`, "") + "\n")
+			} else if d, ok := strings.CutPrefix(l, "local-data: "); ok && args[0] == "list_local_data" {
+				f := strings.Fields(strings.Trim(d, `"'`))
+				if len(f) > 1 && f[1] == "IN" {
+					f = append([]string{f[0], "3600"}, f[1:]...)
+				}
+				b.WriteString(strings.Join(f, "\t") + "\n")
+			}
 		}
 		return b.String()
 	}

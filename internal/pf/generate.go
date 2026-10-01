@@ -1194,10 +1194,10 @@ func GenerateUnboundConf(m *Model) string {
 		lines = append(lines, "\tauto-trust-anchor-file: \""+RootKeyPath+"\"", "\tval-log-level: 2")
 	}
 
-	lines = append(lines, fmt.Sprintf("\tlocal-zone: \"%s.\" static", m.System.Domain))
+	lines = append(lines, fmt.Sprintf("\tlocal-zone: \"%s.\" %s", m.System.Domain, systemZoneType(m)))
 
 	for _, o := range d.Overrides {
-		lines = append(lines, fmt.Sprintf("\tlocal-data: \"%s.%s. IN A %s\"", o.Host, o.Domain, o.IP))
+		lines = append(lines, fmt.Sprintf("\tlocal-data: \"%s.%s. IN %s %s\"", o.Host, o.Domain, addressRR(o.IP), o.IP))
 	}
 
 	if d.RegisterReservations {
@@ -1207,6 +1207,7 @@ func GenerateUnboundConf(m *Model) string {
 			}
 		}
 	}
+	lines = append(lines, recordLines(m)...)
 
 	// Blocklists are response policy zones, which need the respip
 	// module. Your own entries come first: unbound applies the first

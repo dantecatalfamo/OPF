@@ -685,6 +685,25 @@
         "ip": "192.168.1.25",
         "description": "Team wiki"
       }
+    ],
+    "records": [
+      {
+        "id": "r1",
+        "name": "nas.office.arpa",
+        "type": "CNAME",
+        "value": "files.office.arpa",
+        "description": "Old name for the file server"
+      },
+      {
+        "id": "r2",
+        "name": "_ipp._tcp.office.arpa",
+        "type": "SRV",
+        "value": "printer.office.arpa",
+        "priority": 0,
+        "weight": 0,
+        "port": 631,
+        "description": "Lets laptops find the printer"
+      }
     ]
   }
 }

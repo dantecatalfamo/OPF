@@ -114,8 +114,8 @@ func Zone(m *pf.Model) string {
 
 // Static returns the names the configuration itself defines or
 // reserves, fully qualified: the router, every reservation (whether or
-// not it's registered), and every host override. Leases can't claim
-// them, and a Watcher never touches their records.
+// not it's registered), every host override, and every record's name.
+// Leases can't claim them, and a Watcher never touches their records.
 func Static(m *pf.Model) map[string]bool {
 	zone := Zone(m)
 	names := map[string]bool{}
@@ -135,6 +135,11 @@ func Static(m *pf.Model) map[string]bool {
 	}
 	for _, o := range m.DNS.Overrides {
 		add(o.Host, o.Domain)
+	}
+	for _, r := range m.DNS.Records {
+		if r.Type != pf.DNSRecordPTR {
+			names[strings.ToLower(r.Name)+"."] = true
+		}
 	}
 	return names
 }

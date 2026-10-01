@@ -490,29 +490,41 @@ Types, roughly in order of usefulness:
       wizard must set it.
 - [ ] No PTR records for leases or reservations: reverse lookups of DHCP
       clients fail.
-- [ ] **Local DNS records**: an editor on the DNS resolver page for any
-      record type, not just host overrides (which are A records today):
-      A, AAAA, CNAME, MX, TXT, SRV, PTR, CAA, NS, written as unbound
-      `local-data:` in zone-file syntax (`local-data-ptr:` for reverse
-      records), each checked for its type (an MX's preference and host,
-      an SRV's priority, weight and port) and shown as the answer a
-      client would get.
-  - Per domain, how names without a record behave (`local-zone:`):
-    `transparent` (your records first, then normal resolution; the
-    default for a domain that also exists outside) or `static` (only
-    your records; "no such name" otherwise, right for `office.arpa`).
-    Say on the page what each means: under `static`, a mistyped name
-    hides nothing but answers nothing either.
-  - Check on OpenBSD before relying on it: how 7.9's unbound (1.26.1)
-    answers a CNAME in `local-data` (whether it follows the target, and
-    to a name outside the local zone), and how a name with some local
-    records but not the type asked for answers under each zone type.
-  - Host overrides and DHCP names become records in the same list,
-    marked by where they came from (a lease, a reservation), so there's
-    one place to see every local name.
-  - Not an authoritative server: no DNSSEC signing of your own zones,
-    no dynamic updates, no zone transfers to secondaries. For a public
+- [x] **Local DNS records**: the DNS page's "Local names" card lists
+      host names beside the other records, which are `dns.records`:
+      aliases, mail servers (MX), text (TXT), services (SRV), reverse
+      names (PTR) and certificate authorities (CAA), each checked for
+      its type and written as single-quoted unbound `local-data`
+      (`local-data-ptr` for reverse names). Per domain, `dns.zones` says
+      how names without a record answer: "only these" (static, the
+      system domain's default) or "these, then the internet"
+      (transparent). A host name with an IPv6 address is now AAAA; it
+      was written as an A record, which unbound refuses. Checked with a
+      scratch unbound on openbsd-dev (7.9, 1.26.1):
+  - A CNAME in local-data is answered alone, in a static or a
+    transparent zone, with or without recursion: unbound doesn't
+    follow it, even to its own names, and many clients' resolvers
+    don't either. A redirect zone at the name does follow it, but
+    through the internet, so a target of ours comes back "no such
+    name". So an alias to a host name or reserved device is written
+    as that name's addresses; to anything else as a CNAME in a
+    redirect zone (names under the alias answer the same, so nothing
+    else may be under it). An alias to a lease's name can't work
+    either way and is refused.
+  - Quotes, backslashes and non-ASCII are refused in TXT and CAA;
+    `#` and `;` inside a quoted TXT are fine; text over 255 bytes is
+    split into several strings.
+  - Leases can't take a record's name.
+  - Not done: NS records. In local-data they only answer NS
+    questions; they don't delegate, which is what anyone adding one
+    wants (that's a `stub-zone`). Nor an authoritative server: no
+    DNSSEC signing, dynamic updates or zone transfers; for a public
     domain served from here, that's nsd (Services).
+- [ ] The firewall's own name (`gw.office.arpa`) has no record, so in
+      the static system domain it's "no such name". It needs the
+      address of each inside interface, answered by the interface the
+      question came in on (unbound views, or `local-data` per network
+      with `access-control-view`).
 - [ ] A commit reverted by the confirm timeout doesn't kick the lease
       watcher, so names are missing for up to 15 s after unbound
       reloads.

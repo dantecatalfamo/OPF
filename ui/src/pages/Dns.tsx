@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Accordion, ActionIcon, Alert, Badge, Button, Card, Grid, Group, Modal, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput } from '@mantine/core';
+import { Accordion, Alert, Badge, Button, Card, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
-import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
-import { backend, newId, useStore } from '../model/store';
+import { LocalNames } from './DnsRecords';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
 import { formatAgo } from '../lib/format';
 import { useNow } from '../lib/useNow';
@@ -127,49 +128,9 @@ function LeaseNames() {
   );
 }
 
-function OverrideModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
-  const { staged, edit } = useStore();
-  const form = useForm({
-    initialValues: { host: '', domain: staged.system.domain, ip: '', description: '' },
-    validate: {
-      host: (v) => (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i.test(v) ? null : 'Letters, digits and hyphens only'),
-      domain: (v) => (/^[a-z0-9.-]+$/i.test(v) ? null : 'Enter a domain like office.arpa'),
-      ip: (v) => (isIPv4(v) ? null : 'Enter an IPv4 address'),
-    },
-  });
-  useEffect(() => {
-    if (opened) form.setValues({ host: '', domain: staged.system.domain, ip: '', description: '' });
-  }, [opened, staged.system.domain]); // form is stable
-  return (
-    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Add a host name</Text>}>
-      <form
-        onSubmit={form.onSubmit((v) => {
-          edit('dns', `Added host name ${v.host}.${v.domain} → ${v.ip}`, (m) => ({ ...m, dns: { ...m.dns, overrides: [...m.dns.overrides, { id: newId('h'), ...v }] } }));
-          onClose();
-        })}
-      >
-        <Stack>
-          <Text size="sm" c="dimmed">Devices using OPF for DNS will find this address by name.</Text>
-          <Group grow align="flex-start">
-            <TextInput label="Name" placeholder="nas" {...form.getInputProps('host')} />
-            <TextInput label="Domain" {...form.getInputProps('domain')} />
-          </Group>
-          <TextInput label="Address" placeholder="192.168.1.20" {...form.getInputProps('ip')} />
-          <TextInput label="Description" {...form.getInputProps('description')} />
-          <Group justify="flex-end" mt="sm">
-            <Button variant="default" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Add</Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
-  );
-}
-
 export function Dns() {
   const { staged, applied, edit } = useStore();
   const dns = staged.dns;
-  const [modal, setModal] = useState(false);
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'blocking' || params.get('tab') === 'tools' ? params.get('tab')! : 'resolver';
   const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
@@ -262,33 +223,7 @@ export function Dns() {
             <Grid.Col span={{ base: 12, lg: 7 }}>
               <Stack gap="md">
                 <Card>
-                  <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal(true)}>Add host name</Button>}>
-                    Local host names
-                  </SectionTitle>
-                  {dns.overrides.length ? (
-                    <Table.ScrollContainer minWidth={420}>
-                      <Table>
-                        <Table.Tbody>
-                          {dns.overrides.map((o) => (
-                            <Table.Tr key={o.id}>
-                              <Table.Td>
-                                <Mono>{o.host}.{o.domain}</Mono>
-                                <Text size="xs" c="dimmed">{o.description}</Text>
-                              </Table.Td>
-                              <Table.Td><Mono>{o.ip}</Mono></Table.Td>
-                              <Table.Td w={40}>
-                                <ActionIcon variant="subtle" color="gray" aria-label="Remove" onClick={() => edit('dns', `Removed host name ${o.host}.${o.domain}`, (m) => ({ ...m, dns: { ...m.dns, overrides: m.dns.overrides.filter((x) => x.id !== o.id) } }))}>
-                                  <IconTrash size={16} />
-                                </ActionIcon>
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
-                  ) : (
-                    <Empty>No local host names.</Empty>
-                  )}
+                  <LocalNames />
                 </Card>
                 <LeaseNames />
               </Stack>
@@ -299,7 +234,6 @@ export function Dns() {
           {applied.dns.enabled ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}
         </Tabs.Panel>
       </Tabs>
-      <OverrideModal opened={modal} onClose={() => setModal(false)} />
     </>
   );
 }
