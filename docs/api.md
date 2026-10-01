@@ -422,7 +422,8 @@ every 10 minutes for a week and every hour for the month.
 
 Which webhooks there are and which events each gets are in the model
 (`notifications.webhooks`: `{"id", "name", "enabled", "kinds",
-"problemsOnly"}`). A webhook's URL and signing key are secrets, never in
+"problemsOnly", "format"}`; `format` is absent for OPF's JSON, or
+`slack`, `discord` or `ntfy`). A webhook's URL and signing key are secrets, never in
 the model, an answer or the history:
 
 - `GET /api/webhooks`: `{"webhooks": [{"id", "target", "signed",
@@ -440,8 +441,13 @@ the model, an answer or the history:
 A delivery is a POST of `{"source": "opf", "host", "test", "event":
 {…}}` with `X-OPF-Timestamp` (unix seconds) and, with a key,
 `X-OPF-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<body>">`.
-Failures are retried after 10 s, 1 min, 5 min, 30 min and 2 h, then
-dropped; redirects aren't followed.
+The other formats send a message instead: Slack `{"text"}` with `<`,
+`>` and `&` escaped so no name in an event mentions anyone; Discord
+`{"content", "username": "OPF", "allowed_mentions": {"parse": []}}` with
+its markdown escaped; ntfy the message as plain text with `Title` (the
+firewall and the kind of event), `Priority` (4 for a problem, else 3)
+and `Tags`. Failures are retried after 10 s, 1 min, 5 min, 30 min and
+2 h, then dropped; redirects aren't followed.
 
 ### Diagnostic tools
 

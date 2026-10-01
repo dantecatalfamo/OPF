@@ -212,8 +212,9 @@ func (h *webhooks) stateOf(id string) *hookState {
 	return st
 }
 
-// body is what a delivery sends: the event, and which firewall.
-func (m *Manager) webhookBody(e Event, test bool) []byte {
+// delivery is what a webhook is sent for an event, in its format, and
+// which firewall it's from.
+func (m *Manager) delivery(e Event, test bool, format string) formatted {
 	host := ""
 	if model, _, err := m.live(); err == nil && model != nil {
 		host = model.System.Hostname
@@ -221,21 +222,27 @@ func (m *Manager) webhookBody(e Event, test bool) []byte {
 			host += "." + model.System.Domain
 		}
 	}
-	b, _ := json.Marshal(struct {
-		Source string `json:"source"`
-		Host   string `json:"host"`
-		Test   bool   `json:"test,omitempty"`
-		Event  Event  `json:"event"`
-	}{"opf", host, test, e})
-	return b
+	return formatDelivery(format, host, e, test)
+}
+
+// formatOf is a webhook's format in the live model, or the staged one
+// (a test before it's applied).
+func (m *Manager) formatOf(id string) string {
+	live, staged := m.modelWebhooks()
+	for _, w := range append(live, staged...) {
+		if w.ID == id {
+			return w.Format
+		}
+	}
+	return pf.WebhookJSON
 }
 
 // send delivers one event to a URL through the sender.
-func (m *Manager) send(s webhookSecret, body []byte) error {
+func (m *Manager) send(s webhookSecret, f formatted) error {
 	if m.Sender == nil || m.Exe == "" {
 		return fmt.Errorf("sending isn't set up in this OPF")
 	}
-	input, _ := json.Marshal(webhook.Request{URL: s.URL, Key: s.Key, Body: body})
+	input, _ := json.Marshal(webhook.Request{URL: s.URL, Key: s.Key, Body: f.body, ContentType: f.contentType, Headers: f.headers})
 	ctx, cancel := context.WithTimeout(context.Background(), webhook.Timeout+5*time.Second)
 	defer cancel()
 	out, err := m.Sender.RunInput(ctx, input, []string{SenderEnv + "=1"}, m.Exe)
@@ -299,7 +306,7 @@ func (m *Manager) deliverDue(h *webhooks, now time.Time) {
 	}
 	h.mu.Unlock()
 	for _, j := range jobs {
-		err := m.send(j.s, m.webhookBody(j.d.ev, j.d.test))
+		err := m.send(j.s, m.delivery(j.d.ev, j.d.test, m.formatOf(j.id)))
 		t := time.Now()
 		h.mu.Lock()
 		st := h.stateOf(j.id)
@@ -488,7 +495,7 @@ func (m *Manager) TestWebhook(id string) (*WebhookStatus, error) {
 		return nil, errorf(CodeNotFound, "set the webhook's URL first")
 	}
 	e := Event{Time: time.Now(), Kind: EventOPF, Message: "A test from OPF: this webhook works."}
-	err := m.send(s, m.webhookBody(e, true))
+	err := m.send(s, m.delivery(e, true, m.formatOf(id)))
 	t := time.Now()
 	h.mu.Lock()
 	st := h.stateOf(id)

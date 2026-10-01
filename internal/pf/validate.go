@@ -62,6 +62,7 @@ func (v *validator) notifications() {
 		v.re(p+".id", w.ID, blocklistIDRE, "a lowercase id")
 		v.unique(p+".id", ids, w.ID, "webhook id")
 		v.text(p+".name", w.Name, 60, true)
+		v.oneOf(p+".format", w.Format, WebhookJSON, WebhookSlack, WebhookDiscord, WebhookNtfy)
 		for j, k := range w.Kinds {
 			if !kinds[k] {
 				v.fail(at(p+".kinds", j), "%q isn't a kind of event", k)

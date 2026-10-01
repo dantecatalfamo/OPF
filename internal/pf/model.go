@@ -32,7 +32,18 @@ type Webhook struct {
 	Kinds []string `json:"kinds,omitempty"`
 	// ProblemsOnly sends only events that are something going wrong.
 	ProblemsOnly bool `json:"problemsOnly,omitempty"`
+	// Format is how an event is sent: WebhookJSON (the default), or as
+	// a message for Slack, Discord or ntfy.
+	Format string `json:"format,omitempty"`
 }
+
+// Webhook formats.
+const (
+	WebhookJSON    = ""
+	WebhookSlack   = "slack"
+	WebhookDiscord = "discord"
+	WebhookNtfy    = "ntfy"
+)
 
 // EventKinds are the kinds of event OPF records (appliance's Event).
 var EventKinds = []string{"opf", "link", "address", "gateway", "device", "vpn", "service", "list", "updates", "commit"}

@@ -30,6 +30,17 @@ const kinds: { value: string; label: string }[] = [
   { value: 'opf', label: 'OPF' },
 ];
 
+type Format = '' | NonNullable<Webhook['format']>;
+
+// What each format sends, and where its URL comes from.
+const formats: { value: Format; label: string; about: string; url: string }[] = [
+  { value: '', label: 'JSON', about: 'OPF’s own JSON, signed: for Home Assistant, n8n or a script of your own.', url: 'https://example.com/api/webhook/…' },
+  { value: 'slack', label: 'Slack', about: 'A message in a Slack channel, from an incoming webhook (Slack › Apps › Incoming Webhooks). Mattermost takes the same.', url: 'https://hooks.slack.com/services/…' },
+  { value: 'discord', label: 'Discord', about: 'A message in a Discord channel, from its webhook (the channel’s Settings › Integrations › Webhooks).', url: 'https://discord.com/api/webhooks/…' },
+  { value: 'ntfy', label: 'ntfy', about: 'A push notification on your phone through ntfy, ntfy.sh or your own server; problems arrive at high priority. A token for a protected topic goes in the URL as ?auth=….', url: 'https://ntfy.sh/your-topic' },
+];
+const formatOf = (w?: Webhook | null) => formats.find((f) => f.value === (w?.format ?? '')) ?? formats[0];
+
 function hookId(name: string, m: Model): string {
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'webhook';
   const taken = new Set((m.notifications?.webhooks ?? []).map((w) => w.id));
@@ -41,17 +52,22 @@ function hookId(name: string, m: Model): string {
 // Which events a webhook gets, and a name: settings, reviewed and applied.
 function EditModal({ hook, onClose, onSave }: { hook: Webhook | null; onClose: () => void; onSave: (w: Omit<Webhook, 'id'>) => void }) {
   const form = useForm({
-    initialValues: { name: '', kinds: [] as string[], problemsOnly: false },
+    initialValues: { name: '', kinds: [] as string[], problemsOnly: false, format: '' as Format },
     validate: { name: (v) => (!v.trim() ? 'Name it' : v.length > 60 ? 'Up to 60 characters' : null) },
   });
   useEffect(() => {
-    if (hook) form.setValues({ name: hook.name, kinds: hook.kinds ?? [], problemsOnly: hook.problemsOnly ?? false });
+    if (hook) form.setValues({ name: hook.name, kinds: hook.kinds ?? [], problemsOnly: hook.problemsOnly ?? false, format: hook.format ?? '' });
   }, [hook]); // form is stable
   return (
     <Modal opened={!!hook} onClose={onClose} title={<Text fw={600}>{hook?.id ? `Edit ${hook.name}` : 'Add a webhook'}</Text>}>
-      <form onSubmit={form.onSubmit((v) => { onSave({ name: v.name.trim(), enabled: hook?.enabled ?? true, kinds: v.kinds.length ? v.kinds : undefined, problemsOnly: v.problemsOnly || undefined }); onClose(); })}>
+      <form onSubmit={form.onSubmit((v) => { onSave({ name: v.name.trim(), enabled: hook?.enabled ?? true, kinds: v.kinds.length ? v.kinds : undefined, problemsOnly: v.problemsOnly || undefined, format: v.format || undefined }); onClose(); })}>
         <Stack>
           <TextInput label="Name" placeholder="Home Assistant" data-autofocus {...form.getInputProps('name')} />
+          <Stack gap={6}>
+            <Text size="sm" fw={500}>Send as</Text>
+            <SegmentedControl size="xs" data={formats.map((f) => ({ value: f.value, label: f.label }))} {...form.getInputProps('format')} />
+            <Text size="xs" c="dimmed">{formats.find((f) => f.value === form.values.format)?.about}</Text>
+          </Stack>
           <Stack gap={6}>
             <Text size="sm" fw={500}>Events to send</Text>
             <Chip.Group multiple value={form.values.kinds} onChange={(v) => form.setFieldValue('kinds', v)}>
@@ -83,7 +99,8 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
   useEffect(() => {
     if (hook) {
       setUrl(''); setKey(''); setError(undefined); setGenerated(undefined);
-      setSigning(status?.signed ? 'keep' : 'generate');
+      // Chat services don't check signatures.
+      setSigning(status?.signed ? 'keep' : hook.format ? 'none' : 'generate');
     }
   }, [hook]); // status is read when it opens
   const save = async () => {
@@ -124,7 +141,7 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
           <Text size="sm" c="dimmed">
             The URL and key are secrets: they’re saved now, take effect at once, and only the URL’s scheme and host are shown afterwards.{status?.target ? ` It sends to ${status.target} now; a new URL replaces it.` : ''}
           </Text>
-          <TextInput label="URL" placeholder="https://example.com/api/webhook/…" value={url} onChange={(e) => setUrl(e.currentTarget.value)} autoComplete="off" spellCheck={false} data-autofocus />
+          <TextInput label="URL" placeholder={formatOf(hook).url} value={url} onChange={(e) => setUrl(e.currentTarget.value)} autoComplete="off" spellCheck={false} data-autofocus />
           {url.startsWith('http://') && <Text size="xs" c="yellow">Sent unencrypted: anyone on the way can read it. Use http only for a receiver on your own network.</Text>}
           <Stack gap={6}>
             <Text size="sm" fw={500}>Signing</Text>
@@ -140,7 +157,9 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
               ]}
             />
             {signing === 'set' && <TextInput placeholder="The key the receiver checks with" value={key} onChange={(e) => setKey(e.currentTarget.value)} autoComplete="off" spellCheck={false} />}
-            <Text size="xs" c="dimmed">Signed deliveries carry X-OPF-Signature, so the receiver can tell they came from this firewall.</Text>
+            <Text size="xs" c="dimmed">
+              {hook?.format ? `${formatOf(hook).label} doesn’t check signatures; they matter for a receiver of your own.` : 'Signed deliveries carry X-OPF-Signature, so the receiver can tell they came from this firewall.'}
+            </Text>
           </Stack>
           {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
           <Group justify="flex-end" mt="sm">
@@ -228,6 +247,7 @@ export function Notifications() {
                       <Stack gap={4} style={{ minWidth: 0 }}>
                         <Group gap="xs">
                           <Text fw={500} size="sm">{w.name}</Text>
+                          <Badge size="xs" variant="light">{formatOf(w).label}</Badge>
                           <Badge size="xs" variant="light" color="gray">{w.kinds?.length ? w.kinds.map((k) => kinds.find((x) => x.value === k)?.label ?? k).join(', ') : 'Every event'}</Badge>
                           {w.problemsOnly && <Badge size="xs" variant="light" color="red">Problems only</Badge>}
                         </Group>
@@ -258,7 +278,7 @@ export function Notifications() {
             <Accordion.Control><Text size="sm">What a delivery looks like</Text></Accordion.Control>
             <Accordion.Panel>
               <Stack gap="sm">
-                <Text size="sm">A POST with a JSON body:</Text>
+                <Text size="sm">Slack and Discord get a one-line message, and ntfy a notification titled with the firewall and the kind of event. JSON is a POST with this body:</Text>
                 <Code block>{`{
   "source": "opf",
   "host": "${applied.system.hostname}.${applied.system.domain}",

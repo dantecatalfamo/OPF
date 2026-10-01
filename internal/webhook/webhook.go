@@ -38,11 +38,38 @@ import (
 	"unicode"
 )
 
-// Request is what the sender reads on stdin.
+// Request is what the sender reads on stdin. ContentType is the body's
+// (JSON if empty); Headers are more to send (ntfy's Title and
+// Priority), names of letters, digits and hyphens.
 type Request struct {
-	URL  string `json:"url"`
-	Key  string `json:"key,omitempty"`
-	Body []byte `json:"body"`
+	URL         string            `json:"url"`
+	Key         string            `json:"key,omitempty"`
+	Body        []byte            `json:"body"`
+	ContentType string            `json:"contentType,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
+// checkHeaders refuses a header that could be taken for another, or
+// that would break the request.
+func checkHeaders(h map[string]string) error {
+	if len(h) > 8 {
+		return errors.New("too many headers")
+	}
+	for k, v := range h {
+		if k == "" || len(k) > 64 || strings.ContainsFunc(k, func(r rune) bool {
+			return !(r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+		}) {
+			return fmt.Errorf("a header's name isn't one")
+		}
+		if len(v) > 1024 || strings.ContainsAny(v, "\r\n\x00") {
+			return fmt.Errorf("header %s has a value that can't be sent", k)
+		}
+		switch http.CanonicalHeaderKey(k) {
+		case "Host", "Content-Length", "Content-Type", "Transfer-Encoding", "Connection", "X-Opf-Signature", "X-Opf-Timestamp":
+			return fmt.Errorf("header %s is set by the sender", k)
+		}
+	}
+	return nil
 }
 
 // Limits.
@@ -112,6 +139,9 @@ func Send(ctx context.Context, r Request, now time.Time) error {
 	if len(r.Body) > MaxBody {
 		return errors.New("the event is too large to send")
 	}
+	if err := checkHeaders(r.Headers); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.URL, bytes.NewReader(r.Body))
@@ -119,7 +149,14 @@ func Send(ctx context.Context, r Request, now time.Time) error {
 		return err
 	}
 	ts := now.Unix()
-	req.Header.Set("Content-Type", "application/json")
+	ct := r.ContentType
+	if ct == "" {
+		ct = "application/json"
+	}
+	for k, v := range r.Headers {
+		req.Header.Set(k, v)
+	}
+	req.Header.Set("Content-Type", ct)
 	req.Header.Set("User-Agent", "OPF")
 	req.Header.Set("X-OPF-Timestamp", strconv.FormatInt(ts, 10))
 	if r.Key != "" {

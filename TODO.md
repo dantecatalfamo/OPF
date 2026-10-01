@@ -960,9 +960,13 @@ them, so they can be graphed and compared):
   pledged to stdio, rpath, inet and dns and unveiled to the CA bundle and
   resolver files, handed the delivery on stdin; redirects aren't
   followed. Retries at 10 s, 1 min, 5 min, 30 min and 2 h, then dropped.
-- [ ] Other destinations as presets over the same sender: Slack, Discord,
-      ntfy, Microsoft Teams, Pushover, email (smtpd), each formatting the
-      event as its service wants.
+- Slack, Discord and ntfy are formats of a webhook (`webhookformat.go`):
+  messages made harmless for each (no Slack or Discord mention from a
+  name a device chose, no header from a line break), ntfy with a title
+  and a high priority for problems. Checked against a local receiver;
+  not yet against the services themselves.
+- [ ] More formats: Microsoft Teams, Pushover, Gotify, and email
+      (smtpd).
 - [ ] WireGuard private keys (Security › Secret storage) could live in
       the same write-only store as webhook secrets.
 - [ ] More events: CARP state changes, media changes (a link falling to

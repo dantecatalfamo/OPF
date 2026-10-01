@@ -348,6 +348,8 @@ export interface Webhook {
   /** The kinds of event it gets; none, all. */
   kinds?: string[];
   problemsOnly?: boolean;
+  /** How events are sent: OPF's JSON (absent), or as Slack, Discord or ntfy messages. */
+  format?: 'slack' | 'discord' | 'ntfy';
 }
 
 export interface Model {

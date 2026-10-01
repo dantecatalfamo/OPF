@@ -77,3 +77,19 @@ func TestSignKnown(t *testing.T) {
 		t.Errorf("sign %s", s)
 	}
 }
+
+func TestSendHeaders(t *testing.T) {
+	var got *http.Request
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { got = r }))
+	defer srv.Close()
+	now := time.Now()
+	err := Send(context.Background(), Request{URL: srv.URL, Body: []byte("hello"), ContentType: "text/plain; charset=utf-8", Headers: map[string]string{"Title": "gw: link", "Priority": "4"}}, now)
+	if err != nil || got.Header.Get("Content-Type") != "text/plain; charset=utf-8" || got.Header.Get("Title") != "gw: link" || got.Header.Get("Priority") != "4" {
+		t.Fatalf("%v %v", err, got.Header)
+	}
+	for _, bad := range []map[string]string{{"Title": "a\r\nX-Evil: 1"}, {"Bad Name": "x"}, {"Host": "evil.example"}, {"X-OPF-Signature": "forged"}, {"content-type": "x"}} {
+		if err := Send(context.Background(), Request{URL: srv.URL, Body: []byte("x"), Headers: bad}, now); err == nil {
+			t.Errorf("sent header %v", bad)
+		}
+	}
+}
