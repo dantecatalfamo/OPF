@@ -607,11 +607,12 @@ func natRule(n *NATRule, m *Model, label string) string {
 	return s + label
 }
 
-// AutomaticNAT generates NAT rules for internal networks to WANs.
+// AutomaticNAT generates NAT rules for internal networks to WANs, and
+// to the inside interfaces that masquerade.
 func AutomaticNAT(m *Model) []NATRule {
 	wans := []Iface{}
 	for _, i := range m.Interfaces {
-		if i.Enabled && i.Role == RoleWAN {
+		if i.Enabled && (i.Role == RoleWAN || i.Masquerade && i.Role != RoleVPN) {
 			wans = append(wans, i)
 		}
 	}
@@ -622,7 +623,7 @@ func AutomaticNAT(m *Model) []NATRule {
 		// Every inside network, however it's addressed: the source is an
 		// interface reference, so DHCP-addressed ones get parentheses.
 		for _, i := range m.Interfaces {
-			if !i.Enabled || i.Role == RoleWAN || i.IPv4.Mode == IPv4None {
+			if !i.Enabled || i.Role == RoleWAN || i.IPv4.Mode == IPv4None || i.ID == w.ID {
 				continue
 			}
 			rules = append(rules, NATRule{

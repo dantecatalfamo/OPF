@@ -18,11 +18,25 @@ export interface Iface {
   blockPrivate?: boolean; // WAN only
   blockBogons?: boolean; // WAN only
   antispoof?: boolean; // pf antispoof for the interface's network; fixed addresses only
+  /** LAN or optional: traffic from OPF's other networks leaving here takes this interface's address. */
+  masquerade?: boolean;
   wireguard?: WireGuard; // VPN interfaces (wgN) only: each is its own tunnel
 }
 
 /** A VPN interface, with its tunnel. */
 export type Tunnel = Iface & { wireguard: WireGuard };
+
+/**
+ * Where OPF meets the internet: the WAN, or without one the interface
+ * its default gateway is on (OPF behind another router, as a VPN server
+ * reached through a port forward).
+ */
+export function upstream(m: Model): Iface | undefined {
+  const wan = m.interfaces.find((i) => i.enabled && i.role === 'wan');
+  if (wan) return wan;
+  const gw = m.routing.gateways.find((g) => g.id === m.routing.defaultGateway);
+  return m.interfaces.find((i) => i.enabled && i.id === gw?.iface && i.role !== 'vpn');
+}
 
 export const tunnels = (m: Model): Tunnel[] => m.interfaces.filter((i): i is Tunnel => i.role === 'vpn' && !!i.wireguard);
 
@@ -353,6 +367,8 @@ export interface Peer {
 export interface WireGuard {
   listenPort: number;
   publicKey: string;
+  /** Where devices reach the tunnel, host or host:port, through a router's port forward; empty uses the WAN's address. */
+  publicEndpoint?: string;
   peers: Peer[];
 }
 

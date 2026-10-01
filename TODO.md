@@ -426,6 +426,36 @@ until the admin does.
 
 ## Interfaces
 
+- [x] **OPF behind another router** (only a VPN server reached through
+      a port forward, one LAN and no WAN). A LAN or optional interface
+      can share its address (`masquerade`): traffic from OPF's other
+      networks leaving through it is NATed to it, so the router needs no
+      route back to the VPN. A tunnel has a public address
+      (`publicEndpoint`, host or host:port) for devices' configurations,
+      instead of the WAN's. Checked: the configuration of such a server
+      (testdata/lan-only-vpn.json) validates, and its pf.conf and
+      unbound.conf parse on 7.9. What else assumed a WAN, now not:
+      - A new tunnel's "let devices in" rule goes on the WAN, or behind
+        a router on the interface towards it (`upstream`); How traffic
+        flows finds a rule on any interface, says where NAT takes it,
+        and asks for the public address when there's no WAN.
+      - The dashboard's Internet tile and traffic graph use that
+        interface, and say so.
+      - A port forward can arrive on any interface but a tunnel.
+      - DHCP warns when its network has a router on it, which probably
+        hands out addresses already.
+      - Already fine: the default gateway on a LAN (/etc/mygate), the
+        office network counting as local for split-tunnel devices,
+        anti-lockout on the LAN, unbound on the LAN and the tunnel.
+  - [ ] The first-run wizard should offer this layout: one port, its
+        address, the router as gateway, sharing on, a tunnel.
+  - [ ] Nothing protects the LAN-facing interface the way a WAN is
+        (blocking private and bogon sources makes no sense there); its
+        rules are the admin's. If OPF sits on an untrusted network,
+        that should be a WAN instead, with the router as its gateway.
+  - [ ] Two DHCP servers on one network is only a warning on the page,
+        not checked when committing.
+
 Today there are physical ports, VLANs and WireGuard tunnels, each one
 `hostname.<dev>` file applied with `sh /etc/netstart <devs>`. Virtual
 interfaces need, first:

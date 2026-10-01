@@ -26,6 +26,7 @@ interface Values {
   blockPrivate: boolean;
   blockBogons: boolean;
   antispoof: boolean;
+  masquerade: boolean;
 }
 
 function toValues(i: Iface): Values {
@@ -41,6 +42,7 @@ function toValues(i: Iface): Values {
     blockPrivate: !!i.blockPrivate,
     blockBogons: !!i.blockBogons,
     antispoof: !!i.antispoof,
+    masquerade: !!i.masquerade,
   };
 }
 
@@ -58,6 +60,7 @@ function describe(before: Iface, after: Iface): string {
   if (!!before.blockPrivate !== !!after.blockPrivate) parts.push(after.blockPrivate ? 'blocks private networks' : 'allows private networks');
   if (!!before.blockBogons !== !!after.blockBogons) parts.push(after.blockBogons ? 'blocks bogon networks' : 'allows bogon networks');
   if (!!before.antispoof !== !!after.antispoof) parts.push(after.antispoof ? 'blocks spoofed addresses' : 'no longer blocks spoofed addresses');
+  if (!!before.masquerade !== !!after.masquerade) parts.push(after.masquerade ? 'shares its address with OPF’s other networks' : 'no longer shares its address');
   return `${before.name}: ${parts.join(', ') || 'updated'}`;
 }
 
@@ -95,6 +98,7 @@ export function InterfaceEdit() {
   }
 
   const isWan = iface.role === 'wan';
+  const inside = iface.role === 'lan' || iface.role === 'opt';
   const lockout = iface.role === 'lan' && (form.values.mode !== 'static' || form.values.address !== iface.ipv4.address);
 
   const submit = form.onSubmit((v) => {
@@ -110,8 +114,10 @@ export function InterfaceEdit() {
       ...(isWan ? { blockPrivate: v.blockPrivate, blockBogons: v.blockBogons } : {}),
       // Antispoof needs a fixed address (pf expands it when it loads).
       antispoof: v.mode === 'static' && v.antispoof ? true : undefined,
+      masquerade: inside && v.mode !== 'none' && v.masquerade ? true : undefined,
     };
     if (next.antispoof === undefined) delete next.antispoof;
+    if (next.masquerade === undefined) delete next.masquerade;
     if (JSON.stringify(next) === JSON.stringify(iface)) {
       navigate('/interfaces');
       return;
@@ -236,6 +242,14 @@ export function InterfaceEdit() {
               disabled={form.values.mode !== 'static'}
               {...form.getInputProps('antispoof', { type: 'checkbox' })}
             />
+            {inside && (
+              <Switch
+                label="Share this address with OPF’s other networks"
+                description={`Traffic from OPF’s other networks (VPN devices, other LANs) leaving through ${iface.name} takes its address, so this network’s router needn’t know about them. For OPF behind an existing router, such as a VPN server reached through a port forward.`}
+                disabled={form.values.mode === 'none'}
+                {...form.getInputProps('masquerade', { type: 'checkbox' })}
+              />
+            )}
             {isWan && (
               <>
               <Switch

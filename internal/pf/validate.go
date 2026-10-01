@@ -338,6 +338,12 @@ func (v *validator) interfaces() {
 		case f.Role != RoleVPN && (isWG || f.WireGuard != nil):
 			v.fail(p+".role", "a WireGuard interface must have role vpn")
 		}
+		if f.Masquerade && f.Role != RoleLAN && f.Role != RoleOPT {
+			v.fail(p+".masquerade", "only a LAN or optional interface masquerades; a WAN always does")
+		}
+		if f.Masquerade && f.IPv4.Mode == IPv4None {
+			v.fail(p+".masquerade", "needs an IPv4 address to take")
+		}
 		// pf expands antispoof once, when it loads the rules, so an
 		// address that changes (DHCP) would leave it guarding the old one.
 		if f.Antispoof && (f.IPv4.Mode != IPv4Static || f.IPv4.Prefix == nil) {
@@ -1026,6 +1032,9 @@ func (v *validator) wireguard() {
 		}
 		base := at("interfaces", idx) + ".wireguard"
 		v.intRange(base+".listenPort", w.ListenPort, 1, 65535)
+		if w.PublicEndpoint != "" && !validEndpoint(w.PublicEndpoint) {
+			v.fail(base+".publicEndpoint", "%q isn't a host, host:port or [IPv6]:port", w.PublicEndpoint)
+		}
 		if other, dup := ports[w.ListenPort]; dup {
 			v.fail(base+".listenPort", "port %d is already used by %s", w.ListenPort, other)
 		}
@@ -1099,4 +1108,48 @@ func (v *validator) wireguard() {
 			}
 		}
 	}
+}
+
+// validEndpoint is where a WireGuard device connects: a DNS name, an
+// IPv4 address or a bracketed IPv6 one, optionally with :port.
+func validEndpoint(s string) bool {
+	if len(s) > 255 {
+		return false
+	}
+	host, port := s, ""
+	if strings.HasPrefix(s, "[") {
+		end := strings.Index(s, "]")
+		if end < 0 {
+			return false
+		}
+		host, port = s[1:end], strings.TrimPrefix(s[end+1:], ":")
+		if s[end+1:] != "" && !strings.HasPrefix(s[end+1:], ":") {
+			return false
+		}
+		if a, err := netip.ParseAddr(host); err != nil || !a.Is6() || a.Zone() != "" {
+			return false
+		}
+	} else {
+		// An IPv6 address needs brackets, or its last group reads as a
+		// port.
+		if strings.Count(s, ":") > 1 {
+			return false
+		}
+		if i := strings.LastIndex(s, ":"); i >= 0 {
+			host, port = s[:i], s[i+1:]
+			if port == "" {
+				return false
+			}
+		}
+		if _, err := netip.ParseAddr(host); err != nil && !IsBlockName(host) || strings.HasPrefix(host, "*") || strings.Contains(host, "_") {
+			return false
+		}
+	}
+	if port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 || strconv.Itoa(n) != port {
+			return false
+		}
+	}
+	return true
 }

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { Anchor, Badge, Button, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconWorldSearch, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
 import { useStore } from '../model/store';
-import { tunnels } from '../model/types';
+import { tunnels, upstream } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
 import { rpzBlocked } from '../lib/api';
@@ -73,7 +73,9 @@ export function Dashboard() {
   const { data: sys } = useLive('system');
   const { data: ifs } = useLive('interfaces');
   const { data: upd } = useLive('updates');
-  const wan = applied.interfaces.find((i) => i.role === 'wan');
+  // The WAN, or behind another router the interface towards it.
+  const wan = upstream(applied);
+  const behind = !!wan && wan.role !== 'wan';
   const [range, setRange] = useState(ranges[1].value);
   const wanSeries = wan ? [{ key: `if.${wan.device}.rx`, label: 'Download', color: 'harbor.6' }, { key: `if.${wan.device}.tx`, label: 'Upload', color: 'amber.6' }] : [];
   const { data: history } = useHistory(wanSeries.map((x) => x.key), Number(range));
@@ -111,7 +113,7 @@ export function Dashboard() {
           icon={IconWorld}
           label="Internet"
           value={!ifs ? '…' : wanUp ? 'Connected' : 'Offline'}
-          detail={firstIPv4(wanStatus) ? `${firstIPv4(wanStatus)}${wan?.ipv4.mode === 'dhcp' ? ' via DHCP' : ''}` : 'No address'}
+          detail={!wan ? 'No WAN, and no default gateway' : firstIPv4(wanStatus) ? `${firstIPv4(wanStatus)}${wan.ipv4.mode === 'dhcp' ? ' via DHCP' : ''}${behind ? `, through a router on ${wan.name}` : ''}` : 'No address'}
           state={!ifs || wanUp ? 'ok' : 'bad'}
         />
         <Tile
@@ -172,7 +174,7 @@ export function Dashboard() {
             {wan ? (
               <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area peaks h={250} marks={wanMarks} />
             ) : (
-              <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No internet interface is set up.</Text>
+              <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No WAN, and no default gateway to reach the internet through.</Text>
             )}
             <Anchor component={Link} to="/diagnostics/graphs" size="xs" c="dimmed">More graphs</Anchor>
           </Card>

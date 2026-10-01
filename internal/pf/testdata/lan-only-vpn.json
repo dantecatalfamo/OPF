@@ -1,0 +1,234 @@
+{
+  "system": {
+    "hostname": "gw",
+    "domain": "office.arpa",
+    "timezone": "America/New_York",
+    "ntpServers": [
+      "pool.ntp.org"
+    ]
+  },
+  "interfaces": [
+    {
+      "id": "lan",
+      "name": "Office",
+      "device": "em0",
+      "role": "lan",
+      "enabled": true,
+      "ipv4": {
+        "mode": "static",
+        "address": "192.168.1.50",
+        "prefix": 24
+      },
+      "ipv6": "none",
+      "masquerade": true
+    },
+    {
+      "id": "wg",
+      "name": "Remote access",
+      "device": "wg0",
+      "role": "vpn",
+      "enabled": true,
+      "ipv4": {
+        "mode": "static",
+        "address": "10.8.0.1",
+        "prefix": 24
+      },
+      "ipv6": "none",
+      "wireguard": {
+        "listenPort": 51820,
+        "publicKey": "kq3Xw0pY6m2VhT8cQf1LzR5nB7dJ4sA9gE0uWiOyHl8=",
+        "peers": [
+          {
+            "id": "p1",
+            "name": "Priya phone",
+            "publicKey": "Zr8LmQ2vX5cT1nB9dF4hJ7kW0pS3gA6eY2uIoRtCy1E=",
+            "address": "10.8.0.2/32",
+            "networks": [],
+            "keepalive": 25,
+            "clientRoutes": "full"
+          },
+          {
+            "id": "p2",
+            "name": "Sam laptop",
+            "publicKey": "Bv4NqW7eR1tY5uI9oP3aS6dF0gH2jK8lZxCvMnQwE5o=",
+            "address": "10.8.0.3/32",
+            "networks": [],
+            "keepalive": 25,
+            "clientRoutes": "split"
+          }
+        ],
+        "publicEndpoint": "vpn.example.com"
+      }
+    }
+  ],
+  "routing": {
+    "defaultGateway": "gw_router",
+    "gateways": [
+      {
+        "id": "gw_router",
+        "name": "ROUTER",
+        "iface": "lan",
+        "address": "192.168.1.1",
+        "monitor": "192.168.1.1",
+        "description": "The office router"
+      }
+    ],
+    "routes": []
+  },
+  "firewall": {
+    "rules": [
+      {
+        "id": "r-wg-in",
+        "kind": "form",
+        "enabled": true,
+        "interfaces": [
+          "lan"
+        ],
+        "description": "WireGuard, forwarded by the router",
+        "action": "pass",
+        "direction": "in",
+        "quick": false,
+        "family": "inet",
+        "protocol": "udp",
+        "destination": {
+          "type": "self"
+        },
+        "port": "51820",
+        "log": "off",
+        "source": {
+          "type": "any"
+        }
+      },
+      {
+        "kind": "form",
+        "enabled": true,
+        "action": "pass",
+        "direction": "in",
+        "quick": true,
+        "family": "inet",
+        "protocol": "any",
+        "source": {
+          "type": "iface",
+          "iface": "lan",
+          "part": "network"
+        },
+        "destination": {
+          "type": "any"
+        },
+        "log": "off",
+        "id": "r3",
+        "interfaces": [
+          "lan"
+        ],
+        "description": "Allow LAN to anywhere"
+      },
+      {
+        "kind": "form",
+        "enabled": true,
+        "action": "pass",
+        "direction": "in",
+        "quick": true,
+        "family": "inet",
+        "protocol": "any",
+        "source": {
+          "type": "iface",
+          "iface": "wg",
+          "part": "network"
+        },
+        "destination": {
+          "type": "iface",
+          "iface": "lan",
+          "part": "network"
+        },
+        "log": "off",
+        "id": "r7",
+        "interfaces": [
+          "wg"
+        ],
+        "description": "Remote access to the LAN"
+      },
+      {
+        "kind": "form",
+        "enabled": true,
+        "action": "pass",
+        "direction": "in",
+        "quick": true,
+        "family": "inet",
+        "protocol": "any",
+        "source": {
+          "type": "iface",
+          "iface": "wg",
+          "part": "network"
+        },
+        "destination": {
+          "type": "any"
+        },
+        "log": "off",
+        "id": "r13",
+        "interfaces": [
+          "wg"
+        ],
+        "description": "VPN devices to the internet"
+      }
+    ],
+    "forwards": [],
+    "outboundNat": {
+      "mode": "auto",
+      "rules": []
+    },
+    "aliases": [],
+    "options": {
+      "blockPolicy": "drop",
+      "statePolicy": "floating",
+      "optimization": "normal",
+      "maxStates": 100000,
+      "syncookies": "adaptive",
+      "scrub": {
+        "enabled": true,
+        "maxMss": 1440,
+        "randomId": true,
+        "noDf": true
+      },
+      "logDefaultBlock": true
+    },
+    "custom": {
+      "options": "",
+      "beforeFilter": "",
+      "afterFilter": ""
+    }
+  },
+  "dhcp": [],
+  "dns": {
+    "enabled": true,
+    "mode": "recursive",
+    "forwarders": [
+      "9.9.9.9",
+      "149.112.112.112"
+    ],
+    "forwardTls": true,
+    "dnssec": true,
+    "registerReservations": false,
+    "registerDynamicLeases": false,
+    "rewriteInvalidLeaseNames": true,
+    "overrides": [
+      {
+        "id": "h1",
+        "host": "files",
+        "domain": "office.arpa",
+        "ip": "192.168.1.20",
+        "description": "File server"
+      },
+      {
+        "id": "h2",
+        "host": "wiki",
+        "domain": "office.arpa",
+        "ip": "192.168.1.25",
+        "description": "Team wiki"
+      }
+    ],
+    "records": [],
+    "blocklists": [],
+    "blocked": [],
+    "allowed": []
+  }
+}

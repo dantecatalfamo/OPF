@@ -6,7 +6,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconArrowRight, IconDots, IconInfoCircle, IconLock, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
-import { tunnels, type NatRule, type PortForward } from '../model/types';
+import { upstream, tunnels, type NatRule, type PortForward } from '../model/types';
 import { renderedText, useDerived, useRendered } from '../lib/generated';
 import { endpointLabel, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
@@ -31,7 +31,9 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
     },
   });
   useEffect(() => {
-    if (opened) form.setValues(forward ? { ...forward } : blankForward);
+    // A new forward arrives on the WAN, or behind another router the
+    // interface towards it.
+    if (opened) form.setValues(forward ? { ...forward } : { ...blankForward, iface: upstream(staged)?.id ?? staged.interfaces[0]?.id ?? 'wan' });
   }, [opened, forward]); // form is stable
 
   const reservations = staged.dhcp.flatMap((d) => d.reservations).map((r) => ({ value: r.ip, label: `${r.hostname} · ${r.ip}` }));
@@ -54,7 +56,7 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
             Connections arriving on a public port are redirected (rdr-to) to a device inside. The pass rule that lets them in is part of the forward.
           </Text>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <Select label="Arriving on" data={staged.interfaces.filter((i) => i.role === 'wan').map((i) => ({ value: i.id, label: i.name }))} allowDeselect={false} {...form.getInputProps('iface')} />
+            <Select label="Arriving on" data={[...staged.interfaces].filter((i) => i.role !== 'vpn').sort((a, b) => Number(b.role === 'wan') - Number(a.role === 'wan')).map((i) => ({ value: i.id, label: i.name }))} allowDeselect={false} {...form.getInputProps('iface')} />
             <Select label="Protocol" data={[{ value: 'tcp', label: 'TCP' }, { value: 'udp', label: 'UDP' }, { value: 'tcp/udp', label: 'TCP and UDP' }]} allowDeselect={false} {...form.getInputProps('protocol')} />
           </SimpleGrid>
           <EndpointField label="Allowed from" value={v.source} onChange={(e) => form.setFieldValue('source', e)} model={staged} error={form.errors.source} />

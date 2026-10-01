@@ -7,7 +7,7 @@ import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
-import { tunnels, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
+import { tunnels, upstream, type Iface, type Model, type Peer, type Tunnel } from '../model/types';
 import { useDerived } from '../lib/generated';
 import { formRule } from '../model/sample';
 import { isFloating } from '../lib/rules';
@@ -27,13 +27,19 @@ function fakeKey(): string {
   return s + 'AEIMQUYcgkosw048'[Math.floor(Math.random() * 16)] + '=';
 }
 
-// The WAN's address, where devices reach the tunnel. Behind another
-// router it's a private address, and the device needs the public one.
-function usePublicAddress(): string {
+// Where devices reach the tunnel: its public address when it has one
+// (OPF behind a router that forwards the port), or the WAN's address
+// and the tunnel's port.
+function useEndpoint(t: Tunnel): string {
   const { staged } = useStore();
   const { data } = useLive('interfaces');
-  const wan = staged.interfaces.find((i) => i.role === 'wan');
-  return (wan && firstIPv4(ifaceState(data, wan))) ?? 'your-public-address';
+  return endpointOf(t, staged.interfaces.find((i) => i.role === 'wan'), data);
+}
+
+function endpointOf(t: Tunnel, wan: Iface | undefined, data: Parameters<typeof ifaceState>[0]): string {
+  const pub = t.wireguard.publicEndpoint?.trim();
+  if (pub) return /:\d+$/.test(pub) && !/^[^[]*:.*:/.test(pub) ? pub : `${pub}:${t.wireguard.listenPort}`;
+  return `${(wan && firstIPv4(ifaceState(data, wan))) ?? 'your-public-address'}:${t.wireguard.listenPort}`;
 }
 
 function Copyable({ value }: { value: string }) {
@@ -99,7 +105,8 @@ const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
 
 function AddTunnel({ opened, onClose, onAdded }: { opened: boolean; onClose: () => void; onAdded: (id: string) => void }) {
   const { staged, edit } = useStore();
-  const wan = staged.interfaces.find((i) => i.role === 'wan');
+  // Where devices arrive: the WAN, or the LAN behind another router.
+  const wan = upstream(staged);
   const vpns = tunnels(staged);
   const form = useForm({
     initialValues: { name: '', listenPort: 51820 as number | string, address: '', prefix: 24 as number | string, allow: true },
@@ -199,7 +206,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
   }, [opened]); // form is stable
 
   const v = form.values;
-  const wan = usePublicAddress();
+  const endpoint = useEndpoint(tunnel);
   const local = useDerived(staged).data?.localNetworks ?? [];
   const allowed = v.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   const clientConfig = `[Interface]
@@ -209,7 +216,7 @@ DNS = ${tunnel.ipv4.address}
 
 [Peer]
 PublicKey = ${wg.publicKey}
-Endpoint = ${wan}:${wg.listenPort}
+Endpoint = ${endpoint}
 AllowedIPs = ${allowed}
 PersistentKeepalive = 25`;
 
@@ -288,15 +295,19 @@ PersistentKeepalive = 25`;
 
 function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const { staged } = useStore();
-  const publicAddress = usePublicAddress();
+  const endpoint = useEndpoint(tunnel);
   const wg = tunnel.wireguard;
-  const wan = staged.interfaces.find((i) => i.role === 'wan');
-  const wanRule = staged.firewall.rules.find((r) => r.enabled && r.kind === 'form' && r.interfaces.includes(wan?.id ?? '') && r.protocol === 'udp' && r.port === String(wg.listenPort));
+  // A rule letting the port in, on whichever interface devices arrive
+  // by: the WAN, or the LAN when OPF is behind another router.
+  const wanRule = staged.firewall.rules.find((r) => r.enabled && r.kind === 'form' && r.interfaces.length === 1 && r.interfaces[0] !== tunnel.id && r.protocol === 'udp' && r.port === String(wg.listenPort) && r.action === 'pass');
+  const ruleIface = staged.interfaces.find((i) => i.id === wanRule?.interfaces[0]);
   const tunnelRules = staged.firewall.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === tunnel.id);
   const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === tunnel.id);
   const nat = staged.firewall.outboundNat;
   const automatic = useDerived(staged).data?.automaticNat ?? [];
-  const natAuto = nat.mode !== 'manual' && automatic.some((n) => n.source.type === 'iface' && n.source.iface === tunnel.id);
+  // Where it leaves, translated: the WAN, or a LAN that masquerades.
+  const natOut = nat.mode === 'manual' ? [] : automatic.filter((n) => n.source.type === 'iface' && n.source.iface === tunnel.id).map((n) => staged.interfaces.find((i) => i.id === n.iface)?.name ?? n.iface);
+  const natAuto = natOut.length > 0;
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
   const splitPeers = wg.peers.filter((p) => p.clientRoutes === 'split');
 
@@ -306,11 +317,14 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
       <Timeline bulletSize={28} lineWidth={2}>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconPlugConnected size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Devices connect</Text>}>
           <Text size="sm" c="dimmed">
-            To <Mono>{publicAddress}:{wg.listenPort}</Mono> over UDP.{' '}
+            To <Mono>{endpoint}</Mono> over UDP.{' '}
             {wanRule ? (
-              <>Allowed by the WAN rule <Anchor component={Link} to={`/firewall/rules/${wan?.id}`} size="sm">“{wanRule.description}”</Anchor>.</>
+              <>Allowed by {ruleIface?.name}’s rule <Anchor component={Link} to={`/firewall/rules/${ruleIface?.id}`} size="sm">“{wanRule.description}”</Anchor>.</>
             ) : (
-              <Text span c="red" size="sm">No WAN rule allows this port, so devices can’t connect.</Text>
+              <Text span c="red" size="sm">No rule lets UDP port {wg.listenPort} in, so devices can’t connect.</Text>
+            )}
+            {!wg.publicEndpoint && !staged.interfaces.some((i) => i.role === 'wan') && (
+              <Text span c="red" size="sm"> There’s no WAN to take the address from: set this tunnel’s public address, where the router forwarding the port is reached.</Text>
             )}
           </Text>
         </Timeline.Item>
@@ -343,7 +357,7 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
           <Text size="sm" c="dimmed">
             {fullPeers.length ? `${fullPeers.map((p) => p.name).join(', ')} send${fullPeers.length === 1 ? 's' : ''} all traffic through OPF. ` : 'No device sends all its traffic through OPF. '}
             {natAuto ? (
-              <>It leaves through {wan?.name}, translated to the WAN address by <Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>.</>
+              <>It leaves through {natOut.join(' or ')}, taking {natOut.length === 1 ? 'its' : 'that interface’s'} address, by <Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>.</>
             ) : (
               <Text span c={fullPeers.length ? 'red' : 'dimmed'} size="sm">
                 No <Anchor component={Link} to="/firewall/nat/outbound" size="sm">outbound NAT</Anchor> rule covers the tunnel network, so it can’t reach the internet.
@@ -362,8 +376,9 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   const [deleting, setDeleting] = useState(false);
   const vpns = tunnels(staged);
   const form = useForm({
-    initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string },
+    initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '' },
     validate: {
+      publicEndpoint: (v) => (v.trim() === '' || /^(\[[0-9a-f:]+\]|[A-Za-z0-9.-]+)(:\d{1,5})?$/i.test(v.trim()) ? null : 'A name or address, with :port if it differs, like vpn.example.com:51820'),
       name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Letters, digits and spaces'),
       listenPort: (v) => {
         const n = Number(v);
@@ -374,9 +389,9 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
     },
   });
   useEffect(() => {
-    form.setValues({ name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort });
+    form.setValues({ name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '' });
     form.resetDirty();
-  }, [tunnel.id, tunnel.name, tunnel.enabled, tunnel.wireguard.listenPort]); // form is stable
+  }, [tunnel.id, tunnel.name, tunnel.enabled, tunnel.wireguard.listenPort, tunnel.wireguard.publicEndpoint]); // form is stable
 
   const save = form.onSubmit((x) => {
     const name = x.name.trim();
@@ -388,6 +403,14 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
     if (port !== tunnel.wireguard.listenPort) {
       edit('wireguard', `${name} now listens on port ${port}`, (m) => withTunnel(m, tunnel.id, (t) => ({ ...t, wireguard: { ...t.wireguard, listenPort: port } })));
     }
+    const pub = x.publicEndpoint.trim();
+    if (pub !== (tunnel.wireguard.publicEndpoint ?? '')) {
+      edit('wireguard', pub ? `Devices reach ${name} at ${pub}` : `Devices reach ${name} at the WAN’s address`, (m) => withTunnel(m, tunnel.id, (t) => {
+        const wireguard = { ...t.wireguard, publicEndpoint: pub || undefined };
+        if (!pub) delete wireguard.publicEndpoint;
+        return { ...t, wireguard };
+      }));
+    }
   });
 
   return (
@@ -397,6 +420,9 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
         <Stack gap="md">
           <TextInput label="Name" {...form.getInputProps('name')} />
           <NumberInput label="Port" min={1} max={65535} {...form.getInputProps('listenPort')} />
+          <TextInput label="Public address" placeholder={staged.interfaces.some((i) => i.role === 'wan') ? 'The WAN’s address' : 'vpn.example.com'}
+            description="Where devices connect, if not the WAN’s address: behind another router, the name or address it’s reached at, with :port if the router forwards a different one."
+            inputWrapperOrder={['label', 'input', 'description', 'error']} spellCheck={false} {...form.getInputProps('publicEndpoint')} />
           <Stack gap={2}>
             <Text size="sm" fw={500}>Tunnel address</Text>
             <Group gap="xs">
@@ -421,7 +447,7 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
 
 // The device's configuration after an edit. Its private key is the one
 // it already has: OPF never sees it again after creating the device.
-function deviceConfig(local: string[], wan: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
+function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes'>): string {
   const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
   return `[Interface]
 PrivateKey = <the device’s existing private key>
@@ -430,7 +456,7 @@ DNS = ${t.ipv4.address}
 
 [Peer]
 PublicKey = ${t.wireguard.publicKey}
-Endpoint = ${wan}:${t.wireguard.listenPort}
+Endpoint = ${endpoint}
 AllowedIPs = ${allowed}
 PersistentKeepalive = 25`;
 }
@@ -466,7 +492,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   const { staged, edit } = useStore();
   const [saved, setSaved] = useState<Peer | null>(null);
   const local = useDerived(staged).data?.localNetworks ?? [];
-  const wan = usePublicAddress();
+  const wan = useEndpoint(tunnel);
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
     validate: {

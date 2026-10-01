@@ -127,6 +127,12 @@ type Iface struct {
 	// Antispoof blocks traffic claiming to come from this interface's
 	// network arriving anywhere else (pf's antispoof).
 	Antispoof bool `json:"antispoof,omitempty"`
+	// Masquerade, on a LAN or optional interface: traffic from OPF's
+	// other networks (VPN devices, say) leaving through it takes its
+	// address, for a network whose router doesn't know OPF's other
+	// networks: OPF behind an existing router, as a VPN server reached
+	// through a port forward. A WAN always does this.
+	Masquerade bool `json:"masquerade,omitempty"`
 	// WireGuard is set on every VPN interface (role vpn, device wgN):
 	// each is its own tunnel.
 	WireGuard *WireGuard `json:"wireguard,omitempty"`
@@ -673,7 +679,12 @@ type Peer struct {
 type WireGuard struct {
 	ListenPort int    `json:"listenPort"`
 	PublicKey  string `json:"publicKey"`
-	Peers      []Peer `json:"peers"`
+	// PublicEndpoint is where devices reach the tunnel, as host or
+	// host:port: a name or address, through a router's port forward
+	// when OPF is behind one. Empty, devices' configurations use the
+	// WAN's address and ListenPort.
+	PublicEndpoint string `json:"publicEndpoint,omitempty"`
+	Peers          []Peer `json:"peers"`
 }
 
 // Tunnels returns the VPN interfaces, each with its WireGuard settings.

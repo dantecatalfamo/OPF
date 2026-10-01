@@ -14,7 +14,10 @@ import { HistoryCard } from '../components/HistoryChart';
 
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
-  const { edit } = useStore();
+  const { staged, edit } = useStore();
+  // A gateway on this network is another router, which likely hands
+  // out addresses already: OPF behind it, as a VPN server, say.
+  const router = staged.routing.gateways.find((g) => g.iface === iface.id);
   const form = useForm({
     initialValues: { enabled: scope.enabled, rangeStart: scope.rangeStart, rangeEnd: scope.rangeEnd, leaseHours: scope.leaseHours as number | string, dns: scope.dns, dnsServers: scope.dnsServers },
     validate: {
@@ -47,6 +50,11 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
       >
         <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Settings</SectionTitle>
         <Stack>
+          {router && form.values.enabled && (
+            <Alert color="yellow" variant="light" p="sm">
+              {iface.name} has a router on it ({router.name}{router.address !== 'dhcp' ? `, ${router.address}` : ''}), which probably gives out addresses already. Two DHCP servers on one network hand out clashing addresses: leave this off unless that router’s is turned off.
+            </Alert>
+          )}
           <Group grow align="flex-start">
             <TextInput label="First address" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('rangeStart')} />
             <TextInput label="Last address" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('rangeEnd')} />
