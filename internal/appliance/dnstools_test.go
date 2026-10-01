@@ -3,6 +3,7 @@ package appliance
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -88,5 +89,31 @@ func TestDNSTools(t *testing.T) {
 	e.m.Runner, e.m.Actions = u, u
 	if _, err := e.m.DNSTool(DNSToolRequest{Tool: "local"}); err == nil {
 		t.Error("ran with the resolver off")
+	}
+}
+
+// Against what 7.9's unbound printed after looking up github.com,
+// www.github.com (a CNAME to it) and others.
+func TestCacheLinesReal(t *testing.T) {
+	dump, err := os.ReadFile("testdata/openbsd-7.9/unbound-control_dump_cache.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cacheLines(string(dump), "github.com")
+	for _, want := range []string{
+		"github.com.\t59\tIN\tA\t140.82.114.3\n",
+		"www.github.com.\t3599\tIN\tCNAME\tgithub.com.\n",
+		"github.com.\t300\tIN\tMX\t0 github-com.mail.protection.outlook.com.\n",
+		"github.com.\t86399\tIN\tNS\tns-520.awsdns-01.net.\n",
+		"www.github.com. IN A: answer kept, 59 s left\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+	for _, not := range []string{"RRSIG", "IN A 0", "IN CNAME 0", "msg ", "openbsd"} {
+		if strings.Contains(got, not) {
+			t.Errorf("has %q:\n%s", not, got)
+		}
 	}
 }

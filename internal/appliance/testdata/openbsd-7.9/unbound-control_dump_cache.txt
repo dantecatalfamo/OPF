@@ -1,0 +1,721 @@
+START_RRSET_CACHE
+;rrset 86399 5 0 2 0
+ntt.net.	86399	IN	NS	auth21.ns.gin.ntt.net.
+ntt.net.	86399	IN	NS	auth22.ns.gin.ntt.net.
+ntt.net.	86399	IN	NS	auth23.ns.gin.ntt.net.
+ntt.net.	86399	IN	NS	auth24.ns.gin.ntt.net.
+ntt.net.	86399	IN	NS	auth25.ns.gin.ntt.net.
+;rrset 86399 1 0 1 0
+f.nic.de.	86399	IN	A	81.91.164.5
+;rrset 86400 1 0 1 0
+ns2.google.com.	86400	IN	A	216.239.34.10
+;rrset 86399 1 0 1 0
+g-ns-1921.awsdns-01.net.	86399	IN	AAAA	2600:9000:5307:8100::1
+;rrset 86399 1 0 1 0
+a0.org.afilias-nst.info.	86399	IN	AAAA	2001:500:e::1
+;rrset 86399 1 0 1 0
+j.gtld-servers.net.	86399	IN	A	192.48.79.30
+;rrset 86399 1 0 1 0
+b0.org.afilias-nst.org.	86399	IN	A	199.19.54.1
+;rrset 14399 1 0 8 0
+auth3.ns.gin.ntt.net.	14399	IN	A	129.250.31.21
+;rrset 86399 1 1 1 0
+b.ns.bsws.de.	86399	IN	A	80.86.183.57
+b.ns.bsws.de.	86399	IN	RRSIG	A 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. c5fwDW21nUxYITFsOENLw8zwuElZIGDH1mmzY0Ge5fg9G7h6wSYZlEQhntcR3pCmgTSHFDlUELUGeQDfTVykwh7kYCCo/rNDYMyv7nBiSvz/PUeyjLJ7RFgYTgtAow+42d8AIkNUrn1edVoinmqD32YqptAPYkAKqNy9SyTNL1k= ;{id = 14481}
+;rrset 86400 1 1 8 0
+dns2.p08.nsone.net.	86400	IN	AAAA	2a00:edc0:6259:7:8::2
+dns2.p08.nsone.net.	86400	IN	RRSIG	AAAA 13 4 86400 20261002042811 20261001022811 12196 nsone.net. Jgz3aHSxFVYN54c5ImI+zRThnDkPuDX7fh/wYiDi2PnTxBmjZH2Dnh4wi1C36xyrrYvbmJ28g5iespNhenajxQ== ;{id = 12196}
+;rrset 86399 1 0 3 0
+g.root-servers.net.	86399	IN	AAAA	2001:500:12::d0d
+;rrset 14400 1 0 8 0
+auth4.ns.gin.ntt.net.	14400	IN	A	213.130.47.21
+;rrset 86399 8 0 2 0
+github.com.	86399	IN	NS	ns-520.awsdns-01.net.
+github.com.	86399	IN	NS	ns-421.awsdns-52.com.
+github.com.	86399	IN	NS	ns-1707.awsdns-21.co.uk.
+github.com.	86399	IN	NS	ns-1283.awsdns-32.org.
+github.com.	86399	IN	NS	dns1.p08.nsone.net.
+github.com.	86399	IN	NS	dns2.p08.nsone.net.
+github.com.	86399	IN	NS	dns3.p08.nsone.net.
+github.com.	86399	IN	NS	dns4.p08.nsone.net.
+;rrset 86399 1 0 3 0
+a.root-servers.net.	86399	IN	A	198.41.0.4
+;rrset 86399 1 0 8 0
+ns-1707.awsdns-21.co.uk.	86399	IN	AAAA	2600:9000:5306:ab00::1
+;rrset 86399 1 0 1 0
+dns4.nic.uk.	86399	IN	A	43.230.48.1
+;rrset 86399 1 0 1 0
+g-ns-1817.awsdns-21.co.uk.	86399	IN	A	205.251.199.25
+;rrset 14400 1 0 8 0
+auth4.ns.gin.ntt.net.	14400	IN	AAAA	2001:728:0:7000::201
+;rrset 86399 1 0 1 0
+a.gtld-servers.net.	86399	IN	A	192.5.6.30
+;rrset 86400 1 0 1 0
+ns2.google.com.	86400	IN	AAAA	2001:4860:4802:34::a
+;rrset 86399 1 0 1 0
+m.gtld-servers.net.	86399	IN	A	192.55.83.30
+;rrset 86399 1 0 1 0
+l.gtld-servers.net.	86399	IN	A	192.41.162.30
+;rrset 86399 13 1 8 0
+.	86399	IN	NS	l.root-servers.net.
+.	86399	IN	NS	j.root-servers.net.
+.	86399	IN	NS	f.root-servers.net.
+.	86399	IN	NS	h.root-servers.net.
+.	86399	IN	NS	d.root-servers.net.
+.	86399	IN	NS	b.root-servers.net.
+.	86399	IN	NS	k.root-servers.net.
+.	86399	IN	NS	i.root-servers.net.
+.	86399	IN	NS	m.root-servers.net.
+.	86399	IN	NS	e.root-servers.net.
+.	86399	IN	NS	g.root-servers.net.
+.	86399	IN	NS	c.root-servers.net.
+.	86399	IN	NS	a.root-servers.net.
+.	86399	IN	RRSIG	NS 8 0 518400 20261013200000 20260930190000 57780 . ypM/QPICmhaKYh5fJfHJ9m925IbASFJghs+Xq0C/59lcThzc8FqAsuQhY9j850fJqP7apT4tz4xubOv0bB0sKovK2KT1wA+ETA8gy81zygO7iI1TACawqni2PfuYRpxcMb7RZx8N+VQsXdkN9bE3aCBu9+wIHNeqz7gn3/I70xw3F9C+CzO5r7a2t8lEXxrqcfEimpPYLewhC9tI1o7tjIycUkM7PWHWQPRMmF48rfaSuE+aSVon9vz3h19Jqr2HNqoopxMecHKH8qkBx0nGjQBsEW2UFqU/vflurRdtzueo+D8L/WX7f5+dCJq1hLvuFIZTAhZXfgXPZegtaxKlrQ== ;{id = 57780}
+;rrset 86399 1 0 1 0
+c0.org.afilias-nst.info.	86399	IN	AAAA	2001:500:b::1
+;rrset 86399 1 0 1 0
+nsa.nic.uk.	86399	IN	A	156.154.100.3
+;rrset 86400 3 0 1 0
+hera.ns.cloudflare.com.	86400	IN	AAAA	2606:4700:50::adf5:3aa2
+hera.ns.cloudflare.com.	86400	IN	AAAA	2803:f800:50::6ca2:c0a2
+hera.ns.cloudflare.com.	86400	IN	AAAA	2a06:98c1:50::ac40:20a2
+;rrset 86399 1 0 8 0
+ns-1283.awsdns-32.org.	86399	IN	AAAA	2600:9000:5305:300::1
+;rrset 3599 1 1 7 0
+p08.nsone.net.	3599	IN	NSEC	\000.p08.nsone.net. RRSIG NSEC
+p08.nsone.net.	3599	IN	RRSIG	NSEC 13 3 3600 20261002042810 20261001022810 12196 nsone.net. Wx/X/Q0wfN0LC45WXiRDvAozT11O/+gvP8kZEY6ufjgyMvDoCHYpTGzkGMVTw4nuN+8etz9kUibPqwcWvY1jFw== ;{id = 12196}
+;rrset 86399 1 0 3 0
+f.root-servers.net.	86399	IN	A	192.5.5.241
+;rrset 86399 1 0 1 0
+c.gtld-servers.net.	86399	IN	AAAA	2001:503:83eb::30
+;rrset 86399 1 0 3 0
+k.root-servers.net.	86399	IN	AAAA	2001:7fd::1
+;rrset 86399 1 0 1 0
+g-ns-1817.awsdns-21.co.uk.	86399	IN	AAAA	2600:9000:5307:1900::1
+;rrset 14400 1 0 8 0
+auth1.ns.gin.ntt.net.	14400	IN	A	129.250.35.229
+;rrset 1800 1 1 7 2
+example.com.	1800	IN	SOA	elliott.ns.cloudflare.com. dns.cloudflare.com. 2415949263 10000 2400 604800 1800
+example.com.	1800	IN	RRSIG	SOA 13 2 1800 20261002042811 20260930022811 34505 example.com. FlUWu/HifSdwjsy5q1FLNjMn0mHI22l49SiCEU5kzmFJKDLrxVhNMo71tzdaRsbklDBqwIlKa1HlU+8lr8N4kg== ;{id = 34505}
+;rrset 86399 1 0 1 0
+a2.org.afilias-nst.info.	86399	IN	AAAA	2001:500:40::1
+;rrset 86399 1 0 1 0
+g-ns-341.awsdns-21.co.uk.	86399	IN	AAAA	2600:9000:5301:5500::1
+;rrset 86399 1 0 1 0
+dns3.nic.uk.	86399	IN	AAAA	2a01:618:404::1
+;rrset 86399 1 0 1 0
+g-ns-450.awsdns-01.net.	86399	IN	AAAA	2600:9000:5301:c200::1
+;rrset 86399 1 0 3 0
+a.root-servers.net.	86399	IN	AAAA	2001:503:ba3e::2:30
+;rrset 86399 1 0 1 0
+l.gtld-servers.net.	86399	IN	AAAA	2001:500:d937::30
+;rrset 3599 4 0 2 0
+awsdns-32.org.	3599	IN	NS	g-ns-160.awsdns-32.org.
+awsdns-32.org.	3599	IN	NS	g-ns-738.awsdns-32.org.
+awsdns-32.org.	3599	IN	NS	g-ns-1059.awsdns-32.org.
+awsdns-32.org.	3599	IN	NS	g-ns-1632.awsdns-32.org.
+;rrset 86399 13 0 2 0
+net.	86399	IN	NS	a.gtld-servers.net.
+net.	86399	IN	NS	b.gtld-servers.net.
+net.	86399	IN	NS	c.gtld-servers.net.
+net.	86399	IN	NS	d.gtld-servers.net.
+net.	86399	IN	NS	e.gtld-servers.net.
+net.	86399	IN	NS	f.gtld-servers.net.
+net.	86399	IN	NS	g.gtld-servers.net.
+net.	86399	IN	NS	h.gtld-servers.net.
+net.	86399	IN	NS	i.gtld-servers.net.
+net.	86399	IN	NS	j.gtld-servers.net.
+net.	86399	IN	NS	k.gtld-servers.net.
+net.	86399	IN	NS	l.gtld-servers.net.
+net.	86399	IN	NS	m.gtld-servers.net.
+;rrset 86399 1 0 1 0
+a.nic.de.	86399	IN	AAAA	2001:678:2::53
+;rrset 86399 1 0 1 0
+dns3.p01.nsone.net.	86399	IN	AAAA	2620:4d:4000:6259:7:1:0:3
+;rrset 86399 1 0 1 0
+h.gtld-servers.net.	86399	IN	AAAA	2001:502:8cc::30
+;rrset 2560 1 1 7 0
+0mfn4m5t2pmea37bthtj61jutl7jqi5i.ns.bsws.de.	86400	IN	NSEC3	1 0 0 - fe7gonp5624lcvd2rqhvpd2vt4dgpi8s NS SOA RRSIG DNSKEY NSEC3PARAM CAA
+0mfn4m5t2pmea37bthtj61jutl7jqi5i.ns.bsws.de.	86400	IN	RRSIG	NSEC3 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. quIDftNeD8j/XtlvsuknJStp0Sj70gPXny9jGpvCu76mZ+dWHQ4vHNPk8v4rJcROqxQu0qDqbfzeOkkSyCUuRXHnC2NcooC9BMgc4lUOs0nmekTJ5NgxxP3pFj8Ke5qzs8WPh28A7jW0TTWj2eToEqIjOkcWM5z2kmoLgb8nmC4= ;{id = 14481}
+;rrset 86399 1 0 1 0
+e.gtld-servers.net.	86399	IN	AAAA	2001:502:1ca1::30
+;rrset 86399 1 0 1 0
+auth24.ns.gin.ntt.net.	86399	IN	A	213.130.47.22
+;rrset 86399 1 0 1 0
+dns2.p01.nsone.net.	86399	IN	AAAA	2a00:edc0:6259:7:1::2
+;rrset 86400 1 1 8 0
+dns2.p08.nsone.net.	86400	IN	A	198.51.45.8
+dns2.p08.nsone.net.	86400	IN	RRSIG	A 13 4 86400 20261002042811 20261001022811 12196 nsone.net. 8msMblyke+Bpp3yLYvtdZRChoc59xp62TTO4lmJoTaPvVSS5a6BCZHve+CVdRPdZT9E0qx3JaLjQIeDl/mP2TA== ;{id = 12196}
+;rrset 86399 1 0 1 0
+h.gtld-servers.net.	86399	IN	A	192.54.112.30
+;rrset 86399 1 0 1 0
+n.de.net.	86399	IN	AAAA	2001:67c:1011:1::53
+;rrset 86399 1 0 3 0
+i.root-servers.net.	86399	IN	AAAA	2001:7fe::53
+;rrset 86399 1 1 2 0
+bsws.de.	86399	IN	DS	17539 8 2 5A1F93DAC583115501970F764CAE37FD9E915FB748B2E19A7F489031150D5977
+bsws.de.	86399	IN	RRSIG	DS 8 2 86400 20261012071644 20260928054644 32911 de. RkCtk+3PiEHdetMG+z8ydcHtath1gsR/qvVtnlewqKH3kw7p7cMdwVn3S8naNkiYqYIsq70T5ZrCEGiJAvJ6juY5vpwCpzC/VT1k1Z/cHtxVoReFmYmKbgDRriPeOzQKHTsucokbNgVN7AhSgIUHEjDBtsTb1M4bU4yIOlreNQc= ;{id = 32911}
+;rrset 10799 1 1 2 0
+1u5ovkbujc8sim0k4n287du1obrd7i4m.co.uk.	10799	IN	NSEC3	1 1 0 - 1u5rg98h37lj8s53sp7u0g7ucuhlrp9r NS DS RRSIG ;{flags: optout}
+1u5ovkbujc8sim0k4n287du1obrd7i4m.co.uk.	10799	IN	RRSIG	NSEC3 8 3 10800 20261029215841 20260924210619 44346 co.uk. g990/kPF3+uQlHny76FF+s65WYA0NhRYjin2nLRnqAuN7s4bMTIdk8HfsHXNOX4mW45mOU4EP8lwqKRMgSBnWUEgbhNbRsSHIH/sHLc7G7YVonnJlLy66fLIX0rSmrPy9HqOQp4vMc9NdlyqIU+T0GN/BkWFxIQZpgb4wkOWrY/GQVSTLSy+XrVNVwyhxswNCe1mP9aU9xkwfqXyRpEkjmdlbKOoR81Azo+gi/kf+Gt4KD6MMevbnLYL9yUZbWMquC3ZoHW7ntOR7T90gKz/AWI03LUIUyZIoCPEsFN8D5xi/p4/im2biOz5nhETRv/AD1VVe0v/ge7a2YkGexNgjA== ;{id = 44346}
+;rrset 86399 1 1 2 0
+de.	86399	IN	DS	26755 8 2 F341357809A5954311CCB82ADE114C6C1D724A75C0395137AA3978035425E78D
+de.	86399	IN	RRSIG	DS 8 1 86400 20261013200000 20260930190000 57780 . Y8Yg6y2ca/S2x557u2feNTI5k4eVJze2QjIXi42ulN8EI29XtmuH+j89qupfhPfGGN0X1VXWZqjDwzRJ60d/BhrtRM5VzlC85DfLFQXMkcSYr5dMsm4rOpWWo/Y9a8NWrePFpLvh0CPDMyTx3TZZZ/66PEp54xldWkpWoHVu/DaYTzsXcAvUXvpU4Y69s6SkGHGkvBb+VAa8aJY3Ns80Porh41/e3qdvg15jGc3TzpgMAMRfmnTzLy3eabIEBc1NfPykPSFd28GvzNaZfRKixuzATBOg2m1yqK80w9zQEdnTFCYEiPCYg8yblrFIGRMVJ1M+iRCmox7Un0ZxiUygAg== ;{id = 57780}
+;rrset 86399 1 0 1 0
+dns3.p01.nsone.net.	86399	IN	A	198.51.44.65
+;rrset 86399 1 0 3 0
+d.root-servers.net.	86399	IN	A	199.7.91.13
+;rrset 86399 1 0 1 0
+d.gtld-servers.net.	86399	IN	A	192.31.80.30
+;rrset 14399 1 0 8 0
+auth5.ns.gin.ntt.net.	14399	IN	AAAA	2001:218:4000:9::180
+;rrset 86399 1 0 1 0
+nsc.nic.uk.	86399	IN	AAAA	2610:a1:1009::3
+;rrset 86399 1 0 1 0
+dns1.nic.uk.	86399	IN	A	213.248.216.1
+;rrset 86400 3 0 1 0
+elliott.ns.cloudflare.com.	86400	IN	A	108.162.195.228
+elliott.ns.cloudflare.com.	86400	IN	A	162.159.44.228
+elliott.ns.cloudflare.com.	86400	IN	A	172.64.35.228
+;rrset 86399 1 0 1 0
+auth23.ns.gin.ntt.net.	86399	IN	A	129.250.31.22
+;rrset 86399 1 0 1 0
+auth24.ns.gin.ntt.net.	86399	IN	AAAA	2001:728:0:7000::202
+;rrset 86399 1 0 1 0
+g-ns-1496.awsdns-21.co.uk.	86399	IN	A	205.251.197.216
+;rrset 86399 1 0 1 0
+auth21.ns.gin.ntt.net.	86399	IN	AAAA	2001:418:3ff:4::21
+;rrset 86399 1 0 1 0
+nsc.nic.uk.	86399	IN	A	156.154.102.3
+;rrset 86399 6 0 2 0
+org.	86399	IN	NS	b0.org.afilias-nst.org.
+org.	86399	IN	NS	d0.org.afilias-nst.org.
+org.	86399	IN	NS	c0.org.afilias-nst.info.
+org.	86399	IN	NS	a2.org.afilias-nst.info.
+org.	86399	IN	NS	a0.org.afilias-nst.info.
+org.	86399	IN	NS	b2.org.afilias-nst.org.
+;rrset 86399 1 0 1 0
+auth25.ns.gin.ntt.net.	86399	IN	AAAA	2001:218:4000:9::181
+;rrset 86400 1 0 1 0
+ns1.google.com.	86400	IN	A	216.239.32.10
+;rrset 3599 1 1 7 0
+nsone.net.	3599	IN	SOA	dns1.p01.nsone.net. hostmaster.nsone.net. 1736533684 43200 7200 1209600 3600
+nsone.net.	3599	IN	RRSIG	SOA 13 2 3600 20261002042810 20261001022810 12196 nsone.net. MlPSAOIZpvvLHp5YlA5aQUyztCzeGa9vPxr/lFrsR4paBpojZxSRk8Ke3AK3bhvExgavXlfSLf4BYI+yL+yC8w== ;{id = 12196}
+;rrset 86400 4 0 2 0
+google.com.	86400	IN	NS	ns2.google.com.
+google.com.	86400	IN	NS	ns1.google.com.
+google.com.	86400	IN	NS	ns3.google.com.
+google.com.	86400	IN	NS	ns4.google.com.
+;rrset 3599 1 0 1 0
+g-ns-1059.awsdns-32.org.	3599	IN	A	205.251.196.35
+;rrset 14400 1 0 8 0
+auth2.ns.gin.ntt.net.	14400	IN	A	69.36.249.35
+;rrset 3599 1 0 7 0
+gin.ntt.net.	3599	IN	SOA	ipam01.dllstx09.us.to.gin.ntt.net. dns-tech.gin.ntt.net. 2021062982 86400 3600 2592000 3600
+;rrset 86399 1 1 1 0
+c.ns.bsws.de.	86399	IN	A	46.29.43.7
+c.ns.bsws.de.	86399	IN	RRSIG	A 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. lEUhkS0NPwmNmlcJRyIvgPWMb+zHn2MqcwCOJQanZQntfytDkTnptPDvKUQJPIw1E6bFtcvhnNBHa0At01we/bNAaVvotX+s1v809Sr2uxq8Pwkq+D/bGXQ53ub834NMfedtBVh94t5Nm6UemCBbYuwRK5aaVrsx/OiiZWl6FTI= ;{id = 14481}
+;rrset 86399 1 0 1 0
+dns2.nic.uk.	86399	IN	A	103.49.80.1
+;rrset 899 1 1 2 0
+F56KHOECH9E8VVG34ITAJ4THSDOV2629.net.	899	IN	NSEC3	1 1 0 - f56mhv424iam0l1h3qdpclsabu0k56tl NS DS RRSIG ;{flags: optout}
+F56KHOECH9E8VVG34ITAJ4THSDOV2629.net.	899	IN	RRSIG	NSEC3 13 2 900 20261004035730 20260927024730 7272 net. 6Cy9WOmzzf8ZizvFMZZDQJRfmz5EWnQ1PlFvn68XAQ55S9LSwCbSqN65/jIFFRq6C5I0X3yuj9BaKBloUDXywQ== ;{id = 7272}
+;rrset 899 1 1 2 0
+CK0POJMG874LJREF7EFN8430QVIT8BSM.com.	899	IN	NSEC3	1 1 0 - ck0q35hrs4h76g6chnb9414cjn6s5upl NS SOA RRSIG DNSKEY NSEC3PARAM ;{flags: optout}
+CK0POJMG874LJREF7EFN8430QVIT8BSM.com.	899	IN	RRSIG	NSEC3 13 2 900 20261005002614 20260927231614 41446 com. M0YjaiSWHnTC1v/hDEB8FdQWzXfR1eeEDbv9da5DBApuBWBEwSvoWJfJ5XY5aLsSghKCCbncKx7uwazdiqL1Ww== ;{id = 41446}
+;rrset 86399 1 0 3 0
+b.root-servers.net.	86399	IN	A	170.247.170.2
+;rrset 3599 1 0 1 0
+g-ns-738.awsdns-32.org.	3599	IN	AAAA	2600:9000:5302:e200::1
+;rrset 86399 1 0 1 0
+dns2.p01.nsone.net.	86399	IN	A	198.51.45.1
+;rrset 86399 1 0 8 0
+ns-1707.awsdns-21.co.uk.	86399	IN	A	205.251.198.171
+;rrset 86399 1 0 1 0
+dns1.nic.uk.	86399	IN	AAAA	2a01:618:400::1
+;rrset 86400 1 0 1 0
+ns3.google.com.	86400	IN	AAAA	2001:4860:4802:36::a
+;rrset 86399 1 1 1 0
+a.ns.bsws.de.	86399	IN	A	80.86.183.56
+a.ns.bsws.de.	86399	IN	RRSIG	A 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. hgHgc3UuL9wHUFPKRWS5f5FSmirq7uKUO8s529HsCpduOqzaRWQcahmzjDWMG76TBMWQVSOT/AIw8e0h2mk/rdRMbKoGGnV32LZyHpKjvaHUUDU6wMHC3xqSFYOGk5MEIuTv/HSfYTx0xP4sAelownBlEoYwNGeXbhCseOmtN2Q= ;{id = 14481}
+;rrset 86399 6 0 2 0
+de.	86399	IN	NS	a.nic.de.
+de.	86399	IN	NS	f.nic.de.
+de.	86399	IN	NS	l.de.net.
+de.	86399	IN	NS	n.de.net.
+de.	86399	IN	NS	s.de.net.
+de.	86399	IN	NS	z.nic.de.
+;rrset 86399 1 0 1 0
+m.gtld-servers.net.	86399	IN	AAAA	2001:501:b1f9::30
+;rrset 86399 1 0 1 0
+e.gtld-servers.net.	86399	IN	A	192.12.94.30
+;rrset 3599 1 0 1 0
+g-ns-1059.awsdns-32.org.	3599	IN	AAAA	2600:9000:5304:2300::1
+;rrset 86399 1 0 3 0
+g.root-servers.net.	86399	IN	A	192.112.36.4
+;rrset 86399 1 1 8 0
+dns1.p08.nsone.net.	86399	IN	A	198.51.44.8
+dns1.p08.nsone.net.	86399	IN	RRSIG	A 13 4 86400 20261002042810 20261001022810 12196 nsone.net. t1LRp/4q/jJ0ubHguoL7CvD5Z/iBQDz/+iELIDbB3zoRGAPkZZtCkP0JcY1FrqgkIR2YEaLeJ7oaITGLnp4bfA== ;{id = 12196}
+;rrset 3599 1 1 2 0
+p19ih227qeha1062r359sksarvahssq6.org.	3599	IN	NSEC3	1 1 0 332539EE7F95C32A p19iqs648mipurp2p3bpittcu7akikks NS DS RRSIG ;{flags: optout}
+p19ih227qeha1062r359sksarvahssq6.org.	3599	IN	RRSIG	NSEC3 8 2 3600 20261019135241 20260928125241 25488 org. dy5gdL5rKF3jKY1eFbGO2fntZQThyp1zbJwFRtDCQkOesjIJxrBUurchX+lnGGTOyH5ZROzsdBORtj8vig6537AWWmAyHR3aQGOabEt6nOKou/uBom0SVN3N6+gfMz1WG9euIaor0ZmOaL7Wr27dyBegumP42pJQzTwfi/7Wxbs= ;{id = 25488}
+;rrset 86399 1 1 2 0
+com.	86399	IN	DS	19718 13 2 8ACBB0CD28F41250A80A491389424D341522D946B0DA0C0291F2D3D771D7805A
+com.	86399	IN	RRSIG	DS 8 1 86400 20261013200000 20260930190000 57780 . bC+0pDfgt7pSQ9Brjm74K7Yg6Gfjy3Lk9UT12s/If2AxuVDoPnqHeCwh681YQfuCAJgqvg3KoILGpUUSLLB43WDmhe1RDdy/Vd30AaeUsilJNhPimYFmU8YuzEtd8VfpXKbFCBp0/51b+J7xBDbHNpSuW9xHWmnYVCRkLdQsZKDvjgXlx6Xqa9JDl1aLOeYWkGtQGyyYa3GsshqKveRyOXYQ63UlJmIHce0jC1otoOxt7kLQUcGiXBRPXahhp2ozKmPZirhEiZcfIhxbP+jvvxxE5OWc9qzqltSeSZ+fQ8LgIAcAfueyXkVDo31UCSstgEiQJXOP/6emmdtnUip9+w== ;{id = 57780}
+;rrset 899 1 1 2 0
+A1RT98BS5QGC9NFI51S9HCI47ULJG6JH.net.	899	IN	NSEC3	1 1 0 - a1rtlnpgulogn7b9a62shje1u3ttp8dr NS SOA RRSIG DNSKEY NSEC3PARAM ;{flags: optout}
+A1RT98BS5QGC9NFI51S9HCI47ULJG6JH.net.	899	IN	RRSIG	NSEC3 13 2 900 20261005035210 20260928024210 7272 net. 8qSNk4TKPKOcwudhSin7bLrVGuvwZ44lstCdQK2Xr21ClbvbJz03SIMiY/9z5wzvArfxT3Aqdn419Puua0ft3g== ;{id = 7272}
+;rrset 86400 1 0 1 0
+ns3.google.com.	86400	IN	A	216.239.36.10
+;rrset 3599 1 0 1 0
+g-ns-738.awsdns-32.org.	3599	IN	A	205.251.194.226
+;rrset 14399 1 0 8 0
+auth3.ns.gin.ntt.net.	14399	IN	AAAA	2001:418:0:700b::201
+;rrset 86399 1 0 1 0
+nsb.nic.uk.	86399	IN	A	156.154.101.3
+;rrset 86399 1 1 2 0
+nsone.net.	86399	IN	DS	48553 13 2 70480F540A700DF71B69963891948C82EAB32E9CD1D49D3C262F3B80609A75BC
+nsone.net.	86399	IN	RRSIG	DS 13 2 86400 20261007034958 20260930023958 7272 net. peH8iJF/RdQA2jHL9JWpC2V5XIizxU4LQn3woyGCTb3hFJCWMi78otf4uLrGLBn1wmxD/VEP40+PBsGnuOq4hg== ;{id = 7272}
+;rrset 86399 1 0 1 0
+a2.org.afilias-nst.info.	86399	IN	A	199.249.112.1
+;rrset 86399 1 0 1 0
+auth23.ns.gin.ntt.net.	86399	IN	AAAA	2001:418:0:700b::202
+;rrset 86399 1 0 1 0
+n.de.net.	86399	IN	A	194.146.107.6
+;rrset 86399 1 0 1 0
+s.de.net.	86399	IN	A	195.243.137.26
+;rrset 86399 1 0 1 0
+a.nic.de.	86399	IN	A	194.0.0.53
+;rrset 86399 1 1 2 0
+uk.	86399	IN	DS	43876 8 2 A107ED2AC1BD14D924173BC7E827A1153582072394F9272BA37E2353BC659603
+uk.	86399	IN	RRSIG	DS 8 1 86400 20261013200000 20260930190000 57780 . pd/azVIH6/Vt38Y27Bc+qm0ULWxHT28EY8VzsttKjjssqllXU/exkgcii2bJXND0XzJgwruDurfRGf9gSIBip1NLbnGAm8TgJymdWF9A9f6ayoybsdjw9ONhy7r/8TpDxBhcx3Ak82rnSP3goe5HDYX0B9mFT6AE5lHJS7zFTdDE1MFbMzsWPR7OU8B5w/VMouolADaIdNFbXjmFkbj2SxbJpVqNPpoIvmbps+/WbfAHS4dqLpAN4Mb0dVFUDsU+eXrPVNAMcnFrjPV0wnXy0ErM6P4C+pWMllnB2aivTKeZwbqulMN/8xgs5HLgxQFbnPNOtZA9LmAn/yt4EqPRKQ== ;{id = 57780}
+;rrset 86400 1 1 8 0
+dns3.p08.nsone.net.	86400	IN	AAAA	2620:4d:4000:6259:7:8:0:3
+dns3.p08.nsone.net.	86400	IN	RRSIG	AAAA 13 4 86400 20261002042811 20261001022811 12196 nsone.net. 0BJXyJEQlodk3xoIhpS38JUTEAVO5IotWNJdOdrEDvjn1ga+ytx9ZQLbte3ad+qjVqGOEqxdqCLbI11IrZ6PSw== ;{id = 12196}
+;rrset 86399 1 0 1 0
+dns1.p01.nsone.net.	86399	IN	AAAA	2620:4d:4000:6259:7:1:0:1
+;rrset 86399 1 0 1 0
+i.gtld-servers.net.	86399	IN	A	192.43.172.30
+;rrset 86399 1 0 3 0
+c.root-servers.net.	86399	IN	A	192.33.4.12
+;rrset 2560 1 1 7 0
+ns.bsws.de.	2560	IN	SOA	a.ns.bsws.de. noc.bsws.de. 1790821451 10000 3600 604800 86400
+ns.bsws.de.	2560	IN	RRSIG	SOA 8 3 2560 20261006022411 20261001012411 14481 ns.bsws.de. BARHwJF8uvYan1XmyitG9KvE11Vx/l7LsR6EsSfvg9P10IjRJWOqgM0181ohhNREuW6S9JMWcDeZy0w64Msaq25XL0BRqiihJkpga9TeI3WPa4Jd19ZmugM8mGpIkEm62lnKkU3gWhI1WX2fvzHXP079dRN2+Txzfdk74kstPLk= ;{id = 14481}
+;rrset 86399 1 0 1 0
+ns-421.awsdns-52.com.	86399	IN	AAAA	2600:9000:5301:a500::1
+;rrset 86399 1 0 1 0
+dns4.p01.nsone.net.	86399	IN	A	198.51.45.65
+;rrset 86399 1 0 1 0
+b2.org.afilias-nst.org.	86399	IN	AAAA	2001:500:48::1
+;rrset 86399 1 0 1 0
+a0.org.afilias-nst.info.	86399	IN	A	199.19.56.1
+;rrset 1800 1 1 7 2
+nosuchname.example.com.	1800	IN	NSEC	\000.nosuchname.example.com. RRSIG NSEC TYPE128
+nosuchname.example.com.	1800	IN	RRSIG	NSEC 13 3 1800 20261002042811 20260930022811 34505 example.com. FWtvsQD7xVdb/QN2vKHj1jkatZoiyiSG4/SJcEQVYFLPQrTIBdVI2tfpxhmBIUtlR7KCv04ktrPtXzF5KBVu6g== ;{id = 34505}
+;rrset 86399 1 0 3 0
+m.root-servers.net.	86399	IN	A	202.12.27.33
+;rrset 86399 1 0 1 0
+g-ns-450.awsdns-01.net.	86399	IN	A	205.251.193.194
+;rrset 86400 1 0 1 0
+ns4.google.com.	86400	IN	AAAA	2001:4860:4802:38::a
+;rrset 86399 1 0 1 0
+z.nic.de.	86399	IN	A	194.246.96.1
+;rrset 899 1 1 2 0
+ANUJI1NTEPEBFSQQO6A5CMKG5SQ7KANU.net.	899	IN	NSEC3	1 1 0 - anuo8to39dd4kvathp5b5a4t5uav9eco NS DS RRSIG ;{flags: optout}
+ANUJI1NTEPEBFSQQO6A5CMKG5SQ7KANU.net.	899	IN	RRSIG	NSEC3 13 2 900 20261007035233 20260930024233 7272 net. QC/F/NPDj6uuAB4UO8dMynefEUkNkqFWIT/0/aYPMWVWeVADqiYD1WEDWg9vAVTFwHgMrj8eCHvGeUu59YoHJw== ;{id = 7272}
+;rrset 86399 8 0 2 0
+uk.	86399	IN	NS	nsa.nic.uk.
+uk.	86399	IN	NS	nsb.nic.uk.
+uk.	86399	IN	NS	nsc.nic.uk.
+uk.	86399	IN	NS	nsd.nic.uk.
+uk.	86399	IN	NS	dns1.nic.uk.
+uk.	86399	IN	NS	dns2.nic.uk.
+uk.	86399	IN	NS	dns3.nic.uk.
+uk.	86399	IN	NS	dns4.nic.uk.
+;rrset 86399 1 0 1 0
+nsa.nic.uk.	86399	IN	AAAA	2001:502:ad09::3
+;rrset 86399 1 0 1 0
+f.gtld-servers.net.	86399	IN	AAAA	2001:503:d414::30
+;rrset 86399 1 0 3 0
+j.root-servers.net.	86399	IN	A	192.58.128.30
+;rrset 86399 1 0 1 0
+dns1.p01.nsone.net.	86399	IN	A	198.51.44.1
+;rrset 86399 3 0 2 0
+bsws.de.	86399	IN	NS	a.ns.bsws.de.
+bsws.de.	86399	IN	NS	b.ns.bsws.de.
+bsws.de.	86399	IN	NS	c.ns.bsws.de.
+;rrset 86399 1 0 1 0
+g-ns-1496.awsdns-21.co.uk.	86399	IN	AAAA	2600:9000:5305:d800::1
+;rrset 86399 1 0 8 0
+ns-520.awsdns-01.net.	86399	IN	A	205.251.194.8
+;rrset 86399 1 0 1 0
+nsd.nic.uk.	86399	IN	A	156.154.103.3
+;rrset 86399 1 0 1 0
+b0.org.afilias-nst.org.	86399	IN	AAAA	2001:500:c::1
+;rrset 3599 1 1 2 0
+gdtpongmpok61u9lvnipqor8lra9l4t0.org.	3599	IN	NSEC3	1 1 0 332539EE7F95C32A gdtrea8kmj2rneqen4m2ogj26kfsukj7 NS SOA RRSIG DNSKEY NSEC3PARAM ;{flags: optout}
+gdtpongmpok61u9lvnipqor8lra9l4t0.org.	3599	IN	RRSIG	NSEC3 8 2 3600 20261022032325 20261001022325 25488 org. TdHYk4IZPjuQdmq4L0bm6V2YAyjWQMtIDxr41QN1DhjU7TDe/tfQYPxTQNtZXn4dDHY/FMbesgQlwg6mUrmdymHMf0V0LzrdXvQ/QaKS/9r7D1qZq2xClGgvyO/MqIo9rtJl1QQPdyNTD2K07Zp6fov4eQOGpQ16GmNOdLugPSk= ;{id = 25488}
+;rrset 86399 1 0 1 0
+g-ns-1921.awsdns-01.net.	86399	IN	A	205.251.199.129
+;rrset 3599 1 0 8 2
+www.github.com.	3599	IN	CNAME	github.com.
+;rrset 3599 10 0 2 0
+openbsd.org.	3599	IN	NS	a.ns.bsws.de.
+openbsd.org.	3599	IN	NS	b.ns.bsws.de.
+openbsd.org.	3599	IN	NS	c.ns.bsws.de.
+openbsd.org.	3599	IN	NS	dns1.openbsd.org.
+openbsd.org.	3599	IN	NS	dns2.openbsd.org.
+openbsd.org.	3599	IN	NS	auth1.ns.gin.ntt.net.
+openbsd.org.	3599	IN	NS	auth2.ns.gin.ntt.net.
+openbsd.org.	3599	IN	NS	auth3.ns.gin.ntt.net.
+openbsd.org.	3599	IN	NS	auth4.ns.gin.ntt.net.
+openbsd.org.	3599	IN	NS	auth5.ns.gin.ntt.net.
+;rrset 86400 1 1 2 0
+example.com.	86400	IN	DS	2371 13 2 C988EC423E3880EB8DD8A46FE06CA230EE23F35B578D64E78B29C3E1C83D245A
+example.com.	86400	IN	RRSIG	DS 13 2 86400 20261008013215 20261001002215 41446 com. PrNA0aIL51LF24FxRfl5zKvn5pRyQn/U1uKPcB4ognn+ss2KYF2CCkMfCSr6Z2fr4NHCpQ/zeLuozK1oz6k5rQ== ;{id = 41446}
+;rrset 86399 1 1 2 0
+net.	86399	IN	DS	37331 13 2 2F0BEC2D6F79DFBD1D08FD21A3AF92D0E39A4B9EF1E3F4111FFF282490DA453B
+net.	86399	IN	RRSIG	DS 8 1 86400 20261013200000 20260930190000 57780 . RfDMk2TRriDJzGqVvZ3SRPzofyWwImC0PZS7wTvW7B9nhUHoZpzNn3aniaK+g8KUtvKxnIH2pPxqYj9RtWuJp08gO9RBgM7QFQaXF6f92W43V9AmZaDQzL90K/GP1z1LKbT36nLfbuRfpeDtpf8lLqNmT0crcL88sULWrncmhMIiA/qJzfMBp+e1S2sWlMmFVu/2nHegNywrozCvQI3wrm3zsXYqMahXTrvUa9ETZKrRjSXpWRAM9+aNPzJ3MC8lNkYPRUJvlstAM2p5nuTS6HhZT642KvWQ/65ghmUY9GEZ9pOdjfF+7GkCnZooe7obT7WRS/fsUYcwsYUcbwowDg== ;{id = 57780}
+;rrset 86399 1 0 3 0
+k.root-servers.net.	86399	IN	A	193.0.14.129
+;rrset 86400 1 1 8 0
+dns3.p08.nsone.net.	86400	IN	A	198.51.44.72
+dns3.p08.nsone.net.	86400	IN	RRSIG	A 13 4 86400 20261002042811 20261001022811 12196 nsone.net. naNDDHdW/n52Za3oqwbVt14kPt3DyWSjlWMgyql2PG52NE8SleAm30JgTotoUb2FxJBbJ9/7tVcbG+1E1c64oA== ;{id = 12196}
+;rrset 300 1 0 8 2
+github.com.	300	IN	MX	0 github-com.mail.protection.outlook.com.
+;rrset 3599 1 1 7 0
+G9F1KIIHM8M9VHJK7LRVETBQCEOGJIQP.co.uk.	10799	IN	NSEC3	1 1 0 - g9f3nq74ntit1d6qsrkccs86r4t7h1md NS SOA TXT RRSIG DNSKEY NSEC3PARAM CDS CDNSKEY TYPE65534 ;{flags: optout}
+G9F1KIIHM8M9VHJK7LRVETBQCEOGJIQP.co.uk.	10799	IN	RRSIG	NSEC3 8 3 10800 20261103013912 20260929005115 44346 co.uk. QjesV46AVvq5uLWdcRt5/NHS6eNI8Jys0G5+Xv6WxbC/3f37VuuJ/bSBgZTmdZrD7kt+WwJU7SQPAg0NlJ6VNlkP/2XK7TU+6coCLf9OUqxdiNzfi0pC10Ze4JS5jdDb6oYJ5bYvOFDwD64KlFkGHGAh7xmwJbxnq68MqIhxlPkPqQ+w5/l7UFUhmy0RjuFm1zxUW9hjtBlwc9T6FpLI6SgOmrxy0ej+Ttk4dSRcDxFJXFDEBa87xL/NLYbBCBb4lLhK37aSH2f1ZQwoGTjYHgXGo+pkWlATaA8RDKB+m9j8DB9pD0b1LSdjGoguSI4g9BPleCG/AnB6bMA26Kgvig== ;{id = 44346}
+;rrset 86399 1 0 3 0
+c.root-servers.net.	86399	IN	AAAA	2001:500:2::c
+;rrset 14399 1 0 8 0
+auth5.ns.gin.ntt.net.	14399	IN	A	116.51.22.180
+;rrset 3599 1 0 1 0
+dns2.openbsd.org.	3599	IN	A	199.185.230.19
+;rrset 2560 1 1 7 0
+fe7gonp5624lcvd2rqhvpd2vt4dgpi8s.ns.bsws.de.	86400	IN	NSEC3	1 0 0 - irbfekmi2obf93odapk0jcbr3no4j9it A RRSIG
+fe7gonp5624lcvd2rqhvpd2vt4dgpi8s.ns.bsws.de.	86400	IN	RRSIG	NSEC3 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. UrGxk4c2igLXEIzJSXbMzRaNr1FwzPXVlhmKzWto8rXwFjGvrqTDjOSnRFDu0a8sJTDVFQiCVvu8YS7ziN955LMP7ftX3ddahy9na8yjCchcyIdtJXesGqAQZSmjTxWRrAFWp+gY/i0U332ehLLcU8/mtuZVtPOjWFtKxcf+sf4= ;{id = 14481}
+;rrset 3599 1 0 1 0
+g-ns-160.awsdns-32.org.	3599	IN	AAAA	2600:9000:5300:a000::1
+;rrset 86399 1 0 8 0
+ns-1283.awsdns-32.org.	86399	IN	A	205.251.197.3
+;rrset 86399 1 0 1 0
+auth25.ns.gin.ntt.net.	86399	IN	A	116.51.22.181
+;rrset 86399 1 0 1 0
+auth22.ns.gin.ntt.net.	86399	IN	A	69.36.249.36
+;rrset 86399 1 0 1 0
+dns2.nic.uk.	86399	IN	AAAA	2401:fd80:400::1
+;rrset 86399 1 0 1 0
+dns4.p01.nsone.net.	86399	IN	AAAA	2a00:edc0:6259:7:1::4
+;rrset 86399 1 0 1 0
+l.de.net.	86399	IN	A	77.67.63.105
+;rrset 59 1 0 8 2
+github.com.	59	IN	A	140.82.114.3
+;rrset 86399 1 1 8 0
+dns1.p08.nsone.net.	86399	IN	AAAA	2620:4d:4000:6259:7:8:0:1
+dns1.p08.nsone.net.	86399	IN	RRSIG	AAAA 13 4 86400 20261002042810 20261001022810 12196 nsone.net. EGblyhV3GYtaaefR1uvbzYzuUh9DO/4wBaiWRGOVi4dn6tk2v0It1+GgbDov6VrEtKZZDdNaDqLUDLuTCHyymA== ;{id = 12196}
+;rrset 86399 1 0 1 0
+nsd.nic.uk.	86399	IN	AAAA	2610:a1:1010::3
+;rrset 86399 1 0 1 0
+dns4.nic.uk.	86399	IN	AAAA	2401:fd80:404::1
+;rrset 3599 1 0 1 0
+dns1.openbsd.org.	3599	IN	A	199.185.230.18
+;rrset 86400 3 0 1 0
+elliott.ns.cloudflare.com.	86400	IN	AAAA	2606:4700:58::a29f:2ce4
+elliott.ns.cloudflare.com.	86400	IN	AAAA	2803:f800:50::6ca2:c3e4
+elliott.ns.cloudflare.com.	86400	IN	AAAA	2a06:98c1:50::ac40:23e4
+;rrset 86399 1 0 3 0
+j.root-servers.net.	86399	IN	AAAA	2001:503:c27::2:30
+;rrset 14400 1 0 8 0
+auth1.ns.gin.ntt.net.	14400	IN	AAAA	2001:418:3ff:4::11
+;rrset 86399 1 0 3 0
+d.root-servers.net.	86399	IN	AAAA	2001:500:2d::d
+;rrset 86399 1 0 1 0
+g-ns-917.awsdns-21.co.uk.	86399	IN	AAAA	2600:9000:5303:9500::1
+;rrset 86399 1 0 1 0
+f.gtld-servers.net.	86399	IN	A	192.35.51.30
+;rrset 899 1 1 2 0
+4KB4DFS71LEP8G8P8VT4CCUSQNL4CNCS.com.	899	IN	NSEC3	1 1 0 - 4kb4v9iamjl29mc1vbj8ndo7e6si2b8o NS DS RRSIG ;{flags: optout}
+4KB4DFS71LEP8G8P8VT4CCUSQNL4CNCS.com.	899	IN	RRSIG	NSEC3 13 2 900 20261006023355 20260929012355 41446 com. FhpDQDjBcEOe9EYrrMb0mq2HEG9IAXzV6xGQEj43XB4FbJw78GYqVgu95I97cmbmZ8nTeGEvO3RGFfUeUvpUOg== ;{id = 41446}
+;rrset 86399 1 0 3 0
+h.root-servers.net.	86399	IN	AAAA	2001:500:1::53
+;rrset 3599 1 0 1 0
+g-ns-1632.awsdns-32.org.	3599	IN	AAAA	2600:9000:5306:6000::1
+;rrset 86399 1 0 1 0
+s.de.net.	86399	IN	AAAA	2003:8:14::53
+;rrset 86399 1 0 3 0
+i.root-servers.net.	86399	IN	A	192.36.148.17
+;rrset 86400 3 0 1 0
+hera.ns.cloudflare.com.	86400	IN	A	108.162.192.162
+hera.ns.cloudflare.com.	86400	IN	A	172.64.32.162
+hera.ns.cloudflare.com.	86400	IN	A	173.245.58.162
+;rrset 86399 1 0 3 0
+h.root-servers.net.	86399	IN	A	198.97.190.53
+;rrset 86399 1 0 1 0
+d.gtld-servers.net.	86399	IN	AAAA	2001:500:856e::30
+;rrset 3599 1 1 7 0
+co.uk.	3599	IN	SOA	dns1.nic.uk. hostmaster.nominet.org.uk. 1790825256 900 300 2419200 10800
+co.uk.	10799	IN	RRSIG	SOA 8 2 172800 20261105032736 20261001022736 44346 co.uk. aIjoPoMvnhB/kgIW5ZT9mpGvyoATFXqXYcWhG46MCrLPiwwgokDPnMTnSjxHug7ekUkBfDNym+1PNUOb1/xwHYoKIOcXa/pdW5Qpoct85nB/66i2fpoaxYfu8l7hbIhDOe6Qb2xR+UlEECkDi0QPlSfc6X8tiIJcoZVYB4oMK5n4V2ZFJU3fg8JYoHy441auFY71rHnyW8D9xdnv2vbYl1w//g/bKRxkCdOvqfD2PGBnGcnfaiQi9VloD4EWXRD/8RFV0CwDUeh3HHw4WJ00ASXUzn/Vx7qaLashkybq84m5Rl1YLcQI961cTKIv2ohDuTZGuwt2NF6LHFsQNE/YVQ== ;{id = 44346}
+;rrset 3599 1 0 1 0
+g-ns-1632.awsdns-32.org.	3599	IN	A	205.251.198.96
+;rrset 86399 1 0 1 0
+g.gtld-servers.net.	86399	IN	AAAA	2001:503:eea3::30
+;rrset 86399 1 0 1 0
+g.gtld-servers.net.	86399	IN	A	192.42.93.30
+;rrset 86400 2 0 2 0
+example.com.	86400	IN	NS	hera.ns.cloudflare.com.
+example.com.	86400	IN	NS	elliott.ns.cloudflare.com.
+;rrset 86399 1 0 1 0
+f.nic.de.	86399	IN	AAAA	2a02:568:0:2::53
+;rrset 86399 1 0 1 0
+b2.org.afilias-nst.org.	86399	IN	A	199.249.120.1
+;rrset 86399 1 0 1 0
+auth22.ns.gin.ntt.net.	86399	IN	AAAA	2001:1868:104::102
+;rrset 3599 1 1 2 0
+pgigpos5dh0sk739q0cds3j5ej9uqr1n.org.	3599	IN	NSEC3	1 1 0 332539EE7F95C32A pgilcrks23ekloluks585bt9of5rhdj9 NS DS RRSIG ;{flags: optout}
+pgigpos5dh0sk739q0cds3j5ej9uqr1n.org.	3599	IN	RRSIG	NSEC3 8 2 3600 20261019135241 20260928125241 25488 org. PGnBsms2XKra7shkGI2NiLYz+5ZRAbJ4BUKAw6vFYm3nlepZ4G7Sb2gH+1t7ZpFAs8hWLBoxyg9eg4Qn/8Kp65dvduvmKkqh2MX8rlEyqbijeQxqulsa+7jgL66+Kb9xPL17as48qyz4VTG9/1VstgX0GEiMVwmTXx/7r8SEHz0= ;{id = 25488}
+;rrset 86399 4 0 2 0
+nsone.net.	86399	IN	NS	dns1.p01.nsone.net.
+nsone.net.	86399	IN	NS	dns2.p01.nsone.net.
+nsone.net.	86399	IN	NS	dns3.p01.nsone.net.
+nsone.net.	86399	IN	NS	dns4.p01.nsone.net.
+;rrset 86399 1 0 3 0
+e.root-servers.net.	86399	IN	A	192.203.230.10
+;rrset 86399 1 0 3 0
+b.root-servers.net.	86399	IN	AAAA	2801:1b8:10::b
+;rrset 86399 1 0 1 0
+g-ns-341.awsdns-21.co.uk.	86399	IN	A	205.251.193.85
+;rrset 86399 1 0 1 0
+l.de.net.	86399	IN	AAAA	2001:668:1f:11::105
+;rrset 86399 1 0 1 0
+k.gtld-servers.net.	86399	IN	AAAA	2001:503:d2d::30
+;rrset 86399 1 0 1 0
+b.gtld-servers.net.	86399	IN	A	192.33.14.30
+;rrset 86399 13 0 2 0
+com.	86399	IN	NS	f.gtld-servers.net.
+com.	86399	IN	NS	a.gtld-servers.net.
+com.	86399	IN	NS	k.gtld-servers.net.
+com.	86399	IN	NS	b.gtld-servers.net.
+com.	86399	IN	NS	l.gtld-servers.net.
+com.	86399	IN	NS	j.gtld-servers.net.
+com.	86399	IN	NS	d.gtld-servers.net.
+com.	86399	IN	NS	e.gtld-servers.net.
+com.	86399	IN	NS	c.gtld-servers.net.
+com.	86399	IN	NS	g.gtld-servers.net.
+com.	86399	IN	NS	h.gtld-servers.net.
+com.	86399	IN	NS	i.gtld-servers.net.
+com.	86399	IN	NS	m.gtld-servers.net.
+;rrset 86399 1 0 3 0
+l.root-servers.net.	86399	IN	A	199.7.83.42
+;rrset 86399 1 0 1 0
+z.nic.de.	86399	IN	AAAA	2a02:568:fe02::de
+;rrset 86399 4 0 2 0
+awsdns-21.co.uk.	86399	IN	NS	g-ns-341.awsdns-21.co.uk.
+awsdns-21.co.uk.	86399	IN	NS	g-ns-917.awsdns-21.co.uk.
+awsdns-21.co.uk.	86399	IN	NS	g-ns-1496.awsdns-21.co.uk.
+awsdns-21.co.uk.	86399	IN	NS	g-ns-1817.awsdns-21.co.uk.
+;rrset 86399 1 0 8 0
+ns-520.awsdns-01.net.	86399	IN	AAAA	2600:9000:5302:800::1
+;rrset 86399 1 1 2 0
+org.	86399	IN	DS	26974 8 2 4FEDE294C53F438A158C41D39489CD78A86BEB0D8A0AEAFF14745C0D16E1DE32
+org.	86399	IN	RRSIG	DS 8 1 86400 20261013200000 20260930190000 57780 . md/ULvtFeDUCwyRQiSPX7Ixqfir2C9hWTr1EEdgt8lEfPKsSZRmNkcSp5kmaHKqHfK9zPsB14lytowyMcPCL9tA8pZ7JAayCTkLT2KMyZFFn5gQuE7EX66n5YM/QFwX9IBwG6faURmDVrs+F1hAuzbtiGCRFmsGZXpnf20nDjH1e1JV2EDEBWiai1TIXH9p1ipqWo+vITXEO8Jl2Bx1eqSm8MJYTxwW0Jy4n0FlpTIbFnwSQ/rh2QM5Ov2YxQcbFvQLhuhCLZIMBydgwOtj2qlYgFlLUkoT5sAsUrJzXmSois5P1OFwkSofdLFeTO7s58Sz4gbwMkT7McI6u/Mfv1Q== ;{id = 57780}
+;rrset 86399 1 0 1 0
+g-ns-771.awsdns-01.net.	86399	IN	A	205.251.195.3
+;rrset 86399 1 0 1 0
+d0.org.afilias-nst.org.	86399	IN	A	199.19.57.1
+;rrset 86399 1 1 8 0
+dns4.p08.nsone.net.	86399	IN	A	198.51.45.72
+dns4.p08.nsone.net.	86399	IN	RRSIG	A 13 4 86400 20261002042810 20261001022810 12196 nsone.net. b/FXZVZm7myF6ZMhyjVep0qGf8d6V+RyaMO4i/V7sOKLhUfZ0wiOQyFUvoddVmtNc0GW+uy2fxgsBFPz0QBO/A== ;{id = 12196}
+;rrset 599 1 0 7 0
+openbsd.org.	599	IN	SOA	dns1.openbsd.org. root.openbsd.org. 1218140053 14400 900 1814400 600
+;rrset 900 1 1 2 0
+S84BOR4DK28HNHPLC218O483VOOOD5D8.com.	900	IN	NSEC3	1 1 0 - s84br9cib2a20l3etr1m2415enpp99l8 NS DS RRSIG ;{flags: optout}
+S84BOR4DK28HNHPLC218O483VOOOD5D8.com.	900	IN	RRSIG	NSEC3 13 2 900 20261006012207 20260929001207 41446 com. zPf9vYpD6UkDU+M/AsbKjBxl0Jx7v5E/7JLCMd0Mp2ngBuVbqI82p4vlCLEIwjqYxYPB8bC14EpVx21GIAZa/Q== ;{id = 41446}
+;rrset 86399 1 0 3 0
+e.root-servers.net.	86399	IN	AAAA	2001:500:a8::e
+;rrset 86399 1 0 1 0
+c0.org.afilias-nst.info.	86399	IN	A	199.19.53.1
+;rrset 86399 1 0 1 0
+g-ns-917.awsdns-21.co.uk.	86399	IN	A	205.251.195.149
+;rrset 86399 1 0 3 0
+m.root-servers.net.	86399	IN	AAAA	2001:dc3::35
+;rrset 86399 1 0 3 0
+l.root-servers.net.	86399	IN	AAAA	2001:500:9f::42
+;rrset 3599 1 0 1 0
+g-ns-160.awsdns-32.org.	3599	IN	A	205.251.192.160
+;rrset 86399 1 0 1 0
+nsb.nic.uk.	86399	IN	AAAA	2001:502:2eda::3
+;rrset 86399 1 0 1 0
+auth21.ns.gin.ntt.net.	86399	IN	A	129.250.35.230
+;rrset 86399 1 0 1 0
+ns-421.awsdns-52.com.	86399	IN	A	205.251.193.165
+;rrset 86399 1 0 1 0
+a.gtld-servers.net.	86399	IN	AAAA	2001:503:a83e::2:30
+;rrset 86399 1 0 1 0
+dns3.nic.uk.	86399	IN	A	213.248.220.1
+;rrset 86399 4 0 2 0
+awsdns-01.net.	86399	IN	NS	g-ns-450.awsdns-01.net.
+awsdns-01.net.	86399	IN	NS	g-ns-771.awsdns-01.net.
+awsdns-01.net.	86399	IN	NS	g-ns-1345.awsdns-01.net.
+awsdns-01.net.	86399	IN	NS	g-ns-1921.awsdns-01.net.
+;rrset 86400 1 0 1 0
+ns4.google.com.	86400	IN	A	216.239.38.10
+;rrset 86399 1 0 3 0
+f.root-servers.net.	86399	IN	AAAA	2001:500:2f::f
+;rrset 86399 1 0 1 0
+g-ns-1345.awsdns-01.net.	86399	IN	A	205.251.197.65
+;rrset 86399 1 0 1 0
+b.gtld-servers.net.	86399	IN	AAAA	2001:503:231d::2:30
+;rrset 14399 1 0 8 0
+gin.ntt.net.	14399	IN	A	205.186.161.216
+;rrset 86399 1 0 1 0
+i.gtld-servers.net.	86399	IN	AAAA	2001:503:39c1::30
+;rrset 2560 1 1 7 0
+irbfekmi2obf93odapk0jcbr3no4j9it.ns.bsws.de.	86400	IN	NSEC3	1 0 0 - l3imuquhjemf71mpgekop1li0d43ndbg A RRSIG
+irbfekmi2obf93odapk0jcbr3no4j9it.ns.bsws.de.	86400	IN	RRSIG	NSEC3 8 4 86400 20261006022411 20261001012411 14481 ns.bsws.de. WvcFreZiGYGJC7Ie47IhDZtZXK/F/2YNXw7xratQjNnvFiFHLRmRiyVOANk18yGuxF1XS1jgS/Ck5eYOK94bMhu538dxIDUCou8n1CN6/2Ok9nTXxsfXPHeIzYpcp+nDaZXTawvZgtu+x5CMwrVOtaZQ/WfPXu4S3Cac6JPbny4= ;{id = 14481}
+;rrset 86399 1 0 1 0
+c.gtld-servers.net.	86399	IN	A	192.26.92.30
+;rrset 86399 1 0 1 0
+d0.org.afilias-nst.org.	86399	IN	AAAA	2001:500:f::1
+;rrset 86400 1 0 1 0
+ns1.google.com.	86400	IN	AAAA	2001:4860:4802:32::a
+;rrset 86399 1 0 1 0
+j.gtld-servers.net.	86399	IN	AAAA	2001:502:7094::30
+;rrset 86399 1 0 1 0
+k.gtld-servers.net.	86399	IN	A	192.52.178.30
+;rrset 14399 1 0 8 0
+auth2.ns.gin.ntt.net.	14399	IN	AAAA	2001:1868:104::101
+;rrset 86399 1 0 1 0
+g-ns-771.awsdns-01.net.	86399	IN	AAAA	2600:9000:5303:300::1
+;rrset 86399 1 1 8 0
+dns4.p08.nsone.net.	86399	IN	AAAA	2a00:edc0:6259:7:8::4
+dns4.p08.nsone.net.	86399	IN	RRSIG	AAAA 13 4 86400 20261002042810 20261001022810 12196 nsone.net. YxB0P025P0QRSTQPLpKSr22y5Z+dLJGYRrg3h8760+VKgFGRlDGqsFbobvVmO9KKaG7zQNYEc6wxLBpulvzcKA== ;{id = 12196}
+;rrset 300 4 0 8 2
+mail.google.com.	300	IN	A	64.233.178.18
+mail.google.com.	300	IN	A	64.233.178.17
+mail.google.com.	300	IN	A	64.233.178.83
+mail.google.com.	300	IN	A	64.233.178.19
+;rrset 28799 1 0 8 2
+openbsd.org.	28799	IN	A	199.185.178.80
+;rrset 28799 1 0 8 2
+www.openbsd.org.	28799	IN	A	199.185.178.80
+;rrset 86399 1 0 1 0
+g-ns-1345.awsdns-01.net.	86399	IN	AAAA	2600:9000:5305:4100::1
+END_RRSET_CACHE
+START_MSG_CACHE
+msg p08.nsone.net. IN A 32896 1 3599 0 0 2 0 -1 
+nsone.net. IN SOA 4
+p08.nsone.net. IN NSEC 0
+msg auth3.ns.gin.ntt.net. IN AAAA 32896 1 14399 0 1 0 0 -1 
+auth3.ns.gin.ntt.net. IN AAAA 0
+msg b.ns.bsws.de. IN AAAA 32896 1 2560 0 0 2 0 -1 
+ns.bsws.de. IN SOA 4
+fe7gonp5624lcvd2rqhvpd2vt4dgpi8s.ns.bsws.de. IN NSEC3 0
+msg auth1.ns.gin.ntt.net. IN A 32896 1 14400 0 1 0 0 -1 
+auth1.ns.gin.ntt.net. IN A 0
+msg auth2.ns.gin.ntt.net. IN A 32896 1 14400 0 1 0 0 -1 
+auth2.ns.gin.ntt.net. IN A 0
+msg dns4.p08.nsone.net. IN A 32896 1 86399 0 1 0 0 -1 
+dns4.p08.nsone.net. IN A 0
+msg dns4.p08.nsone.net. IN AAAA 32896 1 86399 0 1 0 0 -1 
+dns4.p08.nsone.net. IN AAAA 0
+msg ns-520.awsdns-01.net. IN A 32896 1 86399 0 1 0 0 -1 
+ns-520.awsdns-01.net. IN A 0
+msg dns1.p08.nsone.net. IN AAAA 32896 1 86399 0 1 0 0 -1 
+dns1.p08.nsone.net. IN AAAA 0
+msg dns3.p08.nsone.net. IN AAAA 32896 1 86400 0 1 0 0 -1 
+dns3.p08.nsone.net. IN AAAA 0
+msg dns1.p08.nsone.net. IN A 32896 1 86399 0 1 0 0 -1 
+dns1.p08.nsone.net. IN A 0
+msg ns-520.awsdns-01.net. IN AAAA 32896 1 86399 0 1 0 0 -1 
+ns-520.awsdns-01.net. IN AAAA 0
+msg openbsd.org. IN A 32896 1 28799 2 1 0 0 5 
+openbsd.org. IN A 0
+msg nosuchname.example.com. IN A 32896 1 1800 2 0 2 0 5 
+example.com. IN SOA 4
+nosuchname.example.com. IN NSEC 0
+msg ns.bsws.de. IN A 32896 1 2560 0 0 2 0 -1 
+ns.bsws.de. IN SOA 4
+0mfn4m5t2pmea37bthtj61jutl7jqi5i.ns.bsws.de. IN NSEC3 0
+msg auth5.ns.gin.ntt.net. IN AAAA 32896 1 14399 0 1 0 0 -1 
+auth5.ns.gin.ntt.net. IN AAAA 0
+msg ns-1283.awsdns-32.org. IN A 32896 1 86399 0 1 0 0 -1 
+ns-1283.awsdns-32.org. IN A 0
+msg auth5.ns.gin.ntt.net. IN A 32896 1 14399 0 1 0 0 -1 
+auth5.ns.gin.ntt.net. IN A 0
+msg dns2.openbsd.org. IN AAAA 32896 1 599 0 0 1 0 -1 
+openbsd.org. IN SOA 4
+msg dns2.p08.nsone.net. IN A 32896 1 86400 0 1 0 0 -1 
+dns2.p08.nsone.net. IN A 0
+msg ns-1707.awsdns-21.co.uk. IN A 32896 1 86399 0 1 0 0 -1 
+ns-1707.awsdns-21.co.uk. IN A 0
+msg ns-1707.awsdns-21.co.uk. IN AAAA 32896 1 86399 0 1 0 0 -1 
+ns-1707.awsdns-21.co.uk. IN AAAA 0
+msg auth3.ns.gin.ntt.net. IN A 32896 1 14399 0 1 0 0 -1 
+auth3.ns.gin.ntt.net. IN A 0
+msg b.ns.bsws.de. IN A 32896 1 86399 0 1 0 0 -1 
+b.ns.bsws.de. IN A 0
+msg ns-1283.awsdns-32.org. IN AAAA 32896 1 86399 0 1 0 0 -1 
+ns-1283.awsdns-32.org. IN AAAA 0
+msg dns3.p08.nsone.net. IN A 32896 1 86400 0 1 0 0 -1 
+dns3.p08.nsone.net. IN A 0
+msg www.openbsd.org. IN A 32896 1 28799 2 1 0 0 5 
+www.openbsd.org. IN A 0
+msg github.com. IN A 32896 1 59 2 1 0 0 5 
+github.com. IN A 0
+msg ns.gin.ntt.net. IN A 32896 1 3599 0 0 1 0 -1 
+gin.ntt.net. IN SOA 4
+msg auth1.ns.gin.ntt.net. IN AAAA 32896 1 14400 0 1 0 0 -1 
+auth1.ns.gin.ntt.net. IN AAAA 0
+msg gin.ntt.net. IN A 32896 1 14399 0 1 0 0 -1 
+gin.ntt.net. IN A 0
+msg mail.google.com. IN A 32896 1 300 2 1 0 0 5 
+mail.google.com. IN A 0
+msg c.ns.bsws.de. IN A 32896 1 86399 0 1 0 0 -1 
+c.ns.bsws.de. IN A 0
+msg github.com. IN MX 32896 1 300 2 1 0 0 5 
+github.com. IN MX 0
+msg auth2.ns.gin.ntt.net. IN AAAA 32896 1 14399 0 1 0 0 -1 
+auth2.ns.gin.ntt.net. IN AAAA 0
+msg . IN NS 32896 1 86399 0 1 0 26 -1 
+. IN NS 0
+l.root-servers.net. IN A 0
+l.root-servers.net. IN AAAA 0
+j.root-servers.net. IN A 0
+j.root-servers.net. IN AAAA 0
+f.root-servers.net. IN A 0
+f.root-servers.net. IN AAAA 0
+h.root-servers.net. IN A 0
+h.root-servers.net. IN AAAA 0
+d.root-servers.net. IN A 0
+d.root-servers.net. IN AAAA 0
+b.root-servers.net. IN A 0
+b.root-servers.net. IN AAAA 0
+k.root-servers.net. IN A 0
+k.root-servers.net. IN AAAA 0
+i.root-servers.net. IN A 0
+i.root-servers.net. IN AAAA 0
+m.root-servers.net. IN A 0
+m.root-servers.net. IN AAAA 0
+e.root-servers.net. IN A 0
+e.root-servers.net. IN AAAA 0
+g.root-servers.net. IN A 0
+g.root-servers.net. IN AAAA 0
+c.root-servers.net. IN A 0
+c.root-servers.net. IN AAAA 0
+a.root-servers.net. IN A 0
+a.root-servers.net. IN AAAA 0
+msg www.github.com. IN A 32896 1 59 2 2 0 0 5 
+www.github.com. IN CNAME 0
+github.com. IN A 0
+msg auth4.ns.gin.ntt.net. IN A 32896 1 14400 0 1 0 0 -1 
+auth4.ns.gin.ntt.net. IN A 0
+msg c.ns.bsws.de. IN AAAA 32896 1 2560 0 0 2 0 -1 
+ns.bsws.de. IN SOA 4
+irbfekmi2obf93odapk0jcbr3no4j9it.ns.bsws.de. IN NSEC3 0
+msg dns2.p08.nsone.net. IN AAAA 32896 1 86400 0 1 0 0 -1 
+dns2.p08.nsone.net. IN AAAA 0
+msg auth4.ns.gin.ntt.net. IN AAAA 32896 1 14400 0 1 0 0 -1 
+auth4.ns.gin.ntt.net. IN AAAA 0
+END_MSG_CACHE
+EOF

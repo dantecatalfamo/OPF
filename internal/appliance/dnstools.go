@@ -2,6 +2,7 @@ package appliance
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -117,22 +118,42 @@ func (m *Manager) DNSTool(req DNSToolRequest) (*DNSToolResult, error) {
 	return res, nil
 }
 
-// cacheLines are the lines of dump_cache about name or what's under it:
-// records whose owner is one of them, and messages asked for one.
+// cacheLines are the lines of dump_cache about name or what's under
+// it. The dump has two parts: records, each "owner ttl class type data"
+// (signatures left out, they're long and say nothing here), and whole
+// answers kept for a question, each a "msg qname class type flags
+// qdcount ttl ..." line followed by lines pointing at its records,
+// which are left out too.
 func cacheLines(dump, name string) string {
 	var b strings.Builder
 	fqdn := name + "."
+	under := func(owner string) bool {
+		o := strings.ToLower(owner)
+		return o == fqdn || strings.HasSuffix(o, "."+fqdn)
+	}
+	section := ""
 	for _, l := range strings.Split(dump, "\n") {
 		f := strings.Fields(l)
-		if len(f) == 0 || strings.HasPrefix(f[0], ";") || strings.HasPrefix(f[0], "START_") || strings.HasPrefix(f[0], "END_") || f[0] == "EOF" {
+		if len(f) == 0 {
 			continue
 		}
-		owner := strings.ToLower(f[0])
-		if f[0] == "msg" && len(f) > 1 {
-			owner = strings.ToLower(f[1])
+		switch f[0] {
+		case "START_RRSET_CACHE", "START_MSG_CACHE":
+			section = f[0]
+			continue
+		case "END_RRSET_CACHE", "END_MSG_CACHE", "EOF":
+			section = ""
+			continue
 		}
-		if owner == fqdn || strings.HasSuffix(owner, "."+fqdn) {
-			b.WriteString(l + "\n")
+		switch section {
+		case "START_RRSET_CACHE":
+			if len(f) >= 5 && !strings.HasPrefix(f[0], ";") && f[3] != "RRSIG" && under(f[0]) {
+				b.WriteString(l + "\n")
+			}
+		case "START_MSG_CACHE":
+			if f[0] == "msg" && len(f) >= 7 && under(f[1]) {
+				fmt.Fprintf(&b, "%s %s %s: answer kept, %s s left\n", f[1], f[2], f[3], f[6])
+			}
 		}
 	}
 	return b.String()
