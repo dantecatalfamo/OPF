@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Accordion, Alert, Badge, Button, Card, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Badge, Button, Card, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
 import { LocalDomains, LocalNames } from './DnsRecords';
@@ -61,70 +61,77 @@ function LeaseNames() {
 
   const domain = applied.system.domain;
   if (!applied.dns.registerDynamicLeases && !data?.enabled) return null;
+  const refused = data?.refused ?? [];
   return (
-    <Card>
-      <SectionTitle right={data?.checked && <Text size="xs" c="dimmed">Checked {formatAgo((now - Date.parse(data.checked)) / 1000)}</Text>}>
-        DHCP devices by name
-      </SectionTitle>
-      <Stack gap="sm">
-        {failed && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
-        {data?.error && <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
-        {data && !data.enabled && <Text size="sm" c="dimmed">Starts once “Add other DHCP devices by name” is applied.</Text>}
-        {data?.enabled && (
-          <>
-            <Text size="sm" c="dimmed">
-              Names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
-            </Text>
-            {data.registered.length ? (
-              <Table.ScrollContainer minWidth={360}>
+    <>
+      <Grid.Col span={{ base: 12, lg: 6 }}>
+        <Card h="100%">
+          <SectionTitle right={data?.checked && <Text size="xs" c="dimmed">Checked {formatAgo((now - Date.parse(data.checked)) / 1000)}</Text>}>
+            DHCP devices by name
+          </SectionTitle>
+          <Stack gap="sm">
+            {failed && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
+            {data?.error && <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
+            {data && !data.enabled && <Text size="sm" c="dimmed">Starts once “Add other DHCP devices by name” is applied.</Text>}
+            {data?.enabled && (
+              <>
+                <Text size="sm" c="dimmed">
+                  Names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
+                </Text>
+                {data.registered.length ? (
+                  <Table.ScrollContainer minWidth={360}>
+                    <Table>
+                      <Table.Tbody>
+                        {data.registered.map((r) => (
+                          <Table.Tr key={r.name}>
+                            <Table.Td>
+                              <Mono>{r.name}</Mono>
+                              {/* Chosen by the device; shown as text, never markup. */}
+                              {r.from && <Text size="xs" c="dimmed">from “{r.from}”</Text>}
+                            </Table.Td>
+                            <Table.Td><Mono>{r.ip}</Mono></Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
+                ) : (
+                  <Empty>No devices have names from their leases yet.</Empty>
+                )}
+                {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
+              </>
+            )}
+          </Stack>
+        </Card>
+      </Grid.Col>
+      {data?.enabled && (
+        <Grid.Col span={{ base: 12, lg: 6 }}>
+          <Card h="100%">
+            <SectionTitle>Names not given</SectionTitle>
+            <Text size="sm" c="dimmed" mb="sm">Devices that asked for a name they didn’t get, and why.</Text>
+            {refused.length ? (
+              <Table.ScrollContainer minWidth={420}>
                 <Table>
                   <Table.Tbody>
-                    {data.registered.map((r) => (
-                      <Table.Tr key={r.name}>
-                        <Table.Td>
-                          <Mono>{r.name}</Mono>
-                          {/* Chosen by the device; shown as text, never markup. */}
-                          {r.from && <Text size="xs" c="dimmed">from “{r.from}”</Text>}
-                        </Table.Td>
+                    {refused.map((r) => (
+                      <Table.Tr key={r.ip}>
+                        {/* Chosen by the device; shown as text, never markup. */}
+                        <Table.Td style={{ overflowWrap: 'anywhere' }}><Mono>“{r.hostname}”</Mono></Table.Td>
                         <Table.Td><Mono>{r.ip}</Mono></Table.Td>
+                        <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
                 </Table>
               </Table.ScrollContainer>
             ) : (
-              <Empty>No devices have names from their leases yet.</Empty>
+              <Empty>Every device got the name it asked for.</Empty>
             )}
-            {data.refused.length > 0 && (
-              <Accordion variant="contained" radius="md">
-                <Accordion.Item value="refused">
-                  <Accordion.Control>
-                    <Text size="sm">{data.refused.length} device{data.refused.length === 1 ? '' : 's'} didn’t get the name {data.refused.length === 1 ? 'it' : 'they'} asked for</Text>
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Table.ScrollContainer minWidth={420}>
-                      <Table>
-                        <Table.Tbody>
-                          {data.refused.map((r) => (
-                            <Table.Tr key={r.ip}>
-                              {/* Chosen by the device; shown as text, never markup. */}
-                              <Table.Td><Mono>“{r.hostname}”</Mono></Table.Td>
-                              <Table.Td><Mono>{r.ip}</Mono></Table.Td>
-                              <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
-                  </Accordion.Panel>
-                </Accordion.Item>
-              </Accordion>
-            )}
-            {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000 of each.</Text>}
-          </>
-        )}
-      </Stack>
-    </Card>
+            {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
+          </Card>
+        </Grid.Col>
+      )}
+    </>
   );
 }
 
@@ -171,12 +178,12 @@ export function Dns() {
         <Tabs.Panel value="resolver">
           {/* What's happening, how it's set up (the settings, and how
               each local domain answers), then the names you add, across
-              the page for their columns, and last the DHCP devices',
-              a list that grows on its own and needs only two. */}
+              the page for their columns, and last the DHCP devices' names
+              and the ones refused, lists that grow on their own. */}
           <DnsStatsCard />
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 5 }}>
-              <Card>
+              <Card h="100%">
                 <form
                   onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}
                 >
@@ -222,7 +229,7 @@ export function Dns() {
               </Card>
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 7 }}>
-              <Card>
+              <Card h="100%">
                 <LocalDomains />
               </Card>
             </Grid.Col>
@@ -231,9 +238,7 @@ export function Dns() {
                 <LocalNames />
               </Card>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 7 }}>
-              <LeaseNames />
-            </Grid.Col>
+            <LeaseNames />
           </Grid>
         </Tabs.Panel>
         <Tabs.Panel value="tools">
