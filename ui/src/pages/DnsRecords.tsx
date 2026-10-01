@@ -3,9 +3,9 @@
 // has no record for. The firewall checks everything again; the checks
 // here are for saying what's wrong while typing.
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Textarea } from '@mantine/core';
+import { ActionIcon, Badge, Button, Grid, Group, Menu, Modal, NumberInput, SegmentedControl, Select, Stack, Table, Text, TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconChevronDown, IconTrash } from '@tabler/icons-react';
+import { IconChevronDown, IconPlus, IconTrash } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import type { DnsRecord, DnsRecordType, DnsZone, Model } from '../model/types';
 import { Empty, Mono, SectionTitle } from '../components/ui';
@@ -164,7 +164,7 @@ export function LocalNames() {
             <Table.Tbody>
               {list.map((r) => (
                 <Table.Tr key={r.key}>
-                  <Table.Td style={{ overflowWrap: 'anywhere' }}>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>
                     <Mono>{r.name}</Mono>
                   </Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
@@ -186,69 +186,122 @@ export function LocalNames() {
       ) : (
         <Empty>No local names.</Empty>
       )}
+      <LocalDomains />
       <HostModal opened={adding === 'host'} onClose={() => setAdding(null)} />
       <RecordModal type={adding && adding !== 'host' ? adding : null} onClose={() => setAdding(null)} />
     </>
   );
 }
 
-// How each domain answers a name it has no record for: a setting, so
-// it sits beside the resolver's others.
-export function LocalDomains() {
+// How each domain answers a name it has no record for, under the names
+// themselves: it's what happens to one that isn't in the list.
+function LocalDomains() {
   const { staged, edit } = useStore();
-  const [name, setName] = useState('');
+  const [adding, setAdding] = useState(false);
   const sys = staged.system.domain;
   const zones = staged.dns.zones ?? [];
   const list: DnsZone[] = [{ name: sys, type: systemZoneType(staged) }, ...zones.filter((z) => lower(z.name) !== lower(sys))];
   const setType = (z: DnsZone, type: DnsZone['type']) =>
-    edit('dns', `${z.name} is now ${type === 'static' ? 'local only' : 'local, then internet'}`, (m) => {
+    edit('dns', `${z.name} is now ${zoneLabel[type].toLowerCase()}`, (m) => {
       const rest = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
-      // The system's domain is static unless listed.
+      // The system's domain is local only unless listed.
       const keep = lower(z.name) === lower(m.system.domain) && type === 'static' ? rest : [...rest, { name: z.name, type }];
       return { ...m, dns: { ...m.dns, zones: keep.length ? keep : undefined } };
     });
-  const n = name.trim().replace(/\.$/, '');
-  const taken = list.some((z) => lower(z.name) === lower(n));
-  const bad = n !== '' && (!isHost(n) || taken || /^((in-addr|ip6)\.)?arpa$/i.test(n));
   return (
-    <Stack gap="xs">
-      <SectionTitle>Local domains</SectionTitle>
-      <Text size="sm" c="dimmed" mt={-8}>
-        When a device asks for a name in one of these domains that isn’t in Local names:
-      </Text>
-      <Text size="sm" c="dimmed">
-        <Text span fw={600} c="var(--mantine-color-text)">Local only</Text>: it’s told the name doesn’t exist. For a domain that exists only on your network, like office.arpa.
-      </Text>
-      <Text size="sm" c="dimmed">
-        <Text span fw={600} c="var(--mantine-color-text)">Local, then internet</Text>: it’s looked up on the internet as usual. For a real domain such as your company’s, when you only want to change a few of its names here.
-      </Text>
-      <Text size="sm" c="dimmed" mb={4}>
-        Add a domain to choose for it. Any other domain is looked up on the internet, apart from the names you add for it.
-      </Text>
-      {list.map((z) => (
-        <Group key={z.name} justify="space-between" gap="xs">
-          <Mono>{z.name}</Mono>
-          <Group gap={6} wrap="nowrap">
-            <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={[{ value: 'static', label: 'Local only' }, { value: 'transparent', label: 'Local, then internet' }]} />
-            {z.name !== sys ? (
-              <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${z.name}`} onClick={() => edit('dns', `Removed domain ${z.name}`, (m) => {
-                const zs = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
-                return { ...m, dns: { ...m.dns, zones: zs.length ? zs : undefined } };
-              })}>
-                <IconTrash size={16} />
-              </ActionIcon>
-            ) : <span style={{ width: 28 }} />}
-          </Group>
-        </Group>
-      ))}
-      <Group gap="xs" align="flex-start">
-        <TextInput size="xs" placeholder="lab.example.com" value={name} onChange={(e) => setName(e.currentTarget.value)} error={bad ? (taken ? 'Already listed' : 'Enter a domain like lab.example.com') : undefined} style={{ flex: '1 1 200px' }} maw={280} spellCheck={false} />
-        <Button size="xs" variant="default" disabled={!n || bad} onClick={() => {
-          edit('dns', `Added domain ${n}, local only`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name: n, type: 'static' }] } }));
-          setName('');
-        }}>Add domain</Button>
+    <>
+      <Group justify="space-between" mt="xl" mb="xs">
+        <Text fw={600}>Local domains</Text>
+        <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setAdding(true)}>Add domain</Button>
       </Group>
-    </Stack>
+      <Grid gutter="xl">
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Table verticalSpacing={8}>
+            <Table.Tbody>
+              {list.map((z) => (
+                <Table.Tr key={z.name}>
+                  <Table.Td>
+                    <Mono>{z.name}</Mono>
+                    {z.name === sys && <Text size="xs" c="dimmed">The firewall’s domain</Text>}
+                  </Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }} ta="right">
+                    <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />
+                  </Table.Td>
+                  <Table.Td w={40}>
+                    {z.name !== sys && (
+                      <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${z.name}`} onClick={() => edit('dns', `Removed domain ${z.name}`, (m) => {
+                        const zs = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
+                        return { ...m, dns: { ...m.dns, zones: zs.length ? zs : undefined } };
+                      })}>
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    )}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 6 }}>
+          <Stack gap={6}>
+            <Text size="sm" c="dimmed">When a device asks for a name in one of these domains that isn’t in Local names:</Text>
+            <Text size="sm" c="dimmed"><Text span fw={600} c="var(--mantine-color-text)">{zoneLabel.static}</Text>: {zoneAbout.static}</Text>
+            <Text size="sm" c="dimmed"><Text span fw={600} c="var(--mantine-color-text)">{zoneLabel.transparent}</Text>: {zoneAbout.transparent}</Text>
+            <Text size="sm" c="dimmed">Any other domain is looked up on the internet, apart from the names you add for it.</Text>
+          </Stack>
+        </Grid.Col>
+      </Grid>
+      <DomainModal opened={adding} onClose={() => setAdding(false)} taken={list.map((z) => lower(z.name))} />
+    </>
+  );
+}
+
+const zoneLabel: Record<DnsZone['type'], string> = { static: 'Local only', transparent: 'Local, then internet' };
+const zoneAbout: Record<DnsZone['type'], string> = {
+  static: 'it’s told the name doesn’t exist. For a domain that exists only on your network, like office.arpa.',
+  transparent: 'it’s looked up on the internet as usual. For a real domain such as your company’s, when you only want to change a few of its names here.',
+};
+const zoneChoices = (['static', 'transparent'] as const).map((value) => ({ value, label: zoneLabel[value] }));
+
+function DomainModal({ opened, onClose, taken }: { opened: boolean; onClose: () => void; taken: string[] }) {
+  const { edit } = useStore();
+  const form = useForm<{ name: string; type: DnsZone['type'] }>({
+    initialValues: { name: '', type: 'static' },
+    validate: {
+      name: (v) => {
+        const n = lower(v.trim().replace(/\.$/, ''));
+        if (!isHost(n)) return 'Enter a domain like lab.example.com';
+        if (/^((in-addr|ip6)\.)?arpa$/.test(n)) return 'That holds every reverse name; use a domain under it';
+        return taken.includes(n) ? 'Already listed' : null;
+      },
+    },
+  });
+  useEffect(() => {
+    if (opened) form.reset();
+  }, [opened]); // form is stable
+  return (
+    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Add a local domain</Text>}>
+      <form
+        onSubmit={form.onSubmit((v) => {
+          const name = v.name.trim().replace(/\.$/, '');
+          edit('dns', `Added domain ${name}, ${zoneLabel[v.type].toLowerCase()}`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name, type: v.type }] } }));
+          onClose();
+        })}
+      >
+        <Stack>
+          <TextInput label="Domain" placeholder="lab.example.com" data-autofocus spellCheck={false} {...form.getInputProps('name')} />
+          <Stack gap={6}>
+            <Text size="sm" fw={500}>A name that isn’t in Local names</Text>
+            <SegmentedControl fullWidth data={zoneChoices} {...form.getInputProps('type')} />
+            <Text size="xs" c="dimmed">{zoneAbout[form.values.type].replace(/^./, (c) => c.toUpperCase())}</Text>
+          </Stack>
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Add</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }
 

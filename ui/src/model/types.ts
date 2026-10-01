@@ -399,6 +399,8 @@ export interface Change {
   id: number;
   section: Section;
   summary: string;
+  /** The section as this change left it, to notice a later change undoing it. */
+  after?: string;
 }
 
 export interface HistoryEntry {

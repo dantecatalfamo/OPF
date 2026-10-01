@@ -117,6 +117,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [release, setRelease] = useState<string>();
   const confirmingRef = useRef(confirming);
   confirmingRef.current = confirming;
+  // The latest models, for edits made before the next render.
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
 
   const refreshHistory = useCallback(async () => {
     setHistory((await backend.commits()).map(historyOf));
@@ -178,8 +183,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    setStaged((m) => (m ? fn(m) : m));
-    setLog((l) => [...l, { id: nextChangeId++, section, summary }]);
+    const before = stagedRef.current;
+    if (!before) return;
+    const after = fn(before);
+    stagedRef.current = after;
+    setStaged(after);
+    // Edits that end where the section was before cancel out, so
+    // turning something on and off again isn't listed as two changes:
+    // back to what's applied drops the section's edits, and back to
+    // how an earlier edit left it drops the ones since.
+    const now = JSON.stringify(sectionOf[section](after));
+    const live = appliedRef.current;
+    setLog((l) => {
+      if (live && now === JSON.stringify(sectionOf[section](live))) return l.filter((c) => c.section !== section);
+      let i = l.length - 1;
+      while (i >= 0 && !(l[i].section === section && l[i].after === now)) i--;
+      if (i >= 0) return l.filter((c, j) => j <= i || c.section !== section);
+      return [...l, { id: nextChangeId++, section, summary, after: now }];
+    });
   }, []);
 
   const discard = useCallback(async () => {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Badge, Button, Card, Grid, Group, SegmentedControl, SimpleGrid, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
-import { LocalDomains, LocalNames } from './DnsRecords';
+import { LocalNames } from './DnsRecords';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
@@ -84,12 +84,12 @@ function LeaseNames() {
                       <Table.Tbody>
                         {data.registered.map((r) => (
                           <Table.Tr key={r.name}>
-                            <Table.Td>
+                            <Table.Td style={{ whiteSpace: 'nowrap' }}>
                               <Mono>{r.name}</Mono>
                               {/* Chosen by the device; shown as text, never markup. */}
                               {r.from && <Text size="xs" c="dimmed">from “{r.from}”</Text>}
                             </Table.Td>
-                            <Table.Td><Mono>{r.ip}</Mono></Table.Td>
+                            <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
@@ -104,29 +104,25 @@ function LeaseNames() {
           </Stack>
         </Card>
       </Grid.Col>
-      {data?.enabled && (
+      {data?.enabled && refused.length > 0 && (
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <Card h="100%">
             <SectionTitle>Names not given</SectionTitle>
             <Text size="sm" c="dimmed" mb="sm">Devices that asked for a name they didn’t get, and why.</Text>
-            {refused.length ? (
-              <Table.ScrollContainer minWidth={420}>
-                <Table>
-                  <Table.Tbody>
-                    {refused.map((r) => (
-                      <Table.Tr key={r.ip}>
-                        {/* Chosen by the device; shown as text, never markup. */}
-                        <Table.Td style={{ overflowWrap: 'anywhere' }}><Mono>“{r.hostname}”</Mono></Table.Td>
-                        <Table.Td><Mono>{r.ip}</Mono></Table.Td>
-                        <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            ) : (
-              <Empty>Every device got the name it asked for.</Empty>
-            )}
+            <Table.ScrollContainer minWidth={420}>
+              <Table>
+                <Table.Tbody>
+                  {refused.map((r) => (
+                    <Table.Tr key={r.ip}>
+                      {/* Chosen by the device; shown as text, never markup. */}
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>“{r.hostname}”</Mono></Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
+                      <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
             {data.truncated && <Text size="xs" c="dimmed">Showing the first 1000.</Text>}
           </Card>
         </Grid.Col>
@@ -176,18 +172,19 @@ export function Dns() {
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="resolver">
-          {/* What's happening, how it's set up (the settings, and how
-              each local domain answers), then the names you add, across
-              the page for their columns, and last the DHCP devices' names
-              and the ones refused, lists that grow on their own. */}
+          {/* What's happening, how it's set up, then the names you add
+              (and what a domain answers for a name that isn't there),
+              and last the DHCP devices' names and the ones refused,
+              lists that grow on their own. */}
           <DnsStatsCard />
           <Grid gutter="md">
-            <Grid.Col span={{ base: 12, lg: 5 }}>
-              <Card h="100%">
+            <Grid.Col span={12}>
+              <Card>
                 <form
                   onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}
                 >
                   <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Settings</SectionTitle>
+                  <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing="md">
                   <Stack>
                     <Stack gap={6}>
                       <Text size="sm" fw={500}>How to look up names</Text>
@@ -209,6 +206,8 @@ export function Dns() {
                       </>
                     )}
                     <Switch label="Verify answers with DNSSEC" description="Rejects answers that have been tampered with." {...form.getInputProps('dnssec', { type: 'checkbox' })} />
+                  </Stack>
+                  <Stack>
                     <Switch label="Add reserved devices by name" description={`Devices with a DHCP reservation can be reached as name.${staged.system.domain}.`} {...form.getInputProps('registerReservations', { type: 'checkbox' })} />
                     <Switch
                       label="Add other DHCP devices by name"
@@ -221,16 +220,12 @@ export function Dns() {
                       disabled={!form.values.registerDynamicLeases}
                       {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
                     />
-                    <Group justify="flex-end">
-                      <Button type="submit" disabled={!form.isDirty()}>Save</Button>
-                    </Group>
                   </Stack>
+                  </SimpleGrid>
+                  <Group justify="flex-end" mt="md">
+                    <Button type="submit" disabled={!form.isDirty()}>Save</Button>
+                  </Group>
                 </form>
-              </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 7 }}>
-              <Card h="100%">
-                <LocalDomains />
               </Card>
             </Grid.Col>
             <Grid.Col span={12}>
