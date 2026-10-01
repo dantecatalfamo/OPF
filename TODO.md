@@ -1238,10 +1238,14 @@ Stop it by the PID it wrote; never pkill.
       itself is as unbound 1.26.1 wrote it on 7.9 (captured from its
       own logfile, to keep the host's syslog untouched); the prefix
       follows unbound's log.c and syslogd.
-- [ ] The webhook sender on OpenBSD: pledge and unveil with Go's TLS
-      and resolver (the CA bundle, resolv.conf, hosts), started by the
-      parent as the unprivileged user; openbsd-dev was unreachable when
-      it was built.
+- [x] The webhook sender on OpenBSD 7.9 (`-dry` on openbsd-dev): under
+      its pledge and unveil it resolved names and made a verified TLS
+      connection (example.com), refused unknown hosts, closed ports and
+      forbidden headers, with no violations in dmesg; started by the
+      parent as the unprivileged user (seen in ps, with no URL on its
+      command line), it delivered a signed test, an ntfy one, and a
+      commit through the queue, all valid; secrets.json was root's,
+      mode 0600, and the secret was in no other file or the log.
 - [ ] `pfctl -k id -k <id>/<creatorid>` takes the creator id in hex, as
       `-vv -s states` prints it.
 - [ ] Status parsers on other hardware: `hw.sensors` from real sensors
