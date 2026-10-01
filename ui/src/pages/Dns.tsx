@@ -156,7 +156,7 @@ function DnsSettingsForm() {
   }, [dns]); // form is stable
   const domain = staged.system.domain;
   return (
-    <Card maw={760}>
+    <Card>
       <form onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}>
         <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Resolver</SectionTitle>
         <Stack gap="lg">
@@ -206,7 +206,7 @@ function DnsSettingsForm() {
   );
 }
 
-const tabs = ['overview', 'names', 'settings', 'blocking', 'tools'] as const;
+const tabs = ['resolver', 'blocking', 'tools'] as const;
 type Tab = (typeof tabs)[number];
 
 export function Dns() {
@@ -214,38 +214,38 @@ export function Dns() {
   const dns = staged.dns;
   const [params, setParams] = useSearchParams();
   const asked = params.get('tab');
-  // The page used to have one "resolver" tab for all of these.
-  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : 'overview';
+  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : 'resolver';
   const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
-  const names = dns.overrides.length + (dns.records ?? []).length;
 
   return (
     <>
       <PageHeader title="DNS resolver" description="Answers name lookups for devices on your networks, and caches the results so browsing feels faster." />
-      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'overview' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
+      <Tabs value={tab} onChange={(v) => setParams(v && v !== 'resolver' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="md">
-          <Tabs.Tab value="overview">Overview</Tabs.Tab>
-          <Tabs.Tab value="names" rightSection={names ? <Badge size="xs" variant="light" circle>{names}</Badge> : undefined}>Local names</Tabs.Tab>
-          <Tabs.Tab value="settings">Settings</Tabs.Tab>
+          <Tabs.Tab value="resolver">Resolver and names</Tabs.Tab>
           <Tabs.Tab value="blocking" rightSection={enabledLists ? <Badge size="xs" variant="light" circle>{enabledLists}</Badge> : undefined}>Blocking</Tabs.Tab>
           <Tabs.Tab value="tools">Tools</Tabs.Tab>
         </Tabs.List>
-        <Tabs.Panel value="overview">
-          {/* What's happening, then the names devices gave themselves, a
-              list that grows on its own. */}
-          <Stack gap="md">
-            <DnsStatsCard />
-            <DeviceNames />
-          </Stack>
-        </Tabs.Panel>
-        <Tabs.Panel value="names">
-          <Stack gap="md">
-            <Card><LocalNames /></Card>
-            <Card><LocalDomains /></Card>
-          </Stack>
-        </Tabs.Panel>
-        <Tabs.Panel value="settings">
-          <DnsSettingsForm />
+        <Tabs.Panel value="resolver">
+          {/* The settings in a rail on the left, beside everything, so a
+              list growing on the right never pushes them away; on the
+              right what's happening, your names, then the devices'
+              names, which grow on their own. */}
+          <Grid gutter="md">
+            <Grid.Col span={{ base: 12, lg: 4 }}>
+              <Stack gap="md">
+                <DnsSettingsForm />
+                <Card><LocalDomains narrow /></Card>
+              </Stack>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, lg: 8 }}>
+              <Stack gap="md">
+                <DnsStatsCard />
+                <Card><LocalNames /></Card>
+                <DeviceNames />
+              </Stack>
+            </Grid.Col>
+          </Grid>
         </Tabs.Panel>
         <Tabs.Panel value="blocking">
           {/* The lists and your own names, then what they blocked, a list

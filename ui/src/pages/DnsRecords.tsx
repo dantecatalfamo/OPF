@@ -165,14 +165,13 @@ export function LocalNames() {
         Local names
       </SectionTitle>
       {list.length ? (
-        <Table.ScrollContainer minWidth={640}>
+        <Table.ScrollContainer minWidth={520}>
           <Table verticalSpacing={6}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Type</Table.Th>
                 <Table.Th>Answer</Table.Th>
-                <Table.Th>Description</Table.Th>
                 <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
@@ -181,13 +180,13 @@ export function LocalNames() {
                 <Table.Tr key={r.key}>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}>
                     <Mono>{r.name}</Mono>
+                    {r.description && <Text size="xs" c="dimmed" style={{ whiteSpace: 'normal' }}>{r.description}</Text>}
                   </Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}><Badge size="sm" variant="light" color={r.kind === 'host' ? 'teal' : r.kind === 'firewall' ? 'blue' : 'gray'} styles={{ root: { overflow: 'visible' }, label: { overflow: 'visible' } }}>{kindOf(r.kind).badge}</Badge></Table.Td>
                   <Table.Td style={{ overflowWrap: 'anywhere' }}>
                     <Mono>{r.value}</Mono>
                     {r.detail && <Text size="xs" c="dimmed">{r.detail}</Text>}
                   </Table.Td>
-                  <Table.Td><Text size="sm" c="dimmed">{r.description}</Text></Table.Td>
                   <Table.Td w={40}>
                     {r.remove ? (
                       <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${r.what}`} onClick={() => edit('dns', `Removed ${r.what}`, r.remove!)}>
@@ -217,7 +216,7 @@ export function LocalNames() {
 
 // How each domain answers a name it has no record for: what happens to
 // one that isn't in Local names.
-export function LocalDomains() {
+export function LocalDomains({ narrow = false }: { narrow?: boolean }) {
   const { staged, edit } = useStore();
   const [adding, setAdding] = useState(false);
   const sys = staged.system.domain;
@@ -236,7 +235,7 @@ export function LocalDomains() {
         Local domains
       </SectionTitle>
       <Grid gutter="xl">
-        <Grid.Col span={{ base: 12, md: 6 }}>
+        <Grid.Col span={{ base: 12, md: narrow ? 12 : 6 }}>
           <Table verticalSpacing={8}>
             <Table.Tbody>
               {list.map((z) => (
@@ -244,14 +243,18 @@ export function LocalDomains() {
                   <Table.Td>
                     <Mono>{z.name}</Mono>
                     {z.name === sys && (
-                  <Text size="xs" c="dimmed">
-                    The firewall’s domain, set in <Anchor component={Link} to="/system/general" size="xs" style={{ whiteSpace: 'nowrap' }}>System › General</Anchor>
-                  </Text>
-                )}
+                      <Text size="xs" c="dimmed">
+                        The firewall’s domain, set in <Anchor component={Link} to="/system/general" size="xs" style={{ whiteSpace: 'nowrap' }}>System › General</Anchor>
+                      </Text>
+                    )}
+                    {/* In a narrow column the choice goes under the name. */}
+                    {narrow && <SegmentedControl mt={8} fullWidth size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />}
                   </Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }} ta="right">
-                    <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />
-                  </Table.Td>
+                  {!narrow && (
+                    <Table.Td style={{ whiteSpace: 'nowrap' }} ta="right">
+                      <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={zoneChoices} />
+                    </Table.Td>
+                  )}
                   <Table.Td w={40}>
                     {z.name !== sys && (
                       <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${z.name}`} onClick={() => edit('dns', `Removed domain ${z.name}`, (m) => {
@@ -267,7 +270,7 @@ export function LocalDomains() {
             </Table.Tbody>
           </Table>
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }}>
+        <Grid.Col span={{ base: 12, md: narrow ? 12 : 6 }}>
           <Stack gap={6}>
             <Text size="sm" c="dimmed">When a device asks for a name in one of these domains that isn’t in Local names:</Text>
             <Text size="sm" c="dimmed"><Text span fw={600} c="var(--mantine-color-text)">{zoneLabel.static}</Text>: {zoneAbout.static}</Text>
