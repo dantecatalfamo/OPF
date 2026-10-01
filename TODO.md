@@ -1032,6 +1032,20 @@ them, so they can be graphed and compared):
 
 ## UI
 
+- [ ] **The DNS page's layout** is out of line with the other service
+      pages. DHCP and WireGuard use tabs only for separate things (an
+      interface, a tunnel), and within one: the graph across the page,
+      then Settings (5/12) beside the list the admin adds to (7/12),
+      then the list that grows on its own across the page. DNS has
+      Overview, Local names and Settings as tabs of one resolver,
+      Settings among them. Match the others: Resolver, Blocking, Tools;
+      in Resolver the numbers and graph, Settings beside Local names
+      (descriptions under each name, and each domain's choice under
+      it, to fit 7/12), then Devices' names. Tried and dropped on the
+      way: everything on one tab with Local domains as a card beside
+      the settings (heights never matched), and settings in a rail on
+      the left (long, and Local names cramped).
+
 - Page order, for pages that show a service's state and its settings
   (DNS, DHCP, WireGuard, Routing): what's happening now (its numbers and
   graph) first, then its settings, then the lists that grow on their own
