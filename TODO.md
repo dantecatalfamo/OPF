@@ -712,9 +712,15 @@ DNS:
 
 Network, VPN and logs:
 
-- [ ] Interfaces OPF doesn't configure (a spare port, one added by
-      hand) are in `/api/network/interfaces` but no page shows them;
-      list them on Interfaces with an offer to set them up.
+- [x] Interfaces OPF doesn't configure (a spare port, one set up by
+      hand) are listed on Interfaces, "Not set up by OPF", with their
+      link, MAC and addresses; a port can be set up there (name, role,
+      address, starting from the one it has), with a warning when it
+      has addresses set outside OPF. Loopback, enc, pflog and pfsync
+      aren't listed.
+- [ ] Setting up the other kinds found (a VLAN, bridge, carp or tunnel
+      configured by hand) as they are, which is import (Parser and
+      import).
 - [ ] Gateway health is a ping per request, cached 10 s. A real monitor
       (dpinger-like, in the collector) would keep loss and latency over
       time and could drive gateway-group failover (Models and

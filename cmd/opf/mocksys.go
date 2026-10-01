@@ -345,6 +345,18 @@ func mockIfconfig(m *pf.Model, t float64) string {
 			b.WriteString("\tinet 203.0.113.24 netmask 0xffffff00 broadcast 203.0.113.255\n")
 		}
 	}
+	// The APU's other two ports, which the model doesn't use (until
+	// someone sets one up): one unplugged, one given an address by hand.
+	used := map[string]bool{}
+	for _, i := range m.Interfaces {
+		used[i.Device] = true
+	}
+	if !used["em2"] {
+		b.WriteString("em2: flags=8802<BROADCAST,SIMPLEX,MULTICAST> mtu 1500\n\tlladdr 00:0d:b9:5a:3c:12\n\tindex 3 priority 0 llprio 3\n\tmedia: Ethernet autoselect (none)\n\tstatus: no carrier\n")
+	}
+	if !used["em3"] {
+		b.WriteString("em3: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tlladdr 00:0d:b9:5a:3c:13\n\tindex 4 priority 0 llprio 3\n\tmedia: Ethernet autoselect (100baseTX full-duplex)\n\tstatus: active\n\tinet 10.0.0.5 netmask 0xffffff00 broadcast 10.0.0.255\n")
+	}
 	b.WriteString("enc0: flags=0<>\n\tindex 20 priority 0 llprio 3\n\tgroups: enc\n\tstatus: active\n")
 	b.WriteString("pflog0: flags=141<UP,RUNNING,PROMISC> mtu 33136\n\tindex 21 priority 0 llprio 3\n\tgroups: pflog\n")
 	return b.String()

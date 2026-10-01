@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router';
-import { Anchor, Badge, Button, Card, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Group, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
-import { IconPencil, IconPlus } from '@tabler/icons-react';
+import { IconAlertTriangle, IconPencil, IconPlus } from '@tabler/icons-react';
 import { newId, useStore } from '../model/store';
 import { defaultGateway, firstIPv4, ifaceState, mediaLabel, useLive } from '../lib/live';
 import type { Iface } from '../model/types';
+import type { InterfaceState, InterfacesResource } from '../lib/api';
 import { formatBits } from '../lib/format';
 import { isIPv4 } from '../lib/ip';
 import { PageHeader, StatusDot, Mono } from '../components/ui';
@@ -91,6 +93,114 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
         </Stack>
       </form>
     </Modal>
+  );
+}
+
+// Interfaces the system has that aren't worth offering: loopback,
+// IPsec's enc, pflog's and pfsync's.
+const pseudo = /^(lo|enc|pflog|pfsync|pflow)\d+$/;
+
+// A port OPF can set up: one with a hardware address that isn't a
+// VLAN, tunnel, bridge or carp interface (those need their own forms).
+const settable = (s: InterfaceState) => !!s.mac && !s.vlan && !s.wireguard && !s.carp && !/^(bridge|veb|tun|tap|gif|gre|carp|trunk|aggr|lo|enc|vport)\d/.test(s.name);
+
+function SetUp({ port, onClose }: { port: InterfaceState | null; onClose: () => void }) {
+  const { staged, edit } = useStore();
+  const navigate = useNavigate();
+  const current = port?.ipv4[0];
+  const form = useForm({
+    initialValues: { name: '', role: 'opt' as 'lan' | 'opt', mode: 'static' as 'static' | 'dhcp' | 'none', address: '', prefix: '24' },
+    validate: {
+      name: (v) => (v.trim() ? null : 'Give the network a name'),
+      address: (v, vals) => (vals.mode !== 'static' || isIPv4(v) ? null : 'Enter an IPv4 address like 192.168.30.1'),
+    },
+  });
+  useEffect(() => {
+    if (!port) return;
+    const [addr, prefix] = (current ?? '').split('/');
+    form.setValues({ name: '', role: staged.interfaces.some((i) => i.role === 'lan') ? 'opt' : 'lan', mode: current ? 'static' : 'none', address: addr ?? '', prefix: prefix ?? '24' });
+  }, [port]); // form is stable
+  if (!port) return null;
+  const submit = form.onSubmit((v) => {
+    const id = newId('net');
+    const iface: Iface = {
+      id, name: v.name.trim(), device: port.name, role: v.role, enabled: true, ipv6: 'none',
+      ipv4: v.mode === 'static' ? { mode: 'static', address: v.address, prefix: Number(v.prefix) } : { mode: v.mode },
+    };
+    edit('interfaces', `Set up ${port.name} as network “${iface.name}”`, (m) => ({ ...m, interfaces: [...m.interfaces, iface] }));
+    onClose();
+    navigate(`/interfaces/${id}`);
+  });
+  return (
+    <Modal opened onClose={onClose} title={<Text fw={600}>Set up {port.name}</Text>} size="md">
+      <form onSubmit={submit}>
+        <Stack>
+          <Text size="sm" c="dimmed">
+            OPF will manage this port: its address, and firewall rules for its network (nothing gets in until you add some).
+          </Text>
+          {(port.ipv4.length > 0 || port.ipv6.some((a) => !a.startsWith('fe80'))) && (
+            <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
+              It has {[...port.ipv4, ...port.ipv6.filter((a) => !a.startsWith('fe80'))].join(', ')} now, set outside OPF, which replaces it with what you choose here. If a hostname.{port.name} file set it, applying says the file changed outside OPF and offers to replace it.
+            </Alert>
+          )}
+          <TextInput label="Name" placeholder="Guests" data-autofocus {...form.getInputProps('name')} />
+          <Select label="Role" data={[{ value: 'lan', label: 'Local network' }, { value: 'opt', label: 'Extra network' }]} allowDeselect={false} {...form.getInputProps('role')} />
+          <SegmentedControl data={[{ value: 'static', label: 'Fixed address' }, { value: 'dhcp', label: 'From DHCP' }, { value: 'none', label: 'None' }]} {...form.getInputProps('mode')} />
+          {form.values.mode === 'static' && (
+            <Group grow align="flex-start">
+              <TextInput label="Firewall address" placeholder="192.168.30.1" {...form.getInputProps('address')} />
+              <Select label="Size" data={['24', '25', '26', '27', '28', '16']} allowDeselect={false} {...form.getInputProps('prefix')} renderOption={({ option }) => `/${option.value}`} />
+            </Group>
+          )}
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button type="submit">Set up</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+// The system's interfaces that OPF doesn't manage: a spare port, one
+// set up by hand. Ports can be set up here; other kinds are listed.
+function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
+  const { staged } = useStore();
+  const [port, setPort] = useState<InterfaceState | null>(null);
+  const managed = new Set(staged.interfaces.map((i) => i.device));
+  const others = (ifs?.interfaces ?? []).filter((s) => !managed.has(s.name) && !pseudo.test(s.name));
+  if (!others.length) return null;
+  return (
+    <>
+      <Text fw={600} mt="xl" mb={4}>Not set up by OPF</Text>
+      <Text size="sm" c="dimmed" mb="md">Interfaces this machine has that OPF doesn’t manage: a spare port, or one configured by hand.</Text>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+        {others.map((s) => {
+          const link = !s.up ? 'Down' : s.status === 'no carrier' ? 'No link' : 'Up';
+          return (
+            <Card key={s.name} padding="md">
+              <Group justify="space-between" wrap="nowrap" align="flex-start">
+                <Stack gap={4}>
+                  <Group gap="sm">
+                    <Text fw={600} className="mono">{s.name}</Text>
+                    <StatusDot ok={link === 'Up'} label={link} />
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    {[s.mac, s.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s), ...s.ipv4].filter(Boolean).join(' · ') || 'No address'}
+                  </Text>
+                </Stack>
+                {settable(s) ? (
+                  <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setPort(s)}>Set up</Button>
+                ) : (
+                  <Text size="xs" c="dimmed" ta="right">OPF doesn’t set up this kind yet</Text>
+                )}
+              </Group>
+            </Card>
+          );
+        })}
+      </SimpleGrid>
+      <SetUp port={port} onClose={() => setPort(null)} />
+    </>
   );
 }
 
@@ -180,6 +290,7 @@ export function Interfaces() {
           );
         })}
       </SimpleGrid>
+      <Unmanaged ifs={ifs} />
       <AddVlan opened={opened} onClose={dlg.close} />
     </>
   );
