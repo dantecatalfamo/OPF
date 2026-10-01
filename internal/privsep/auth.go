@@ -39,6 +39,7 @@ var methodRoles = map[string]auth.Role{
 	"GetCommit": auth.RoleView, "CommitConfig": auth.RoleView,
 	"DNSTool": auth.RoleView, // forgetting cached answers needs operator (DNSTool)
 	"Session": auth.RoleView, "Sessions": auth.RoleView, "EndSession": auth.RoleView, "Logout": auth.RoleView,
+	"Reauth": auth.RoleView, "ChangeOwnPassword": auth.RoleView,
 	// Running things, and keeping or undoing a commit.
 	"CheckUpdates": auth.RoleOperator, "KillState": auth.RoleOperator,
 	"StartTool": auth.RoleOperator, "ToolRun": auth.RoleOperator, "CancelTool": auth.RoleOperator,
@@ -47,6 +48,10 @@ var methodRoles = map[string]auth.Role{
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
 	"SetWebhookSecret": auth.RoleAdmin,
+	// Who can sign in, which also asks for the password again
+	// (allowRecent).
+	"Users": auth.RoleAdmin, "CreateUser": auth.RoleAdmin, "SetUserRole": auth.RoleAdmin,
+	"SetUserPassword": auth.RoleAdmin, "LockUser": auth.RoleAdmin, "RemoveUser": auth.RoleAdmin,
 }
 
 // allow checks the token and the method's role, returning the session,
@@ -247,4 +252,297 @@ func (c *Client) TLS() (*TLSPair, error) {
 		return nil, err
 	}
 	return r.TLS, r.remoteErr()
+}
+
+// Managing accounts (auth.Admin), each change by an admin who gave
+// their password within auth.ReauthWindow.
+
+type (
+	UsersReply struct {
+		Result
+		Users      []auth.Account
+		Candidates []auth.Account
+	}
+	UserRoleArgs     struct{ Name, Role string }
+	UserPasswordArgs struct{ Name, Password string }
+	UserLockArgs     struct {
+		Name   string
+		Locked bool
+	}
+	NameOnlyArgs struct{ Name string }
+	ReauthArgs   struct{ Password, Source string }
+	OwnPassword  struct{ Current, New, Source string }
+	// NoteReply is done, with something to say: removing an account
+	// OPF didn't make only takes away its role.
+	NoteReply struct {
+		Result
+		Note string
+	}
+)
+
+// allowRecent is allow, and the password given lately.
+func (s *Service) allowRecent(method string, c callInfo, r *Result) *auth.Session {
+	sess := s.allow(method, c, r)
+	if sess == nil {
+		return nil
+	}
+	if !s.sessions.Recent(c.token()) {
+		r.Err = &appliance.Error{Code: appliance.CodeReauth, Message: auth.ErrReauth.Error()}
+		return nil
+	}
+	if s.admin == nil {
+		r.Err = &appliance.Error{Code: appliance.CodeUnsupported, Message: "accounts can't be changed here"}
+		return nil
+	}
+	return sess
+}
+
+// accountErr makes an auth error the API's.
+func accountErr(err error) *appliance.Error {
+	var wait *auth.WaitError
+	switch {
+	case err == nil:
+		return nil
+	case errors.As(err, &wait):
+		return &appliance.Error{Code: appliance.CodeRateLimited, Message: wait.Error()}
+	case errors.Is(err, auth.ErrBadLogin):
+		return &appliance.Error{Code: appliance.CodeInvalid, Message: "that isn't your password", Details: []appliance.Detail{{Path: "current", Message: "that isn't your password"}}}
+	case errors.Is(err, auth.ErrNoAccount):
+		return &appliance.Error{Code: appliance.CodeNotFound, Message: err.Error()}
+	case errors.Is(err, auth.ErrLastAdmin), errors.Is(err, auth.ErrSelf), errors.Is(err, auth.ErrSystem), errors.Is(err, auth.ErrExists):
+		return &appliance.Error{Code: appliance.CodeConflict, Message: err.Error()}
+	case errors.Is(err, auth.ErrBadName):
+		return &appliance.Error{Code: appliance.CodeInvalid, Message: err.Error(), Details: []appliance.Detail{{Path: "name", Message: err.Error()}}}
+	case errors.Is(err, auth.ErrBadFull):
+		return &appliance.Error{Code: appliance.CodeInvalid, Message: err.Error(), Details: []appliance.Detail{{Path: "fullName", Message: err.Error()}}}
+	case errors.Is(err, auth.ErrBadRole):
+		return &appliance.Error{Code: appliance.CodeInvalid, Message: err.Error(), Details: []appliance.Detail{{Path: "role", Message: err.Error()}}}
+	case errors.Is(err, auth.ErrWeak):
+		return &appliance.Error{Code: appliance.CodeInvalid, Message: err.Error(), Details: []appliance.Detail{{Path: "password", Message: err.Error()}}}
+	}
+	return nil
+}
+
+func (s *Service) setAccountErr(method string, r *Result, err error) {
+	if e := accountErr(err); e != nil {
+		r.Err = e
+		return
+	}
+	r.set(method, err)
+}
+
+func (s *Service) audit(by, msg string) {
+	if s.auditf != nil {
+		s.auditf(false, by, by+" "+msg)
+	}
+}
+
+func accountCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), time.Minute)
+}
+
+// Users lists who can sign in, and the accounts that could be given a
+// role.
+func (s *Service) Users(c Call[None], r *UsersReply) error {
+	if s.allow("Users", c, &r.Result) == nil {
+		return nil
+	}
+	if s.admin == nil {
+		return nil
+	}
+	var err error
+	r.Users, r.Candidates, err = s.admin.List()
+	r.set("Users", err)
+	return nil
+}
+
+func (s *Service) CreateUser(c Call[auth.NewAccount], r *EmptyReply) error {
+	sess := s.allowRecent("CreateUser", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	err := s.admin.Create(ctx, a)
+	s.setAccountErr("CreateUser", &r.Result, err)
+	if err == nil {
+		s.audit(sess.User, "made the account "+a.Name+", "+a.Role)
+	}
+	return nil
+}
+
+func (s *Service) SetUserRole(c Call[UserRoleArgs], r *EmptyReply) error {
+	sess := s.allowRecent("SetUserRole", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	err := s.admin.SetRole(ctx, a.Name, a.Role, sess.User)
+	s.setAccountErr("SetUserRole", &r.Result, err)
+	if err == nil {
+		// Their sessions get the new role, or end, on their next request.
+		s.sessions.Recheck(a.Name)
+		if a.Role == "" {
+			s.audit(sess.User, "took away "+a.Name+"'s role")
+		} else {
+			s.audit(sess.User, "made "+a.Name+" "+a.Role)
+		}
+	}
+	return nil
+}
+
+func (s *Service) SetUserPassword(c Call[UserPasswordArgs], r *EmptyReply) error {
+	sess := s.allowRecent("SetUserPassword", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	err := s.admin.SetPassword(ctx, a.Name, a.Password)
+	s.setAccountErr("SetUserPassword", &r.Result, err)
+	if err == nil {
+		keep := ""
+		if a.Name == sess.User {
+			keep = c.Token
+		}
+		s.sessions.EndUser(a.Name, keep, "the password was changed")
+		s.audit(sess.User, "set "+a.Name+"'s password")
+	}
+	return nil
+}
+
+func (s *Service) LockUser(c Call[UserLockArgs], r *EmptyReply) error {
+	sess := s.allowRecent("LockUser", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	err := s.admin.Lock(ctx, a.Name, a.Locked, sess.User)
+	s.setAccountErr("LockUser", &r.Result, err)
+	if err == nil {
+		if a.Locked {
+			s.sessions.EndUser(a.Name, "", "the account was locked")
+			s.audit(sess.User, "locked "+a.Name)
+		} else {
+			s.audit(sess.User, "unlocked "+a.Name)
+		}
+	}
+	return nil
+}
+
+func (s *Service) RemoveUser(c Call[NameOnlyArgs], r *NoteReply) error {
+	sess := s.allowRecent("RemoveUser", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	err := s.admin.Remove(ctx, a.Name, sess.User)
+	switch {
+	case errors.Is(err, auth.ErrNotCreated):
+		r.Note = "OPF didn't make " + a.Name + ", so it took away their role and left the account."
+		s.sessions.EndUser(a.Name, "", "the account's role was taken away")
+		s.audit(sess.User, "took away "+a.Name+"'s role")
+	case err == nil:
+		s.sessions.EndUser(a.Name, "", "the account was removed")
+		s.audit(sess.User, "removed the account "+a.Name)
+	default:
+		s.setAccountErr("RemoveUser", &r.Result, err)
+	}
+	return nil
+}
+
+// Reauth checks the caller's password again, for the changes above.
+func (s *Service) Reauth(c Call[ReauthArgs], r *EmptyReply) error {
+	if s.allow("Reauth", c, &r.Result) == nil {
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	err := s.sessions.Reauthenticate(ctx, c.Token, c.Args.Password, c.Args.Source)
+	if errors.Is(err, auth.ErrBadLogin) {
+		r.Err = &appliance.Error{Code: appliance.CodeInvalid, Message: "that isn't your password", Details: []appliance.Detail{{Path: "password", Message: "that isn't your password"}}}
+		return nil
+	}
+	s.setAccountErr("Reauth", &r.Result, err)
+	return nil
+}
+
+// ChangeOwnPassword is anyone changing their own, with the current one.
+func (s *Service) ChangeOwnPassword(c Call[OwnPassword], r *EmptyReply) error {
+	sess := s.allow("ChangeOwnPassword", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	if s.admin == nil {
+		r.Err = &appliance.Error{Code: appliance.CodeUnsupported, Message: "passwords can't be changed here"}
+		return nil
+	}
+	ctx, cancel := accountCtx()
+	defer cancel()
+	a := c.Args
+	if err := s.sessions.CheckPassword(ctx, sess.User, a.Current, a.Source); err != nil {
+		s.setAccountErr("ChangeOwnPassword", &r.Result, err)
+		return nil
+	}
+	err := s.admin.SetPassword(ctx, sess.User, a.New)
+	if errors.Is(err, auth.ErrWeak) {
+		r.Err = &appliance.Error{Code: appliance.CodeInvalid, Message: err.Error(), Details: []appliance.Detail{{Path: "new", Message: err.Error()}}}
+		return nil
+	}
+	s.setAccountErr("ChangeOwnPassword", &r.Result, err)
+	if err == nil {
+		s.sessions.EndUser(sess.User, c.Token, "the password was changed")
+		s.audit(sess.User, "changed their own password")
+	}
+	return nil
+}
+
+func (c *Client) Users() ([]auth.Account, []auth.Account, error) {
+	var r UsersReply
+	err := c.call("Users", None{}, &r)
+	return nonNil(r.Users), nonNil(r.Candidates), err
+}
+
+func (c *Client) CreateUser(a auth.NewAccount) error {
+	var r EmptyReply
+	return c.call("CreateUser", a, &r)
+}
+
+func (c *Client) SetUserRole(name, role string) error {
+	var r EmptyReply
+	return c.call("SetUserRole", UserRoleArgs{name, role}, &r)
+}
+
+func (c *Client) SetUserPassword(name, password string) error {
+	var r EmptyReply
+	return c.call("SetUserPassword", UserPasswordArgs{name, password}, &r)
+}
+
+func (c *Client) LockUser(name string, locked bool) error {
+	var r EmptyReply
+	return c.call("LockUser", UserLockArgs{name, locked}, &r)
+}
+
+func (c *Client) RemoveUser(name string) (string, error) {
+	var r NoteReply
+	err := c.call("RemoveUser", NameOnlyArgs{name}, &r)
+	return r.Note, err
+}
+
+func (c *Client) Reauth(password, source string) error {
+	var r EmptyReply
+	return c.call("Reauth", ReauthArgs{password, source}, &r)
+}
+
+func (c *Client) ChangeOwnPassword(current, new, source string) error {
+	var r EmptyReply
+	return c.call("ChangeOwnPassword", OwnPassword{current, new, source}, &r)
 }

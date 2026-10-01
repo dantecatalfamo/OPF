@@ -13,7 +13,7 @@ import { Brand } from './Brand';
 import { ApplyModal } from './ApplyModal';
 import { ConfirmModal } from './ConfirmModal';
 import { useStore } from '../model/store';
-import { useSession } from '../lib/session';
+import { useRole, useSession } from '../lib/session';
 import { offline } from '../lib/api';
 import { useNow } from '../lib/useNow';
 import type { Role } from '../lib/api';
@@ -23,6 +23,8 @@ const roleLabel: Record<Role, string> = { admin: 'admin', operator: 'operator', 
 interface NavItem {
   label: string;
   to: string;
+  /** Only for admins (and servers without accounts). */
+  admin?: boolean;
 }
 interface NavGroup {
   label: string;
@@ -58,6 +60,7 @@ const nav: NavGroup[] = [
   {
     label: 'System', icon: IconSettings, items: [
       { label: 'General', to: '/system/general' },
+      { label: 'Users', to: '/system/users', admin: true },
       { label: 'Notifications', to: '/system/notifications' },
       { label: 'Change history', to: '/system/history' },
     ],
@@ -79,6 +82,7 @@ const isActive = (path: string, to: string) => (to === '/' ? path === '/' : path
 
 function Navigation({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
+  const { canEdit } = useRole();
   return (
     <>
       {nav.map((g) =>
@@ -103,7 +107,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
             childrenOffset={30}
             fw={500}
           >
-            {g.items!.map((i) => (
+            {g.items!.filter((i) => !i.admin || canEdit).map((i) => (
               <NavLink
                 key={i.to}
                 component={Link}
@@ -156,6 +160,7 @@ export function AppLayout() {
   const [confirmOpened, setConfirmOpened] = useState(false);
   const { staged, confirming, release } = useStore();
   const { accounts, session, signOut } = useSession();
+  const { canEdit } = useRole();
   const { setColorScheme } = useMantineColorScheme();
   const scheme = useComputedColorScheme('light');
 
@@ -223,6 +228,13 @@ export function AppLayout() {
 
       <AppShell.Main>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+          {accounts && session && !canEdit && (
+            <Alert color="blue" variant="light" mb="md">
+              {session.role === 'operator'
+                ? 'You’re signed in as an operator: you can look at everything, keep or undo a change someone applied, and run tools, but not change the configuration.'
+                : 'You’re signed in read-only: you can look at everything, but not change anything.'}
+            </Alert>
+          )}
           {!accounts && !offline && (
             <Alert color="yellow" variant="light" mb="md" icon={<IconAlertTriangle size={18} />}>
               This is the development server: it has no accounts, so anyone who can reach it can change everything. It only listens on this machine.

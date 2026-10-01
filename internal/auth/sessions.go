@@ -96,6 +96,9 @@ type entry struct {
 	Session
 	pass    [32]byte // the password hash's fingerprint at sign-in
 	checked time.Time
+	// authed is when the password was last given: signing in, or
+	// asked again for a sensitive change (Reauthenticate).
+	authed time.Time
 }
 
 type backoff struct {
@@ -187,7 +190,7 @@ func (s *Sessions) login(ctx context.Context, user, password, source string) (st
 	now := s.now()
 	e := &entry{
 		Session: Session{ID: base64.RawURLEncoding.EncodeToString(id[:]), User: user, Role: role, Source: source, Created: now, LastUsed: now},
-		pass:    acct.Pass, checked: now,
+		pass:    acct.Pass, checked: now, authed: now,
 	}
 	s.mu.Lock()
 	if s.sessions == nil {
@@ -377,4 +380,90 @@ func (s *Sessions) End(id, user string, all bool) bool {
 		}
 	}
 	return false
+}
+
+// ReauthWindow is how long giving the password again lasts for
+// sensitive changes (who can sign in).
+const ReauthWindow = 5 * time.Minute
+
+// ErrReauth asks for the password again.
+var ErrReauth = errors.New("enter your password again to do this")
+
+// Reauthenticate checks the session's user's password again, for a
+// sensitive change; failures back off like signing in.
+func (s *Sessions) Reauthenticate(ctx context.Context, token, password, source string) error {
+	sess, err := s.Check(token)
+	if err != nil {
+		return err
+	}
+	if wait := s.waiting(sess.User, source, s.now()); wait > 0 {
+		return &WaitError{For: wait}
+	}
+	ok, err := s.Checker.Check(ctx, sess.User, password)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		s.failed(sess.User, source)
+		s.log(Event{Kind: "refused", User: sess.User, Source: source, Message: "wrong password asked again"})
+		return ErrBadLogin
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if e := s.sessions[tokenKey(token)]; e != nil {
+		e.authed = s.now()
+	}
+	return nil
+}
+
+// Recent says whether the token's password was given within
+// ReauthWindow.
+func (s *Sessions) Recent(token string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e := s.sessions[tokenKey(token)]
+	return e != nil && s.now().Sub(e.authed) <= ReauthWindow
+}
+
+// EndUser ends a user's sessions, but the one with keep (their own,
+// changing their password).
+func (s *Sessions) EndUser(user, keep, why string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := tokenKey(keep)
+	for key, e := range s.sessions {
+		if e.User == user && (keep == "" || key != k) {
+			delete(s.sessions, key)
+			go s.log(Event{Kind: "ended", User: e.User, Source: e.Source, Message: "session ended: " + why})
+		}
+	}
+}
+
+// CheckPassword says whether password is the user's, for changing your
+// own (which asks for the current one). It backs off like signing in.
+func (s *Sessions) CheckPassword(ctx context.Context, user, password, source string) error {
+	if wait := s.waiting(user, source, s.now()); wait > 0 {
+		return &WaitError{For: wait}
+	}
+	ok, err := s.Checker.Check(ctx, user, password)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		s.failed(user, source)
+		return ErrBadLogin
+	}
+	return nil
+}
+
+// Recheck has the user's sessions read their account again on their
+// next use: a role changed, so they get the new one straight away.
+func (s *Sessions) Recheck(user string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, e := range s.sessions {
+		if e.User == user {
+			e.checked = time.Time{}
+		}
+	}
 }

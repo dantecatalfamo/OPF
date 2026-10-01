@@ -1097,15 +1097,30 @@ Still to do:
 - [ ] No HSTS: with a self-signed certificate it would stop anyone
       clicking through the browser's warning, and so lock them out.
       Send it once the certificate is one they put there (or ACME).
-- [ ] Sign-ins go to OPF's log and the event log, not syslog's
-      authlog: the parent's pledge has no "unix" for /dev/log.
-      sendsyslog(2) is allowed under "stdio"; use it.
-- [ ] The UI shows every control to every role, and the server's 403
-      says no. Hide or disable what the role can't do, and say why.
-- [ ] A page listing your sessions (and an admin's, everyone's), with
-      ending them; the API is there.
-- [ ] **User and role management** (System › Users, admins only; the
-      design is "Managing accounts from the UI" below):
+- [x] Sign-ins and account changes go to authlog too, through
+      logger(1) on stdin (the parent's pledge has no "unix" for
+      /dev/log, and Go can't make OpenBSD's sendsyslog(2) call); -dry
+      only logs it.
+- [x] Roles in the UI: a banner says what your role can do, edits are
+      refused before they're made, Apply is disabled, and Users is only
+      in the menu for admins.
+  - [ ] Still shown to every role: each page's own buttons (Add,
+        Save, Run). They say no when used; hide or disable them.
+- [x] Sessions: an admin sees everyone's on Users, and ends them;
+      everyone sees and ends their own on General.
+- [x] **User and role management** (System › Users), built as below,
+      with re-authentication (five minutes, signing in counting) for
+      every change, and your own password on General. Tested against
+      account files (the mock, `auth.Files`); not yet with the system's
+      commands on OpenBSD:
+  - [ ] Try `auth.System` on openbsd-dev: `groupadd`, `useradd -p`,
+        `usermod -S`, `-p`, `-Z` and `-U`, and `userdel -r`, and
+        whether a locked account (`-Z`) fails `login_passwd`.
+  - [ ] `useradd -p` and `usermod -p` take the hash as an argument,
+        which any local user can see in ps for an instant. Writing
+        master.passwd through `pwd_mkdb -p` (as vipw does) would keep
+        it off the command line.
+  - The plan it followed:
   - OPF's groups don't exist until someone makes them. Create
     `_opfadmin`, `_opfoperator` and `_opfview` at install (or first
     start), and say on the sign-in page, until someone's in one, how to
@@ -1142,8 +1157,9 @@ Still to do:
   - Open: whether to keep three fixed roles, or later per-area
     permissions (DNS only, firewall read-only); and the first-run
     wizard making the first admin.
-- [ ] Re-authentication for sensitive actions, API tokens and
-      two-factor, as below.
+- [ ] Re-authentication for the other sensitive actions (disabling the
+      firewall, restoring a backup), API tokens and two-factor, as
+      below.
 
 The design: Today anyone who can
 reach the port can do anything, and a compromised web process could

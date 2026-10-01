@@ -11,7 +11,7 @@ export const offline = import.meta.env.MODE === 'preview';
 
 export type ErrorCode =
   | 'invalid' | 'conflict' | 'not_found' | 'nothing_staged' | 'commit_pending' | 'not_pending'
-  | 'modified_outside' | 'check_failed' | 'unsupported' | 'busy' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'internal';
+  | 'modified_outside' | 'check_failed' | 'unsupported' | 'busy' | 'unauthorized' | 'forbidden' | 'rate_limited' | 'reauth_required' | 'internal';
 
 export interface ErrorDetail {
   path: string;
@@ -642,6 +642,34 @@ export interface SessionInfo {
   lastUsed: string;
 }
 
+/** An account that can sign in, or could be given a role. */
+export interface Account {
+  name: string;
+  fullName: string;
+  /** Empty for an account without a role. */
+  role: Role | '';
+  locked?: boolean;
+  expired?: boolean;
+  class?: string;
+  /** It can also log in over SSH or at the console. */
+  shell: boolean;
+  /** OPF made it, so removing it deletes the account; otherwise only its role goes. */
+  created?: boolean;
+}
+
+export interface UsersResource {
+  users: Account[];
+  candidates: Account[];
+}
+
+export interface NewAccount {
+  name: string;
+  fullName: string;
+  role: Role;
+  password: string;
+  shell: boolean;
+}
+
 /** GET /api/session: whether the server has accounts, who's signed in, and the certificate's SHA-256. */
 export interface SessionResource {
   accounts: boolean;
@@ -682,6 +710,14 @@ export const api = {
   logout: () => request<void>('DELETE', '/session'),
   sessions: () => request<{ sessions: SessionInfo[] }>('GET', '/sessions'),
   endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
+  reauth: (password: string) => request<void>('POST', '/session/reauth', { password }),
+  changeOwnPassword: (current: string, next: string) => request<void>('PUT', '/session/password', { current, new: next }),
+  users: () => request<UsersResource>('GET', '/users'),
+  createUser: (a: NewAccount) => request<void>('POST', '/users', a),
+  setUserRole: (name: string, role: Role | '') => request<void>('PUT', `/users/${encodeURIComponent(name)}/role`, { role }),
+  setUserPassword: (name: string, password: string) => request<void>('PUT', `/users/${encodeURIComponent(name)}/password`, { password }),
+  lockUser: (name: string, locked: boolean) => request<void>('PUT', `/users/${encodeURIComponent(name)}/lock`, { locked }),
+  removeUser: (name: string) => request<{ note?: string }>('DELETE', `/users/${encodeURIComponent(name)}`),
   status: () => request<StatusResource>('GET', '/status'),
   live: () => request<ConfigResource>('GET', '/config'),
   /** The staged model, or null when nothing is staged. */

@@ -41,6 +41,7 @@ mock server (`opf -mock`) has no accounts unless it's started with
 | `unauthorized` | 401 | not signed in, the session ended, or the name or password is wrong |
 | `forbidden` | 403 | signed in, but the role doesn't allow it |
 | `rate_limited` | 429 | too many failed sign-ins from this name or address; the message says when to try again |
+| `reauth_required` | 403 | give your password again first (`POST /api/session/reauth`), then repeat the request |
 | `internal` | 500 | logged on the server; the message says only "internal error" |
 
 ## Signing in
@@ -73,6 +74,44 @@ Anyone in none of them can't sign in, root included.
 - `GET /api/sessions`: `{"sessions"}`, your own; an admin's,
   everyone's.
 - `DELETE /api/sessions/{id}`: ends one of yours; an admin, anyone's.
+
+- `POST /api/session/reauth` with `{"password"}`: gives your password
+  again (204). Changes to accounts need it within the last five
+  minutes, counting signing in; otherwise they answer
+  `reauth_required`.
+- `PUT /api/session/password` with `{"current", "new"}`: changes your
+  own password (anyone; at least 12 characters). Your other sessions
+  end.
+
+### Accounts
+
+Admins only. The accounts are the system's: OPF changes only
+membership of its three groups (never wheel or any other), makes and
+removes the accounts it created itself, and sets passwords and locks.
+These happen at once, not through staging; each needs the password
+given within five minutes, and goes to OPF's log, the event log
+(`login`) and authlog. Root, accounts under uid 1000 and `_`-prefixed
+ones can't be given a role; nobody can take away their own admin role,
+lock or remove themselves; and the last admin can't be demoted, locked
+or removed (`conflict`).
+
+- `GET /api/users`: `{"users", "candidates"}`, each `{"name",
+  "fullName", "role", "locked", "expired", "class", "shell",
+  "created"}`: who can sign in, and the accounts that could be given a
+  role. `shell` is whether it can also log in over SSH or at the
+  console; `created`, whether OPF made it.
+- `POST /api/users` with `{"name", "fullName", "role", "password",
+  "shell"}`: makes an account (201). The password goes to encrypt(1)
+  on stdin; only the hash is passed to useradd.
+- `PUT /api/users/{name}/role` with `{"role"}` (`admin`, `operator`,
+  `view`, or `""` for none): their sessions take the new role on their
+  next request.
+- `PUT /api/users/{name}/password` with `{"password"}`: their sessions
+  end.
+- `PUT /api/users/{name}/lock` with `{"locked"}`: locking ends their
+  sessions.
+- `DELETE /api/users/{name}`: removes an account OPF made; for one it
+  didn't, takes away its role and says so in `{"note"}`.
 
 A session ends after 30 minutes unused or 12 hours in all, when OPF
 restarts, and when its account changes: a new password, leaving the

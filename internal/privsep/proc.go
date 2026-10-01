@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
-	"github.com/dantecatalfamo/OPF/internal/auth"
 )
 
 const childEnv = "OPF_PRIVSEP_CHILD"
@@ -44,11 +43,10 @@ func IsChild() bool { return os.Getenv(childEnv) == "1" }
 
 type ParentOptions struct {
 	API *appliance.Manager
-	// Sessions are who's signed in; every call but signing in needs one.
-	Sessions *auth.Sessions
-	// TLS is the certificate the web process serves; nil serves plain
-	// HTTP, which only loopback may (cmd/opf).
-	TLS *TLSPair
+	// Accounts are who can sign in: every call but signing in needs a
+	// session. Its TLS is the certificate the web process serves; nil
+	// serves plain HTTP, which only loopback may (cmd/opf).
+	Accounts ServeOptions
 	// Listener is the socket the child serves, from ListenerFile.
 	Listener *os.File
 	// Credential is the unprivileged user the child runs as, from
@@ -69,7 +67,7 @@ func RunParent(ctx context.Context, opts ParentOptions) error {
 		if err != nil {
 			return err
 		}
-		go Serve(opts.API, opts.Sessions, opts.TLS, conn)
+		go Serve(opts.API, opts.Accounts, conn)
 		exited := make(chan error, 1)
 		go func() { exited <- cmd.Wait() }()
 

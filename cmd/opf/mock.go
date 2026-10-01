@@ -212,18 +212,33 @@ func mockAccounts(api *appliance.Manager, dir, login string) (*web.Server, error
 	if !ok || user == "" || password == "" {
 		return nil, fmt.Errorf("-mock-login is name:password, not %q", login)
 	}
+	// The accounts are files in the scratch directory, changed directly;
+	// sam is an account without a role, to give one.
 	passwd, group := filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
-	if err := os.WriteFile(passwd, []byte(user+":$2b$mock:1000:1000::0:0:Mock admin:/home/"+user+":/bin/ksh\n"), 0600); err != nil {
+	accounts := "root:*:0:0:daemon:0:0:Charlie &:/root:/bin/ksh\n" +
+		"_unbound:*:53:53::0:0:Unbound:/var/unbound:/sbin/nologin\n" +
+		user + ":" + auth.MockHash(password) + ":1000:1000::0:0:Mock admin:/home/" + user + ":/bin/ksh\n" +
+		"sam:" + auth.MockHash(password) + ":1001:1001::0:0:Sam Sample:/home/sam:/bin/ksh\n"
+	if err := os.WriteFile(passwd, []byte(accounts), 0600); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(group, []byte("_opfadmin:*:900:"+user+"\n"), 0644); err != nil {
+	if err := os.WriteFile(group, []byte("wheel:*:0:root\n_opfadmin:*:900:"+user+"\n"), 0644); err != nil {
 		return nil, err
 	}
-	sessions := auth.NewSessions(auth.Static{user: password})
+	files := &auth.Files{Passwd: passwd, Group: group}
+	admin := &auth.Admin{Passwd: passwd, Group: group, Created: filepath.Join(dir, "accounts.json"), W: files}
+	if err := admin.EnsureGroups(context.Background()); err != nil {
+		return nil, err
+	}
+	sessions := auth.NewSessions(auth.FileChecker{Passwd: passwd})
 	sessions.Passwd, sessions.Group = passwd, group
-	sessions.Log = func(e auth.Event) { recordSignIn(api, e) }
+	audit := func(warning bool, subject, msg string) {
+		log.Print(msg)
+		api.RecordEvent(appliance.Event{Kind: appliance.EventLogin, Warning: warning, Subject: subject, Message: msg})
+	}
+	sessions.Log = func(e auth.Event) { recordSignIn(audit, e) }
 	a, b := net.Pipe()
-	go privsep.Serve(api, sessions, nil, a)
+	go privsep.Serve(api, privsep.ServeOptions{Sessions: sessions, Admin: admin, Audit: audit}, a)
 	c := privsep.NewClient(b)
 	srv := web.New(c, ui.Files())
 	srv.RequireAuth(web.AuthOf(c.Login, c.WithToken), "")

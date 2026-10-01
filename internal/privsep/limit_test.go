@@ -85,7 +85,7 @@ func TestRPCRefusesOversizedRequests(t *testing.T) {
 	api := newAPI(t)
 	a, b := net.Pipe()
 	served := make(chan struct{})
-	go func() { Serve(api, testSessions(t), nil, a); close(served) }()
+	go func() { Serve(api, ServeOptions{Sessions: testSessions(t)}, a); close(served) }()
 	c := signIn(t, NewClient(b), "admin")
 	defer c.Close()
 

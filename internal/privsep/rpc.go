@@ -194,6 +194,8 @@ type (
 type Service struct {
 	api      *appliance.Manager
 	sessions *auth.Sessions
+	admin    *auth.Admin
+	auditf   func(warning bool, subject, msg string)
 	tls      *TLSPair
 	tlsGiven atomic.Bool
 	done     chan struct{} // closed when the connection ends
@@ -641,9 +643,21 @@ func (s *Service) Wait(_ None, _ *None) error {
 
 // Serve answers calls on conn until it is closed, to the sessions'
 // users.
-func Serve(api *appliance.Manager, sessions *auth.Sessions, tls *TLSPair, conn io.ReadWriteCloser) {
+// ServeOptions are who can sign in, and how.
+type ServeOptions struct {
+	Sessions *auth.Sessions
+	// Admin changes accounts; nil, they can't be.
+	Admin *auth.Admin
+	// Audit records who changed an account, in OPF's log, the event log
+	// and authlog (sign-ins come through the sessions' Log).
+	Audit func(warning bool, subject, msg string)
+	// TLS is the certificate the web process serves; nil, plain HTTP.
+	TLS *TLSPair
+}
+
+func Serve(api *appliance.Manager, o ServeOptions, conn io.ReadWriteCloser) {
 	srv := rpc.NewServer()
-	svc := &Service{api: api, sessions: sessions, tls: tls, done: make(chan struct{})}
+	svc := &Service{api: api, sessions: o.Sessions, admin: o.Admin, auditf: o.Audit, tls: o.TLS, done: make(chan struct{})}
 	if err := srv.RegisterName("OPF", svc); err != nil {
 		panic(err) // only fails if Service's method set is malformed
 	}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Accordion, Alert, Badge, Button, Code, Group, List, Loader, Modal, Stack, Tabs, Text, ThemeIcon } from '@mantine/core';
 import { IconAlertTriangle, IconFileCode } from '@tabler/icons-react';
 import { useStore, type Review } from '../model/store';
+import { useRole } from '../lib/session';
 import type { Section } from '../model/types';
 import { ApiError } from '../lib/api';
 import { sectionLabel } from '../lib/sections';
@@ -117,6 +118,7 @@ function Problem({ error, onOverwrite }: { error: unknown; onOverwrite: (paths: 
 
 export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const { changes, review, apply, discard, staged: stagedModel } = useStore();
+  const { canEdit } = useRole();
   const [staging, setStaging] = useState(false);
   const [applying, setApplying] = useState(false);
   const [staged, setStaged] = useState<Review | null>(null);
@@ -210,7 +212,7 @@ export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () =
             </Button>
             <Group gap="sm">
               <Button variant="default" onClick={onClose} disabled={applying}>Keep editing</Button>
-              <Button onClick={start} loading={applying} disabled={!staged || staging}>Apply changes</Button>
+              <Button onClick={start} loading={applying} disabled={!staged || staging || !canEdit} title={canEdit ? undefined : 'Applying changes needs an admin'}>Apply changes</Button>
             </Group>
           </Group>
         </Stack>

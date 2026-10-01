@@ -1,6 +1,13 @@
 package privsep
 
 import (
+	"net"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/dantecatalfamo/OPF/internal/auth"
 	"reflect"
 	"slices"
 	"strings"
@@ -136,5 +143,117 @@ func TestTLSGivenOnce(t *testing.T) {
 	}
 	if p, err := c.TLS(); err == nil || p != nil {
 		t.Errorf("given twice: %+v", p)
+	}
+}
+
+// accountsConn is a Service whose accounts are files, with one admin.
+func accountsConn(t *testing.T) (*Client, *auth.Sessions) {
+	t.Helper()
+	dir := t.TempDir()
+	passwd, group := filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
+	os.WriteFile(passwd, []byte("admin:"+auth.MockHash("admin-password")+":1000:1000::0:0:Admin:/home/admin:/bin/ksh\n"), 0600)
+	os.WriteFile(group, []byte("_opfadmin:*:900:admin\n_opfoperator:*:901:\n_opfview:*:902:\n"), 0644)
+	files := &auth.Files{Passwd: passwd, Group: group}
+	sessions := auth.NewSessions(auth.FileChecker{Passwd: passwd})
+	sessions.Passwd, sessions.Group, sessions.MinFail = passwd, group, 0
+	admin := &auth.Admin{Passwd: passwd, Group: group, Created: filepath.Join(dir, "created.json"), W: files}
+	a, b := net.Pipe()
+	go Serve(newAPI(t), ServeOptions{Sessions: sessions, Admin: admin}, a)
+	c := NewClient(b)
+	t.Cleanup(func() { c.Close() })
+	return c, sessions
+}
+
+func signInAs(t *testing.T, c *Client, user, password string) *Client {
+	t.Helper()
+	tok, _, err := c.Login(user, password, "192.0.2.1")
+	if err != nil {
+		t.Fatalf("signing in as %s: %v", user, err)
+	}
+	return c.WithToken(tok, true)
+}
+
+func TestAccounts(t *testing.T) {
+	conn, _ := accountsConn(t)
+	admin := signInAs(t, conn, "admin", "admin-password")
+	carol := auth.NewAccount{Name: "carol", FullName: "Carol", Role: "operator", Password: "carol's long password"}
+
+	// Signing in counts as giving the password, for five minutes.
+	if err := admin.CreateUser(carol); err != nil {
+		t.Fatal(err)
+	}
+	op := signInAs(t, conn, "carol", "carol's long password")
+	if _, _, err := op.Users(); code(err) != appliance.CodeForbidden {
+		t.Errorf("an operator listed accounts: %v", err)
+	}
+	users, _, err := admin.Users()
+	if err != nil || len(users) != 2 {
+		t.Fatalf("users %+v %v", users, err)
+	}
+
+	// The role changes on carol's next request.
+	if err := admin.SetUserRole("carol", "view"); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ := op.Session(); s == nil || s.Role != "view" {
+		t.Errorf("carol's session after the change: %+v", s)
+	}
+	// A new password ends her other sessions.
+	if err := admin.SetUserPassword("carol", "another long password"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := op.Session(); code(err) != appliance.CodeUnauthorized {
+		t.Errorf("carol's session outlived her password: %v", err)
+	}
+	// Her own password, with the current one; her session stays.
+	op = signInAs(t, conn, "carol", "another long password")
+	if err := op.ChangeOwnPassword("wrong", "a third long password", "192.0.2.1"); code(err) != appliance.CodeInvalid {
+		t.Errorf("changed with the wrong current password: %v", err)
+	}
+	time.Sleep(1100 * time.Millisecond) // past the backoff that failure started
+	if err := op.ChangeOwnPassword("another long password", "a third long password", "192.0.2.1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := op.Session(); err != nil {
+		t.Errorf("her own session ended: %v", err)
+	}
+
+	// The last admin stays one.
+	if err := admin.SetUserRole("admin", ""); code(err) != appliance.CodeConflict {
+		t.Errorf("the last admin took away their own role: %v", err)
+	}
+	if note, err := admin.RemoveUser("carol"); err != nil || note != "" {
+		t.Errorf("removing carol: %q %v", note, err)
+	}
+}
+
+func TestAccountsAskForThePasswordAgain(t *testing.T) {
+	conn, sessions := accountsConn(t)
+	var mu sync.Mutex
+	now := time.Now()
+	sessions.Now = func() time.Time { mu.Lock(); defer mu.Unlock(); return now }
+	admin := signInAs(t, conn, "admin", "admin-password")
+	later := func(d time.Duration) { mu.Lock(); now = now.Add(d); mu.Unlock() }
+
+	if err := admin.SetUserRole("admin", "admin"); err != nil {
+		t.Fatalf("straight after signing in: %v", err)
+	}
+	later(6 * time.Minute)
+	if err := admin.SetUserRole("admin", "admin"); code(err) != appliance.CodeReauth {
+		t.Fatalf("six minutes on: %v", err)
+	}
+	// Looking doesn't need it.
+	if _, _, err := admin.Users(); err != nil {
+		t.Errorf("listing: %v", err)
+	}
+	if err := admin.Reauth("wrong", "192.0.2.1"); code(err) != appliance.CodeInvalid {
+		t.Errorf("the wrong password: %v", err)
+	}
+	later(2 * time.Second) // past the backoff
+	if err := admin.Reauth("admin-password", "192.0.2.1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := admin.SetUserRole("admin", "admin"); err != nil {
+		t.Errorf("after giving it again: %v", err)
 	}
 }

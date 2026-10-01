@@ -431,6 +431,7 @@ const (
 	CodeUnauthorized    Code = "unauthorized"     // not signed in, or the name or password is wrong
 	CodeForbidden       Code = "forbidden"        // signed in, but the role doesn't allow it
 	CodeRateLimited     Code = "rate_limited"     // too many failed sign-ins; try again later
+	CodeReauth          Code = "reauth_required"  // give your password again to do this
 	CodeInternal        Code = "internal"
 )
 

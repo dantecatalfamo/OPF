@@ -26,7 +26,7 @@ func newAuthServer(t *testing.T) *Server {
 	sessions := auth.NewSessions(auth.Static{"admin": "admin-pass", "viewer": "viewer-pass"})
 	sessions.Passwd, sessions.Group, sessions.MinFail = filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group"), 0
 	a, b := net.Pipe()
-	go privsep.Serve(newManager(t), sessions, nil, a)
+	go privsep.Serve(newManager(t), privsep.ServeOptions{Sessions: sessions}, a)
 	c := privsep.NewClient(b)
 	t.Cleanup(func() { c.Close() })
 	s := New(c, nil)

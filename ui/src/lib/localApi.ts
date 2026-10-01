@@ -10,7 +10,7 @@ import { unifiedDiff } from './diff';
 import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleSystemLog, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
-  ApiError, type SessionInfo, type SessionResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
+  ApiError, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
   type DnsBlockedResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
@@ -120,6 +120,14 @@ export const localApi = {
   logout: async (): Promise<void> => {},
   sessions: async (): Promise<{ sessions: SessionInfo[] }> => ({ sessions: [] }),
   endSession: async (): Promise<void> => {},
+  reauth: async (): Promise<void> => {},
+  changeOwnPassword: async (): Promise<void> => {},
+  users: async (): Promise<UsersResource> => ({ users: [], candidates: [] }),
+  createUser: async (): Promise<void> => {},
+  setUserRole: async (): Promise<void> => {},
+  setUserPassword: async (): Promise<void> => {},
+  lockUser: async (): Promise<void> => {},
+  removeUser: async (): Promise<{ note?: string }> => ({}),
   pfRuleset: async (model: Model) => generate<PfLine[]>('ruleset', { model }),
   pfDerived: async (model: Model) => generate<Derived>('derived', { model }),
   pfRender: async (model: Model, target: RenderTarget) => generate<Rendered>('render', { model, ...target }),

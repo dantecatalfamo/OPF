@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
-import { Button, Card, Code, Grid, Group, List, Select, Stack, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, Table, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
@@ -7,7 +8,8 @@ import { refreshLive, useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { GraphSettings } from './GraphSettings';
 import { useSession } from '../lib/session';
-import type { Role } from '../lib/api';
+import { ApiError, type Role, type SessionInfo } from '../lib/api';
+import { SessionRow } from './Users';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -67,20 +69,77 @@ function Updates() {
 // changed with passwd(1) on the firewall.
 function Account() {
   const { accounts, session, signOut } = useSession();
+  const [changing, setChanging] = useState(false);
+  const [mine, setMine] = useState<SessionInfo[]>([]);
+  const load = () => { if (accounts) backend.sessions().then((r) => setMine(r.sessions.filter((s) => s.user === session?.user)), () => {}); };
+  useEffect(load, [accounts, session?.user]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Card>
       <SectionTitle right={accounts && <Button size="xs" variant="default" onClick={signOut}>Sign out</Button>}>Your account</SectionTitle>
       {accounts && session ? (
-        <Stack gap={6}>
+        <Stack gap="sm">
           <Text size="sm">Signed in as <b>{session.user}</b>, {roleAbout[session.role]}.</Text>
           <Text size="sm" c="dimmed">
-            A session ends after 30 minutes without use, or 12 hours in all, and when your password or groups change. Your password is this OpenBSD account’s: change it with <Code>passwd</Code> on the firewall.
+            A session ends after 30 minutes without use, or 12 hours in all, and when your password or groups change. Your password is this OpenBSD account’s.
           </Text>
+          <Group justify="flex-end"><Button size="xs" variant="default" onClick={() => setChanging(true)}>Change your password</Button></Group>
+          {mine.length > 1 && (
+            <>
+              <Text size="sm" fw={500}>Your sessions</Text>
+              <Table verticalSpacing={4}>
+                <Table.Tbody>
+                  {mine.map((s) => <SessionRow key={s.id} s={s} mine={s.id === session.id} onEnd={() => backend.endSession(s.id).then(load, load)} />)}
+                </Table.Tbody>
+              </Table>
+            </>
+          )}
+          <OwnPassword opened={changing} onClose={() => setChanging(false)} />
         </Stack>
       ) : (
         <Text size="sm" c="dimmed">This server has no accounts: it’s the development server, and anyone who can reach it can change everything.</Text>
       )}
     </Card>
+  );
+}
+
+function OwnPassword({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const [v, setV] = useState({ current: '', next: '', again: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (opened) { setV({ current: '', next: '', again: '' }); setErrors({}); } }, [opened]);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (v.next.length < 12) errs.new = 'At least 12 characters';
+    if (v.again !== v.next) errs.again = 'The passwords don’t match';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    setBusy(true);
+    try {
+      await backend.changeOwnPassword(v.current, v.next);
+      notifications.show({ color: 'teal', message: 'Password changed. Your other sessions ended.' });
+      onClose();
+    } catch (err) {
+      setErrors(err instanceof ApiError && err.details.length ? Object.fromEntries(err.details.map((d) => [d.path, d.message ?? ""])) : { current: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Change your password</Text>}>
+      <form onSubmit={submit}>
+        <Stack>
+          <PasswordInput label="Current password" autoComplete="current-password" data-autofocus value={v.current} onChange={(e) => setV({ ...v, current: e.currentTarget.value })} error={errors.current} />
+          <PasswordInput label="New password" autoComplete="new-password" value={v.next} onChange={(e) => setV({ ...v, next: e.currentTarget.value })} error={errors.new} />
+          <PasswordInput label="Again" autoComplete="new-password" value={v.again} onChange={(e) => setV({ ...v, again: e.currentTarget.value })} error={errors.again} />
+          <Text size="xs" c="dimmed">It’s also your password for SSH and the console, if your account has those.</Text>
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={busy}>Change it</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
   );
 }
 

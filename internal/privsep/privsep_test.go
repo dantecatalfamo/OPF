@@ -130,7 +130,7 @@ func testSessions(t *testing.T) *auth.Sessions {
 func newConn(t *testing.T, api *appliance.Manager) *Client {
 	t.Helper()
 	a, b := net.Pipe()
-	go Serve(api, testSessions(t), &TLSPair{Cert: []byte("cert"), Key: []byte("key")}, a)
+	go Serve(api, ServeOptions{Sessions: testSessions(t), TLS: &TLSPair{Cert: []byte("cert"), Key: []byte("key")}}, a)
 	c := NewClient(b)
 	t.Cleanup(func() { c.Close() })
 	return c
@@ -261,7 +261,7 @@ func TestRPCInternalErrorsAreSanitized(t *testing.T) {
 func TestWaitReturnsWhenParentGoesAway(t *testing.T) {
 	api := newAPI(t)
 	a, b := net.Pipe()
-	go Serve(api, testSessions(t), nil, a)
+	go Serve(api, ServeOptions{Sessions: testSessions(t)}, a)
 	c := NewClient(b)
 	done := make(chan error)
 	go func() { done <- c.Wait() }()
@@ -290,7 +290,7 @@ func TestParentRunsAndRestartsChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	go func() {
-		stopped <- RunParent(ctx, ParentOptions{API: api, Sessions: testSessions(t), Listener: lf, Executable: exe})
+		stopped <- RunParent(ctx, ParentOptions{API: api, Accounts: ServeOptions{Sessions: testSessions(t)}, Listener: lf, Executable: exe})
 	}()
 
 	base := "http://" + ln.Addr().String()

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 )
 
 // Signing in. The privileged process checks passwords and keeps the
@@ -21,6 +22,14 @@ import (
 //	DELETE /api/session         sign out
 //	GET    /api/sessions        your sessions; an admin's, everyone's
 //	DELETE /api/sessions/{id}   end one
+//	POST   /api/session/reauth    give your password again: {"password"}
+//	PUT    /api/session/password  change yours: {"current", "new"}
+//	GET    /api/users             who can sign in, and who could (admins)
+//	POST   /api/users             make an account: {"name", "fullName", "role", "password", "shell"}
+//	PUT    /api/users/{name}/role      {"role"}: admin, operator, view, or "" for none
+//	PUT    /api/users/{name}/password  {"password"}
+//	PUT    /api/users/{name}/lock      {"locked"}
+//	DELETE /api/users/{name}      remove it, or if OPF didn't make it, its role
 
 // Auth signs people in, and makes callers acting as them.
 type Auth interface {
@@ -38,6 +47,15 @@ type Caller interface {
 	Sessions() ([]appliance.Session, error)
 	EndSession(id string) error
 	Logout() error
+	Reauth(password, source string) error
+	ChangeOwnPassword(current, new, source string) error
+	// Accounts, for admins.
+	Users() (members, candidates []auth.Account, err error)
+	CreateUser(auth.NewAccount) error
+	SetUserRole(name, role string) error
+	SetUserPassword(name, password string) error
+	LockUser(name string, locked bool) error
+	RemoveUser(name string) (note string, err error)
 }
 
 // The session cookie: only over HTTPS (or to localhost), never to
@@ -207,3 +225,148 @@ func (a authFuncs[C]) Login(user, password, source string) (string, *appliance.S
 }
 
 func (a authFuncs[C]) As(token string, active bool) Caller { return a.as(token, active) }
+
+// caller is the request's Caller, or answers that there are no
+// accounts.
+func (s *Server) caller(w http.ResponseWriter, r *http.Request) (Caller, bool) {
+	c, ok := r.Context().Value(callerKey{}).(Caller)
+	if !ok {
+		writeError(w, http.StatusNotFound, &appliance.Error{Code: appliance.CodeUnsupported, Message: "this server has no accounts"})
+	}
+	return c, ok
+}
+
+func source(r *http.Request) string {
+	if h, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return h
+	}
+	return r.RemoteAddr
+}
+
+func (s *Server) reauth(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req struct {
+		Password string `json:"password"`
+	}
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.Reauth(req.Password, source(r)); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) ownPassword(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req struct {
+		Current string `json:"current"`
+		New     string `json:"new"`
+	}
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.ChangeOwnPassword(req.Current, req.New, source(r)); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type usersBody struct {
+	Users      []auth.Account `json:"users"`
+	Candidates []auth.Account `json:"candidates"`
+}
+
+func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	if !ok {
+		return
+	}
+	m, cands, err := c.Users()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if m == nil {
+		m = []auth.Account{}
+	}
+	if cands == nil {
+		cands = []auth.Account{}
+	}
+	writeJSON(w, http.StatusOK, usersBody{m, cands})
+}
+
+func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req auth.NewAccount
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.CreateUser(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *Server) setUserRole(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req struct {
+		Role string `json:"role"`
+	}
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.SetUserRole(r.PathValue("name"), req.Role); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) setUserPassword(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req struct {
+		Password string `json:"password"`
+	}
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.SetUserPassword(r.PathValue("name"), req.Password); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) lockUser(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	var req struct {
+		Locked bool `json:"locked"`
+	}
+	if !ok || !decode(w, r, &req) {
+		return
+	}
+	if err := c.LockUser(r.PathValue("name"), req.Locked); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) removeUser(w http.ResponseWriter, r *http.Request) {
+	c, ok := s.caller(w, r)
+	if !ok {
+		return
+	}
+	note, err := c.RemoveUser(r.PathValue("name"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Note string `json:"note,omitempty"`
+	}{note})
+}

@@ -116,9 +116,18 @@ func main() {
 	api.Actions = runner // dry-run with -dry
 	leasesFile := filepath.Join(*root, leases.Path)
 
-	// Who can sign in: the system's accounts in OPF's groups.
+	// Who can sign in: the system's accounts in OPF's groups, which are
+	// made on first start.
 	sessions := auth.NewSessions(auth.SystemBSDAuth)
-	sessions.Log = func(e auth.Event) { recordSignIn(api, e) }
+	audit := auditor(api, *dry)
+	sessions.Log = func(e auth.Event) { recordSignIn(audit, e) }
+	admin := &auth.Admin{Passwd: "/etc/master.passwd", Group: "/etc/group", Created: filepath.Join(*stateDir, "accounts.json"),
+		W: auth.System{Runner: runner, Feeder: run.Exec{}}}
+	gctx, gcancel := context.WithTimeout(context.Background(), time.Minute)
+	if err := admin.EnsureGroups(gctx); err != nil {
+		log.Printf("OPF's groups: %v", err)
+	}
+	gcancel()
 	var tlsPair *privsep.TLSPair
 	if useTLS {
 		tlsPair, err = certificate(api, *stateDir, *listen)
@@ -179,8 +188,7 @@ func main() {
 	log.Printf("listening on %s://%s", scheme, ln.Addr())
 	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
 		API:        api,
-		Sessions:   sessions,
-		TLS:        tlsPair,
+		Accounts:   privsep.ServeOptions{Sessions: sessions, Admin: admin, Audit: audit, TLS: tlsPair},
 		Listener:   lf,
 		Credential: cred,
 		Executable: exe,
@@ -337,22 +345,41 @@ func certificate(api *appliance.Manager, stateDir, listen string) (*privsep.TLSP
 	return &privsep.TLSPair{Cert: cert, Key: key}, nil
 }
 
-// recordSignIn puts a sign-in, refusal or sign-out in the event log,
-// and in OPF's own log.
-func recordSignIn(api *appliance.Manager, e auth.Event) {
-	msg := ""
-	warning := false
+// auditor records sign-ins and changes to accounts: in OPF's log, the
+// event log, and syslog's authlog through logger(1), which -dry only
+// logs.
+func auditor(api *appliance.Manager, dry bool) func(warning bool, subject, msg string) {
+	return func(warning bool, subject, msg string) {
+		log.Print(msg)
+		api.RecordEvent(appliance.Event{Kind: appliance.EventLogin, Warning: warning, Subject: subject, Message: msg})
+		line := strings.Map(func(r rune) rune {
+			if r < 0x20 || r == 0x7f {
+				return '?'
+			}
+			return r
+		}, msg)
+		if dry {
+			log.Printf("dry-run: logger -p auth.notice -t opf %q", line)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if out, err := (run.Exec{}).RunInput(ctx, []byte(line+"\n"), []string{}, "logger", "-p", "auth.notice", "-t", "opf"); err != nil {
+			log.Printf("logger: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+	}
+}
+
+// recordSignIn records a sign-in, refusal or sign-out.
+func recordSignIn(audit func(warning bool, subject, msg string), e auth.Event) {
 	switch e.Kind {
 	case "login":
-		msg = fmt.Sprintf("%s %s, from %s", e.User, e.Message, e.Source)
+		audit(false, e.User, fmt.Sprintf("%s %s, from %s", e.User, e.Message, e.Source))
 	case "refused":
-		msg = fmt.Sprintf("Refused signing in as %q from %s: %s", e.User, e.Source, e.Message)
-		warning = true
+		audit(true, e.User, fmt.Sprintf("Refused signing in as %q from %s: %s", e.User, e.Source, e.Message))
 	case "logout":
-		msg = fmt.Sprintf("%s signed out", e.User)
+		audit(false, e.User, fmt.Sprintf("%s signed out", e.User))
 	default:
-		msg = fmt.Sprintf("%s's %s", e.User, e.Message)
+		audit(false, e.User, fmt.Sprintf("%s's %s", e.User, e.Message))
 	}
-	log.Print(msg)
-	api.RecordEvent(appliance.Event{Kind: appliance.EventLogin, Warning: warning, Subject: e.User, Message: msg})
 }

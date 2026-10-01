@@ -15,6 +15,7 @@ import { Dhcp } from './pages/Dhcp';
 import { Dns } from './pages/Dns';
 import { WireGuardPage } from './pages/WireGuard';
 import { SystemGeneral } from './pages/SystemGeneral';
+import { Users } from './pages/Users';
 import { History } from './pages/History';
 import { Connections } from './pages/Connections';
 import { Tools } from './pages/Tools';
@@ -65,6 +66,7 @@ function AppRoutes() {
         <Route path="services/wireguard" element={<WireGuardPage />} />
         <Route path="services/wireguard/:tunnel" element={<WireGuardPage />} />
         <Route path="system/general" element={<SystemGeneral />} />
+        <Route path="system/users" element={<Users />} />
         <Route path="system/history" element={<History />} />
         <Route path="system/notifications" element={<Notifications />} />
         <Route path="diagnostics/graphs" element={<Graphs />} />

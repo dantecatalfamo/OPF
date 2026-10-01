@@ -10,6 +10,7 @@ import type { Change, HistoryEntry, Model, Section } from './types';
 import { sectionLabel } from '../lib/sections';
 import { api, offline, type ChangeNote, type CommitResource, type FileChange } from '../lib/api';
 import { localApi } from '../lib/localApi';
+import { useRole } from '../lib/session';
 
 // The server, or the preview build's in-browser stand-in.
 export const backend = offline ? localApi : api;
@@ -118,6 +119,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [release, setRelease] = useState<string>();
   const confirmingRef = useRef(confirming);
   confirmingRef.current = confirming;
+  const { canEdit } = useRole();
+  const canEditRef = useRef(canEdit);
+  canEditRef.current = canEdit;
   // The latest models, for edits made before the next render.
   const stagedRef = useRef(staged);
   stagedRef.current = staged;
@@ -176,6 +180,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [log, pendingSections]);
 
   const edit = useCallback((section: Section, summary: string, fn: (m: Model) => Model) => {
+    if (!canEditRef.current) {
+      notifications.show({
+        color: 'gray',
+        title: 'Read-only',
+        message: 'Your role can look, but changing the configuration needs an admin (_opfadmin).',
+      });
+      return;
+    }
     if (confirmingRef.current) {
       notifications.show({
         color: 'yellow',

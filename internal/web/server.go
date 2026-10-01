@@ -84,6 +84,14 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("DELETE /api/session", s.logout)
 	s.mux.HandleFunc("GET /api/sessions", s.listSessions)
 	s.mux.HandleFunc("DELETE /api/sessions/{id}", s.endSession)
+	s.mux.HandleFunc("POST /api/session/reauth", s.reauth)
+	s.mux.HandleFunc("PUT /api/session/password", s.ownPassword)
+	s.mux.HandleFunc("GET /api/users", s.listUsers)
+	s.mux.HandleFunc("POST /api/users", s.createUser)
+	s.mux.HandleFunc("PUT /api/users/{name}/role", s.setUserRole)
+	s.mux.HandleFunc("PUT /api/users/{name}/password", s.setUserPassword)
+	s.mux.HandleFunc("PUT /api/users/{name}/lock", s.lockUser)
+	s.mux.HandleFunc("DELETE /api/users/{name}", s.removeUser)
 	s.mux.HandleFunc("GET /api/status", s.status)
 	s.mux.HandleFunc("GET /api/config", s.getLive)
 	s.mux.HandleFunc("GET /api/config/staged", s.getStaged)
@@ -259,7 +267,7 @@ func statusFor(c appliance.Code) int {
 		return http.StatusTooManyRequests
 	case appliance.CodeUnauthorized:
 		return http.StatusUnauthorized
-	case appliance.CodeForbidden:
+	case appliance.CodeForbidden, appliance.CodeReauth:
 		return http.StatusForbidden
 	}
 	return http.StatusInternalServerError
