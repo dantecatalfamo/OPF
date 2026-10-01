@@ -66,7 +66,6 @@ func TestLoginRoles(t *testing.T) {
 		{"alice", "a-pass", RoleAdmin},
 		{"bob", "b-pass", RoleOperator},
 		{"carol", "c-pass", RoleOperator}, // in two: the more powerful
-		{"dave", "d-pass", RoleAdmin},     // by his primary group
 	} {
 		tok, s, err := f.login(c.user, c.pass)
 		if err != nil || s.Role != c.role || len(tok) < 40 {
@@ -84,6 +83,7 @@ func TestLoginRefused(t *testing.T) {
 	for _, c := range [][2]string{
 		{"alice", "wrong"},
 		{"root", "r-pass"}, // root, but in none of the groups
+		{"dave", "d-pass"}, // _opfadmin's id as his primary group, but not listed in it
 		{"erin", "e-pass"}, // a password, but no account
 		{"nobody", "x"},
 	} {
@@ -98,7 +98,7 @@ func TestLoginRefused(t *testing.T) {
 			t.Errorf("event %+v", e)
 		}
 	}
-	if !strings.Contains(f.events[1].Message, "not in") {
+	if !strings.Contains(f.events[1].Message, "not in") || !strings.Contains(f.events[2].Message, "not in") {
 		t.Errorf("root's refusal: %+v", f.events[1])
 	}
 }

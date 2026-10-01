@@ -21,6 +21,7 @@ func newAdmin(t *testing.T) *adminFixture {
 	os.WriteFile(passwd, []byte(strings.Join([]string{
 		"root:$2b$r:0:0:daemon:0:0:Charlie &:/root:/bin/ksh",
 		"_unbound:*:53:53::0:0:Unbound:/var/unbound:/sbin/nologin",
+		"nobody:*:32767:32767::0:0:Unprivileged user:/nonexistent:/sbin/nologin",
 		"alice:" + MockHash("alice-password") + ":1000:1000::0:0:Alice:/home/alice:/bin/ksh",
 		"bob:" + MockHash("bob-password!") + ":1001:1001::0:0:Bob:/home/bob:/bin/ksh",
 	}, "\n")+"\n"), 0600)
@@ -92,7 +93,8 @@ func TestAdminRoles(t *testing.T) {
 		{"the last admin, by someone else", ErrLastAdmin, func() error { return f.a.SetRole(ctx, "alice", "", "bob") }},
 		{"locking the last admin", ErrLastAdmin, func() error { return f.a.Lock(ctx, "alice", true, "bob") }},
 		{"an unknown role", ErrBadRole, func() error { return f.a.SetRole(ctx, "bob", "root", "alice") }},
-		{"no such account", ErrNoAccount, func() error { return f.a.SetRole(ctx, "nobody", "view", "alice") }},
+		{"nobody", ErrSystem, func() error { return f.a.SetRole(ctx, "nobody", "view", "alice") }},
+		{"no such account", ErrNoAccount, func() error { return f.a.SetRole(ctx, "nosuchuser", "view", "alice") }},
 	} {
 		if err := c.do(); !errors.Is(err, c.err) {
 			t.Errorf("%s: %v, want %v", c.name, err, c.err)
@@ -173,3 +175,76 @@ func TestAdminCreate(t *testing.T) {
 }
 
 func must(b []byte, _ error) []byte { return b }
+
+// A group OPF makes never takes an id an account has as its primary
+// group: on openbsd-dev an account left with the id of a deleted group
+// became an admin when _opfadmin was given that id.
+func TestGroupIDs(t *testing.T) {
+	dir := t.TempDir()
+	passwd, group := filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
+	os.WriteFile(passwd, []byte("orphan:*:1002:999::0:0:Orphan:/home/orphan:/bin/ksh\nother:*:1003:998::0:0:Other:/home/other:/bin/ksh\n"), 0600)
+	os.WriteFile(group, []byte("staff:*:997:\n"), 0644)
+	a := &Admin{Passwd: passwd, Group: group, Created: filepath.Join(dir, "c.json"), W: &Files{Passwd: passwd, Group: group}}
+	if err := a.EnsureGroups(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	g := string(must(os.ReadFile(group)))
+	for _, bad := range []string{":999:", ":998:"} {
+		if strings.Contains(g, bad) {
+			t.Errorf("a group took a primary group's id %s:\n%s", bad, g)
+		}
+	}
+	if !strings.Contains(g, "_opfadmin:*:996:") || !strings.Contains(g, "_opfoperator:*:995:") || !strings.Contains(g, "_opfview:*:994:") {
+		t.Errorf("groups:\n%s", g)
+	}
+	// And a primary id alone is no role.
+	if members, _, _ := a.List(); len(members) != 0 {
+		t.Errorf("members %+v", members)
+	}
+}
+
+// Removing an account OPF made removes its own group too.
+func TestRemoveOwnGroup(t *testing.T) {
+	f := newAdmin(t)
+	ctx := context.Background()
+	f.a.SetRole(ctx, "alice", "admin", "console")
+	if err := f.a.Create(ctx, NewAccount{Name: "carol", Role: "view", Password: "carol long password"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(must(os.ReadFile(f.files.Group))), "carol:*:") {
+		t.Fatal("no group of carol's own")
+	}
+	if err := f.a.Remove(ctx, "carol", "alice"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(must(os.ReadFile(f.files.Group))), "carol") {
+		t.Errorf("carol is still in group:\n%s", must(os.ReadFile(f.files.Group)))
+	}
+}
+
+// How a locked account and one without a password look, as on 7.9.
+func TestLockedAndNoPassword(t *testing.T) {
+	dir := t.TempDir()
+	passwd, group := filepath.Join(dir, "master.passwd"), filepath.Join(dir, "group")
+	os.WriteFile(passwd, []byte(strings.Join([]string{
+		"locked:*$2b$10$x:1000:1000::0:0::/home/locked:/sbin/nologin-",
+		"keyonly:*************:1001:1001::0:0::/home/keyonly:/bin/ksh",
+		"plain:$2b$10$y:1002:1002::0:0::/home/plain:/bin/ksh",
+	}, "\n")+"\n"), 0600)
+	os.WriteFile(group, []byte("_opfview:*:997:locked,keyonly,plain\n"), 0644)
+	a := &Admin{Passwd: passwd, Group: group, Created: filepath.Join(dir, "c.json")}
+	members, _, _ := a.List()
+	got := map[string]Account{}
+	for _, m := range members {
+		got[m.Name] = m
+	}
+	if l := got["locked"]; !l.Locked || l.NoPassword || l.Shell {
+		t.Errorf("locked %+v", l)
+	}
+	if k := got["keyonly"]; k.Locked || !k.NoPassword || !k.Shell {
+		t.Errorf("keyonly %+v", k)
+	}
+	if p := got["plain"]; p.Locked || p.NoPassword || !p.Shell {
+		t.Errorf("plain %+v", p)
+	}
+}

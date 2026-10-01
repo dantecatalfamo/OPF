@@ -54,9 +54,12 @@ func lookupUser(path, name string) (*account, error) {
 	return nil, sc.Err()
 }
 
-// groups are /etc/group's members of each group, primary members
-// included: a group's gid matching a user's own.
-func groupMembers(path string, names []string, user string, gid int) ([]string, error) {
+// groupMembers is which of the groups in names /etc/group lists user
+// in. Only being listed counts, not a primary group whose id matches:
+// a group made later can be given an id an account was left with when
+// its own group was deleted, and that mustn't make the account an
+// admin (seen on openbsd-dev).
+func groupMembers(path string, names []string, user string, _ int) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -69,8 +72,7 @@ func groupMembers(path string, names []string, user string, gid int) ([]string, 
 		if len(fs) != 4 || !slices.Contains(names, fs[0]) {
 			continue
 		}
-		g, err := strconv.Atoi(fs[2])
-		if err == nil && g == gid || slices.Contains(strings.Split(fs[3], ","), user) {
+		if slices.Contains(strings.Split(fs[3], ","), user) {
 			in = append(in, fs[0])
 		}
 	}

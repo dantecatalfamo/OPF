@@ -649,6 +649,8 @@ export interface Account {
   /** Empty for an account without a role. */
   role: Role | '';
   locked?: boolean;
+  /** It has no password to sign in with (a key-only account): set one first. */
+  noPassword?: boolean;
   expired?: boolean;
   class?: string;
   /** It can also log in over SSH or at the console. */

@@ -95,6 +95,7 @@ export function Users() {
                         <Mono>{u.name}</Mono>
                         {u.name === me && <Badge size="xs" variant="light">you</Badge>}
                         {u.locked && <Badge size="xs" color="red" variant="light">locked</Badge>}
+                        {u.noPassword && <Badge size="xs" color="gray" variant="light">no password</Badge>}
                         {u.expired && <Badge size="xs" color="yellow" variant="light">expired</Badge>}
                       </Group>
                       {u.fullName && <Text size="xs" c="dimmed">{u.fullName}</Text>}

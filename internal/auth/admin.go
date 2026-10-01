@@ -32,8 +32,10 @@ type Account struct {
 	FullName string `json:"fullName"`
 	Role     string `json:"role"` // admin, operator, view, or "" for none
 	Locked   bool   `json:"locked,omitempty"`
-	Expired  bool   `json:"expired,omitempty"`
-	Class    string `json:"class,omitempty"`
+	// NoPassword: it has none to sign in with (a key-only account).
+	NoPassword bool   `json:"noPassword,omitempty"`
+	Expired    bool   `json:"expired,omitempty"`
+	Class      string `json:"class,omitempty"`
 	// Shell: it can also log in over SSH or at the console.
 	Shell bool `json:"shell"`
 	// Created by OPF, so removing it removes the account; otherwise only
@@ -53,7 +55,8 @@ type NewAccount struct {
 // Writer makes the changes: the system's commands (System), or editing
 // the files themselves (Files, for the mock server and tests).
 type Writer interface {
-	EnsureGroup(ctx context.Context, name string) error
+	EnsureGroup(ctx context.Context, name string, gid int) error
+	RemoveGroup(ctx context.Context, name string) error
 	AddUser(ctx context.Context, name, fullName, shell, hash string, groups []string) error
 	SetGroups(ctx context.Context, name string, groups []string) error
 	SetHash(ctx context.Context, name, hash string) error
@@ -183,7 +186,8 @@ func groupsOf(path string) (map[string][]string, map[string]bool, error) {
 // eligible is an account a role can be given: not root, not a system
 // account.
 func eligible(e pwEntry) bool {
-	return e.uid >= 1000 && e.name != "root" && !strings.HasPrefix(e.name, "_") && e.uid < 60000
+	// nobody is 32767, and the ids above it are for special uses.
+	return e.uid >= 1000 && e.uid < 32767 && e.name != "root" && e.name != "nobody" && !strings.HasPrefix(e.name, "_")
 }
 
 func (a *Admin) created() map[string]bool {
@@ -231,30 +235,25 @@ func (a *Admin) List() (members, candidates []Account, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	gids := map[int]string{}
-	if f, err := os.ReadFile(a.Group); err == nil {
-		for _, l := range strings.Split(string(f), "\n") {
-			fs := strings.Split(l, ":")
-			if len(fs) == 4 {
-				if g, err := strconv.Atoi(fs[2]); err == nil {
-					gids[g] = fs[0]
-				}
-			}
-		}
-	}
 	made := a.created()
 	now := time.Now().Unix()
 	for _, u := range users {
 		role := RoleNone
-		for _, g := range append(slices.Clone(groups[u.name]), gids[u.gid]) {
+		// Only being listed in a group counts (groupMembers).
+		for _, g := range groups[u.name] {
 			role = max(role, Groups[g])
 		}
+		// usermod -Z puts * before the hash and - after the shell. A
+		// hash that's only stars is no password at all.
+		noPass := strings.Trim(u.hash, "*") == ""
+		shell := strings.TrimSuffix(u.shell, "-")
 		acct := Account{
 			Name: u.name, FullName: u.gecos, Class: u.class,
-			Locked:  strings.HasPrefix(u.hash, "*") || strings.HasPrefix(u.shell, "-"),
-			Expired: u.expire != 0 && now >= u.expire,
-			Shell:   !strings.HasSuffix(u.shell, "nologin"),
-			Created: made[u.name],
+			Locked:     !noPass && strings.HasPrefix(u.hash, "*") || strings.HasSuffix(u.shell, "-"),
+			NoPassword: noPass,
+			Expired:    u.expire != 0 && now >= u.expire,
+			Shell:      shell != "" && !strings.HasSuffix(shell, "nologin") && !strings.HasSuffix(shell, "false"),
+			Created:    made[u.name],
 		}
 		if role != RoleNone {
 			acct.Role = role.String()
@@ -270,18 +269,54 @@ func (a *Admin) List() (members, candidates []Account, err error) {
 func (a *Admin) EnsureGroups(ctx context.Context) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	_, exists, err := groupsOf(a.Group)
-	if err != nil {
-		return err
-	}
 	for _, g := range []string{"_opfadmin", "_opfoperator", "_opfview"} {
-		if !exists[g] {
-			if err := a.W.EnsureGroup(ctx, g); err != nil {
-				return fmt.Errorf("making group %s: %w", g, err)
-			}
+		_, exists, err := groupsOf(a.Group)
+		if err != nil {
+			return err
+		}
+		if exists[g] {
+			continue
+		}
+		gid, err := a.freeGID()
+		if err != nil {
+			return err
+		}
+		if err := a.W.EnsureGroup(ctx, g, gid); err != nil {
+			return fmt.Errorf("making group %s: %w", g, err)
 		}
 	}
 	return nil
+}
+
+// freeGID is a group id for a system group, from 999 down, that no
+// group has and no account has as its primary group: a group given an
+// id an account was left with would hold that account.
+func (a *Admin) freeGID() (int, error) {
+	used := map[int]bool{}
+	users, err := readPasswd(a.Passwd)
+	if err != nil {
+		return 0, err
+	}
+	for _, u := range users {
+		used[u.gid] = true
+	}
+	data, err := os.ReadFile(a.Group)
+	if err != nil {
+		return 0, err
+	}
+	for _, l := range strings.Split(string(data), "\n") {
+		if fs := strings.Split(l, ":"); len(fs) == 4 {
+			if g, err := strconv.Atoi(fs[2]); err == nil {
+				used[g] = true
+			}
+		}
+	}
+	for g := 999; g >= 500; g-- {
+		if !used[g] {
+			return g, nil
+		}
+	}
+	return 0, errors.New("no free group id from 500 to 999")
 }
 
 func (a *Admin) find(name string) (*pwEntry, []string, error) {
@@ -467,7 +502,28 @@ func (a *Admin) Remove(ctx context.Context, name, by string) error {
 	if err := a.W.Remove(ctx, name); err != nil {
 		return err
 	}
+	// useradd made it a group of its own, which userdel leaves.
+	if g, ok := a.ownGroup(name, u.gid); ok {
+		if err := a.W.RemoveGroup(ctx, g); err != nil {
+			return err
+		}
+	}
 	return a.setCreated(name, false)
+}
+
+// ownGroup is the group named for an account, with its id and no
+// members: the one useradd made for it.
+func (a *Admin) ownGroup(name string, gid int) (string, bool) {
+	data, err := os.ReadFile(a.Group)
+	if err != nil {
+		return "", false
+	}
+	for _, l := range strings.Split(string(data), "\n") {
+		if fs := strings.Split(l, ":"); len(fs) == 4 && fs[0] == name && fs[2] == strconv.Itoa(gid) && fs[3] == "" {
+			return name, true
+		}
+	}
+	return "", false
 }
 
 // System changes accounts with OpenBSD's commands. Passwords go to
@@ -485,8 +541,12 @@ func (s System) do(ctx context.Context, argv ...string) error {
 	return nil
 }
 
-func (s System) EnsureGroup(ctx context.Context, name string) error {
-	return s.do(ctx, "groupadd", name)
+func (s System) EnsureGroup(ctx context.Context, name string, gid int) error {
+	return s.do(ctx, "groupadd", "-g", strconv.Itoa(gid), name)
+}
+
+func (s System) RemoveGroup(ctx context.Context, name string) error {
+	return s.do(ctx, "groupdel", name)
 }
 
 func (s System) AddUser(ctx context.Context, name, fullName, shell, hash string, groups []string) error {
@@ -560,18 +620,29 @@ func (f *Files) edit(path string, fn func(lines []string) ([]string, error)) err
 	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0600)
 }
 
-func (f *Files) EnsureGroup(_ context.Context, name string) error {
+func (f *Files) EnsureGroup(_ context.Context, name string, gid int) error {
 	return f.edit(f.Group, func(l []string) ([]string, error) {
-		return append(l, fmt.Sprintf("%s:*:%d:", name, 900+len(l))), nil
+		return append(l, fmt.Sprintf("%s:*:%d:", name, gid)), nil
+	})
+}
+
+func (f *Files) RemoveGroup(_ context.Context, name string) error {
+	return f.edit(f.Group, func(l []string) ([]string, error) {
+		return slices.DeleteFunc(l, func(line string) bool { return strings.HasPrefix(line, name+":") }), nil
 	})
 }
 
 func (f *Files) AddUser(ctx context.Context, name, fullName, shell, hash string, groups []string) error {
+	uid := 0
 	err := f.edit(f.Passwd, func(l []string) ([]string, error) {
-		uid := 1000 + len(l)
+		uid = 1000 + len(l)
 		return append(l, strings.Join([]string{name, hash, strconv.Itoa(uid), strconv.Itoa(uid), "default", "0", "0", fullName, "/home/" + name, shell}, ":")), nil
 	})
 	if err != nil {
+		return err
+	}
+	// A group of its own, as useradd makes.
+	if err := f.edit(f.Group, func(l []string) ([]string, error) { return append(l, fmt.Sprintf("%s:*:%d:", name, uid)), nil }); err != nil {
 		return err
 	}
 	return f.SetGroups(ctx, name, groups)
@@ -614,11 +685,12 @@ func (f *Files) SetHash(_ context.Context, name, hash string) error {
 }
 
 func (f *Files) Lock(_ context.Context, name string, locked bool) error {
+	// As usermod -Z and -U do on OpenBSD 7.9.
 	return f.setField(name, func(fs []string) {
 		fs[1] = strings.TrimPrefix(fs[1], "*")
-		fs[9] = strings.TrimPrefix(fs[9], "-")
+		fs[9] = strings.TrimSuffix(fs[9], "-")
 		if locked {
-			fs[1], fs[9] = "*"+fs[1], "-"+fs[9]
+			fs[1], fs[9] = "*"+fs[1], fs[9]+"-"
 		}
 	})
 }

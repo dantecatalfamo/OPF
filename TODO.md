@@ -1110,12 +1110,23 @@ Still to do:
       everyone sees and ends their own on General.
 - [x] **User and role management** (System › Users), built as below,
       with re-authentication (five minutes, signing in counting) for
-      every change, and your own password on General. Tested against
-      account files (the mock, `auth.Files`); not yet with the system's
-      commands on OpenBSD:
-  - [ ] Try `auth.System` on openbsd-dev: `groupadd`, `useradd -p`,
-        `usermod -S`, `-p`, `-Z` and `-U`, and `userdel -r`, and
-        whether a locked account (`-Z`) fails `login_passwd`.
+      every change, and your own password on General.
+  - [x] Tried on openbsd-dev (7.9) with throwaway accounts, since
+        removed: `groupadd -g`, `useradd -p` (hash from `encrypt` on
+        stdin), `usermod -S`, `-p`, `-Z` and `-U`, `userdel -r`, and
+        `logger` into authlog; passwords checked by the real
+        `login_passwd`, a locked account refused, the guards held, and
+        signing in and the accounts API worked under pledge and unveil.
+        It found three things, fixed: an account left with the id of a
+        deleted group became an admin when `_opfadmin` was given that
+        id, so only being listed in a group counts now, and OPF's
+        groups take an id from 999 down that nothing uses; `userdel -r`
+        leaves the account's own group, which removing now deletes too;
+        and `-Z` appends "-" to the shell rather than prefixing it.
+        Accounts with no password (only stars, like a key-only one) say
+        so, and nobody (32767) isn't offered a role.
+  - [ ] Under -dry an account change is only logged, but OPF still
+        notes the account as one it made (accounts.json).
   - [ ] `useradd -p` and `usermod -p` take the hash as an argument,
         which any local user can see in ps for an instant. Writing
         master.passwd through `pwd_mkdb -p` (as vipw does) would keep
