@@ -172,7 +172,7 @@ export function Dns() {
           {/* What's happening, how it's set up (the settings, and how
               each local domain answers), then the names you add, across
               the page for their columns, and last the DHCP devices',
-              a list that grows on its own. */}
+              a list that grows on its own and needs only two. */}
           <DnsStatsCard />
           <Grid gutter="md">
             <Grid.Col span={{ base: 12, lg: 5 }}>
@@ -231,7 +231,7 @@ export function Dns() {
                 <LocalNames />
               </Card>
             </Grid.Col>
-            <Grid.Col span={12}>
+            <Grid.Col span={{ base: 12, lg: 7 }}>
               <LeaseNames />
             </Grid.Col>
           </Grid>

@@ -201,7 +201,7 @@ export function LocalDomains() {
   const zones = staged.dns.zones ?? [];
   const list: DnsZone[] = [{ name: sys, type: systemZoneType(staged) }, ...zones.filter((z) => lower(z.name) !== lower(sys))];
   const setType = (z: DnsZone, type: DnsZone['type']) =>
-    edit('dns', `${z.name} now answers ${type === 'static' ? 'only its own names' : 'its own names, then the internet’s'}`, (m) => {
+    edit('dns', `${z.name} is now ${type === 'static' ? 'local only' : 'local, then internet'}`, (m) => {
       const rest = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
       // The system's domain is static unless listed.
       const keep = lower(z.name) === lower(m.system.domain) && type === 'static' ? rest : [...rest, { name: z.name, type }];
@@ -214,13 +214,22 @@ export function LocalDomains() {
     <Stack gap="xs">
       <SectionTitle>Local domains</SectionTitle>
       <Text size="sm" c="dimmed" mt={-8}>
-        What a domain answers for a name without a record here. “Only these” suits a domain that exists only on your network: a mistyped name is “no such name” straight away. “These, then the internet” suits one that exists outside too: your names win, the rest are looked up as usual.
+        When a device asks for a name in one of these domains that isn’t in Local names:
+      </Text>
+      <Text size="sm" c="dimmed">
+        <Text span fw={600} c="var(--mantine-color-text)">Local only</Text>: it’s told the name doesn’t exist. For a domain that exists only on your network, like office.arpa.
+      </Text>
+      <Text size="sm" c="dimmed">
+        <Text span fw={600} c="var(--mantine-color-text)">Local, then internet</Text>: it’s looked up on the internet as usual. For a real domain such as your company’s, when you only want to change a few of its names here.
+      </Text>
+      <Text size="sm" c="dimmed" mb={4}>
+        Add a domain to choose for it. Any other domain is looked up on the internet, apart from the names you add for it.
       </Text>
       {list.map((z) => (
         <Group key={z.name} justify="space-between" gap="xs">
           <Mono>{z.name}</Mono>
           <Group gap={6} wrap="nowrap">
-            <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={[{ value: 'static', label: 'Only these' }, { value: 'transparent', label: 'These, then the internet' }]} />
+            <SegmentedControl size="xs" value={z.type} onChange={(v) => setType(z, v as DnsZone['type'])} data={[{ value: 'static', label: 'Local only' }, { value: 'transparent', label: 'Local, then internet' }]} />
             {z.name !== sys ? (
               <ActionIcon variant="subtle" color="gray" aria-label={`Remove ${z.name}`} onClick={() => edit('dns', `Removed domain ${z.name}`, (m) => {
                 const zs = (m.dns.zones ?? []).filter((x) => lower(x.name) !== lower(z.name));
@@ -235,7 +244,7 @@ export function LocalDomains() {
       <Group gap="xs" align="flex-start">
         <TextInput size="xs" placeholder="lab.example.com" value={name} onChange={(e) => setName(e.currentTarget.value)} error={bad ? (taken ? 'Already listed' : 'Enter a domain like lab.example.com') : undefined} style={{ flex: '1 1 200px' }} maw={280} spellCheck={false} />
         <Button size="xs" variant="default" disabled={!n || bad} onClick={() => {
-          edit('dns', `Added domain ${n}, answering only its own names`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name: n, type: 'static' }] } }));
+          edit('dns', `Added domain ${n}, local only`, (m) => ({ ...m, dns: { ...m.dns, zones: [...(m.dns.zones ?? []), { name: n, type: 'static' }] } }));
           setName('');
         }}>Add domain</Button>
       </Group>
