@@ -257,8 +257,7 @@ diffs, whether confirmation is needed, and the server's objections.
   DNS and gateways. `ui/src/model/live.ts` only feeds the offline
   preview.
 - **Missing:** importing an existing system. Accounts and sessions are
-  built (Security › User accounts), not yet tried with a right password
-  on OpenBSD.
+  built and tried on OpenBSD (Security › User accounts).
 - **On OpenBSD:** runs under pledge and unveil on 7.9 with `-dry
   -checks` (Verify on real OpenBSD); real commits haven't been made on a
   machine yet.
@@ -1069,10 +1068,12 @@ log (kind `login`, so webhooks can send them). See docs/api.md.
 
 Still to do:
 
-- [ ] Sign in with a right password on OpenBSD. Wrong passwords,
-      unknown users and paths as names are refused by the real
-      `login_passwd` on openbsd-dev; accepting one needs an account
-      with a known password there (ask first).
+- [x] Signed in on openbsd-dev (7.9), under pledge and unveil, over
+      the self-signed certificate (its served fingerprint matched the
+      logged one), with a temporary account in `_opfadmin`, since
+      removed: a wrong password refused after 1.1 s, the right one an
+      admin session, signing out ending it, and taking the account out
+      of the group ending its session within the minute.
 - [ ] No HSTS: with a self-signed certificate it would stop anyone
       clicking through the browser's warning, and so lock them out.
       Send it once the certificate is one they put there (or ACME).

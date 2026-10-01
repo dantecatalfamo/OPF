@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -318,6 +319,12 @@ func certificate(api *appliance.Manager, stateDir, listen string) (*privsep.TLSP
 		hosts = append(hosts, host)
 	}
 	hosts = append(hosts, "localhost", "127.0.0.1")
+	seen := map[string]bool{}
+	hosts = slices.DeleteFunc(hosts, func(h string) bool {
+		dup := seen[h]
+		seen[h] = true
+		return dup
+	})
 	cert, key, made, err := tlscert.Ensure(filepath.Join(stateDir, "tls"), hosts, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("the web interface's certificate: %w", err)

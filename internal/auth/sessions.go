@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -198,13 +199,14 @@ func (s *Sessions) login(ctx context.Context, user, password, source string) (st
 	return tok, &sess, "", nil
 }
 
+// groupList names OPF's groups: "_opfadmin, _opfoperator or _opfview".
 func groupList() string {
 	var g []string
 	for n := range Groups {
 		g = append(g, n)
 	}
 	slices.Sort(g)
-	return fmt.Sprint(g)
+	return strings.Join(g[:len(g)-1], ", ") + " or " + g[len(g)-1]
 }
 
 // account reads the user's account and role from the system's files.
@@ -311,7 +313,7 @@ func (s *Sessions) check(token string, use bool) (*Session, error) {
 		case acct.expired(now):
 			why = "the account expired"
 		case role == RoleNone:
-			why = "the account left " + groupList()
+			why = "the account isn't in " + groupList() + " any more"
 		}
 		s.mu.Lock()
 		e.checked = now
