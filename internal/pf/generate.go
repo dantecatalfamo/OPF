@@ -352,7 +352,7 @@ func endpoint(e Endpoint, m *Model) string {
 }
 
 // ifaceRef writes an interface reference with its modifiers, in
-// parentheses when dynamic: $lan:network, ($wan), (egress:network:0).
+// parentheses when dynamic: ($lan:network), ($wan), (egress:network:0).
 func ifaceRef(e Endpoint, m *Model) string {
 	ref := e.Group
 	switch {
@@ -375,7 +375,7 @@ func ifaceRef(e Endpoint, m *Model) string {
 
 // ifaceDynamic reports whether an interface reference should follow
 // address changes. Without parentheses pf resolves it once, when the
-// ruleset loads.
+// ruleset loads, and refuses it if the interface has no address then.
 func ifaceDynamic(e Endpoint, m *Model) bool {
 	if e.Dynamic != nil {
 		return *e.Dynamic
@@ -393,14 +393,10 @@ func ifaceDynamic(e Endpoint, m *Model) bool {
 		}
 		return false
 	}
-	if e.Group != "" || m == nil {
-		return true
-	}
-	for _, i := range m.Interfaces {
-		if i.ID == e.Iface {
-			return i.IPv4.Mode != IPv4Static || i.IPv6 == IPv6SLAAC
-		}
-	}
+	// An interface, even one with a static address: pfctl resolves a
+	// plain $lan when it checks the ruleset, which is before the commit
+	// configures the interface, so a commit that adds one (or its
+	// first address) would always be refused with "no IP address found".
 	return true
 }
 

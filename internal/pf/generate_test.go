@@ -348,14 +348,14 @@ func TestDescriptionsAreComments(t *testing.T) {
 		// backslash would join the comment to the rule.
 		"# Raw one\npass in on $lan proto udp to port 53 label \"dns\"\n",
 		"\nblock in on $lan all label \"opf:rule:r3\"\n",
-		"# web\npass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
-			"pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
-			"match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan) label \"opf:forward:f1\"\n",
+		"# web\npass in quick on $wan proto tcp from any to ($wan) port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
+			"pass in quick on $lan proto tcp from ($lan:network) to ($wan) port 443 rdr-to 192.168.1.20 port 443 label \"opf:forward:f1\"\n" +
+			"match out on $lan proto tcp from ($lan:network) to 192.168.1.20 port 443 nat-to ($lan) label \"opf:forward:f1\"\n",
 		"# No NAT\nmatch out on $wan inet from 192.168.1.9 to any tag opf_nonat label \"opf:nat:n1\"\n",
-		"# Automatic: LAN to WAN\nmatch out on $wan inet from $lan:network to any ! tagged opf_nonat nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
+		"# Automatic: LAN to WAN\nmatch out on $wan inet from ($lan:network) to any ! tagged opf_nonat nat-to ($wan:0) label \"opf:auto-nat:lan\"\n",
 		"block all label \"opf:builtin:default-block\"\n",
 		"pass out inet label \"opf:builtin:self-out\"\n",
-		"pass in quick on $lan proto tcp to $lan port { 443 22 } label \"opf:builtin:anti-lockout\"\n",
+		"pass in quick on $lan proto tcp to ($lan) port { 443 22 } label \"opf:builtin:anti-lockout\"\n",
 	} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("missing %q in:\n%s", want, conf)
@@ -459,7 +459,7 @@ func TestNATExceptionsUseTags(t *testing.T) {
 	})
 	conf := GeneratePfConf(m)
 	exception := strings.Index(conf, `match out on $wan inet from 192.168.1.9 to 10.20.0.0/16 tag opf_nonat label "opf:nat:n9"`)
-	auto := strings.Index(conf, `match out on $wan inet from $lan:network to any ! tagged opf_nonat nat-to ($wan:0) label "opf:auto-nat:lan"`)
+	auto := strings.Index(conf, `match out on $wan inet from ($lan:network) to any ! tagged opf_nonat nat-to ($wan:0) label "opf:auto-nat:lan"`)
 	manual := strings.Index(conf, `match out on $wan inet from 192.168.1.60 to any ! tagged opf_nonat nat-to ($wan:0) static-port label "opf:nat:n1"`)
 	if exception < 0 || auto < 0 || manual < 0 {
 		t.Fatalf("exception %d, auto %d, manual %d in:\n%s", exception, auto, manual, conf)
@@ -689,7 +689,9 @@ func TestIfaceDynamicDefault(t *testing.T) {
 	}}
 	for iface, want := range map[string]string{
 		"wan": "($wan:network)",
-		"lan": "$lan:network",
+		// Static too: pfctl checks the ruleset before the commit
+		// configures the interface.
+		"lan": "($lan:network)",
 		"v6":  "($v6:network)",
 	} {
 		got := endpoint(Endpoint{Type: EndpointIface, Iface: iface, Part: PartNetwork}, m)
@@ -721,8 +723,8 @@ func TestSelfDynamicDefault(t *testing.T) {
 	}
 }
 
-// Built-in rules use the same interface references as user rules, so a
-// DHCP-addressed interface is always in parentheses.
+// Built-in rules use the same interface references as user rules: in
+// parentheses, static addresses included.
 func TestBuiltinRulesFollowAddressing(t *testing.T) {
 	prefix := 24
 	m := &Model{
@@ -738,12 +740,12 @@ func TestBuiltinRulesFollowAddressing(t *testing.T) {
 	}
 	conf := GeneratePfConf(m)
 	for _, want := range []string{
-		`pass in quick on $lan proto tcp to $lan port { 443 22 } label "opf:builtin:anti-lockout"`,
-		`pass in quick on $wan proto tcp from any to $wan port 443 rdr-to 192.168.1.20 port 443 label "opf:forward:f1"`,
-		`pass in quick on $lan proto tcp from $lan:network to $wan port 443 rdr-to 192.168.1.20 port 443`,
-		`match out on $lan proto tcp from $lan:network to 192.168.1.20 port 443 nat-to ($lan)`,
+		`pass in quick on $lan proto tcp to ($lan) port { 443 22 } label "opf:builtin:anti-lockout"`,
+		`pass in quick on $wan proto tcp from any to ($wan) port 443 rdr-to 192.168.1.20 port 443 label "opf:forward:f1"`,
+		`pass in quick on $lan proto tcp from ($lan:network) to ($wan) port 443 rdr-to 192.168.1.20 port 443`,
+		`match out on $lan proto tcp from ($lan:network) to 192.168.1.20 port 443 nat-to ($lan)`,
 		// The DHCP-addressed lab network gets reflection too, in parentheses.
-		`pass in quick on $lab proto tcp from ($lab:network) to $wan port 443 rdr-to 192.168.1.20 port 443`,
+		`pass in quick on $lab proto tcp from ($lab:network) to ($wan) port 443 rdr-to 192.168.1.20 port 443`,
 		`match out on $lab proto tcp from ($lab:network) to 192.168.1.20 port 443 nat-to ($lab)`,
 		`match out on $wan inet from ($lab:network) to any nat-to ($wan:0)`,
 	} {
@@ -756,7 +758,7 @@ func TestBuiltinRulesFollowAddressing(t *testing.T) {
 	conf = GeneratePfConf(m)
 	for _, want := range []string{
 		`from any to ($wan) port 443 rdr-to`,
-		`from $lan:network to ($wan) port 443 rdr-to`,
+		`from ($lan:network) to ($wan) port 443 rdr-to`,
 	} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("DHCP WAN: missing %q in:\n%s", want, conf)
@@ -841,12 +843,12 @@ func TestSplitTunnelIsEnforced(t *testing.T) {
 	}
 	m.Interfaces[2].IPv4 = IPv4Config{Mode: IPv4DHCP}
 	conf = GeneratePfConf(m)
-	for _, want := range []string{"from { 10.8.0.2/32 10.8.0.3/32 } to ! <opf_local>", "$iot:network"} {
+	for _, want := range []string{"from { 10.8.0.2/32 10.8.0.3/32 } to ! <opf_local>", "($iot:network)"} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("missing %q in:\n%s", want, conf)
 		}
 	}
-	if got := LocalNetworks(m, false); slices.Contains(got, "$iot:network") {
+	if got := LocalNetworks(m, false); slices.Contains(got, "($iot:network)") {
 		t.Errorf("LocalNetworks(m, false) = %v, which a device configuration can't list", got)
 	}
 }
@@ -988,10 +990,10 @@ func TestDerive(t *testing.T) {
 	if d.Rules["r6"] != GenerateRule(&m.Firewall.Rules[slices.IndexFunc(m.Firewall.Rules, func(r Rule) bool { return r.ID == "r6" })], m) {
 		t.Errorf("rule text %q", d.Rules["r6"])
 	}
-	if len(d.AutomaticNAT) != len(AutomaticNAT(m)) || slices.Contains(d.LocalNetworks, "$lan:network") {
+	if len(d.AutomaticNAT) != len(AutomaticNAT(m)) || slices.Contains(d.LocalNetworks, "($lan:network)") {
 		t.Errorf("derived %+v", d)
 	}
-	if !d.DynamicIfaces["wan"] || d.DynamicIfaces["lan"] || !d.SelfDynamic {
+	if !d.DynamicIfaces["wan"] || !d.DynamicIfaces["lan"] || !d.SelfDynamic {
 		t.Errorf("dynamic %v, self %v", d.DynamicIfaces, d.SelfDynamic)
 	}
 	if d := Derive(&Model{}); d.AutomaticNAT == nil || d.LocalNetworks == nil || d.Rules == nil {

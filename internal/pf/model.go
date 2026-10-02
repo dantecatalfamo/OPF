@@ -215,7 +215,8 @@ type Endpoint struct {
 	NoAlias bool      `json:"noAlias,omitempty"` // :0, leave out alias addresses
 	// Dynamic puts the reference in parentheses, so pf follows address
 	// changes without a ruleset reload. Nil lets the generator choose:
-	// dynamic for groups and for interfaces addressed by DHCP or SLAAC.
+	// dynamic for interfaces and groups; self only when an interface's
+	// addresses can change.
 	Dynamic *bool `json:"dynamic,omitempty"`
 
 	Value string `json:"value,omitempty"` // for host, network

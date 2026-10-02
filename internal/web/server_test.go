@@ -251,7 +251,7 @@ func TestPfHelpers(t *testing.T) {
 
 	var d pf.Derived
 	c.do("POST", "/api/pf/derived", js(modelRequest{live.Model}), 200, &d)
-	if len(d.AutomaticNAT) == 0 || len(d.LocalNetworks) == 0 || d.Rules["r3"] == "" || d.DynamicIfaces["wan"] != true || d.DynamicIfaces["lan"] != false {
+	if len(d.AutomaticNAT) == 0 || len(d.LocalNetworks) == 0 || d.Rules["r3"] == "" || d.DynamicIfaces["wan"] != true || d.DynamicIfaces["lan"] != true {
 		t.Errorf("derived %+v", d)
 	}
 	// No model is an empty one, not an error.

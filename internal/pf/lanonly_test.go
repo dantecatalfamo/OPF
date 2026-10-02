@@ -25,9 +25,9 @@ func TestLANOnlyVPNServer(t *testing.T) {
 	for _, want := range []string{
 		// VPN devices take the office address on the way out, so the
 		// router needs no route back to them.
-		"match out on $lan inet from $wg:network to any nat-to ($lan:0)",
+		"match out on $lan inet from ($wg:network) to any nat-to ($lan:0)",
 		// The web UI and SSH stay reachable from the office.
-		"pass in quick on $lan proto tcp to $lan port { 443 22 }",
+		"pass in quick on $lan proto tcp to ($lan) port { 443 22 }",
 		// The forwarded handshake gets in.
 		"pass in on $lan inet proto udp from any to self port 51820",
 	} {
@@ -71,14 +71,14 @@ func TestMasquerade(t *testing.T) {
 	}
 	conf := GeneratePfConf(m)
 	for _, want := range []string{
-		"match out on $lan inet from $wg:network to any nat-to ($lan:0)",
-		"match out on $lan inet from $iot:network to any nat-to ($lan:0)",
+		"match out on $lan inet from ($wg:network) to any nat-to ($lan:0)",
+		"match out on $lan inet from ($iot:network) to any nat-to ($lan:0)",
 	} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if strings.Contains(conf, "on $lan inet from $lan:network to any nat-to") {
+	if strings.Contains(conf, "on $lan inet from ($lan:network) to any nat-to") {
 		t.Error("the LAN NATs its own network")
 	}
 	for _, c := range []struct {

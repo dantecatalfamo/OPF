@@ -68,7 +68,7 @@ export interface IfaceModifiers {
   dynamic?: boolean;
 }
 
-// An interface reference: $lan:network, ($wan), (egress:network:0)…
+// An interface reference: ($lan:network), ($wan), egress:broadcast…
 export interface IfaceEndpoint extends IfaceModifiers {
   type: 'iface';
   iface?: string; // a model interface id, written as $id
