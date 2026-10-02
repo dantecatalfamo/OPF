@@ -236,7 +236,7 @@ func (m *Manager) Gateways() (*GatewaysStatus, error) {
 	if m.gwCache != nil && time.Since(m.gwAt) < gatewayCacheFor {
 		return m.gwCache, nil
 	}
-	model, _, err := m.live()
+	model, err := m.liveOrEmpty()
 	if err != nil {
 		return nil, err
 	}

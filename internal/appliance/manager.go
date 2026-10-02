@@ -317,6 +317,16 @@ func (m *Manager) live() (*pf.Model, string, error) {
 	return model, version(data), nil
 }
 
+// liveOrEmpty is live's model for readers that only report on it: before
+// the first commit there's no model, which reads as an empty one.
+func (m *Manager) liveOrEmpty() (*pf.Model, error) {
+	model, _, err := m.live()
+	if err == nil && model == nil {
+		model = &pf.Model{}
+	}
+	return model, err
+}
+
 func (m *Manager) Live() (*Config, error) {
 	model, v, err := m.live()
 	if err != nil {

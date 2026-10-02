@@ -165,7 +165,7 @@ type TableStatus struct {
 
 // Tables returns the lists of the live model's URL aliases.
 func (m *Manager) Tables() ([]TableStatus, error) {
-	model, _, err := m.live()
+	model, err := m.liveOrEmpty()
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (m *Manager) tableStatus(a pf.Alias) (st TableStatus) {
 // If the download fails the list already there stays, as does pf's
 // table.
 func (m *Manager) RefreshAlias(name string) (*TableStatus, error) {
-	model, _, err := m.live()
+	model, err := m.liveOrEmpty()
 	if err != nil {
 		return nil, err
 	}

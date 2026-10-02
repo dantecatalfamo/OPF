@@ -609,3 +609,35 @@ func TestTimeoutRevertReportsChange(t *testing.T) {
 		t.Error("still pending")
 	}
 }
+
+// Before the first commit there's no model. Everything that reports on
+// the live one must take that as empty: on a fresh install the
+// collector asks for the gateways within seconds, and a panic there
+// took the whole parent down.
+func TestFreshInstallHasNoModel(t *testing.T) {
+	r := &runner{}
+	store, err := config.New(config.Options{Root: t.TempDir(), StateDir: t.TempDir(), Files: config.DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Runner = r
+	if gws, err := m.Gateways(); err != nil || len(gws.Gateways) != 0 {
+		t.Errorf("Gateways() = %+v, %v", gws, err)
+	}
+	if l, err := m.DNSLists(); err != nil || len(l) != 0 {
+		t.Errorf("DNSLists() = %v, %v", l, err)
+	}
+	if l, err := m.Tables(); err != nil || len(l) != 0 {
+		t.Errorf("Tables() = %v, %v", l, err)
+	}
+	if _, err := m.RefreshDNSList("ads"); err == nil {
+		t.Error("RefreshDNSList found a list in no model")
+	}
+	if _, err := m.RefreshAlias("blocklist"); err == nil {
+		t.Error("RefreshAlias found an alias in no model")
+	}
+}

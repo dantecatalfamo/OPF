@@ -337,7 +337,7 @@ type DNSListStatus struct {
 
 // DNSLists returns the applied configuration's DNS blocklists.
 func (m *Manager) DNSLists() ([]DNSListStatus, error) {
-	model, _, err := m.live()
+	model, err := m.liveOrEmpty()
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +361,7 @@ func (m *Manager) dnsListStatus(l pf.DNSBlocklist) DNSListStatus {
 // RefreshDNSList downloads a blocklist again and reloads its zone in
 // unbound. If the download fails, the list already there stays in use.
 func (m *Manager) RefreshDNSList(id string) (*DNSListStatus, error) {
-	model, _, err := m.live()
+	model, err := m.liveOrEmpty()
 	if err != nil {
 		return nil, err
 	}
