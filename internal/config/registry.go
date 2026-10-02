@@ -54,6 +54,15 @@ type File struct {
 	// until confirmation, a reboot also reverts the change.
 	Confirm bool
 
+	// ConfirmInstalled files make a commit wait for confirmation too,
+	// for changes that can cut off access as much as pf.conf's, but
+	// they're installed and applied straight away like any other file:
+	// what applies them can only read Path (netstart reads
+	// /etc/hostname.*). Unless the commit is confirmed in time, the old
+	// file is put back and applied again. A reboot meanwhile starts with
+	// the new file, and Recover reverts it when OPF starts.
+	ConfirmInstalled bool
+
 	// Mode is used when creating a file that doesn't exist yet.
 	Mode fs.FileMode
 
@@ -66,6 +75,9 @@ type File struct {
 }
 
 func (f File) isPattern() bool { return f.Match != "" }
+
+// NeedsConfirm reports whether committing f waits for confirmation.
+func (f File) NeedsConfirm() bool { return f.Confirm || f.ConfirmInstalled }
 
 // instance returns the concrete file a pattern entry names for part, or
 // false if part doesn't match.
@@ -135,11 +147,12 @@ func DefaultFiles() []File {
 		{
 			// hostname.if(5), one per interface. Applied first, since
 			// pf rules refer to the interfaces. netstart reads /etc
-			// directly, so these can't be loaded from a staged copy for
-			// confirmation (see TODO).
+			// directly, so these can't be loaded from a staged copy;
+			// they're installed, and put back unless confirmed.
 			Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
-			Desc:  "Network interface",
-			Apply: []string{"sh", "/etc/netstart", "{*}"},
+			Desc:             "Network interface",
+			Apply:            []string{"sh", "/etc/netstart", "{*}"},
+			ConfirmInstalled: true,
 			// Virtual interfaces (vlan, wg) are destroyed; a physical
 			// port can't be, so it's taken down instead.
 			Remove: []string{"sh", "-c", `ifconfig "$1" destroy 2>/dev/null || ifconfig "$1" down`, "sh", "{*}"},
@@ -260,6 +273,9 @@ func validateFiles(files []File) error {
 			}
 		} else if strings.Contains(f.Name, "*") {
 			return fmt.Errorf("config: %s has a * but no Match", f.Name)
+		}
+		if f.Confirm && f.ConfirmInstalled {
+			return fmt.Errorf("config: %s can't be both Confirm and ConfirmInstalled", f.Name)
 		}
 		if f.Confirm && !slices.Contains(f.Apply, "{}") {
 			return fmt.Errorf("config: %s needs an Apply command that takes {} to be confirmable", f.Name)

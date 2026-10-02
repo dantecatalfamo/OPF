@@ -145,10 +145,10 @@ POST /api/commits/{id}/confirm   (only if its status is "pending")
    was reviewed. `message` and `changes` describe the commit for
    history. Every file is checked by its own validator first; if one
    fails nothing is touched (`check_failed`).
-4. If the commit changed a file that could cut off access (`pf.conf`),
-   its status is `pending` with a `deadline`. Confirm before then, or the
-   server reverts it by itself. Other commits are `applied` straight
-   away.
+4. If the commit changed a file that could cut off access (`pf.conf`
+   or a `hostname.if`), its status is `pending` with a `deadline`.
+   Confirm before then, or the server reverts it by itself. Other
+   commits are `applied` straight away.
 
 If applying fails part-way, everything is put back, the commit is
 recorded with status `failed` (still 201, with its log), and the model

@@ -22,8 +22,9 @@ type pendingCommit struct {
 //
 // Files without Confirm are installed and applied immediately. Confirm
 // files are loaded from their staged copy and only installed once
-// Confirm is called; if it isn't called before the timeout the whole
-// commit is reverted. If anything fails to apply, the whole commit is
+// Confirm is called. A commit with either those or ConfirmInstalled
+// files waits for confirmation; if it isn't confirmed before the
+// timeout the whole commit is reverted. If anything fails to apply, the whole commit is
 // reverted and the staged changes are kept so they can be fixed.
 func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 	s.mu.Lock()
@@ -85,7 +86,7 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			}
 			s.logFile("snapshot", f, s.historyFile(e.ID, "new", f.Path), "contents of commit "+e.ID)
 		}
-		e.Files = append(e.Files, EntryFile{Name: f.Name, Path: f.Path, Existed: existed, Removed: c.Removed, Confirm: f.Confirm})
+		e.Files = append(e.Files, EntryFile{Name: f.Name, Path: f.Path, Existed: existed, Removed: c.Removed, Confirm: f.Confirm, ConfirmInstalled: f.ConfirmInstalled})
 	}
 	// Written before anything live changes, so an interrupted commit
 	// can be found and reverted by Recover.
@@ -167,7 +168,7 @@ func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 
 	e.Status = StatusApplied
 	for _, ef := range e.Files {
-		if ef.Confirm {
+		if ef.NeedsConfirm() {
 			e.Status = StatusPending
 			e.Deadline = time.Now().Add(s.confirmTimeout)
 			fmt.Fprintf(&logBuf, "\nWaiting for confirmation until %s.\n", e.Deadline.Format(time.TimeOnly))
@@ -353,6 +354,13 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 					s.logFile("remove", f, live, "reverting commit "+e.ID+", didn't exist before")
 				}
 				fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
+				// Undo what the commit set up with it: an interface
+				// it created is destroyed.
+				if f.Remove != nil {
+					if err := s.logRun(ctx, logBuf, subst(f.Remove, live)...); err != nil {
+						errs = append(errs, err)
+					}
+				}
 				if f.ApplyWhenRemoved {
 					if err := s.applyFile(ctx, f, live, logBuf); err != nil {
 						errs = append(errs, err)

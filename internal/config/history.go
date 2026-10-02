@@ -62,7 +62,14 @@ type EntryFile struct {
 	Existed bool   `json:"existed"`
 	Removed bool   `json:"removed,omitempty"` // the commit removed it
 	Confirm bool   `json:"confirm"`
+	// ConfirmInstalled: installed by the commit, but put back unless
+	// it's confirmed (File.ConfirmInstalled).
+	ConfirmInstalled bool `json:"confirmInstalled,omitempty"`
 }
+
+// NeedsConfirm reports whether the file made its commit wait for
+// confirmation.
+func (f EntryFile) NeedsConfirm() bool { return f.Confirm || f.ConfirmInstalled }
 
 var idRE = regexp.MustCompile(`^[0-9]{8}-[0-9]{6}\.[0-9]{3}$`)
 

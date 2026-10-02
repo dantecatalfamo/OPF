@@ -356,7 +356,8 @@ func newPatternStore(t *testing.T) (*Store, *fakeRunner, string) {
 	r := &fakeRunner{}
 	files := append([]File{{
 		Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
-		Apply: []string{"sh", "/etc/netstart", "{*}"}, Mode: 0640,
+		Apply: []string{"sh", "/etc/netstart", "{*}"}, Mode: 0640, ConfirmInstalled: true,
+		Remove: []string{"destroy", "{*}"},
 	}}, testFiles...)
 	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: files, Runner: r, ConfirmTimeout: time.Minute})
 	if err != nil {
@@ -639,5 +640,75 @@ func TestRemovalReloadsWholeService(t *testing.T) {
 	}
 	if !r.ran("rcctl reload dns") || r.ran("dns-control") {
 		t.Errorf("removal: %q", r.commands())
+	}
+}
+
+// An interface change can cut off access as surely as pf.conf, but
+// netstart only reads /etc: the file is installed at once, the commit
+// waits for confirmation, and without it the old file is put back and
+// applied again. An interface the commit created is destroyed.
+func TestInterfaceChangeWaitsForConfirmation(t *testing.T) {
+	s, r, root := newPatternStore(t)
+	s.confirmTimeout = 50 * time.Millisecond
+	writeLive(t, root, "/etc/hostname.em1", "inet 192.168.1.1/24\nup\n")
+	stage(t, s, "hostname.em1", "inet 192.168.60.1/24\nup\n")
+	stage(t, s, "hostname.vlan30", "vnetid 30 parent em1\nup\n")
+
+	e, err := s.Commit(context.Background(), CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Status != StatusPending || e.Deadline.IsZero() {
+		t.Fatalf("status %s, deadline %v", e.Status, e.Deadline)
+	}
+	for _, f := range e.Files {
+		if !f.NeedsConfirm() || f.Confirm {
+			t.Errorf("%s: %+v", f.Name, f)
+		}
+	}
+	if got := readLive(t, root, "/etc/hostname.em1"); got != "inet 192.168.60.1/24\nup\n" {
+		t.Fatalf("hostname.em1 not installed while pending: %q", got)
+	}
+	if !r.ran("sh /etc/netstart em1") || !r.ran("sh /etc/netstart vlan30") {
+		t.Fatalf("not applied: %v", r.commands())
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for s.Pending() != nil {
+		if time.Now().After(deadline) {
+			t.Fatal("never reverted")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := readLive(t, root, "/etc/hostname.em1"); got != "inet 192.168.1.1/24\nup\n" {
+		t.Fatalf("hostname.em1 not restored: %q", got)
+	}
+	if got := readLive(t, root, "/etc/hostname.vlan30"); got != "<missing>" {
+		t.Fatalf("hostname.vlan30 left behind: %q", got)
+	}
+	cmds := r.commands()
+	if n := strings.Count(strings.Join(cmds, "\n"), "sh /etc/netstart em1"); n != 2 {
+		t.Fatalf("em1 applied %d times, want 2 (commit and revert): %v", n, cmds)
+	}
+	if !r.ran("destroy vlan30") {
+		t.Fatalf("vlan30 not destroyed: %v", cmds)
+	}
+	if e, _ := s.Entry(e.ID); e.Status != StatusReverted {
+		t.Fatalf("status = %s", e.Status)
+	}
+
+	// Confirmed, it stays.
+	e, err = s.Commit(context.Background(), CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Confirm(); err != nil {
+		t.Fatal(err)
+	}
+	if got := readLive(t, root, "/etc/hostname.em1"); got != "inet 192.168.60.1/24\nup\n" {
+		t.Fatalf("hostname.em1 after confirm = %q", got)
+	}
+	if e, _ := s.Entry(e.ID); e.Status != StatusConfirmed {
+		t.Fatalf("status = %s", e.Status)
 	}
 }

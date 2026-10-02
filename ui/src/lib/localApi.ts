@@ -59,15 +59,18 @@ async function fileChanges(from: Model, to: Model): Promise<FileChange[]> {
     out.push({
       path, status: before === undefined ? 'added' : 'modified',
       diff: unifiedDiff(before ?? '', content, `${path} (live)`, `${path} (staged)`),
-      needsConfirm: path === '/etc/pf.conf', model: path === MODEL_PATH,
+      needsConfirm: needsConfirm(path), model: path === MODEL_PATH,
     });
   }
   // Files the new model no longer generates, such as a deleted VLAN's.
   for (const [path, before] of a) {
-    if (!b.has(path)) out.push({ path, status: 'removed', diff: unifiedDiff(before, '', `${path} (live)`, `${path} (staged)`) });
+    if (!b.has(path)) out.push({ path, status: 'removed', diff: unifiedDiff(before, '', `${path} (live)`, `${path} (staged)`), needsConfirm: needsConfirm(path) });
   }
   return out;
 }
+
+// The files that can cut off access, as the server's registry says.
+const needsConfirm = (path: string) => path === '/etc/pf.conf' || path.startsWith('/etc/hostname.');
 
 const clone = <T,>(v: T): T => structuredClone(v);
 

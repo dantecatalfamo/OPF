@@ -421,7 +421,7 @@ func (m *Manager) changes() ([]FileChange, error) {
 			status = "added"
 		}
 		out = append(out, FileChange{
-			Path: c.File.Path, Status: status, Diff: c.Diff, NeedsConfirm: c.File.Confirm,
+			Path: c.File.Path, Status: status, Diff: c.Diff, NeedsConfirm: c.File.NeedsConfirm(),
 			Model: c.File.Name == modelFile, ModifiedOutside: c.Drifted,
 		})
 	}
@@ -913,7 +913,7 @@ func commitOf(e *config.Entry) *Commit {
 		c.Deadline = &d
 	}
 	for _, f := range e.Files {
-		c.Files = append(c.Files, CommitFile{Path: f.Path, Created: !f.Existed, Removed: f.Removed, NeedsConfirm: f.Confirm, Model: f.Name == modelFile})
+		c.Files = append(c.Files, CommitFile{Path: f.Path, Created: !f.Existed, Removed: f.Removed, NeedsConfirm: f.NeedsConfirm(), Model: f.Name == modelFile})
 	}
 	return c
 }
