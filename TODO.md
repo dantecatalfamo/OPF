@@ -258,9 +258,10 @@ diffs, whether confirmation is needed, and the server's objections.
   preview.
 - **Missing:** importing an existing system. Accounts and sessions are
   built and tried on OpenBSD (Security › User accounts).
-- **On OpenBSD:** runs under pledge and unveil on 7.9 with `-dry
-  -checks` (Verify on real OpenBSD); real commits haven't been made on a
-  machine yet.
+- **On OpenBSD:** installed from the README on a stock 7.9 VM, it
+  makes real commits: confirm, revert, the automatic revert, and lock-
+  outs through pf and through an interface's address all come back by
+  themselves (Verify on real OpenBSD).
 
 ## Roadmap
 
@@ -293,17 +294,19 @@ In order. Each step's details are in the section it points to.
 - [ ] Removing a physical port's `hostname.if` only takes the port down
       (it can't be destroyed); its addresses stay until a reboot.
       Nothing in the UI removes physical ports yet.
-- [ ] **Confirm and auto-revert for `hostname.if` changes.** They're
-      applied directly with `sh /etc/netstart <devs>`, which can't load a
-      staged copy, so they get no confirmation: moving the LAN's address
-      (onto a bridge, say) can lock the admin out with nothing to undo
-      it. Install, then restore the old files and re-run netstart on
-      timeout. That gives up pf.conf's "a reboot reverts it" guarantee,
-      so decide what happens on a reboot during the window. Interfaces
-      must still be applied before pf.
-- [ ] If OPF is killed with SIGKILL (or crashes) during the confirm
-      window, the staged pf rules stay loaded until reboot or the next
-      start; `Recover` only runs at startup.
+- [ ] **If OPF's parent dies during the confirm window** (SIGKILL, a
+      crash), nothing reverts the commit until OPF starts again: tried
+      on the VM, a pf change that closed WAN SSH stayed loaded long past
+      its deadline (the web process exits with the parent; rc.d doesn't
+      restart daemons), and `rcctl start opf` then reverted it with
+      `Recover`. A reboot reverts too. Proposed: the parent holds an
+      exclusive lock on its state directory for its whole life (which
+      also stops two OPFs running at once, below), and a commit that
+      waits for confirmation starts a detached watchdog (`opf
+      -watchdog <id>`, root, in its own session) that sleeps past the
+      deadline, then takes the lock without waiting: if it gets it the
+      parent is gone, so it runs `Recover`; if not, the parent is alive
+      and handles its own timer.
 - [ ] Decide whether a service that fails to reload or restart should
       revert the whole commit (it does now).
 - [ ] A second browser's staging replaces the first's staged model
@@ -318,9 +321,11 @@ In order. Each step's details are in the section it points to.
       generator skips it when the default gateway is DHCP (dhcpleased
       handles that case); check both behave as intended.
 - [ ] No guard against two OPF instances running at once (file
-      locking).
-- [ ] Graceful shutdown: check that SIGTERM waits for pending operations
-      and reverts an unconfirmed commit, and document it.
+      locking; see the watchdog above).
+- [ ] Graceful shutdown: SIGTERM reverts an unconfirmed commit (seen on
+      the VM: `reboot` during the wait reverted it, its log saying OPF
+      stopped). Still to check that it waits for an operation already
+      under way (a commit applying) rather than cutting it off.
 - [ ] Backup and restore: download `config.json`, and restore it (as a
       staged change, reviewed like any other) for disaster recovery or
       migration. The History page's backup buttons are placeholders.
@@ -423,6 +428,14 @@ until the admin does.
       don't rather than change what's running.
 - [ ] First-run wizard: detect existing configs and offer to import them;
       set up WAN, LAN and the admin password.
+  - [ ] A URL alias's list must download before the first commit that
+        uses it, so on a box that isn't online yet (the commit setting up
+        the WAN is the one that would bring it online) the commit is
+        refused. Found taking over a fresh VM with the sample model's
+        `blocklist`. The wizard should leave URL aliases for after the
+        first commit, or a list that has never downloaded could load as
+        empty with a warning (fail open for a block list, closed for a
+        pass list: choose per use).
 - [ ] Still raw: bare names or `name:0` that aren't model interfaces (pf
       treats them as interfaces only if one exists at load time, else as
       hostnames).
@@ -466,7 +479,7 @@ Today there are physical ports, VLANs and WireGuard tunnels, each one
 `hostname.<dev>` file applied with `sh /etc/netstart <devs>`. Virtual
 interfaces need, first:
 
-- [ ] Confirm and auto-revert for interface changes (Commit engine).
+- [x] Confirm and auto-revert for interface changes (Commit engine).
 - [ ] **Apply order by dependency.** netstart brings up the devices it's
       given in order, and OPF passes them in path order, so
       `hostname.bridge0` comes before its member `hostname.em1` (VLANs
@@ -1175,6 +1188,18 @@ Still to do:
       logger(1) on stdin (the parent's pledge has no "unix" for
       /dev/log, and Go can't make OpenBSD's sendsyslog(2) call); -dry
       only logs it.
+- [ ] The certificate is made for `localhost, 127.0.0.1` even when
+      OPF listens on every address (`-listen 0.0.0.0:443` on the VM), so
+      a browser at the LAN address warns about the name as well as the
+      issuer. Add the host name and the model's interface addresses,
+      and make a new one when they change.
+- [ ] A line sent through logger(1) can time out (`logger: context
+      deadline exceeded`, seen on the VM while it was busy after a boot)
+      and is then lost; an audit line shouldn't be. Retry it, or queue
+      it to retry.
+- [ ] Under rc.d, OPF's log lines carry a second timestamp after
+      syslog's (`opf[25302]: opf: 2026/10/05 15:10:18 …`): drop Go's
+      date and time when the output goes to logger.
 - [x] Roles in the UI: a banner says what your role can do, edits are
       refused before they're made, Apply is disabled, and Users is only
       in the menu for admins.
@@ -1453,9 +1478,10 @@ and the automatic revert all work; and the real `pfctl -n`, `dhcpd -n`,
 mock's), start it with doas and nohup, and tunnel 127.0.0.1:18090.
 Stop it by the PID it wrote; never pkill.
 
-- [ ] Test pf.conf with the real `pfctl -n` on a model whose interfaces
-      exist on the test host (openbsd-dev has only vio0), so the only
-      errors left are OPF's.
+- [x] Test pf.conf with the real `pfctl -n` on a model whose interfaces
+      exist on the test host: done on the VM (vio0 and vio1), where it
+      found that a static `$lan` failed the check before the commit gave
+      vio1 its address (now always in parentheses).
 - [ ] Status parsers against output they've only seen written by hand
       (`internal/sysinfo/testdata/handwritten/`): `ifconfig` for wg
       peers (as root), vlan, carp and point-to-point interfaces; pfctl
@@ -1500,22 +1526,39 @@ Stop it by the PID it wrote; never pkill.
 - [ ] `syspatch -c`'s error when the mirror can't be reached (its
       output with patches available is in
       `internal/sysinfo/testdata/openbsd-other/`).
-- [ ] Parent pledge and unveil on paths not yet exercised: applying
-      for real (`-dry` logs the applies), `hostname.if` changes,
-      removals, and reading `/var/log/pflog` when pflogd rotates it.
+- [ ] Parent pledge and unveil on paths not yet exercised: removals,
+      and reading `/var/log/pflog` when pflogd rotates it (applying for
+      real and `hostname.if` changes worked on the VM; not yet under
+      ktrace).
       Run under `ktrace -i` and look for `PLDG` in `kdump`: a violation
       kills the process with SIGABRT and nothing in OPF's log.
-- [ ] Unveil paths exist on a stock install; `/usr/local/*` and
-      `/var/unbound/etc` may be missing.
-- [ ] `os.Executable` returns the right path when started from rc.d.
-- [ ] rc.d script: `pexp` matches both processes; `rcctl stop` leaves
-      nothing behind and reverts an unconfirmed commit.
+- [x] Unveil paths exist on a stock install, and `os.Executable` is
+      right when started from rc.d: installed by the README's steps on
+      a fresh 7.9, it started and served.
+- [ ] rc.d script: `rcctl stop` reverts an unconfirmed commit (seen at
+      a reboot); still to check that `pexp` matches both processes and
+      nothing is left behind.
 - [ ] Each validator works on a file outside its usual location:
       `pfctl -n -f`, `dhcpd -n -c`, `unbound-checkconf` and
       `ntpd -n -f` do (checked on 7.9); still to check `httpd -n -f`,
       `sshd -t -f` (host keys, `Include`), and `sh -n` on hostname.if.
-- [ ] Real commits, with and without confirmation, on a VM that can be
-      locked out safely.
+- [x] Real commits on a VM that can be locked out safely (`opfvm`, see
+      the Roadmap): installed from the README on stock 7.9, the first
+      commit took over the stock files (with `overwrite`) and brought up
+      the LAN; signed in over it and confirmed. Every file, pf's rules,
+      dhcpd, unbound (names and reverse names from the LAN) and
+      rc.conf.local (OPF's own lines kept) matched. Revert and the
+      automatic revert put pf, the files and the model back and staged
+      the change again; while waiting, `/etc/pf.conf` kept the old
+      rules. Closing WAN SSH came back by itself; moving the LAN's
+      address came back by itself after the fix, also across a reboot
+      (reverted as OPF stopped) and a power-off (reverted by `Recover`
+      at boot). Killing the web process changed nothing; killing the
+      parent is above (Commit engine). Found and fixed: a crash before
+      the first commit, the static `$lan` above, interface changes with
+      no confirmation, reverts leaving created interfaces up, and
+      "Reverted by user" for a stop. The VM's clock runs at half speed
+      (only i8254), so its 60 s take two minutes.
 - [ ] DHCP names in DNS (`internal/leases`): the lease file format
       matches what OpenBSD's dhcpd writes (`db.c`: time format, `UTC`,
       `client-hostname`); `unbound-control -c … list_local_data` output
@@ -1588,6 +1631,12 @@ Finished work, kept here for now. Git history has the details.
 
 Commit engine:
 
+- [x] Interface changes wait for confirmation: `hostname.if` files are
+      installed at once (netstart only reads /etc), and unless the
+      commit is confirmed they're put back and netstart runs again; a
+      file the commit created is removed and its interface destroyed.
+      After a reboot during the wait, OPF reverts them as it starts.
+      Tried on the VM by moving the LAN's address.
 - [x] Outside changes are judged against the copy OPF last wrote (the
       newest commit's, or the old one it put back after a revert or a
       failure), so an OPF upgrade that changes a generator's output

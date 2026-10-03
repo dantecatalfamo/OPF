@@ -151,17 +151,21 @@ starts without a model; `make mock` is the way to work on the UI.
 
 ## Status
 
-Early rewrite. **There is no authentication yet**, so OPF listens on
-localhost only; reach it with `ssh -L 8080:127.0.0.1:8080`.
+Early rewrite. Sign-in uses the system's own accounts, and OPF serves
+HTTPS with a self-signed certificate (it logs the fingerprint). It runs
+and makes real commits on OpenBSD 7.9. By default it listens on
+127.0.0.1:8080 only; to serve the LAN, set its flags, for example
+`rcctl set opf flags -listen 0.0.0.0:443`. Admins are the members of
+`_opfadmin`, a group OPF creates when it first starts:
+`usermod -G _opfadmin <name>`.
 
 Planned next:
 
-- Login against system accounts (`auth_userokay(3)`) and TLS
-- Importing an existing system's configuration into the model
-- Service management (`rcctl`), with enable/disable staged through
-  `rc.conf.local`
-- Monitoring pages (pf states and rules, interfaces, WireGuard) ported
-  from `legacy/`
+- Importing an existing system's configuration into the model, and a
+  first-run wizard
+- History over time for the live pages, and the rest of the diagnostics
+
+TODO.md has the whole plan.
 
 `legacy/` holds the original React + Go dashboard for reference while
 its parsers are ported.
