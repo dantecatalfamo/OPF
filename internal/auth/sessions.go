@@ -85,7 +85,9 @@ type Sessions struct {
 	// say whether the account exists.
 	MinFail time.Duration
 	Now     func() time.Time
-	Log     func(Event)
+	// Log records sign-ins, refusals and sessions ending; it may be
+	// called from several goroutines at once.
+	Log func(Event)
 
 	mu       sync.Mutex
 	sessions map[[32]byte]*entry

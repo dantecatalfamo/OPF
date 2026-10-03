@@ -5,8 +5,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -16,7 +18,14 @@ type fixture struct {
 	dir    string
 	now    time.Time
 	s      *Sessions
-	events []Event
+	mu     sync.Mutex // Log is called from goroutines too
+	logged []Event
+}
+
+func (f *fixture) events() []Event {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.logged)
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -28,7 +37,11 @@ func newFixture(t *testing.T) *fixture {
 		Passwd:  filepath.Join(f.dir, "master.passwd"), Group: filepath.Join(f.dir, "group"),
 		Idle: 30 * time.Minute, Max: 12 * time.Hour,
 		Now: func() time.Time { return f.now },
-		Log: func(e Event) { f.events = append(f.events, e) },
+		Log: func(e Event) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.logged = append(f.logged, e)
+		},
 	}
 	return f
 }
@@ -93,13 +106,13 @@ func TestLoginRefused(t *testing.T) {
 		}
 	}
 	// The same answer whatever was wrong; the reason is only logged.
-	for _, e := range f.events {
+	for _, e := range f.events() {
 		if e.Kind != "refused" {
 			t.Errorf("event %+v", e)
 		}
 	}
-	if !strings.Contains(f.events[1].Message, "not in") || !strings.Contains(f.events[2].Message, "not in") {
-		t.Errorf("root's refusal: %+v", f.events[1])
+	if !strings.Contains(f.events()[1].Message, "not in") || !strings.Contains(f.events()[2].Message, "not in") {
+		t.Errorf("root's refusal: %+v", f.events()[1])
 	}
 }
 
