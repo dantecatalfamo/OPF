@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"slices"
@@ -58,6 +60,7 @@ func main() {
 	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
 	seed := flag.String("seed", "ui/src/model/sample-model.json", "model the mock server starts from")
 	mockLogin := flag.String("mock-login", "", "with -mock, require signing in, as name:password (an admin); without it the mock has no accounts")
+	watchdog := flag.String("watchdog", "", "run as the watchdog of the commit with this id (OPF starts these itself)")
 	flag.Parse()
 	log.SetPrefix("opf: ")
 
@@ -71,11 +74,6 @@ func main() {
 		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin))
 	}
 
-	exe, err := executable()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var runner run.Runner = run.Exec{}
 	if *dry {
 		runner = run.Dry{Log: log.Default()}
@@ -84,17 +82,48 @@ func main() {
 	if *dry && *checks {
 		checkRunner = run.Exec{}
 	}
-	store, err := config.New(config.Options{
+	storeOptions := config.Options{
 		Root:           *root,
 		StateDir:       *stateDir,
 		Files:          config.DefaultFiles(),
 		Runner:         runner,
 		CheckRunner:    checkRunner,
 		ConfirmTimeout: *timeout,
-	})
+	}
+	if *watchdog != "" {
+		runWatchdog(*watchdog, storeOptions)
+		return
+	}
+
+	exe, err := executable()
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Held until OPF exits (see config.Lock). A watchdog reverting a
+	// commit holds it for a moment; another OPF holds it for good.
+	lock, err := config.Lock(*stateDir, 0)
+	if errors.Is(err, config.ErrLocked) {
+		log.Printf("waiting for %s's lock: another OPF is running, or a commit's watchdog is reverting", *stateDir)
+		lock, err = config.Lock(*stateDir, 2*time.Minute)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer lock.Close()
+
+	store, err := config.New(storeOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// A watchdog for each commit that waits, in case OPF dies first.
+	var watchdogArgs []string
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "state", "root", "dry", "checks":
+			watchdogArgs = append(watchdogArgs, "-"+f.Name+"="+f.Value.String())
+		}
+	})
+	store.OnPending(func(e config.Entry) { startWatchdog(exe, e.ID, watchdogArgs) })
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	if err := store.Recover(ctx); err != nil {
 		log.Printf("recovering unfinished commits: %v", err)
@@ -261,6 +290,40 @@ func serveWeb() {
 		return hs.Serve(ln)
 	})
 	log.Fatal(err)
+}
+
+// startWatchdog starts the watchdog of a commit waiting for confirmation:
+// this binary again, as root, in a session of its own so that whatever
+// takes OPF down doesn't take it too. Its command line differs from
+// OPF's, so rc.d's pexp doesn't match it. Its output goes where OPF's
+// does.
+func startWatchdog(exe, id string, args []string) {
+	cmd := exec.Command(exe, append([]string{"-watchdog", id}, args...)...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+	if err := cmd.Start(); err != nil {
+		log.Printf("starting the watchdog of commit %s: %v", id, err)
+		return
+	}
+	go cmd.Wait()
+}
+
+// runWatchdog is a commit's watchdog (config.Store.Watch): it reverts
+// the commit if OPF is gone when it should have been confirmed.
+func runWatchdog(id string, opts config.Options) {
+	log.SetPrefix("opf watchdog: ")
+	store, err := config.New(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := privsep.SandboxWatchdog(store.WritableDirs()); err != nil {
+		log.Fatal(err)
+	}
+	msg, err := store.Watch(context.Background(), id, time.Sleep)
+	if err != nil {
+		log.Fatalf("commit %s: %v", id, err)
+	}
+	log.Print(msg)
 }
 
 func liveModel(api *appliance.Manager) func() (*pf.Model, error) {

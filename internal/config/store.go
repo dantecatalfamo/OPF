@@ -71,11 +71,18 @@ type Store struct {
 	// expired is called, without the lock, after a commit that wasn't
 	// confirmed in time has been reverted.
 	expired atomic.Pointer[func()]
+	// onPending is called, without the lock, when a commit starts
+	// waiting for confirmation.
+	onPending atomic.Pointer[func(Entry)]
 }
 
 // OnExpire sets a function called after a commit that wasn't confirmed
 // in time has been reverted: what the system runs may have reloaded.
 func (s *Store) OnExpire(f func()) { s.expired.Store(&f) }
+
+// OnPending sets a function called when a commit starts waiting for
+// confirmation, such as one starting its watchdog.
+func (s *Store) OnPending(f func(Entry)) { s.onPending.Store(&f) }
 
 type Options struct {
 	Root     string

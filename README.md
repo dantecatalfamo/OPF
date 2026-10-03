@@ -117,7 +117,11 @@ OPF runs as two processes, like the OpenBSD base daemons:
 
 Timers live in the parent, so an unconfirmed commit is reverted even if
 the web process crashes; the parent restarts it. Stopping OPF reverts
-an unconfirmed commit too.
+an unconfirmed commit too. If the parent itself is killed or crashes, a
+watchdog it started for the commit (`opf -watchdog <id>`, in a session
+of its own) reverts it just after the deadline: the parent holds a lock
+on `/var/opf` for as long as it runs, and the watchdog only acts if it
+can take it. The lock also keeps a second OPF from starting.
 
 ## Installing
 

@@ -27,6 +27,16 @@ type pendingCommit struct {
 // timeout the whole commit is reverted. If anything fails to apply, the whole commit is
 // reverted and the staged changes are kept so they can be fixed.
 func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
+	e, err := s.commit(ctx, info)
+	if err == nil && e.Status == StatusPending {
+		if f := s.onPending.Load(); f != nil {
+			(*f)(*e)
+		}
+	}
+	return e, err
+}
+
+func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.pending != nil {
@@ -319,6 +329,10 @@ func (s *Store) finishRevert(ctx context.Context, e *Entry, reason string) error
 func (s *Store) Recover(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.recover(ctx, "OPF restarted before this commit finished; reverted.")
+}
+
+func (s *Store) recover(ctx context.Context, reason string) error {
 	entries, err := s.History()
 	if err != nil {
 		return err
@@ -329,7 +343,7 @@ func (s *Store) Recover(ctx context.Context) error {
 			continue
 		}
 		log.Printf("config: reverting unfinished commit %s", e.ID)
-		errs = append(errs, s.finishRevert(ctx, e, "OPF restarted before this commit finished; reverted."))
+		errs = append(errs, s.finishRevert(ctx, e, reason))
 	}
 	return errors.Join(errs...)
 }

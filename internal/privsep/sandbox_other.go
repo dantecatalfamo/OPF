@@ -10,6 +10,9 @@ func SandboxParent(writable, readable []string, exe string) error {
 	return nil
 }
 
+// SandboxWatchdog is a no-op outside OpenBSD.
+func SandboxWatchdog(writable []string) error { return nil }
+
 func sandboxChild() error { return nil }
 
 // SandboxSender is a no-op outside OpenBSD.

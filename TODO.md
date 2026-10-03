@@ -294,19 +294,6 @@ In order. Each step's details are in the section it points to.
 - [ ] Removing a physical port's `hostname.if` only takes the port down
       (it can't be destroyed); its addresses stay until a reboot.
       Nothing in the UI removes physical ports yet.
-- [ ] **If OPF's parent dies during the confirm window** (SIGKILL, a
-      crash), nothing reverts the commit until OPF starts again: tried
-      on the VM, a pf change that closed WAN SSH stayed loaded long past
-      its deadline (the web process exits with the parent; rc.d doesn't
-      restart daemons), and `rcctl start opf` then reverted it with
-      `Recover`. A reboot reverts too. Proposed: the parent holds an
-      exclusive lock on its state directory for its whole life (which
-      also stops two OPFs running at once, below), and a commit that
-      waits for confirmation starts a detached watchdog (`opf
-      -watchdog <id>`, root, in its own session) that sleeps past the
-      deadline, then takes the lock without waiting: if it gets it the
-      parent is gone, so it runs `Recover`; if not, the parent is alive
-      and handles its own timer.
 - [ ] Decide whether a service that fails to reload or restart should
       revert the whole commit (it does now).
 - [ ] A second browser's staging replaces the first's staged model
@@ -320,8 +307,6 @@ In order. Each step's details are in the section it points to.
 - [ ] `mygate` is only read at boot, not applied on commit, and the
       generator skips it when the default gateway is DHCP (dhcpleased
       handles that case); check both behave as intended.
-- [ ] No guard against two OPF instances running at once (file
-      locking; see the watchdog above).
 - [ ] Graceful shutdown: SIGTERM reverts an unconfirmed commit (seen on
       the VM: `reboot` during the wait reverted it, its log saying OPF
       stopped). Still to check that it waits for an operation already
@@ -1554,11 +1539,12 @@ Stop it by the PID it wrote; never pkill.
       address came back by itself after the fix, also across a reboot
       (reverted as OPF stopped) and a power-off (reverted by `Recover`
       at boot). Killing the web process changed nothing; killing the
-      parent is above (Commit engine). Found and fixed: a crash before
-      the first commit, the static `$lan` above, interface changes with
-      no confirmation, reverts leaving created interfaces up, and
-      "Reverted by user" for a stop. The VM's clock runs at half speed
-      (only i8254), so its 60 s take two minutes.
+      parent left the commit loaded until a watchdog was added (Done).
+      Found and fixed: a crash before the first commit, the static
+      `$lan` above, interface changes with no confirmation, reverts
+      leaving created interfaces up, and "Reverted by user" for a stop.
+      The VM's clock runs at half speed (only i8254), so its 60 s take
+      two minutes.
 - [ ] DHCP names in DNS (`internal/leases`): the lease file format
       matches what OpenBSD's dhcpd writes (`db.c`: time format, `UTC`,
       `client-hostname`); `unbound-control -c … list_local_data` output
@@ -1631,6 +1617,16 @@ Finished work, kept here for now. Git history has the details.
 
 Commit engine:
 
+- [x] A commit's watchdog: the parent holds an flock(2) lock on its
+      state directory for as long as it runs, and a commit that waits
+      for confirmation starts `opf -watchdog <id>` (root, its own
+      session, the parent's sandbox plus "flock"). Just after the
+      deadline it takes the lock if it can, which means the parent is
+      gone, and reverts what's left as `Recover` would. Tried on the VM:
+      with the parent killed by SIGKILL, WAN SSH came back 15 s after
+      the deadline without OPF running. The lock also makes a second
+      OPF wait two minutes (a watchdog may be reverting) and then
+      refuse.
 - [x] Interface changes wait for confirmation: `hostname.if` files are
       installed at once (netstart only reads /etc), and unless the
       commit is confirmed they're put back and netstart runs again; a

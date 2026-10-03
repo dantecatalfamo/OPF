@@ -26,6 +26,18 @@ var execDirs = []string{"/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/local/bi
 // "id" is needed because the child drops privileges between fork and
 // exec, while still under the parent's pledge.
 func SandboxParent(writable, readable []string, exe string) error {
+	return sandboxRoot(writable, readable, exe, "stdio rpath wpath cpath fattr chown proc exec id")
+}
+
+// SandboxWatchdog limits a commit's watchdog (cmd/opf) to what reverting
+// the commit takes, which is what the parent does, plus flock(2) for
+// the state directory's lock. It runs nothing of its own, so its
+// executable isn't unveiled.
+func SandboxWatchdog(writable []string) error {
+	return sandboxRoot(writable, nil, "", "stdio rpath wpath cpath fattr chown proc exec id flock")
+}
+
+func sandboxRoot(writable, readable []string, exe, promises string) error {
 	preload()
 	for _, d := range writable {
 		if err := unveil(d, "rwc"); err != nil {
@@ -42,8 +54,10 @@ func SandboxParent(writable, readable []string, exe string) error {
 			return err
 		}
 	}
-	if err := unveil(exe, "rx"); err != nil {
-		return err
+	if exe != "" {
+		if err := unveil(exe, "rx"); err != nil {
+			return err
+		}
 	}
 	if err := unveil("/dev/null", "rw"); err != nil {
 		return err
@@ -51,7 +65,7 @@ func SandboxParent(writable, readable []string, exe string) error {
 	if err := unix.UnveilBlock(); err != nil {
 		return fmt.Errorf("unveil: %w", err)
 	}
-	return pledge("stdio rpath wpath cpath fattr chown proc exec id")
+	return pledge(promises)
 }
 
 // sandboxChild hides the whole filesystem and allows only networking
