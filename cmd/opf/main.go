@@ -204,7 +204,7 @@ func main() {
 	// Don't leave an unconfirmed commit loaded after OPF stops.
 	if store.Pending() != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		if err := store.Revert(ctx); err != nil {
+		if err := store.RevertStopping(ctx); err != nil {
 			log.Printf("reverting unconfirmed commit: %v", err)
 		} else {
 			log.Printf("reverted unconfirmed commit")

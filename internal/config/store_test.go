@@ -712,3 +712,27 @@ func TestInterfaceChangeWaitsForConfirmation(t *testing.T) {
 		t.Fatalf("status = %s", e.Status)
 	}
 }
+
+// Stopping OPF reverts a pending commit, and the log says so rather
+// than blaming a user.
+func TestRevertStopping(t *testing.T) {
+	s, _, root := newTestStore(t, time.Hour)
+	stage(t, s, "pf", "block\n")
+	e, err := s.Commit(context.Background(), CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RevertStopping(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	e, _ = s.Entry(e.ID)
+	if e.Status != StatusReverted || !strings.Contains(e.Log, "OPF stopped") || strings.Contains(e.Log, "by user") {
+		t.Fatalf("status %s, log:\n%s", e.Status, e.Log)
+	}
+	if got := readLive(t, root, "/etc/pf.conf"); got != "pass\n" {
+		t.Fatalf("pf.conf = %q", got)
+	}
+	if err := s.RevertStopping(context.Background()); !errors.Is(err, ErrNoPending) {
+		t.Fatalf("second revert: %v", err)
+	}
+}

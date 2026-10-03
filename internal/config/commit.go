@@ -257,6 +257,18 @@ func (s *Store) RevertBy(ctx context.Context, by string) error {
 	return s.revertPending(ctx, "Reverted by "+by+".")
 }
 
+// RevertStopping undoes the pending commit because OPF is stopping, so
+// nothing unconfirmed stays loaded after it.
+func (s *Store) RevertStopping(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.pending == nil {
+		return ErrNoPending
+	}
+	s.pending.timer.Stop()
+	return s.revertPending(ctx, "OPF stopped before this commit was confirmed; reverted.")
+}
+
 func (s *Store) expire(p *pendingCommit) {
 	if !s.expireLocked(p) {
 		return
