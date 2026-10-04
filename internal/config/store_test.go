@@ -817,3 +817,38 @@ func readFile(t *testing.T, path string) string {
 	return strings.TrimSpace(string(data))
 }
 
+// A file whose Apply brings a service in line (rc.conf.local) is left
+// to do it: turning DHCP off restarted dhcpd with an empty dhcpd.conf
+// before rc.conf.local could stop it, which failed every such commit.
+func TestManagedServicesAreLeftToTheirFile(t *testing.T) {
+	root := t.TempDir()
+	r := &fakeRunner{}
+	files := []File{
+		{Name: "dhcpd", Path: "/etc/dhcpd.conf", Service: "dhcpd", ServiceAction: "restart", Mode: 0644},
+		{Name: "rc", Path: "/etc/rc.conf.local", Apply: []string{"reconcile", "{}"}, Manages: []string{"dhcpd"}, Mode: 0644},
+	}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: files, Runner: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/dhcpd.conf", "subnet x {}\n")
+	writeLive(t, root, "/etc/rc.conf.local", "dhcpd_flags=em1\n")
+
+	stage(t, s, "dhcpd", "\n")
+	stage(t, s, "rc", "\n")
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if r.ran("rcctl restart dhcpd") || !r.ran("reconcile") {
+		t.Fatalf("commands %v", r.commands())
+	}
+
+	// Alone, its own file still restarts it.
+	stage(t, s, "dhcpd", "subnet y {}\n")
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if !r.ran("rcctl restart dhcpd") {
+		t.Fatalf("commands %v", r.commands())
+	}
+}

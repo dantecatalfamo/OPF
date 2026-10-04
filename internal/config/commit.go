@@ -127,6 +127,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			last[f.Service] = i
 		}
 	}
+	managed := s.managed(e)
 	batch := newServiceBatch()
 	for i, ef := range e.Files {
 		if ef.Confirm {
@@ -152,7 +153,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			}
 			batch.add(f, false)
 		}
-		if f.Service != "" && last[f.Service] == i {
+		if f.Service != "" && last[f.Service] == i && !managed[f.Service] {
 			if err := s.tellService(ctx, batch, f.Service, &logBuf); err != nil {
 				return fail(err)
 			}
@@ -428,12 +429,30 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 		batch.add(f, false)
 	}
 	// Services are told once, when every file is back.
+	managed := s.managed(e)
 	for _, svc := range batch.order {
+		if managed[svc] {
+			continue
+		}
 		if err := s.tellService(ctx, batch, svc, logBuf); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// managed is the services that a file of e brings in line itself when
+// it's applied (File.Manages).
+func (s *Store) managed(e *Entry) map[string]bool {
+	out := map[string]bool{}
+	for _, ef := range e.Files {
+		if f, err := s.Lookup(ef.Name); err == nil {
+			for _, svc := range f.Manages {
+				out[svc] = true
+			}
+		}
+	}
+	return out
 }
 
 // restage puts a reverted commit's contents back into the candidate so

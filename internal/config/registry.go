@@ -49,6 +49,14 @@ type File struct {
 	// restarted as usual, which takes them all.
 	ReloadWith []string
 
+	// Manages lists services this file's Apply brings in line itself,
+	// starting, stopping or restarting them. When the file is part of a
+	// commit or a revert, those services aren't also told about their
+	// own files: rc.conf.local stops a daemon it disables, which can't
+	// be restarted first with the configuration that disables it (an
+	// empty dhcpd.conf).
+	Manages []string
+
 	// Confirm files are loaded from their staged copy without being
 	// written to Path. Unless the commit is confirmed before the
 	// timeout, the live file is loaded again. Because Path is untouched
@@ -235,6 +243,7 @@ func DefaultFiles() []File {
 			Check:            []string{"sh", "-n", "{}"},
 			Apply:            []string{"sh", "-c", RcReconcile, "sh", "{}"},
 			ApplyWhenRemoved: true,
+			Manages:          RcServices,
 			Mode:             0644,
 		},
 	}
