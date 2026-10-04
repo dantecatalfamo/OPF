@@ -236,6 +236,18 @@ func DefaultFiles() []File {
 			Mode: 0644,
 		},
 		{
+			// Shared like rc.conf.local; OPF sets only its lines
+			// (pf.SysctlNames), which this sets on the running system.
+			// /etc/rc applies the file at boot. Gone (a revert of the
+			// commit that made it), forwarding is off, OpenBSD's
+			// default.
+			Name: "sysctl.conf", Path: "/etc/sysctl.conf",
+			Desc:             "Kernel settings: forwarding packets between interfaces",
+			Apply:            []string{"sh", "-c", `v=$(sed -n 's/^[[:space:]]*net\.inet\.ip\.forwarding[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$1" 2>/dev/null | tail -n 1); sysctl net.inet.ip.forwarding="${v:-0}" >/dev/null`, "sh", "{}"},
+			ApplyWhenRemoved: true,
+			Mode:             0644,
+		},
+		{
 			// After every service's configuration, so a service it
 			// enables starts with its new configuration file.
 			Name: "rc.conf.local", Path: "/etc/rc.conf.local",

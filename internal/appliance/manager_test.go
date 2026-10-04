@@ -583,6 +583,84 @@ func TestRcConfLocalKeepsOtherLines(t *testing.T) {
 	}
 }
 
+// sysctl.conf is shared too: OPF sets forwarding, keeps every other
+// line, and sets it on the running system when it commits.
+func TestSysctlConfKeepsOtherLines(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	path := filepath.Join(e.root, pf.SysctlPath)
+	ours, _ := os.ReadFile(path) // what OPF wrote for the live model
+	if err := os.WriteFile(path, []byte("kern.maxfiles=20000\n\n"+string(ours)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	live := e.live()
+	m := live.Model
+	m.System.NTPServers = []string{"other.example"}
+	m.Interfaces = m.Interfaces[:1] // nothing left to forward between
+	m.DHCP, m.Firewall.Rules, m.Firewall.Forwards, m.Routing.Routes = nil, nil, nil, nil
+	m.Routing.Gateways = m.Routing.Gateways[:1]
+	m.Firewall.OutboundNAT.Rules = nil
+	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	if err != nil {
+		t.Fatalf("stage: %v %+v", err, AsError(err).Details)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "one interface"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Status == StatusPending {
+		e.m.Confirm(c.ID)
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.HasPrefix(string(got), "kern.maxfiles=20000\n") || !strings.HasSuffix(string(got), "\nnet.inet.ip.forwarding=0\n") {
+		t.Errorf("sysctl.conf:\n%s", got)
+	}
+
+	// An admin's own line isn't a change outside OPF; turning
+	// forwarding on by hand is.
+	os.WriteFile(path, []byte("kern.somaxconn=1024\n"+string(got)), 0644)
+	live = e.live()
+	m = live.Model
+	m.System.NTPServers = []string{"third.example"}
+	if _, err := e.m.Stage(StageRequest{Base: live.Version, Model: m}); err != nil {
+		t.Errorf("an admin's line: %v", err)
+	}
+	os.WriteFile(path, []byte(string(got)+"net.inet.ip.forwarding=1\n"), 0644)
+	if _, err := e.m.Stage(StageRequest{Base: live.Version, Model: m}); code(err) != CodeModifiedOutside {
+		t.Errorf("forwarding by hand: %v", err)
+	}
+}
+
+// OPF starting to manage a file the system doesn't have (after an
+// upgrade) isn't a change outside OPF: there's nothing there to lose.
+func TestNewlyManagedMissingFile(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	os.Remove(filepath.Join(e.root, pf.SysctlPath))
+	live := e.live()
+	m := live.Model
+	m.System.NTPServers = []string{"other.example"}
+	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	if err != nil {
+		t.Fatalf("stage: %v %+v", err, AsError(err).Details)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "after an upgrade"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Status == StatusPending {
+		e.m.Confirm(c.ID)
+	}
+	if got, _ := os.ReadFile(filepath.Join(e.root, pf.SysctlPath)); !strings.Contains(string(got), "net.inet.ip.forwarding=1") {
+		t.Errorf("sysctl.conf:\n%s", got)
+	}
+	ran := false
+	for _, c := range e.run.commands() {
+		ran = ran || strings.Contains(c, "sysctl net.inet.ip.forwarding")
+	}
+	if !ran {
+		t.Errorf("forwarding not set: %v", e.run.commands())
+	}
+}
+
 // A commit reverted because nobody confirmed it reports the change, so
 // the lease watcher puts DHCP names back in the reloaded resolver.
 func TestTimeoutRevertReportsChange(t *testing.T) {

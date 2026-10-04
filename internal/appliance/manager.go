@@ -486,6 +486,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 			liveGen[pf.RcPath] = merged
 		}
 	}
+	// So is sysctl.conf.
+	sysctlDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SysctlPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	gen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), req.Model)
+	if liveModel != nil {
+		liveGen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), liveModel)
+	}
 	// What OPF last left in each file, from history; a file no commit
 	// has touched yet is judged against what the applied model
 	// generates, the best there is.
@@ -525,10 +534,19 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		// differs from every file it wrote before.
 		prev, wrote := lastWrite(path)
 		outside := onDisk != wrote || (wrote && !bytes.Equal(disk, config.Normalize(prev)))
-		if path == pf.RcPath {
+		switch path {
+		case pf.RcPath:
 			// Only OPF's own lines count; the rest isn't OPF's, and a
 			// missing file means rc.conf's defaults.
 			outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
+		case pf.SysctlPath:
+			outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
+		}
+		if _, ever := written[path]; !ever && !onDisk {
+			// A file OPF has never written and that isn't there has no
+			// one's changes to lose: one this version of OPF manages and
+			// the last didn't, say.
+			outside = false
 		}
 		if outside && !slices.Contains(req.Overwrite, path) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF; list it in overwrite to replace it"})
