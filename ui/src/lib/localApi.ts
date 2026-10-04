@@ -70,7 +70,7 @@ async function fileChanges(from: Model, to: Model): Promise<FileChange[]> {
 }
 
 // The files that can cut off access, as the server's registry says.
-const needsConfirm = (path: string) => path === '/etc/pf.conf' || path.startsWith('/etc/hostname.');
+const needsConfirm = (path: string) => path === '/etc/pf.conf' || path === '/etc/mygate' || path.startsWith('/etc/hostname.');
 
 const clone = <T,>(v: T): T => structuredClone(v);
 

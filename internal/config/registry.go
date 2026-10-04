@@ -23,8 +23,9 @@ type File struct {
 	// which for Confirm files is the staged copy rather than Path.
 	Apply []string
 
-	// Remove undoes what a file set up, after a commit removes it: "{}"
-	// is the removed path and "{*}" works as for Apply. Nil means
+	// Remove undoes what a file set up, after a commit removes it (or a
+	// revert removes one the commit created): "{}" is a copy of what the
+	// file held, and "{*}" works as for Apply. Nil means
 	// removing the file is enough (it's only read at boot, say).
 	Remove []string
 
@@ -139,12 +140,6 @@ func DefaultFiles() []File {
 			Mode:  0644,
 		},
 		{
-			// Read at boot and by a full netstart; not applied on commit.
-			Name: "mygate", Path: "/etc/mygate",
-			Desc: "Default gateway (applied at boot)",
-			Mode: 0644,
-		},
-		{
 			// hostname.if(5), one per interface. Applied first, since
 			// pf rules refer to the interfaces. netstart reads /etc
 			// directly, so these can't be loaded from a staged copy;
@@ -157,6 +152,24 @@ func DefaultFiles() []File {
 			// port can't be, so it's taken down instead.
 			Remove: []string{"sh", "-c", `ifconfig "$1" destroy 2>/dev/null || ifconfig "$1" down`, "sh", "{*}"},
 			Mode:   0640, // may hold keys, e.g. wgkey
+		},
+		{
+			// The default gateway, one address. netstart only ever adds
+			// it (route add does nothing when there's a default route
+			// already), so it's set here: after the interfaces, since it
+			// may only be reachable through an address they just got.
+			// A wrong one can cut off access from other networks, so it
+			// waits for confirmation. Removing it deletes the default
+			// route through that gateway, and no other: dhcpleased's
+			// routes have the same priority. The model only writes it
+			// when no interface uses DHCP, which is when netstart reads
+			// it at boot.
+			Name: "mygate", Path: "/etc/mygate",
+			Desc:             "Default gateway",
+			Apply:            []string{"sh", "-c", `gw=$(head -n 1 "$1") && { route -qn change -inet default "$gw" || route -qn add -inet default "$gw"; }`, "sh", "{}"},
+			Remove:           []string{"sh", "-c", `gw=$(head -n 1 "$1") && route -qn delete -inet default "$gw" || :`, "sh", "{}"},
+			ConfirmInstalled: true,
+			Mode:             0644,
 		},
 		{
 			Name: "pf.conf", Path: "/etc/pf.conf",

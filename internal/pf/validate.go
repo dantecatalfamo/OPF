@@ -404,6 +404,20 @@ func (v *validator) routing() {
 	}
 	if r.DefaultGateway != "" {
 		v.gatewayRef("routing.defaultGateway", r.DefaultGateway)
+		// netstart ignores /etc/mygate while an interface takes its
+		// address by DHCP (the lease brings a gateway), and dhcpleased's
+		// default route would fight a fixed one.
+		for _, g := range r.Gateways {
+			if g.ID != r.DefaultGateway || g.Address == "dhcp" {
+				continue
+			}
+			for _, f := range v.m.Interfaces {
+				if f.Enabled && f.IPv4.Mode == IPv4DHCP {
+					v.fail("routing.defaultGateway", "%s gets its address by DHCP, which brings its own default gateway; a fixed one (%s) would be ignored. Use %s’s DHCP gateway, or give it a fixed address", f.Name, g.Name, f.Name)
+					break
+				}
+			}
+		}
 	}
 	routes := map[string]bool{}
 	for i, rt := range r.Routes {

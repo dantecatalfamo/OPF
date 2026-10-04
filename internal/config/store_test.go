@@ -736,3 +736,84 @@ func TestRevertStopping(t *testing.T) {
 		t.Fatalf("second revert: %v", err)
 	}
 }
+
+// The default gateway is set after the interfaces, which may be what
+// makes it reachable, both when committing and when reverting; a
+// removed one takes its route with it, and only its own.
+func TestDefaultGatewayOrder(t *testing.T) {
+	root := t.TempDir()
+	r := &fakeRunner{}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/hostname.em0", "inet 192.168.1.50/24\nup\n")
+	writeLive(t, root, "/etc/mygate", "192.168.1.1\n")
+	stage(t, s, "hostname.em0", "inet 10.0.0.50/24\nup\n")
+	stage(t, s, "mygate", "10.0.0.1\n")
+
+	order := func() []string {
+		var out []string
+		for _, c := range r.commands() {
+			switch {
+			case strings.HasPrefix(c, "sh /etc/netstart"):
+				out = append(out, "netstart")
+			case strings.Contains(c, "route -qn change -inet default"):
+				out = append(out, "gateway "+readFile(t, c[strings.LastIndex(c, " ")+1:]))
+			}
+		}
+		r.mu.Lock()
+		r.cmds = nil
+		r.mu.Unlock()
+		return out
+	}
+	e, err := s.Commit(context.Background(), CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Status != StatusPending {
+		t.Fatalf("a new gateway didn't wait for confirmation: %s", e.Status)
+	}
+	if got := order(); !reflect.DeepEqual(got, []string{"netstart", "gateway 10.0.0.1"}) {
+		t.Fatalf("commit applied %v", got)
+	}
+	if err := s.Revert(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(); !reflect.DeepEqual(got, []string{"netstart", "gateway 192.168.1.1"}) {
+		t.Fatalf("revert applied %v", got)
+	}
+
+	// Removed: the route through that gateway goes, by its address.
+	if err := s.DiscardAll(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.StageRemoval("mygate"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	var del string
+	for _, c := range r.commands() {
+		if strings.Contains(c, "route -qn delete -inet default") {
+			del = readFile(t, c[strings.LastIndex(c, " ")+1:])
+		}
+	}
+	if del != "192.168.1.1" {
+		t.Fatalf("removing mygate deleted the route through %q: %v", del, r.commands())
+	}
+	if err := s.Confirm(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+	return strings.TrimSpace(string(data))
+}
+

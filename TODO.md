@@ -304,9 +304,6 @@ In order. Each step's details are in the section it points to.
 - [ ] History is never pruned.
 - [ ] Newly created parent directories get 0755; check what each managed
       path expects.
-- [ ] `mygate` is only read at boot, not applied on commit, and the
-      generator skips it when the default gateway is DHCP (dhcpleased
-      handles that case); check both behave as intended.
 - [ ] Graceful shutdown: SIGTERM reverts an unconfirmed commit (seen on
       the VM: `reboot` during the wait reverted it, its log saying OPF
       stopped). Still to check that it waits for an operation already
@@ -1617,6 +1614,16 @@ Finished work, kept here for now. Git history has the details.
 
 Commit engine:
 
+- [x] The default gateway takes effect on commit: netstart only ever
+      adds it (`route add` does nothing when a default route exists),
+      so changing it waited for a reboot. `mygate` now sets the route
+      itself (change, else add), after the interfaces, and waits for
+      confirmation; removing it deletes the route through that gateway
+      only (dhcpleased's have the same priority). A revert puts every
+      file back first and then applies them in the commit's order, so
+      the old gateway is reachable again before it's set. A fixed
+      default gateway while an interface uses DHCP is refused: netstart
+      ignores mygate then.
 - [x] A commit's watchdog: the parent holds an flock(2) lock on its
       state directory for as long as it runs, and a commit that waits
       for confirmation starts `opf -watchdog <id>` (root, its own

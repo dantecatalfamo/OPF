@@ -134,7 +134,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		}
 		f, _ := s.Lookup(ef.Name)
 		if ef.Removed {
-			if err := s.remove(ctx, f, "commit "+e.ID, &logBuf); err != nil {
+			if err := s.remove(ctx, f, s.historyFile(e.ID, "old", f.Path), "commit "+e.ID, &logBuf); err != nil {
 				return fail(err)
 			}
 			batch.add(f, true)
@@ -350,9 +350,18 @@ func (s *Store) recover(ctx context.Context, reason string) error {
 
 // revertEntry puts every file in e back the way it was and reloads it.
 // It keeps going after errors so as much as possible is restored.
+//
+// Every file is back on disk before any is applied, and they're applied
+// in the commit's order: interfaces before the default gateway (which
+// may only be reachable through an interface's old address) and before
+// pf.
 func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer) error {
 	var errs []error
-	batch := newServiceBatch()
+	type undo struct {
+		f       File
+		created bool // the commit created it; it's gone again
+	}
+	todo := make([]*undo, len(e.Files))
 	for i := len(e.Files) - 1; i >= 0; i-- {
 		ef := e.Files[i]
 		f, err := s.Lookup(ef.Name)
@@ -361,40 +370,54 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 			continue
 		}
 		live := s.livePath(f)
-		if !ef.Confirm {
-			if ef.Existed {
-				old, err := os.ReadFile(s.historyFile(e.ID, "old", f.Path))
-				if err == nil {
-					err = writeFileAtomic(live, old, f.Mode)
-				}
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-				s.logFile("restore", f, live, "reverting commit "+e.ID)
-				fmt.Fprintf(logBuf, "# restore %s\n", f.Path)
-			} else {
-				if err := os.Remove(live); err != nil && !errors.Is(err, fs.ErrNotExist) {
-					errs = append(errs, err)
-				} else {
-					s.logFile("remove", f, live, "reverting commit "+e.ID+", didn't exist before")
-				}
-				fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
-				// Undo what the commit set up with it: an interface
-				// it created is destroyed.
-				if f.Remove != nil {
-					if err := s.logRun(ctx, logBuf, subst(f.Remove, live)...); err != nil {
-						errs = append(errs, err)
-					}
-				}
-				if f.ApplyWhenRemoved {
-					if err := s.applyFile(ctx, f, live, logBuf); err != nil {
-						errs = append(errs, err)
-					}
-				}
-				batch.add(f, true)
+		switch {
+		case ef.Confirm:
+			// Never written; the live file is loaded again below.
+		case ef.Existed:
+			old, err := os.ReadFile(s.historyFile(e.ID, "old", f.Path))
+			if err == nil {
+				err = writeFileAtomic(live, old, f.Mode)
+			}
+			if err != nil {
+				errs = append(errs, err)
 				continue
 			}
+			s.logFile("restore", f, live, "reverting commit "+e.ID)
+			fmt.Fprintf(logBuf, "# restore %s\n", f.Path)
+		default:
+			if err := os.Remove(live); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				errs = append(errs, err)
+			} else {
+				s.logFile("remove", f, live, "reverting commit "+e.ID+", didn't exist before")
+			}
+			fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
+			todo[i] = &undo{f: f, created: true}
+			continue
+		}
+		todo[i] = &undo{f: f}
+	}
+
+	batch := newServiceBatch()
+	for _, u := range todo {
+		if u == nil {
+			continue
+		}
+		f, live := u.f, s.livePath(u.f)
+		if u.created {
+			// Undo what the commit set up with it: an interface it
+			// created is destroyed.
+			if f.Remove != nil {
+				if err := s.logRun(ctx, logBuf, subst(f.Remove, s.historyFile(e.ID, "new", f.Path))...); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			if f.ApplyWhenRemoved {
+				if err := s.applyFile(ctx, f, live, logBuf); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			batch.add(f, true)
+			continue
 		}
 		if _, err := os.Stat(live); err != nil {
 			continue // nothing to reload
@@ -439,15 +462,16 @@ func (s *Store) restage(e *Entry) error {
 	return errors.Join(errs...)
 }
 
-// remove deletes a live file for a commit and undoes what it set up.
-func (s *Store) remove(ctx context.Context, f File, why string, logBuf *bytes.Buffer) error {
+// remove deletes a live file for a commit and undoes what it set up;
+// removed is a copy of what the file held.
+func (s *Store) remove(ctx context.Context, f File, removed, why string, logBuf *bytes.Buffer) error {
 	if err := os.Remove(s.livePath(f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	s.logFile("remove", f, s.livePath(f), why)
 	fmt.Fprintf(logBuf, "# remove %s\n", f.Path)
 	if f.Remove != nil {
-		return s.logRun(ctx, logBuf, subst(f.Remove, s.livePath(f))...)
+		return s.logRun(ctx, logBuf, subst(f.Remove, removed)...)
 	}
 	return nil
 }

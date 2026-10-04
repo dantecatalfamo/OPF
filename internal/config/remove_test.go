@@ -52,8 +52,8 @@ func TestRemoveFile(t *testing.T) {
 	if exists(root, "/etc/hostname.vlan30") {
 		t.Error("the file wasn't removed")
 	}
-	if !r.ran("destroy vlan30 " + filepath.Join(root, "/etc/hostname.vlan30")) {
-		t.Errorf("Remove didn't run with the device and path: %v", r.commands())
+	if !r.ran("destroy vlan30 " + s.historyFile(e.ID, "old", "/etc/hostname.vlan30")) {
+		t.Errorf("Remove didn't run with the device and the removed contents: %v", r.commands())
 	}
 	if r.ran("netstart") {
 		t.Error("a removed file was applied")

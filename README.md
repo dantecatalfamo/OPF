@@ -65,13 +65,14 @@ one side only fails the build.
    new versions are saved to `/var/opf/history/<id>/` and the files are
    applied in order.
 4. **Confirm.** A commit that changes a file that could cut off your
-   access (`pf.conf`, or an interface's `hostname.if`) waits for
+   access (`pf.conf`, an interface's `hostname.if`, or the default
+   gateway in `mygate`) waits for
    confirmation, and unless it's confirmed within the timeout (60s by
    default) everything it changed is put back. `pf.conf` is loaded from
    the staged copy *without* being written to `/etc`, so a reboot also
    reverts it. `netstart` only reads `/etc`, so `hostname.if` files are
-   installed straight away; after a reboot during the wait OPF reverts
-   them when it starts.
+   installed straight away, as is `mygate` (OPF sets the route); after a
+   reboot during the wait OPF reverts them when it starts.
 
 The model is committed together with the files generated from it, so
 they can't disagree. If any apply step fails, the whole commit is

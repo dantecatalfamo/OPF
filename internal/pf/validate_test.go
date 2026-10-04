@@ -67,6 +67,9 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"a user tag in OPF's namespace", "firewall.rules[2].tag", func(m *Model) { m.Firewall.Rules[2].Tag = "opf_nonat" }},
 		{"reservation inside the dynamic range", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.150" }},
 		{"reservation on the interface's own address", "dhcp[0].reservations[0].ip", func(m *Model) { m.DHCP[0].Reservations[0].IP = "192.168.1.1" }},
+		{"fixed default gateway while the WAN uses DHCP (netstart ignores mygate)", "routing.defaultGateway", func(m *Model) {
+			m.Routing.Gateways[0].Address = "203.0.113.1"
+		}},
 		// pf options
 		{"skipping the WAN", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"wan"} }},
 		{"skipping egress", "firewall.options.skipOn[0]", func(m *Model) { m.Firewall.Options.SkipOn = []string{"egress"} }},
