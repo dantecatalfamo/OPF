@@ -756,7 +756,7 @@ func TestDefaultGatewayOrder(t *testing.T) {
 		var out []string
 		for _, c := range r.commands() {
 			switch {
-			case strings.HasPrefix(c, "sh /etc/netstart"):
+			case strings.Contains(c, "exec sh /etc/netstart"):
 				out = append(out, "netstart")
 			case strings.Contains(c, "route -qn change -inet default"):
 				out = append(out, "gateway "+readFile(t, c[strings.LastIndex(c, " ")+1:]))
@@ -850,5 +850,53 @@ func TestManagedServicesAreLeftToTheirFile(t *testing.T) {
 	}
 	if !r.ran("rcctl restart dhcpd") {
 		t.Fatalf("commands %v", r.commands())
+	}
+}
+
+// Giving up a fixed gateway for DHCP takes the old route down before the
+// interface asks for a lease, whose route goes through the same router;
+// deleting it after would take DHCP's route with it. Reverting does the
+// same the other way.
+func TestTakeDownBeforeBringingUp(t *testing.T) {
+	root := t.TempDir()
+	r := &fakeRunner{}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeLive(t, root, "/etc/hostname.em0", "inet 192.168.1.50/24\nup\n")
+	writeLive(t, root, "/etc/mygate", "192.168.1.1\n")
+	stage(t, s, "hostname.em0", "inet autoconf\nup\n")
+	if err := s.StageRemoval("mygate"); err != nil {
+		t.Fatal(err)
+	}
+	steps := func() []string {
+		var out []string
+		for _, c := range r.commands() {
+			switch {
+			case strings.Contains(c, "route -qn delete -inet default"):
+				out = append(out, "delete route")
+			case strings.Contains(c, "exec sh /etc/netstart"):
+				out = append(out, "netstart")
+			case strings.Contains(c, "route -qn change -inet default"):
+				out = append(out, "set route")
+			}
+		}
+		r.mu.Lock()
+		r.cmds = nil
+		r.mu.Unlock()
+		return out
+	}
+	if _, err := s.Commit(context.Background(), CommitInfo{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := steps(); !reflect.DeepEqual(got, []string{"delete route", "netstart"}) {
+		t.Fatalf("commit: %v", got)
+	}
+	if err := s.Revert(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := steps(); !reflect.DeepEqual(got, []string{"netstart", "set route"}) {
+		t.Fatalf("revert: %v", got)
 	}
 }

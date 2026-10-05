@@ -154,7 +154,7 @@ func DefaultFiles() []File {
 			// they're installed, and put back unless confirmed.
 			Name: "hostname.*", Path: "/etc/hostname.*", Match: `[a-z]+[0-9]+`,
 			Desc:             "Network interface",
-			Apply:            []string{"sh", "/etc/netstart", "{*}"},
+			Apply:            []string{"sh", "-c", HostnameApply, "sh", "{*}"},
 			ConfirmInstalled: true,
 			// Virtual interfaces (vlan, wg) are destroyed; a physical
 			// port can't be, so it's taken down instead.
@@ -260,6 +260,23 @@ func DefaultFiles() []File {
 		},
 	}
 }
+
+// HostnameApply applies /etc/hostname.$1 with netstart. An interface
+// that leaves DHCP or SLAAC for a fixed address keeps its AUTOCONF flag
+// through netstart, and dhcpleased (or slaacd) keeps its lease; when
+// the flag does go, it deletes the address and default route it set,
+// even one now also set by hand. So autoconf the file doesn't ask for
+// is turned off first, and the daemon given time to let go, before
+// netstart sets what the file says.
+var HostnameApply = `if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if"`
 
 // RcServices are the daemons whose rc.conf.local lines OPF writes
 // (pf.GenerateRcConfLocal), and so the ones RcReconcile manages.

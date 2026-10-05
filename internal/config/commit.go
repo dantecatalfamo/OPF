@@ -118,18 +118,23 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		return e, fmt.Errorf("commit failed and was reverted: %w", cause)
 	}
 
-	// Each service is told once, after the last of its files changed
-	// here is in place (and before rc.conf.local, which comes last and
-	// starts services it enables).
+	// What goes away is taken down before anything is brought up: a
+	// default gateway given up for DHCP's has to be gone before the
+	// interface asks for a lease, whose route goes through the same
+	// router. Each service is told once, after the last of its files
+	// changed here is in place (and before rc.conf.local, which comes
+	// last and starts services it enables).
+	order := takeDownFirst(len(e.Files), func(i int) bool { return e.Files[i].Removed })
 	last := map[string]int{}
-	for i, ef := range e.Files {
-		if f, _ := s.Lookup(ef.Name); !ef.Confirm && f.Service != "" {
+	for _, i := range order {
+		if f, _ := s.Lookup(e.Files[i].Name); !e.Files[i].Confirm && f.Service != "" {
 			last[f.Service] = i
 		}
 	}
 	managed := s.managed(e)
 	batch := newServiceBatch()
-	for i, ef := range e.Files {
+	for _, i := range order {
+		ef := e.Files[i]
 		if ef.Confirm {
 			continue
 		}
@@ -353,9 +358,9 @@ func (s *Store) recover(ctx context.Context, reason string) error {
 // It keeps going after errors so as much as possible is restored.
 //
 // Every file is back on disk before any is applied, and they're applied
-// in the commit's order: interfaces before the default gateway (which
-// may only be reachable through an interface's old address) and before
-// pf.
+// in the commit's order: what the commit created is taken down first,
+// then interfaces before the default gateway (which may only be
+// reachable through an interface's old address) and before pf.
 func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer) error {
 	var errs []error
 	type undo struct {
@@ -399,7 +404,8 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 	}
 
 	batch := newServiceBatch()
-	for _, u := range todo {
+	for _, i := range takeDownFirst(len(todo), func(i int) bool { return todo[i] != nil && todo[i].created }) {
+		u := todo[i]
 		if u == nil {
 			continue
 		}
@@ -439,6 +445,20 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// takeDownFirst orders n files with those that go away (removed) first,
+// each group in registry order.
+func takeDownFirst(n int, removed func(int) bool) []int {
+	var gone, rest []int
+	for i := range n {
+		if removed(i) {
+			gone = append(gone, i)
+		} else {
+			rest = append(rest, i)
+		}
+	}
+	return append(gone, rest...)
 }
 
 // managed is the services that a file of e brings in line itself when

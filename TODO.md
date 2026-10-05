@@ -448,8 +448,28 @@ until the admin does.
       - Already fine: the default gateway on a LAN (/etc/mygate), the
         office network counting as local for split-tunnel devices,
         anti-lockout on the LAN, unbound on the LAN and the tunnel.
+  - [x] Tried on the VM (`opfvm` with one interface, the vmd host as
+        its router, sharing on, a tunnel; the host a VPN device in a
+        routing domain of its own): the commit from a WAN/LAN layout,
+        confirmed over the new LAN; the device's handshake, DNS over the
+        tunnel (names and reverse names), and the router reached through
+        OPF with its address shared; the gateway monitored online; the
+        device's last-seen; and the interface moved to DHCP from the
+        router and back. That found and fixed: no IP forwarding at all,
+        the default gateway only set at boot, turning DHCP off failing
+        the commit, and DHCP left running on an interface given a fixed
+        address. Not tried: a port forward on a real router (the vmd
+        host would have to forward), so the device reached OPF directly.
   - [ ] The first-run wizard should offer this layout: one port, its
         address, the router as gateway, sharing on, a tunnel.
+  - [ ] Devices' names only reach DNS from OPF's own DHCP server; behind
+        a router that hands out addresses, LAN devices have none. DNS
+        blocking only covers devices that ask OPF, so the router's DHCP
+        has to name it as the resolver. Say both on the DNS page in this
+        layout.
+  - [ ] LAN devices starting connections to VPN devices need a route on
+        the router (the tunnel's network via OPF); say so on the
+        WireGuard page in this layout.
   - [ ] Nothing protects the LAN-facing interface the way a WAN is
         (blocking private and bogon sources makes no sense there); its
         rules are the admin's. If OPF sits on an untrusted network,
@@ -1614,6 +1634,14 @@ Finished work, kept here for now. Git history has the details.
 
 Commit engine:
 
+- [x] What goes away is taken down before anything is brought up, when
+      committing and when reverting: a fixed gateway given up for DHCP
+      is deleted before the interface asks for a lease, whose route goes
+      through the same router. An interface given a fixed address after
+      DHCP (or SLAAC) has autoconf turned off first, and dhcpleased
+      given time to let go: netstart left the flag on, and when it went
+      dhcpleased deleted the address and default route, even ones also
+      set by hand. Tried both ways on the VM.
 - [x] The default gateway takes effect on commit: netstart only ever
       adds it (`route add` does nothing when a default route exists),
       so changing it waited for a reboot. `mygate` now sets the route
