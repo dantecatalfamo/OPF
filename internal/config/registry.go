@@ -16,7 +16,11 @@ type File struct {
 	Desc string
 
 	// Check validates a file without activating it. "{}" is replaced
-	// with the path of the file to check. Nil means no checker exists.
+	// with the path of the file to check, "{staged}" with the directory
+	// staged files are in (each at its own path under it) and "{root}"
+	// with the prefix of live paths ("" in production), for a checker
+	// that reads other files the commit may be adding. Nil means no
+	// checker exists.
 	Check []string
 
 	// Apply activates a file. "{}" is replaced with the path to load,
@@ -210,7 +214,7 @@ func DefaultFiles() []File {
 		{
 			Name: "unbound.conf", Path: "/var/unbound/etc/unbound.conf",
 			Desc:    "Recursive DNS resolver",
-			Check:   []string{"unbound-checkconf", "{}"},
+			Check:   []string{"sh", "-c", UnboundCheck, "sh", "{}", "{staged}", "{root}"},
 			Service: "unbound", ServiceAction: "reload",
 			Mode: 0644,
 		},
@@ -260,6 +264,29 @@ func DefaultFiles() []File {
 		},
 	}
 }
+
+// UnboundCheck runs unbound-checkconf on $1. unbound-checkconf opens the
+// zone files a configuration names, and one this commit adds (your
+// first blocked name's opf-own.rpz) isn't there yet, only staged under
+// $2; so a copy that names the staged one is checked instead. $3 is
+// the prefix of live paths.
+var UnboundCheck = `conf=$1 staged=$2 root=$3
+tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp"' EXIT
+while IFS= read -r line; do
+	case $line in
+	*zonefile:*)
+		p=${line#*zonefile:}; p=${p#*\"}; p=${p%\"*}
+		if [ ! -e "$root$p" ] && [ -e "$staged$p" ]; then
+			line="	zonefile: \"$staged$p\""
+		fi;;
+	esac
+	printf '%s\n' "$line"
+done < "$conf" > "$tmp"
+if cmp -s "$conf" "$tmp"; then
+	exec unbound-checkconf "$conf"
+fi
+unbound-checkconf "$tmp"`
 
 // HostnameApply applies /etc/hostname.$1 with netstart. An interface
 // that leaves DHCP or SLAAC for a fixed address keeps its AUTOCONF flag

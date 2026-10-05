@@ -531,8 +531,17 @@ func (s *Store) CheckContent(ctx context.Context, name string, data []byte) (out
 	if err := tmp.Close(); err != nil {
 		return "", false, err
 	}
-	out, err := s.checker().Run(ctx, subst(f.Check, tmp.Name())...)
+	out, err := s.checker().Run(ctx, s.checkArgs(f, tmp.Name())...)
 	return string(out), err == nil, nil
+}
+
+// checkArgs is f's Check command for the copy at path (File.Check).
+func (s *Store) checkArgs(f File, path string) []string {
+	out := subst(f.Check, path)
+	for i, a := range out {
+		out[i] = strings.NewReplacer("{staged}", filepath.Join(s.dir, "candidate"), "{root}", s.root).Replace(a)
+	}
+	return out
 }
 
 func (s *Store) bases() (map[string]string, error) {

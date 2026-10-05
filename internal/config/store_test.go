@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -898,5 +899,40 @@ func TestTakeDownBeforeBringingUp(t *testing.T) {
 	}
 	if got := steps(); !reflect.DeepEqual(got, []string{"netstart", "set route"}) {
 		t.Fatalf("revert: %v", got)
+	}
+}
+
+// unbound.conf's check: a zone file the commit adds is only staged, so
+// the checker is given a copy naming the staged one; a configuration
+// whose zone files are all there is checked as it is.
+func TestUnboundCheckFindsStagedZones(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "bin")
+	os.MkdirAll(bin, 0755)
+	// Stands in for unbound-checkconf: says which file it was given and
+	// which zone files that names.
+	os.WriteFile(filepath.Join(bin, "unbound-checkconf"), []byte("#!/bin/sh\necho \"checked $1\"\ngrep zonefile \"$1\"\n"), 0755)
+	root, staged := filepath.Join(dir, "root"), filepath.Join(dir, "candidate")
+	writeLive(t, root, "/var/unbound/db/list.rpz", "x\n")
+	writeLive(t, staged, "/var/unbound/db/own.rpz", "x\n")
+	conf := filepath.Join(dir, "unbound.conf")
+	check := func(content string) string {
+		t.Helper()
+		os.WriteFile(conf, []byte(content), 0644)
+		cmd := exec.Command("sh", "-c", UnboundCheck, "sh", conf, staged, root)
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+		return string(out)
+	}
+	out := check("server:\nrpz:\n\tname: \"own.\"\n\tzonefile: \"/var/unbound/db/own.rpz\"\nrpz:\n\tzonefile: \"/var/unbound/db/list.rpz\"\n")
+	if strings.Contains(out, "checked "+conf) || !strings.Contains(out, `zonefile: "`+staged+`/var/unbound/db/own.rpz"`) || !strings.Contains(out, `zonefile: "/var/unbound/db/list.rpz"`) {
+		t.Errorf("with a staged zone:\n%s", out)
+	}
+	out = check("server:\nrpz:\n\tzonefile: \"/var/unbound/db/list.rpz\"\n")
+	if !strings.Contains(out, "checked "+conf) {
+		t.Errorf("nothing staged:\n%s", out)
 	}
 }

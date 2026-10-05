@@ -63,7 +63,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 		if c.File.Check == nil || c.Removed {
 			continue
 		}
-		out, err := s.checker().Run(ctx, subst(c.File.Check, s.candidatePath(c.File))...)
+		out, err := s.checker().Run(ctx, s.checkArgs(c.File, s.candidatePath(c.File))...)
 		if err != nil {
 			return nil, &CheckError{File: c.File.Path, Output: string(out) + err.Error()}
 		}
