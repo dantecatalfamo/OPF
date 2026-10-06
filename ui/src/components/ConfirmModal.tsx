@@ -1,4 +1,4 @@
-import { Button, Center, Group, Modal, RingProgress, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Button, Center, Group, Modal, RingProgress, Stack, Text, Title } from '@mantine/core';
 import { useStore } from '../model/store';
 import { useNow } from '../lib/useNow';
 
@@ -30,19 +30,50 @@ export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: ()
             </Center>
           }
         />
-        <Title order={3} ta="center">
-          Can you still reach OPF?
-        </Title>
-        <Text ta="center" c="dimmed" size="sm" maw={360}>
-          The new settings are active. If this page is still working, keep them. Otherwise do nothing and the
-          previous settings come back when the timer runs out.
-        </Text>
-        <Group grow w="100%" mt="xs">
-          <Button variant="default" onClick={revert}>
-            Revert now
-          </Button>
-          <Button onClick={keep}>Keep changes</Button>
-        </Group>
+        {confirming.move ? (
+          <>
+            <Title order={3} ta="center">
+              Keep them from the new address
+            </Title>
+            <Text ta="center" c="dimmed" size="sm" maw={380}>
+              {confirming.move.url ? (
+                <>
+                  {confirming.move.name} has moved, so this page can’t reach OPF any more. Open{' '}
+                  <Anchor href={confirming.move.url} target="_blank" className="mono">{confirming.move.url}</Anchor>,
+                  sign in, and keep the changes there. If you can’t, do nothing: the previous settings come back when
+                  the timer runs out, and this page with them.
+                </>
+              ) : (
+                <>
+                  {confirming.move.name} {confirming.move.dhcp ? 'now gets its address by DHCP' : 'has no address now'}, so this page can’t reach OPF any more. Keep the
+                  changes from wherever you can reach it, or do nothing: the previous settings come back when the
+                  timer runs out, and this page with them.
+                </>
+              )}
+            </Text>
+            {confirming.move.url && (
+              <Button component="a" href={confirming.move.url} target="_blank" fullWidth mt="xs">
+                Open {confirming.move.url}
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <Title order={3} ta="center">
+              Can you still reach OPF?
+            </Title>
+            <Text ta="center" c="dimmed" size="sm" maw={360}>
+              The new settings are active. If this page is still working, keep them. Otherwise do nothing and the
+              previous settings come back when the timer runs out.
+            </Text>
+            <Group grow w="100%" mt="xs">
+              <Button variant="default" onClick={revert}>
+                Revert now
+              </Button>
+              <Button onClick={keep}>Keep changes</Button>
+            </Group>
+          </>
+        )}
         <Button variant="subtle" size="xs" color="gray" onClick={onClose}>
           Decide later
         </Button>

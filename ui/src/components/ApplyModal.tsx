@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Accordion, Alert, Badge, Button, Code, Group, List, Loader, Modal, Stack, Tabs, Text, ThemeIcon } from '@mantine/core';
+import { Accordion, Alert, Anchor, Badge, Button, Code, Group, List, Loader, Modal, Stack, Tabs, Text, ThemeIcon } from '@mantine/core';
 import { IconAlertTriangle, IconFileCode } from '@tabler/icons-react';
 import { useStore, type Review } from '../model/store';
 import { useRole } from '../lib/session';
@@ -9,6 +9,32 @@ import { sectionLabel } from '../lib/sections';
 import { sectionIcon } from '../lib/sectionIcons';
 import { UnifiedDiff } from './UnifiedDiff';
 import { ResolverReloadNotice } from '../pages/DnsActivity';
+import { moving, type Move } from '../lib/moving';
+
+/** The changes move the address this page is on: it stops answering once
+ *  they're applied, and they have to be kept from the new address. */
+export function MoveNotice({ move }: { move: Move }) {
+  const here = window.location.hostname;
+  return (
+    <Alert color="orange" variant="light" icon={<IconAlertTriangle size={18} />} title="This page will stop answering">
+      {move.url ? (
+        <>
+          These changes move {move.name} off {here}, the address this page is on. Once they’re applied, open{' '}
+          <Anchor href={move.url} target="_blank" className="mono">{move.url}</Anchor>, sign in again (your browser will
+          warn about the certificate there too) and keep the changes before the timer runs out. Otherwise the previous
+          settings come back on their own, here.
+        </>
+      ) : (
+        <>
+          These changes take {move.name} off {here}, the address this page is on,
+          {move.dhcp ? ' and its new address comes from DHCP, so OPF can’t say what it will be.' : ' and leave it without one.'}{' '}
+          Unless you reach OPF another way and keep the changes before the timer runs out, the previous settings come
+          back on their own, here.
+        </>
+      )}
+    </Alert>
+  );
+}
 
 const order: Section[] = ['system', 'interfaces', 'routing', 'firewall', 'dhcp', 'dns', 'wireguard', 'notifications'];
 
@@ -117,7 +143,8 @@ function Problem({ error, onOverwrite }: { error: unknown; onOverwrite: (paths: 
 }
 
 export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
-  const { changes, review, apply, discard, staged: stagedModel } = useStore();
+  const { changes, review, apply, discard, applied, staged: stagedModel } = useStore();
+  const move = applied && stagedModel ? moving(applied, stagedModel, window.location) : null;
   const { canEdit } = useRole();
   const [staging, setStaging] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -183,7 +210,8 @@ export function ApplyModal({ opened, onClose }: { opened: boolean; onClose: () =
             <Group gap="sm"><Loader size="sm" /><Text size="sm" c="dimmed">Checking the changes…</Text></Group>
           )}
           {error !== null && <Problem error={error} onOverwrite={(paths) => stage(paths)} />}
-          {staged?.needsConfirm && (
+          {staged && move && <MoveNotice move={move} />}
+          {staged?.needsConfirm && !move && (
             <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="You’ll be asked to confirm">
               These changes affect how devices reach OPF. After applying, confirm you can still use this page before
               the time runs out, or the previous settings come back on their own.

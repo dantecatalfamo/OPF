@@ -11,6 +11,7 @@ import { sectionLabel } from '../lib/sections';
 import { api, offline, type ChangeNote, type CommitResource, type FileChange } from '../lib/api';
 import { localApi } from '../lib/localApi';
 import { useRole } from '../lib/session';
+import { moving, type Move } from '../lib/moving';
 
 // The server, or the preview build's in-browser stand-in.
 export const backend = offline ? localApi : api;
@@ -47,6 +48,9 @@ export interface Confirming {
   id: string;
   start: number;
   deadline: number;
+  /** The commit moved the address this page is on (known only to the
+   *  browser that applied it). */
+  move?: Move;
 }
 
 interface Store {
@@ -230,12 +234,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const apply = useCallback(async (r: Review) => {
     const { message, notes } = describe(changes);
+    const move = applied && staged ? moving(applied, staged, window.location) ?? undefined : undefined;
     const c = await backend.createCommit(r.version, message, notes);
     await refreshHistory();
     switch (c.status) {
       case 'pending':
         await refreshLive(true);
-        setConfirming(confirmingOf(c));
+        setConfirming({ ...confirmingOf(c), move });
         break;
       case 'failed':
         notifications.show({
@@ -248,7 +253,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifications.show({ color: 'teal', title: 'Changes applied', message: `${changes.length} change${changes.length === 1 ? '' : 's'} now active.` });
     }
     return c;
-  }, [changes, refreshHistory, refreshLive]);
+  }, [changes, applied, staged, refreshHistory, refreshLive]);
 
   // The server reverts on its own when the deadline passes; find out.
   const pollOnce = useCallback(async () => {
