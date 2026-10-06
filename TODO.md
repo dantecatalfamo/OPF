@@ -759,6 +759,12 @@ Daemons, by how much an appliance needs them:
 
 ## Live data and monitoring
 
+- [ ] The firewall log lags by up to a minute: pflogd writes
+      /var/log/pflog every 60 s by default (`-d 60`), and the page reads
+      the file. Read `pflog0` live from the parent (tcpdump on the
+      interface), or give pflogd a shorter delay through rc.conf.local.
+      Seen on the VM.
+
 What the legacy server (`legacy/server/`) collected and the new UI
 doesn't show yet. Each needs a parser for the command's output, an API
 endpoint, sample data for other platforms, and the page. Write new
@@ -1195,6 +1201,11 @@ Still to do:
       a browser at the LAN address warns about the name as well as the
       issuer. Add the host name and the model's interface addresses,
       and make a new one when they change.
+- [ ] OPF listening on one address (`-listen 192.168.1.1:443`) that a
+      commit moves stays bound to the old one, so the page at the new
+      address (which the review dialog points to) doesn't answer, and
+      the change undoes itself. Listen on every address and let pf
+      decide, or rebind when the model's addresses change.
 - [ ] A line sent through logger(1) can time out (`logger: context
       deadline exceeded`, seen on the VM while it was busy after a boot)
       and is then lost; an audit line shouldn't be. Retry it, or queue
@@ -1562,6 +1573,14 @@ Stop it by the PID it wrote; never pkill.
       leaving created interfaces up, and "Reverted by user" for a stop.
       The VM's clock runs at half speed (only i8254), so its 60 s take
       two minutes.
+- [x] The VM as a router, with a device on its LAN (the host's LAN tap
+      in routing domain 2, and a small DHCP client): a lease with the
+      router, resolver and domain; its name in DNS forward and back
+      (about 7 s after the lease); a blocked name answered 0.0.0.0; NAT
+      out; a rule blocking one port, with its counter and its line in
+      the firewall log; a port forward from outside and reflected from
+      the LAN. Found and fixed: no IP forwarding, and blocking a first
+      name failing the commit (unbound-checkconf and the staged zone).
 - [ ] DHCP names in DNS (`internal/leases`): the lease file format
       matches what OpenBSD's dhcpd writes (`db.c`: time format, `UTC`,
       `client-hostname`); `unbound-control -c … list_local_data` output
