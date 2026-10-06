@@ -91,11 +91,23 @@ function freeTunnelNetwork(m: Model): string {
 
 const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Your networks', vpn: 'Only this VPN', full: 'All traffic', site: 'Site-to-site' };
 
-// What a device on the tunnel may be told to route.
-const routeChoices = [
-  { value: 'split', label: 'Only your networks' }, { value: 'vpn', label: 'Only this VPN' },
-  { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' },
-];
+// What a device on the tunnel may be told to route, and what the chosen
+// one means.
+function RouteChoice({ tunnel, local, value, onChange }: { tunnel: Tunnel; local: string[]; value: Peer['clientRoutes']; onChange: (v: Peer['clientRoutes']) => void }) {
+  const choices: { value: Peer['clientRoutes']; label: string; about: string }[] = [
+    { value: 'split', label: 'Only your networks', about: `Its configuration sends only traffic for ${local.join(', ') || 'your networks'} through the tunnel; its own internet connection handles the rest. OPF blocks anything else it sends, even if its configuration is changed.` },
+    { value: 'vpn', label: 'Only this VPN', about: `Its configuration sends only traffic for ${tunnelNet(tunnel)}: it reaches the other devices on ${tunnel.name}, and of OPF only its DNS. OPF blocks anything else it sends, whatever its configuration says.` },
+    { value: 'full', label: 'All traffic', about: `Its configuration sends everything through the tunnel and out OPF’s internet connection, translated by outbound NAT. Your ${tunnel.name} rules decide what it may reach.` },
+    { value: 'site', label: 'It’s a router (site-to-site)', about: 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.' },
+  ];
+  return (
+    <Stack gap={6}>
+      <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
+      <SegmentedControl data={choices.map(({ value, label }) => ({ value, label }))} value={value} onChange={(v) => onChange(v as Peer['clientRoutes'])} />
+      <Text size="xs" c="dimmed">{choices.find((c) => c.value === value)?.about}</Text>
+    </Stack>
+  );
+}
 
 // Replaces one tunnel's settings in the model.
 const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
@@ -287,19 +299,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
           <Stack>
             <TextInput label="Device name" placeholder="Alex phone" data-autofocus {...form.getInputProps('name')} />
             <TextInput label="VPN address" description={`Picked from ${tunnelNet(tunnel)}.`} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
-            <Stack gap={6}>
-              <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
-              <SegmentedControl
-                data={routeChoices}
-                {...form.getInputProps('clientRoutes')}
-              />
-              <Text size="xs" c="dimmed">
-                {v.clientRoutes === 'vpn' && `The device’s configuration sends only traffic for ${tunnelNet(tunnel)} through the tunnel: it reaches the other devices on ${tunnel.name}, and of OPF only its DNS. OPF blocks anything else it sends, whatever its configuration says, and its own internet connection handles the rest.`}
-                {v.clientRoutes === 'split' && `The device’s configuration sends only traffic for ${local.join(', ')} through the tunnel, and its own internet connection handles the rest. OPF also blocks anything else the device sends, so it can’t reach the internet through OPF even if its configuration is changed.`}
-                {v.clientRoutes === 'full' && `The device’s configuration sends everything through the tunnel and out OPF’s internet connection, translated to the WAN address by outbound NAT. Your ${tunnel.name} rules decide what it may reach.`}
-                {v.clientRoutes === 'site' && 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.'}
-              </Text>
-            </Stack>
+            <RouteChoice tunnel={tunnel} local={local} value={v.clientRoutes} onChange={(x) => form.setFieldValue('clientRoutes', x)} />
             {v.clientRoutes === 'site' && (
               <>
                 <TagsInput label="Networks behind this router" placeholder="10.30.0.0/16" {...form.getInputProps('networks')} />
@@ -726,13 +726,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
           <Stack>
             <TextInput label="Device name" {...form.getInputProps('name')} />
             <TextInput label="VPN address" description={`In ${tunnelNet(tunnel)}.`} styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('address')} />
-            <Stack gap={6}>
-              <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
-              <SegmentedControl
-                data={routeChoices}
-                {...form.getInputProps('clientRoutes')}
-              />
-            </Stack>
+            <RouteChoice tunnel={tunnel} local={local} value={v.clientRoutes} onChange={(x) => form.setFieldValue('clientRoutes', x)} />
             {v.clientRoutes === 'site' && (
               <>
                 <TagsInput label="Networks behind this router" placeholder="10.30.0.0/16" {...form.getInputProps('networks')} />
