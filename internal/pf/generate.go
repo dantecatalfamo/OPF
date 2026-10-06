@@ -511,6 +511,8 @@ const (
 	LabelAutoNAT   = "auto-nat"     // automatic outbound NAT, by inside interface id
 	LabelBuiltin   = "builtin"      // OPF's own rules, by name
 	LabelSplit     = "split-tunnel" // limits on a tunnel's split-tunnel peers, by interface id
+	LabelIsolated  = "vpn-only"     // limits on a tunnel's devices kept to it, by interface id
+	LabelVPNIn     = "vpn-in"       // NAT into a tunnel from networks that may reach it, by tunnel id
 	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
 )
 
@@ -532,7 +534,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelAntispoof:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelAntispoof:
 	default:
 		return "", "", false
 	}
@@ -925,6 +927,17 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	}
 	blank()
 
+	// Networks that may reach into a tunnel arrive from OPF's address on
+	// it: its devices only accept, and only route back, the tunnel's
+	// addresses. A tunnel setting, so whatever the outbound NAT mode.
+	if in := vpnInNAT(m); len(in) > 0 {
+		add("# Into WireGuard tunnels", nil)
+		for _, r := range in {
+			described(r.desc, &Origin{Label: "WireGuard: " + r.tunnel.Name, To: "/services/wireguard/" + r.tunnel.ID}, r.line)
+		}
+		blank()
+	}
+
 	// Defaults
 	add("# Defaults", nil)
 	if o.LogDefaultBlock {
@@ -975,6 +988,29 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			}
 			described(fmt.Sprintf("%s: %s", t.iface.Name, strings.Join(names, ", ")), &Origin{Label: "WireGuard: " + t.iface.Name, To: "/services/wireguard/" + t.iface.ID},
 				fmt.Sprintf("block in log quick on $%s inet from %s to ! <%s>%s", t.iface.ID, from, LocalTable, label(LabelSplit, t.iface.ID)))
+		}
+		blank()
+	}
+
+	// Devices kept to their tunnel reach only its network, and of OPF
+	// only its resolver there. Before every user rule, so no pass rule
+	// can widen it; IPv6 isn't the tunnel's network, so none of it gets
+	// out either.
+	if vpn := vpnOnlyPeers(m); len(vpn) > 0 {
+		add("# WireGuard devices kept to their VPN", nil)
+		for _, t := range vpn {
+			var names, addrs []string
+			for _, p := range t.peers {
+				names = append(names, p.Name)
+				addrs = append(addrs, p.Address)
+			}
+			from := addrs[0]
+			if len(addrs) > 1 {
+				from = "{ " + strings.Join(addrs, " ") + " }"
+			}
+			described(fmt.Sprintf("%s: %s", t.iface.Name, strings.Join(names, ", ")), &Origin{Label: "WireGuard: " + t.iface.Name, To: "/services/wireguard/" + t.iface.ID},
+				fmt.Sprintf("block in log quick on $%s from %s to ! ($%s:network)%s", t.iface.ID, from, t.iface.ID, label(LabelIsolated, t.iface.ID)),
+				fmt.Sprintf("block in log quick on $%s proto { tcp udp } from %s to ($%s) port != 53%s", t.iface.ID, from, t.iface.ID, label(LabelIsolated, t.iface.ID)))
 		}
 		blank()
 	}
@@ -1389,6 +1425,55 @@ func LocalNetworks(m *Model, dynamic bool) []string {
 	for _, r := range m.Routing.Routes {
 		if r.Enabled {
 			add(r.Network)
+		}
+	}
+	return out
+}
+
+type vpnIn struct {
+	tunnel     *Iface
+	desc, line string
+}
+
+// vpnInNAT is the NAT into each enabled tunnel from the enabled
+// interfaces it's reachable from (WireGuard.ReachableFrom), to the
+// tunnel's network. Sites behind its peers keep real addresses.
+func vpnInNAT(m *Model) []vpnIn {
+	var out []vpnIn
+	for _, t := range m.Tunnels() {
+		if !t.Enabled || len(t.WireGuard.ReachableFrom) == 0 {
+			continue
+		}
+		dst := fmt.Sprintf("($%s:network)", t.ID)
+		for _, id := range t.WireGuard.ReachableFrom {
+			k := slices.IndexFunc(m.Interfaces, func(f Iface) bool { return f.ID == id })
+			if k < 0 || !m.Interfaces[k].Enabled {
+				continue
+			}
+			i := &m.Interfaces[k]
+			out = append(out, vpnIn{t, fmt.Sprintf("%s reaches %s, as OPF", i.Name, t.Name),
+				fmt.Sprintf("match out on $%s inet from ($%s:network) to %s nat-to ($%s:0)%s", t.ID, i.ID, dst, t.ID, label(LabelVPNIn, t.ID))})
+		}
+	}
+	return out
+}
+
+// vpnOnlyPeers returns the enabled tunnels with devices kept to them
+// (ClientRoutesVPN).
+func vpnOnlyPeers(m *Model) []splitTunnel {
+	var out []splitTunnel
+	for _, t := range m.Tunnels() {
+		if !t.Enabled {
+			continue
+		}
+		var peers []Peer
+		for _, p := range t.WireGuard.Peers {
+			if p.ClientRoutes == ClientRoutesVPN {
+				peers = append(peers, p)
+			}
+		}
+		if len(peers) > 0 {
+			out = append(out, splitTunnel{t, peers})
 		}
 	}
 	return out

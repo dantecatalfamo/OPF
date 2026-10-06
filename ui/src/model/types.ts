@@ -359,7 +359,7 @@ export interface Peer {
   networks: string[]; // networks behind the peer, routed into the tunnel
   endpoint?: string;
   keepalive?: number;
-  clientRoutes: 'split' | 'full' | 'site'; // what the peer sends through the tunnel
+  clientRoutes: 'split' | 'vpn' | 'full' | 'site'; // what the peer sends through the tunnel; vpn: only the tunnel, and kept to it
   /** The id of a preshared key it shares with the tunnel, kept on the firewall; never the key. */
   presharedKey?: string;
 }
@@ -371,6 +371,8 @@ export interface WireGuard {
   publicKey: string;
   /** Where devices reach the tunnel, host or host:port, through a router's port forward; empty uses the WAN's address. */
   publicEndpoint?: string;
+  /** LAN or optional interfaces whose networks may start connections to the tunnel's devices, translated to OPF's tunnel address. */
+  reachableFrom?: string[];
   peers: Peer[];
 }
 

@@ -1061,6 +1061,20 @@ func (v *validator) wireguard() {
 			v.fail(base+".publicKey", "each tunnel needs its own key")
 		}
 		tunnelKeys[w.PublicKey] = true
+		seenFrom := map[string]bool{}
+		for i, id := range w.ReachableFrom {
+			p := at(base+".reachableFrom", i)
+			k := slices.IndexFunc(v.m.Interfaces, func(x Iface) bool { return x.ID == id })
+			switch {
+			case k < 0:
+				v.fail(p, "no interface %q", id)
+			case v.m.Interfaces[k].Role != RoleLAN && v.m.Interfaces[k].Role != RoleOPT:
+				v.fail(p, "only a LAN or optional interface’s network can reach into %s, not %s", f.Name, v.m.Interfaces[k].Name)
+			case seenFrom[id]:
+				v.fail(p, "%s is listed twice", v.m.Interfaces[k].Name)
+			}
+			seenFrom[id] = true
+		}
 		subnet, hasNet := ifaceNet(f)
 		own, _ := netip.ParseAddr(f.IPv4.Address)
 
@@ -1116,7 +1130,7 @@ func (v *validator) wireguard() {
 			if pr.Keepalive != nil {
 				v.intRange(p+".keepalive", *pr.Keepalive, 0, 65535)
 			}
-			v.oneOf(p+".clientRoutes", string(pr.ClientRoutes), string(ClientRoutesSplit), string(ClientRoutesFull), string(ClientRoutesSite))
+			v.oneOf(p+".clientRoutes", string(pr.ClientRoutes), string(ClientRoutesSplit), string(ClientRoutesFull), string(ClientRoutesSite), string(ClientRoutesVPN))
 		}
 	}
 

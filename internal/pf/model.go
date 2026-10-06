@@ -662,6 +662,10 @@ const (
 	ClientRoutesSplit ClientRoutes = "split"
 	ClientRoutesFull  ClientRoutes = "full"
 	ClientRoutesSite  ClientRoutes = "site"
+	// ClientRoutesVPN keeps the device to its tunnel: it reaches the
+	// tunnel's network, and of OPF only DNS there, whatever rules or its
+	// own configuration say; its configuration routes only the tunnel.
+	ClientRoutesVPN ClientRoutes = "vpn"
 )
 
 type Peer struct {
@@ -689,7 +693,15 @@ type WireGuard struct {
 	// when OPF is behind one. Empty, devices' configurations use the
 	// WAN's address and ListenPort.
 	PublicEndpoint string `json:"publicEndpoint,omitempty"`
-	Peers          []Peer `json:"peers"`
+	// ReachableFrom lists interfaces (LAN or optional) whose networks
+	// may start connections to the tunnel's devices: OPF translates them
+	// to its own address on the tunnel, so a device that only routes the
+	// tunnel (and only accepts packets from it) can answer. The networks
+	// behind its site-to-site peers aren't included: they're routed with
+	// their real addresses. Behind another router, that router needs a
+	// route to the tunnel through OPF.
+	ReachableFrom []string `json:"reachableFrom,omitempty"`
+	Peers         []Peer   `json:"peers"`
 }
 
 // Tunnels returns the VPN interfaces, each with its WireGuard settings.

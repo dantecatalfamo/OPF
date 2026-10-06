@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
-  ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Code, CopyButton, Drawer, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, ThemeIcon, Timeline, Tooltip,
+  ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Code, CopyButton, Drawer, Grid, Group, Modal, MultiSelect, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, ThemeIcon, Timeline, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconArrowsSplit2, IconCheck, IconCopy, IconPencil, IconPlugConnected, IconPlus, IconShieldHalf, IconTrash, IconWorld } from '@tabler/icons-react';
@@ -89,7 +89,13 @@ function freeTunnelNetwork(m: Model): string {
   return '';
 }
 
-const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Your networks', full: 'All traffic', site: 'Site-to-site' };
+const routesLabel: Record<Peer['clientRoutes'], string> = { split: 'Your networks', vpn: 'Only this VPN', full: 'All traffic', site: 'Site-to-site' };
+
+// What a device on the tunnel may be told to route.
+const routeChoices = [
+  { value: 'split', label: 'Only your networks' }, { value: 'vpn', label: 'Only this VPN' },
+  { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' },
+];
 
 // Replaces one tunnel's settings in the model.
 const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
@@ -221,7 +227,8 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
 
   const v = form.values;
   const endpoint = useEndpoint(tunnel);
-  const local = useDerived(staged).data?.localNetworks ?? [];
+  const derived = useDerived(staged).data;
+  const local = derived?.localNetworks ?? [];
   const clientConfig = deviceConfig(local, endpoint, tunnel, created ?? { address: v.address, clientRoutes: v.clientRoutes }, { privateKey: keys.priv, presharedKey: psk });
 
   return (
@@ -283,10 +290,11 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
             <Stack gap={6}>
               <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
               <SegmentedControl
-                data={[{ value: 'split', label: 'Only your networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
+                data={routeChoices}
                 {...form.getInputProps('clientRoutes')}
               />
               <Text size="xs" c="dimmed">
+                {v.clientRoutes === 'vpn' && `The device’s configuration sends only traffic for ${tunnelNet(tunnel)} through the tunnel: it reaches the other devices on ${tunnel.name}, and of OPF only its DNS. OPF blocks anything else it sends, whatever its configuration says, and its own internet connection handles the rest.`}
                 {v.clientRoutes === 'split' && `The device’s configuration sends only traffic for ${local.join(', ')} through the tunnel, and its own internet connection handles the rest. OPF also blocks anything else the device sends, so it can’t reach the internet through OPF even if its configuration is changed.`}
                 {v.clientRoutes === 'full' && `The device’s configuration sends everything through the tunnel and out OPF’s internet connection, translated to the WAN address by outbound NAT. Your ${tunnel.name} rules decide what it may reach.`}
                 {v.clientRoutes === 'site' && 'Another router with networks behind it. OPF adds routes for those networks into the tunnel.'}
@@ -323,11 +331,16 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
   const tunnelRules = staged.firewall.rules.filter((r) => r.enabled && !isFloating(r) && r.interfaces[0] === tunnel.id);
   const routes = staged.routing.routes.filter((r) => r.enabled && staged.routing.gateways.find((g) => g.id === r.gateway)?.iface === tunnel.id);
   const nat = staged.firewall.outboundNat;
-  const automatic = useDerived(staged).data?.automaticNat ?? [];
+  const flowDerived = useDerived(staged).data;
+  const hasWan = staged.interfaces.some((i) => i.role === 'wan');
+  const reachIn = (wg.reachableFrom ?? []).map((id) => staged.interfaces.find((i) => i.id === id)).filter((i): i is NonNullable<typeof i> => !!i && i.enabled);
+  const intoNets = [tunnelNet(tunnel)];
+  const automatic = flowDerived?.automaticNat ?? [];
   // Where it leaves, translated: the WAN, or a LAN that masquerades.
   const natOut = nat.mode === 'manual' ? [] : automatic.filter((n) => n.source.type === 'iface' && n.source.iface === tunnel.id).map((n) => staged.interfaces.find((i) => i.id === n.iface)?.name ?? n.iface);
   const natAuto = natOut.length > 0;
   const fullPeers = wg.peers.filter((p) => p.clientRoutes === 'full');
+  const vpnPeers = wg.peers.filter((p) => p.clientRoutes === 'vpn');
   const splitPeers = wg.peers.filter((p) => p.clientRoutes === 'split');
 
   return (
@@ -364,12 +377,26 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
             )}
           </Text>
         </Timeline.Item>
+        {reachIn.length > 0 && (
+          <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconPlugConnected size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Reaching in</Text>}>
+            <Text size="sm" c="dimmed">
+              {reachIn.map((i) => i.name).join(' and ')} may start connections to {intoNets.join(', ')}, if {reachIn.length === 1 ? 'its' : 'their'} rules allow. They arrive from OPF’s <Mono>{tunnel.ipv4.address}</Mono>,
+              so devices that only route this VPN can answer, and never see the address they came from.
+              {reachIn.map((i) => (i.masquerade || !hasWan) && i.ipv4.mode === 'static' ? (
+                <span key={i.id}> {i.name}’s router needs a route: {intoNets.map((n, k) => <span key={n}>{k > 0 && ', '}<Mono>{n}</Mono></span>)} via <Mono>{i.ipv4.address}</Mono>.</span>
+              ) : (
+                <span key={i.id}> {i.name}’s devices use OPF as their gateway, so they need no route.</span>
+              ))}
+            </Text>
+          </Timeline.Item>
+        )}
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconShieldHalf size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Firewall</Text>}>
           <Text size="sm" c="dimmed">
             Traffic arriving from the tunnel is checked by{' '}
             <Anchor component={Link} to={`/firewall/rules/${tunnel.id}`} size="sm">{tunnelRules.length} {tunnel.name} rule{tunnelRules.length === 1 ? '' : 's'}</Anchor>
             {tunnelRules.length ? `: ${tunnelRules.map((r) => r.description).join('; ')}.` : '. With none, everything from the tunnel is blocked.'}
             {splitPeers.length > 0 && tunnel.enabled && ` Before those, OPF blocks ${splitPeers.map((p) => p.name).join(', ')} from reaching anything but your networks.`}
+            {vpnPeers.length > 0 && tunnel.enabled && ` It keeps ${vpnPeers.map((p) => p.name).join(', ')} to ${tunnelNet(tunnel)}, and to OPF’s DNS there.`}
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Internet access</Text>}>
@@ -396,7 +423,7 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
   const [rekeying, setRekeying] = useState(false);
   const vpns = tunnels(staged);
   const form = useForm({
-    initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '' },
+    initialValues: { name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort as number | string, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '', reachableFrom: tunnel.wireguard.reachableFrom ?? [] },
     validate: {
       publicEndpoint: (v) => (v.trim() === '' || /^(\[[0-9a-f:]+\]|[A-Za-z0-9.-]+)(:\d{1,5})?$/i.test(v.trim()) ? null : 'A name or address, with :port if it differs, like vpn.example.com:51820'),
       name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Letters, digits and spaces'),
@@ -409,9 +436,10 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
     },
   });
   useEffect(() => {
-    form.setValues({ name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '' });
+    form.setValues({ name: tunnel.name, enabled: tunnel.enabled, listenPort: tunnel.wireguard.listenPort, publicEndpoint: tunnel.wireguard.publicEndpoint ?? '', reachableFrom: tunnel.wireguard.reachableFrom ?? [] });
     form.resetDirty();
-  }, [tunnel.id, tunnel.name, tunnel.enabled, tunnel.wireguard.listenPort, tunnel.wireguard.publicEndpoint]); // form is stable
+  }, [tunnel.id, tunnel.name, tunnel.enabled, tunnel.wireguard.listenPort, tunnel.wireguard.publicEndpoint, (tunnel.wireguard.reachableFrom ?? []).join()]); // form is stable
+  const insides = staged.interfaces.filter((i) => i.role === 'lan' || i.role === 'opt');
 
   const save = form.onSubmit((x) => {
     const name = x.name.trim();
@@ -431,6 +459,14 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
         return { ...t, wireguard };
       }));
     }
+    if (x.reachableFrom.join() !== (tunnel.wireguard.reachableFrom ?? []).join()) {
+      const names = x.reachableFrom.map((id) => insides.find((i) => i.id === id)?.name ?? id);
+      edit('wireguard', names.length ? `${names.join(' and ')} can reach into ${name}` : `Nothing reaches into ${name} any more`, (m) => withTunnel(m, tunnel.id, (t) => {
+        const wireguard = { ...t.wireguard, reachableFrom: x.reachableFrom.length ? x.reachableFrom : undefined };
+        if (!x.reachableFrom.length) delete wireguard.reachableFrom;
+        return { ...t, wireguard };
+      }));
+    }
   });
 
   return (
@@ -443,6 +479,10 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
           <TextInput label="Public address" placeholder={staged.interfaces.some((i) => i.role === 'wan') ? 'The WAN’s address' : 'vpn.example.com'}
             description="Where devices connect, if not the WAN’s address: behind another router, the name or address it’s reached at, with :port if the router forwards a different one."
             inputWrapperOrder={['label', 'input', 'description', 'error']} spellCheck={false} {...form.getInputProps('publicEndpoint')} />
+          <MultiSelect label="Reachable from" placeholder={form.values.reachableFrom.length ? undefined : 'Nowhere'}
+            description="Networks that may start connections to this VPN’s devices, if their rules allow. OPF passes them on from its own address on the tunnel, so devices that only route this VPN can answer. Behind another router, it needs a route to the tunnel through OPF."
+            inputWrapperOrder={['label', 'input', 'description', 'error']}
+            data={insides.map((i) => ({ value: i.id, label: i.name }))} {...form.getInputProps('reachableFrom')} />
           <Stack gap={2}>
             <Text size="sm" fw={500}>Tunnel address</Text>
             <Group gap="xs">
@@ -476,7 +516,8 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
 // needs the tunnel's new public key.
 function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; onClose: () => void }) {
   const { staged, edit } = useStore();
-  const local = useDerived(staged).data?.localNetworks ?? [];
+  const derived = useDerived(staged).data;
+  const local = derived?.localNetworks ?? [];
   const endpoint = useEndpoint(tunnel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -540,7 +581,7 @@ function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; o
 // (OPF keeps neither the device's private key nor shows a preshared key
 // twice); otherwise the lines say to keep the ones it has.
 function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes' | 'presharedKey'>, keys: { privateKey?: string; presharedKey?: string } = {}): string {
-  const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : local.join(', ');
+  const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : p.clientRoutes === 'vpn' ? tunnelNet(t) : local.join(', ');
   const psk = keys.presharedKey ?? (p.presharedKey ? '<the device’s existing preshared key>' : undefined);
   return `[Interface]
 PrivateKey = ${keys.privateKey ?? '<the device’s existing private key>'}
@@ -595,7 +636,8 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyError, setKeyError] = useState<string>();
   const [ownPsk, setOwnPsk] = useState<string | null>(null);
-  const local = useDerived(staged).data?.localNetworks ?? [];
+  const derived = useDerived(staged).data;
+  const local = derived?.localNetworks ?? [];
   const wan = useEndpoint(tunnel);
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
@@ -687,7 +729,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
             <Stack gap={6}>
               <Text size="sm" fw={500}>What to tell this device to send through the VPN</Text>
               <SegmentedControl
-                data={[{ value: 'split', label: 'Only your networks' }, { value: 'full', label: 'All traffic' }, { value: 'site', label: 'It’s a router (site-to-site)' }]}
+                data={routeChoices}
                 {...form.getInputProps('clientRoutes')}
               />
             </Stack>

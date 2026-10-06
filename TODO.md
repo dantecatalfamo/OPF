@@ -467,9 +467,23 @@ until the admin does.
         blocking only covers devices that ask OPF, so the router's DHCP
         has to name it as the resolver. Say both on the DNS page in this
         layout.
-  - [ ] LAN devices starting connections to VPN devices need a route on
-        the router (the tunnel's network via OPF); say so on the
-        WireGuard page in this layout.
+  - [x] LAN devices starting connections to VPN devices: a tunnel can
+        be reachable from LAN or optional interfaces (WireGuard, Done),
+        and the WireGuard page says which route the router needs.
+  - [ ] Not tried: a port forward on a real router in front of OPF. On
+        the VM the devices reached OPF directly; making the vmd host the
+        router means turning on its IP forwarding and adding a pf rdr-to
+        rule there (temporarily, and only with the user's say-so).
+  - [ ] No dynamic DNS: behind a home connection the public address
+        changes, and a tunnel's `publicEndpoint` should be a name that
+        follows it. OPF can't keep one up to date; for now it's the
+        router's DDNS or another service. A DDNS client (a job OPF
+        runs, with its provider's secret in secret storage) would close
+        it.
+  - [ ] VPN devices reaching the internet but not the LAN OPF sits on
+        takes a block rule above "to anywhere", by hand; "Only this
+        VPN" (WireGuard) keeps a device off both. Offer "not the network
+        OPF sits on" as its own choice for a tunnel in this layout.
   - [ ] Nothing protects the LAN-facing interface the way a WAN is
         (blocking private and bogon sources makes no sense there); its
         rules are the admin's. If OPF sits on an untrusted network,
@@ -514,6 +528,20 @@ Types, roughly in order of usefulness:
 
 ## WireGuard
 
+- [ ] Not tried live end to end: site-to-site, a router peer with
+      networks behind it, through OPF as the hub. On the VM a LAN
+      device's packets reached the site router's tunnel from their real
+      address, but the test site (the host, in a routing domain, its
+      network on vether4) never answered for its network, even to OPF,
+      while its tunnel address did: something in that setup, not found.
+      Try with a real router, or a second VM.
+- [ ] A site-to-site router's configuration lists "your networks",
+      which include its own networks behind it; wg-quick (and routers
+      that route by AllowedIPs) would then send its own LAN into the
+      tunnel. Leave its own networks out. Check against a real router
+      first.
+- [ ] IPv6 inside tunnels: devices get IPv4 only (see IPv6, Models and
+      generators). A VPN-only device's IPv6 is all blocked.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
       usually no NAT) and remote-access ones (clients NATed out) need
       different defaults for automatic NAT and generated rules. Today
@@ -1650,6 +1678,36 @@ run.
 ## Done
 
 Finished work, kept here for now. Git history has the details.
+
+WireGuard:
+
+- [x] A tunnel reachable from other networks ("Reachable from": LAN or
+      optional interfaces): their connections to the tunnel's devices
+      go in from OPF's address on the tunnel, so a device that only
+      routes and accepts the tunnel's addresses (WireGuard drops any
+      other source) can answer. Any tunnel, whatever the outbound NAT
+      mode; the sites behind its routers keep being routed with real
+      addresses (on the VM a LAN device's packets reached a site
+      router from their own address). The rules of the network reaching
+      in decide what may, and the tunnel's devices still can't start
+      anything towards it. The WireGuard page names the route a router
+      in front of OPF needs. Tried on the VM: a device configured to
+      accept only the tunnel got nothing from a LAN device without it,
+      and its connection, from 10.8.0.1, with it; told to send
+      everything into the tunnel, it still couldn't reach the LAN.
+- [x] Devices kept to their VPN ("Only this VPN", a device's route
+      choice beside "Your networks", "All traffic" and site-to-site):
+      such a device reaches the tunnel's network, and of OPF only DNS
+      there, whatever rules or its own configuration say; blocks on its
+      address before every user rule, and its configuration routes only
+      the tunnel. Per device, so one tunnel can mix them; the sites
+      behind the tunnel's routers aren't part of it. (First built per
+      tunnel, with the sites included; changed before it was pushed.)
+      Tried on the VM with two devices on one tunnel, both configured to
+      send everything into it: the VPN-only one reached the other
+      device and OPF's resolver, and not OPF's web interface, a LAN
+      device, the site, or the router; the "your networks" one reached
+      the LAN and the web interface as before.
 
 Commit engine:
 
