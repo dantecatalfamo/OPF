@@ -496,12 +496,20 @@ Today there are physical ports, VLANs and WireGuard tunnels, each one
 interfaces need, first:
 
 - [x] Confirm and auto-revert for interface changes (Commit engine).
-- [ ] **Apply order by dependency.** netstart brings up the devices it's
-      given in order, and OPF passes them in path order, so
-      `hostname.bridge0` comes before its member `hostname.em1` (VLANs
-      only work because em1 sorts before vlan20). Order parents and
-      members before the interfaces built on them, and the reverse on
-      removal.
+- [x] **Apply order by dependency.** `hostname.*` files apply in
+      netstart's order (physical, aggr/trunk, vlan/svlan, carp, pppoe,
+      then tunnels and bridges), not path order, so a VLAN's parent is
+      up before it. Not done: a bridge before its members isn't wrong
+      for netstart, but removals aren't yet ordered in reverse.
+- [x] **VLANs:** the parent is checked when staging (a port, not
+      itself, not a disabled interface); a parent no interface uses gets
+      a bare `hostname.<port>` ("Carries VLAN 35", `up`) so the VLAN
+      works; Add VLAN offers spare ports; the WAN can be tagged (a VLAN
+      ID on its edit page, for ISPs that need one).
+  - [ ] The tag is tied to the device name (`vlan35` is tag 35): two
+        parents can't both carry VLAN 35.
+  - [ ] MTU isn't checked against the parent's.
+  - [ ] Not tried on the VM yet: a tagged WAN, a bare parent.
 - [ ] **An interface kind in the model** (physical, vlan, wireguard,
       bridge, aggr, carp, gre, pppoe, …) with per-kind settings,
       replacing the vlan and wireguard special cases. Validation:

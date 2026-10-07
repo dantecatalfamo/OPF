@@ -28,6 +28,8 @@ interface Values {
   blockBogons: boolean;
   antispoof: boolean;
   masquerade: boolean;
+  /** The WAN's VLAN, for providers that tag theirs; '' for none. */
+  vlanTag: number | '';
 }
 
 function toValues(i: Iface): Values {
@@ -44,6 +46,7 @@ function toValues(i: Iface): Values {
     blockBogons: !!i.blockBogons,
     antispoof: !!i.antispoof,
     masquerade: !!i.masquerade,
+    vlanTag: i.role === 'wan' && i.vlan ? i.vlan.tag : '',
   };
 }
 
@@ -62,6 +65,7 @@ function describe(before: Iface, after: Iface): string {
   if (!!before.blockBogons !== !!after.blockBogons) parts.push(after.blockBogons ? 'blocks bogon networks' : 'allows bogon networks');
   if (!!before.antispoof !== !!after.antispoof) parts.push(after.antispoof ? 'blocks spoofed addresses' : 'no longer blocks spoofed addresses');
   if (!!before.masquerade !== !!after.masquerade) parts.push(after.masquerade ? 'shares its address with OPF’s other networks' : 'no longer shares its address');
+  if (before.vlan?.tag !== after.vlan?.tag) parts.push(after.vlan ? `tagged as VLAN ${after.vlan.tag} on ${after.vlan.parent}` : `no longer tagged, on ${after.device}`);
   return `${before.name}: ${parts.join(', ') || 'updated'}`;
 }
 
@@ -83,6 +87,12 @@ export function InterfaceEdit() {
         return inSubnet(v, vals.address, Number(vals.prefix)) ? null : 'The gateway must be inside this network';
       },
       mtu: (v) => (v === '' || (Number(v) >= 576 && Number(v) <= 9000) ? null : 'Use 576 to 9000, or leave empty'),
+      vlanTag: (v) => {
+        if (v === '') return null;
+        if (!Number.isInteger(v) || v < 1 || v > 4094) return 'VLAN IDs are 1 to 4094';
+        const other = staged.interfaces.find((i) => i.id !== iface?.id && i.device === `vlan${v}`);
+        return other ? `${other.name} already uses VLAN ${v}` : null;
+      },
     },
   });
 
@@ -117,6 +127,17 @@ export function InterfaceEdit() {
       antispoof: v.mode === 'static' && v.antispoof ? true : undefined,
       masquerade: inside && v.mode !== 'none' && v.masquerade ? true : undefined,
     };
+    if (isWan) {
+      // Tagged, the WAN is a VLAN on its port; untagged, the port itself.
+      const port = iface.vlan?.parent ?? iface.device;
+      if (v.vlanTag === '') {
+        next.device = port;
+        delete next.vlan;
+      } else {
+        next.device = `vlan${v.vlanTag}`;
+        next.vlan = { parent: port, tag: v.vlanTag };
+      }
+    }
     if (next.antispoof === undefined) delete next.antispoof;
     if (next.masquerade === undefined) delete next.masquerade;
     if (JSON.stringify(next) === JSON.stringify(iface)) {
@@ -173,6 +194,13 @@ export function InterfaceEdit() {
               description={isWan ? 'Turning this off disconnects OPF from the internet.' : undefined}
               {...form.getInputProps('enabled', { type: 'checkbox' })}
             />
+            {isWan && (
+              <NumberInput
+                label="VLAN ID" placeholder="None" min={1} max={4094} allowDecimal={false}
+                description={`Only if your provider tags its traffic: some fibre services do (VLAN 35, 10 or 7, say), and their instructions say which. OPF then carries the WAN as that VLAN on ${iface.vlan?.parent ?? iface.device}.`}
+                {...form.getInputProps('vlanTag')}
+              />
+            )}
           </Stack>
         </Card>
 

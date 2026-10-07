@@ -32,9 +32,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const { staged, edit } = useStore();
   const navigate = useNavigate();
-  const parents = staged.interfaces.filter((i) => !i.vlan && i.role !== 'vpn' && i.role !== 'wan');
+  const { data: live } = useLive('interfaces');
+  // OPF's own ports, and the firewall's other ports, which then only
+  // carry VLANs (OPF brings them up for it).
+  const physical = (dev: string) => !/^(vlan|svlan|aggr|trunk|carp|pppoe|tun|tap|gif|etherip|gre|egre|nvgre|eoip|vxlan|pflow|wg|bridge|veb|vport|tpmr|vether|lo|enc|pflog|pfsync)\d/.test(dev);
+  const own = staged.interfaces.filter((i) => !i.vlan && i.role !== 'vpn' && physical(i.device));
+  const bare = (live?.interfaces ?? []).filter((s) => settable(s) && physical(s.name) && !staged.interfaces.some((i) => i.device === s.name));
+  const parents = [
+    ...own.map((p) => ({ value: p.device, label: `${p.name} (${p.device})` })),
+    ...bare.map((s) => ({ value: s.name, label: `${s.name}, only to carry VLANs` })),
+  ];
   const form = useForm({
-    initialValues: { name: '', parent: parents[0]?.device ?? '', tag: 30 as number | string, address: '', prefix: '24' },
+    initialValues: { name: '', parent: parents[0]?.value ?? '', tag: 30 as number | string, address: '', prefix: '24' },
     validate: {
       name: (v) => (v.trim() ? null : 'Give the network a name'),
       tag: (v) => {
@@ -68,13 +77,13 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
         <Stack>
           <Text size="sm" c="dimmed">
             A VLAN is a separate network carried over an existing port, for example to keep guest or IoT devices apart.
-            Your switch needs to tag this VLAN ID too.
+            Your switch needs to tag this VLAN ID too. A port OPF doesn’t use yet can carry VLANs only: OPF brings it up for them.
           </Text>
           <TextInput label="Name" placeholder="Guests" data-autofocus {...form.getInputProps('name')} />
           <Group grow>
             <Select
               label="Carried on"
-              data={parents.map((p) => ({ value: p.device, label: `${p.name} (${p.device})` }))}
+              data={parents}
               allowDeselect={false}
               {...form.getInputProps('parent')}
             />
@@ -163,11 +172,13 @@ function SetUp({ port, onClose }: { port: InterfaceState | null; onClose: () => 
 }
 
 // The system's interfaces that OPF doesn't manage: a spare port, one
-// set up by hand. Ports can be set up here; other kinds are listed.
+// set up by hand. Ports can be set up here; other kinds are listed. A
+// port that only carries VLANs is OPF's (it brings it up for them), and
+// its VLANs' cards say so.
 function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
   const { staged } = useStore();
   const [port, setPort] = useState<InterfaceState | null>(null);
-  const managed = new Set(staged.interfaces.map((i) => i.device));
+  const managed = new Set(staged.interfaces.flatMap((i) => (i.vlan && i.enabled ? [i.device, i.vlan.parent] : [i.device])));
   const others = (ifs?.interfaces ?? []).filter((s) => !managed.has(s.name) && !pseudo.test(s.name));
   if (!others.length) return null;
   return (
@@ -267,7 +278,7 @@ export function Interfaces() {
                   {i.wireguard ? (
                     // Its keys, port and devices are set on its WireGuard tab.
                     <Anchor component={Link} to={`/services/wireguard/${i.id}`} size="sm">WireGuard tunnel</Anchor>
-                  ) : s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s) ?? '—'}
+                  ) : s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : i.vlan ? `VLAN ${i.vlan.tag} on ${i.vlan.parent}` : mediaLabel(s) ?? '—'}
                 </Field>
                 <Field label="Traffic">
                   <span className="num">
