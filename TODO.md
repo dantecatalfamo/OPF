@@ -906,9 +906,8 @@ DNS:
 
 - [ ] DNS stats over time (the collector): queries, cache hits and
       blocks per minute, and blocks by list.
-- [ ] Which device asked for a blocked name, opt-in like top domains
-      (see Privacy below): the rpz-log lines have the client's address,
-      which OPF reads but doesn't keep or show.
+- Which device asked for a blocked name, and top names overall: under
+  Per-device activity below.
 - [ ] Blocked names older than the current daemon log (newsyslog
       rotates it at 300 KB, which on a busy network is an hour or less):
       read the rotated copies too, or keep counts in the collector.
@@ -1125,11 +1124,8 @@ them, so they can be graphed and compared):
         available; they can run out on a busy network.
       - **Queues**, once traffic shaping exists: bandwidth and drops per
         queue (`pfctl -vsq`).
-      - **Per host**: states and traffic per inside address. pf only
-        keeps bytes per live connection (lost when it closes) and per
-        interface, so: periodic state polling aggregated by address,
-        rule labels with accounting, or pflow(4) export to a collector.
-        Top talkers over time, and a host's own history.
+      - **Per host**: traffic per inside address and top talkers, under
+        Per-device activity below.
       - **From the firewall log** (pflog): top blocked sources, targeted
         ports and blocks per interface over time (scans, noisy
         devices), and outbound traffic blocked per inside host (a
@@ -1147,8 +1143,8 @@ them, so they can be graphed and compared):
         misconfiguration), cache hit rate, recursion time, DNSSEC
         validation failures, and queries blocked, in total and by
         blocklist (is a list worth its memory?). Top domains, top
-        blocked names and queries per client too, but only opt-in (see
-        privacy below).
+        blocked names and queries per client are under Per-device
+        activity below.
       - **DHCP**: leases given, renewed and released, how full each
         pool is, and pools running out.
       - **Time** (`ntpctl -s all`): clock offset and usable peers.
@@ -1202,6 +1198,76 @@ them, so they can be graphed and compared):
       possible.
 - [ ] Graphs for rules and hosts, once those are collected, and a
       custom time range beside the hour, day, week and month.
+
+Per-device activity (what each machine on the network does: its DNS
+names and its traffic, and the top names overall). Nothing collects
+this yet; the DNS page's top blocked names come from the current daemon
+log alone, with no device attached. Everything here is under Privacy
+above: off until the admin turns it on, kept for a short, set time.
+
+- [ ] **Who a device is.** Key activity by MAC address, named from its
+      lease, its own name in OPF, or the ARP table, so a device's
+      history survives a new address. A VPN device by its peer. An
+      address no lease or ARP entry explains (a fixed address on
+      another network, an IPv6 privacy address later) is kept by
+      address and says so.
+- [ ] **DNS per device: collecting it.** 7.9's unbound is built without
+      dnstap, so it has to come from unbound's own logging:
+      `log-replies` (client, name, type, response code, time, cached)
+      and `log-local-actions` (blocks, which OPF reads today from
+      `rpz-log`). Every query is a log line, so not to syslog: a busy
+      network would rotate everything else out of the daemon log in
+      minutes. A `logfile:` inside unbound's chroot that OPF reads as
+      it grows and truncates itself, or a pipe; check which unbound
+      keeps writing to after a truncate, and that `log-replies` is
+      cheap enough on an APU-class box. OPF counts lines and keeps no
+      line itself.
+- [ ] **DNS per device: what's kept.** Per device and per hour: queries,
+      blocked, NXDOMAIN and SERVFAIL counts, and its top names and top
+      blocked names (a bounded top-N per bucket, Space-Saving or
+      similar, so a device asking for a million random names costs
+      the same as one asking for ten). Overall: top names, top blocked
+      names and which list blocked each, per hour. That replaces
+      reading the daemon log for top blocked names, so they go back
+      further than its last rotation (Live data › DNS).
+- [ ] **DNS per device: the pages.** The DNS page's top names and top
+      blocked names with the devices that asked; a device's page (from
+      DHCP leases, the ARP table, a VPN device) with its names, its
+      blocks and a link to allow a name that broke something; a rising
+      NXDOMAIN rate on one device as an event (often malware).
+- [ ] **Traffic per device: collecting it.** pf counts bytes per live
+      state only, and forgets them when the state goes. Two ways, to
+      decide between or combine:
+      - Poll the state table (`pfctl -ss -v`, as the Connections page
+        does) and sum bytes by inside address. Shows what's live now,
+        but misses connections that open and close between polls and
+        double-counts across a NAT unless it reads the inside side.
+      - pflow(4): states created by rules marked `pflow` are exported
+        as IPFIX (`pflowproto 10`) to a receiver when they end, with
+        their bytes. Complete, but a long download only appears when
+        it finishes, and it needs a UDP receiver: the parent has no
+        `inet`, so a small collector process (unprivileged, pledged to
+        stdio and inet, listening on loopback) sends totals to the
+        parent. It also needs a `pflowN` interface (a `hostname.pflow0`
+        OPF manages) and the `pflow` keyword on OPF's pass rules.
+      Likely both: polling for now, pflow for the totals.
+- [ ] **Traffic per device: what's kept and shown.** Bytes in and out
+      per device per hour (and per destination country or port later),
+      top talkers over a day, week and month, a device's own graph on
+      its page, and a device suddenly sending far more than its usual
+      as an event.
+- [ ] **Storage.** Not the graphs' rings: they're capped at 256 series,
+      and a series per device or name would fill them. Hourly buckets
+      per device in their own file in the state directory, with a cap
+      on devices and on its size shown on System › General (as the
+      graphs' caps are), the oldest buckets dropped first. Retention
+      set per kind (DNS shorter than traffic by default).
+- [ ] **Forgetting.** Delete one device's history from its page, and
+      everything at once; turning a kind off deletes what it kept,
+      after saying so.
+- [ ] **API and roles.** `GET /api/activity/...` for devices, names and
+      talkers. DNS names per device are the most personal data OPF
+      holds: admin only, or a role of its own, and never in webhooks.
 
 ## UI
 
