@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/activity"
 	"github.com/dantecatalfamo/OPF/internal/config"
 	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -115,6 +116,17 @@ func TestDNSActivityReadsTheLog(t *testing.T) {
 	dev, err := e.m.DNSDeviceActivity(DNSActivityRequest{Days: 1, Device: "mac:3c:22:fb:91:04:7d"})
 	if err != nil || dev.Total.Queries != 3 || dev.Total.Blocked != 1 || dev.Address != "192.168.1.112" || dev.Name != "priya-mbp" {
 		t.Errorf("device: %+v %v", dev, err)
+	}
+	// When and by whom one of the network's names was asked for.
+	n, err := e.m.DNSNameActivity(DNSActivityRequest{Days: 1, List: activity.ListNames, Name: "Example.com"})
+	if err != nil || n.Count != 2 || len(n.Devices) != 1 || n.DeviceInfo[n.Devices[0].Key].Name != "priya-mbp" || len(n.Hours) != 1 {
+		t.Errorf("name: %+v %v", n, err)
+	}
+	if b, err := e.m.DNSNameActivity(DNSActivityRequest{Days: 1, List: activity.ListBlocked, Name: "tracker.ads.example"}); err != nil || b.BlockList != "ads" {
+		t.Errorf("blocked name: %+v %v", b, err)
+	}
+	if _, err := e.m.DNSNameActivity(DNSActivityRequest{Days: 1, List: "everything", Name: "example.com"}); code(err) != CodeInvalid {
+		t.Errorf("a list that isn't one: %v", err)
 	}
 	// The blocked names come from the counts while unbound logs here.
 	if b, _ := e.m.DNSBlocked(); b.Blocked != 1 || b.ByList["ads"] != 1 || len(b.Names) != 1 {

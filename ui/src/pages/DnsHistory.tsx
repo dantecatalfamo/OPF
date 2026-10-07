@@ -5,12 +5,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { BarChart } from '@mantine/charts';
 import {
-  Alert, Anchor, Button, Card, Drawer, Grid, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, UnstyledButton,
+  ActionIcon, Alert, Anchor, Button, Card, Drawer, Grid, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, Tooltip, UnstyledButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconAlertTriangle, IconLock } from '@tabler/icons-react';
+import { IconAlertTriangle, IconChartBar, IconLock } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
-import type { ActivityCounts, ActivityDeviceInfo, ActivityHour, ActivityItem, DnsActivityResource, DnsDeviceActivityResource } from '../lib/api';
+import type { ActivityCounts, ActivityDeviceInfo, ActivityHour, ActivityItem, ActivityList, DnsActivityResource, DnsDeviceActivityResource, DnsNameActivityResource } from '../lib/api';
 import { MAX_ACTIVITY_DAYS, type Model } from '../model/types';
 import { useRole } from '../lib/session';
 import { formatCount, formatLogTime } from '../lib/format';
@@ -161,7 +161,7 @@ function HoursChart({ hours, days }: { hours: ActivityHour[]; days: number }) {
   );
 }
 
-function NameList({ title, items, blocked, model, empty }: { title: string; items: ActivityItem[]; blocked?: boolean; model: Model; empty: string }) {
+function NameList({ title, items, blocked, model, empty, onPick }: { title: string; items: ActivityItem[]; blocked?: boolean; model: Model; empty: string; onPick?: (name: string) => void }) {
   const [all, setAll] = useState(false);
   const shown = all ? items : items.slice(0, 10);
   return (
@@ -179,9 +179,18 @@ function NameList({ title, items, blocked, model, empty }: { title: string; item
                     {blocked && <Text size="xs" c="dimmed">by {listName(model, n.list)}{n.entry && n.entry !== n.name ? `, as ${n.entry}` : ''}</Text>}
                   </Table.Td>
                   <Table.Td ta="right" style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                    <Text size="sm" className="num" title={n.err ? `Up to ${n.err.toLocaleString()} of these may be other names’: the list keeps only the names seen most` : undefined}>
-                      {n.err ? '≈' : ''}{n.count.toLocaleString()}
-                    </Text>
+                    <Group gap={4} justify="flex-end" wrap="nowrap">
+                      <Text size="sm" className="num" title={n.err ? `Up to ${n.err.toLocaleString()} of these may be other names’: the list keeps only the names seen most` : undefined}>
+                        {n.err ? '≈' : ''}{n.count.toLocaleString()}
+                      </Text>
+                      {onPick && (
+                        <Tooltip label="When, and which devices">
+                          <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`When and by whom ${n.name} was asked for`} onClick={() => onPick(n.name)}>
+                            <IconChartBar size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -249,6 +258,94 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
   );
 }
 
+const listTitles: Record<ActivityList, string> = { names: 'Looked up', blocked: 'Blocked', missing: 'Not found' };
+
+// Every hour from since to now, so quiet hours show as gaps.
+function everyHour(since: string, hours: { start: string; count: number }[]): ActivityHour[] {
+  const by = new Map(hours.map((h) => [new Date(h.start).getTime(), h.count]));
+  const out: ActivityHour[] = [];
+  const now = Date.now();
+  for (let t = new Date(since).getTime(); t <= now; t += 3600_000) {
+    const d = new Date(t);
+    d.setMinutes(0, 0, 0);
+    out.push({ start: d.toISOString(), queries: by.get(d.getTime()) ?? 0, blocked: 0 });
+  }
+  return out;
+}
+
+function NameDrawer({ pick, days, onClose, onDevice }: { pick?: { list: ActivityList; name: string }; days: number; onClose: () => void; onDevice?: (key: string) => void }) {
+  const { applied } = useStore();
+  const [data, setData] = useState<DnsNameActivityResource>();
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    if (!pick) return;
+    let live = true;
+    setData(undefined);
+    setError(undefined);
+    backend.dnsNameActivity(pick.list, pick.name, days).then((d) => live && setData(d), (e) => live && setError(errorText(e)));
+    return () => { live = false; };
+  }, [pick, days]);
+  const counted = data ? data.hours.reduce((n, h) => n + h.count, 0) : 0;
+  return (
+    <Drawer opened={!!pick} onClose={onClose} position="right" size="lg" title={pick && <Text fw={600} className="mono" style={{ wordBreak: 'break-all' }}>{pick.name}</Text>}>
+      {error && <Alert color="red" variant="light">{error}</Alert>}
+      {!data && !error && <Text size="sm" c="dimmed">Reading…</Text>}
+      {data && pick && (
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            {listTitles[pick.list]} {data.err ? 'about ' : ''}{data.count.toLocaleString()} {data.count === 1 ? 'time' : 'times'} {days === 1 ? 'today' : `in the last ${days} days`}, last {formatLogTime(data.last)}
+            {pick.list === 'blocked' ? ` · by ${listName(applied, data.blockList)}${data.entry && data.entry !== data.name ? `, as ${data.entry}` : ''}` : ''}
+          </Text>
+          <BarChart
+            h={160} data={everyHour(data.since, data.hours).map((h) => {
+              const t = new Date(h.start);
+              return { hour: days > 1 ? t.toLocaleString(undefined, { weekday: 'short', hour: 'numeric' }) : t.toLocaleTimeString(undefined, { hour: 'numeric' }), Asked: h.queries };
+            })}
+            dataKey="hour" withLegend={false} gridAxis="y" tickLine="none"
+            series={[{ name: 'Asked', color: pick.list === 'blocked' ? 'red.6' : pick.list === 'missing' ? 'yellow.6' : 'harbor.6' }]}
+            xAxisProps={{ interval: 'preserveStartEnd', minTickGap: 40 }}
+            yAxisProps={{ scale: 'linear', domain: [0, 'auto'], allowDecimals: false, width: 40 }}
+            barProps={{ isAnimationActive: false }}
+          />
+          {counted < data.count && (
+            <Text size="xs" c="dimmed">
+              {(data.count - counted).toLocaleString()} of these came before it was among the day’s most {pick.list === 'names' ? 'looked up' : pick.list === 'blocked' ? 'blocked' : 'not found'}, so the hours and devices don’t include them.
+            </Text>
+          )}
+          <Card>
+            <SectionTitle>Devices that asked most</SectionTitle>
+            {data.devices.length ? (
+              <Table verticalSpacing={5} highlightOnHover={!!onDevice}>
+                <Table.Tbody>
+                  {data.devices.map((d) => {
+                    const info = data.deviceInfo[d.key];
+                    return (
+                      <Table.Tr key={d.key} onClick={onDevice ? () => onDevice(d.key) : undefined} style={onDevice ? { cursor: 'pointer' } : undefined}>
+                        <Table.Td>
+                          <Text size="sm" fw={500}>{deviceLabel(d.key, info)}</Text>
+                          <Text size="xs" c="dimmed">{info ? kindWords[info.kind] : ''}</Text>
+                        </Table.Td>
+                        <Table.Td ta="right" className="num">{d.err ? '≈' : ''}{d.count.toLocaleString()}</Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+                </Table.Tbody>
+              </Table>
+            ) : (
+              <Empty>
+                {applied.dns.activity?.devices ? 'No device is kept for it.' : (
+                  <>Which devices asked is only kept with <Anchor component={Link} to="/services/dns?tab=settings" size="sm">For each device too</Anchor> on.</>
+                )}
+              </Empty>
+            )}
+            {data.devices.length >= 10 && <Text size="xs" c="dimmed" mt="xs">The ten that asked most each day are kept.</Text>}
+          </Card>
+        </Stack>
+      )}
+    </Drawer>
+  );
+}
+
 /** The Activity tab: the network's DNS activity over the days chosen, and each device's. */
 export function DnsActivityTab() {
   const { applied } = useStore();
@@ -259,6 +356,7 @@ export function DnsActivityTab() {
   const [data, setData] = useState<DnsActivityResource>();
   const [error, setError] = useState<string>();
   const [device, setDevice] = useState<string>();
+  const [pick, setPick] = useState<{ list: ActivityList; name: string }>();
   const n = Math.min(Number(days), kept || 1);
   const load = useCallback(() => backend.dnsActivity(n).then((d) => { setData(d); setError(undefined); }, (e) => setError(errorText(e))), [n]);
   useEffect(() => {
@@ -303,11 +401,11 @@ export function DnsActivityTab() {
       </Card>
       {data?.names && (
         <Grid gutter="md">
-          <Grid.Col span={{ base: 12, md: 6, xl: 4 }}><NameList title="Looked up most" items={data.names} model={applied} empty="Nothing looked up yet." /></Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6, xl: 4 }}><NameList title="Blocked most" items={data.blocked ?? []} blocked model={applied} empty="Nothing blocked yet." /></Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6, xl: 4 }}><NameList title="Looked up most" items={data.names} model={applied} empty="Nothing looked up yet." onPick={(name) => setPick({ list: 'names', name })} /></Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6, xl: 4 }}><NameList title="Blocked most" items={data.blocked ?? []} blocked model={applied} empty="Nothing blocked yet." onPick={(name) => setPick({ list: 'blocked', name })} /></Grid.Col>
           {/* Names that don't exist: a device asking for many, often
               random-looking ones, may be infected. */}
-          <Grid.Col span={{ base: 12, xl: 4 }}><NameList title="Not found most" items={data.missing ?? []} model={applied} empty="Every name asked for existed." /></Grid.Col>
+          <Grid.Col span={{ base: 12, xl: 4 }}><NameList title="Not found most" items={data.missing ?? []} model={applied} empty="Every name asked for existed." onPick={(name) => setPick({ list: 'missing', name })} /></Grid.Col>
         </Grid>
       )}
       {data?.perDevice ? (
@@ -356,6 +454,7 @@ export function DnsActivityTab() {
           Only the network’s activity is kept. Each device’s can be too, under <Anchor component={Link} to="/services/dns?tab=settings" size="xs">Settings › Activity</Anchor>.
         </Text>
       )}
+      <NameDrawer pick={pick} days={n} onClose={() => setPick(undefined)} onDevice={data?.perDevice ? (key) => { setPick(undefined); setDevice(key); } : undefined} />
       <DeviceDrawer device={device} info={device ? data?.deviceInfo?.[device] : undefined} days={n} onClose={() => setDevice(undefined)} onForgot={() => { setDevice(undefined); load(); }} />
     </Stack>
   );

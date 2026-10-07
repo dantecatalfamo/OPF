@@ -166,3 +166,88 @@ func TestStoreSaveLoad(t *testing.T) {
 		}
 	}
 }
+
+// One of the network's names: in which hours, and by which devices.
+func TestStoreName(t *testing.T) {
+	s := &Store{}
+	at := time.Date(2026, 10, 7, 9, 10, 0, 0, time.Local)
+	for i := 0; i < 3; i++ {
+		s.AddAnswer(Answer{Time: at, Device: "aa", Name: "a.example", Rcode: "NOERROR"}, false)
+	}
+	s.AddAnswer(Answer{Time: at.Add(2 * time.Hour), Device: "bb", Name: "a.example", Rcode: "NOERROR"}, false)
+	s.AddBlock(Block{Time: at, Device: "bb", Name: "ads.example", List: "ads", Entry: "*.ads.example"})
+	s.AddAnswer(Answer{Time: at, Name: "a.example", Rcode: "NOERROR"}, false) // devices not kept for this one
+
+	n, ok := s.Name(ListNames, "a.example", at.Add(3*time.Hour), 1)
+	if !ok || n.Count != 5 || len(n.Hours) != 2 || n.Hours[0].Count != 4 || n.Hours[0].Start.Hour() != 9 || n.Hours[1].Start.Hour() != 11 {
+		t.Fatalf("%+v %v", n, ok)
+	}
+	if len(n.Devices) != 2 || n.Devices[0] != (DeviceCount{Key: "aa", Count: 3}) || n.Devices[1].Key != "bb" {
+		t.Errorf("devices %+v", n.Devices)
+	}
+	b, ok := s.Name(ListBlocked, "ads.example", at, 1)
+	if !ok || b.BlockList != "ads" || b.Entry != "*.ads.example" || len(b.Devices) != 1 {
+		t.Errorf("blocked %+v", b)
+	}
+	if _, ok := s.Name(ListNames, "ads.example", at, 1); ok {
+		t.Error("a blocked name among those looked up")
+	}
+	if _, ok := s.Name("bogus", "a.example", at, 1); ok {
+		t.Error("a list that isn't one")
+	}
+	// The summary's lists don't carry every name's when and who.
+	if sum := s.Summary(at, 1, 10); sum.Names[0].Hours != nil || sum.Names[0].Devices != nil {
+		t.Errorf("summary carries detail: %+v", sum.Names[0])
+	}
+}
+
+// A name's devices are bounded too: past ItemDevices, Space-Saving.
+func TestStoreNameDevicesBounded(t *testing.T) {
+	s := &Store{}
+	for i := 0; i < 50; i++ {
+		s.AddAnswer(Answer{Time: day0, Device: fmt.Sprint("dev", i), Name: "a.example", Rcode: "NOERROR"}, false)
+	}
+	for i := 0; i < 20; i++ {
+		s.AddAnswer(Answer{Time: day0, Device: "busy", Name: "a.example", Rcode: "NOERROR"}, false)
+	}
+	n, _ := s.Name(ListNames, "a.example", day0, 1)
+	if len(n.Devices) != ItemDevices || n.Devices[0].Key != "busy" {
+		t.Errorf("%+v", n.Devices)
+	}
+}
+
+// The worst a day can be with when and who: every list full, each name
+// asked for in every hour by a full list of devices.
+func TestStoreWorstDaySize(t *testing.T) {
+	s := &Store{}
+	at := midnight(day0)
+	for n := 0; n < NetworkTop; n++ {
+		for h := 0; h < 24; h++ {
+			for d := 0; d < ItemDevices; d++ {
+				tm := at.Add(time.Duration(h) * time.Hour)
+				dev := fmt.Sprintf("mac:02:00:00:00:%02x:%02x", d, n%12) // 120 devices, under MaxDevices
+				name := fmt.Sprintf("name-%03d.some-longish-domain.example.com", n)
+				s.AddAnswer(Answer{Time: tm, Device: dev, Address: "192.168.100.200", Name: name, Rcode: "NOERROR"}, false)
+				s.AddAnswer(Answer{Time: tm, Device: dev, Address: "192.168.100.200", Name: "x" + name, Rcode: "NXDOMAIN"}, false)
+				s.AddBlock(Block{Time: tm, Device: dev, Address: "192.168.100.200", Name: "ads." + name, List: "hagezi-pro", Entry: "*." + name})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	s.Save(&buf)
+	with := buf.Len()
+	for _, d := range s.Days {
+		for _, l := range []*TopK{&d.Names, &d.Blocked, &d.Missing} {
+			for i := range l.Items {
+				l.Items[i].Hours, l.Items[i].Devices = nil, nil
+			}
+		}
+	}
+	buf.Reset()
+	s.Save(&buf)
+	t.Logf("a worst-case day: %d KB saved, %d KB of it when and who", with/1024, (with-buf.Len())/1024)
+	// A month of such days (about 32 MB) is still read back.
+	if 31*with > maxFileSize {
+		t.Errorf("a month of worst days is %d MB", 31*with>>20)
+	}
+}

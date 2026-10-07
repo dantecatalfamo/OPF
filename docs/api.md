@@ -470,6 +470,14 @@ unbound first starts.
   activity: its `kind`, `name`, `mac`, `address`, `last`, `total`,
   `hours`, `names`, `blocked` and `missing`. `not_found` when devices
   aren't kept or nothing of it is.
+- `GET /api/dns/activity/name?list=names|blocked|missing&name=n&days=N`
+  (admin): when and by whom one of the network's names was asked for:
+  `count`, `err`, `last`, `hours` (`{"start", "count"}`, hours with
+  any), `devices` (`{"key", "count", "err"}`, the 10 that asked most,
+  only while devices are kept) with `deviceInfo` by key, and for a
+  blocked name `blockList` and `entry`. Hours and devices count from
+  when the name took its place in each day's list of 200, so they may
+  add up to less than `count`. `not_found` when no day kept it.
 - `DELETE /api/dns/activity[?device=key]` (admin): deletes one device's
   activity, or everything kept. Turning DNS activity off deletes it too,
   once that's applied.

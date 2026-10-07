@@ -355,10 +355,20 @@ func validMAC(s string) bool {
 const MaxActivityNames = 50
 
 // DNSActivityRequest asks for the last Days days (today counts as one;
-// 0 is today), or for one device's (DeviceKey).
+// 0 is today), for one device's (Device), or for one of the network's
+// names in one of its lists (Name, List: activity.ListNames and so on).
 type DNSActivityRequest struct {
 	Days   int    `json:"days"`
 	Device string `json:"device,omitempty"`
+	Name   string `json:"name,omitempty"`
+	List   string `json:"list,omitempty"`
+}
+
+// DNSNameActivity is when one of the network's names was asked for and
+// by which devices (DeviceInfo describes them).
+type DNSNameActivity struct {
+	*activity.NameActivity
+	DeviceInfo map[string]ActivityDevice `json:"deviceInfo"`
 }
 
 // DNSActivity is what the resolver did over the days asked for, for the
@@ -439,6 +449,36 @@ func (m *Manager) DNSDeviceActivity(req DNSActivityRequest) (*DNSDeviceActivity,
 		return nil, errorf(CodeNotFound, "nothing is kept for that device over those days")
 	}
 	return &DNSDeviceActivity{ActivityDevice: describeDevice(req.Device, m.deviceNames(model), model), DeviceActivity: &d}, nil
+}
+
+// DNSNameActivity is when and by whom req.Name was asked for.
+func (m *Manager) DNSNameActivity(req DNSActivityRequest) (*DNSNameActivity, error) {
+	model, _, err := m.live()
+	if err != nil {
+		return nil, apiError(err)
+	}
+	if model == nil || !pf.KeepsDNSActivity(model) {
+		return nil, errorf(CodeNotFound, "DNS activity isn't kept")
+	}
+	switch req.List {
+	case activity.ListNames, activity.ListBlocked, activity.ListMissing:
+	default:
+		return nil, errorf(CodeInvalid, "list is names, blocked or missing")
+	}
+	m.activity.mu.Lock()
+	n, ok := m.activityStore().Name(req.List, strings.ToLower(req.Name), time.Now(), activityDays(req.Days, model.DNS.Activity.Days))
+	m.activity.mu.Unlock()
+	if !ok {
+		return nil, errorf(CodeNotFound, "that name isn't among those kept over those days")
+	}
+	out := &DNSNameActivity{NameActivity: &n, DeviceInfo: map[string]ActivityDevice{}}
+	if len(n.Devices) > 0 {
+		names := m.deviceNames(model)
+		for _, d := range n.Devices {
+			out.DeviceInfo[d.Key] = describeDevice(d.Key, names, model)
+		}
+	}
+	return out, nil
 }
 
 // ForgetDNSActivity deletes one device's activity, or with no device

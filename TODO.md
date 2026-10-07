@@ -1253,7 +1253,16 @@ setting under Settings), and tried on 7.9 with the real unbound:
       count lines twice. DNSBlocked reads from it while it's on.
 - [x] **The pages.** Activity: counts, an hourly chart, the names looked
       up, blocked and not found most, and devices, each with its own
-      view and "Forget this device". The setting says what keeping it
+      view and "Forget this device". Each of the network's names opens
+      when it was asked for (by hour) and the devices that asked most:
+      every name in a day's lists keeps 24 hourly counts and its ten
+      top devices (Space-Saving), counted from when it entered the
+      list. That's at most about 300 KB a day; a worst-case day is
+      about 1 MB saved and a worst-case month about 32 MB, under the
+      64 MB Load reads (`TestStoreWorstDaySize`).
+  - [ ] A worst-case month is a lot of RAM on a small box: keep the when
+        and who only for the names the page can show (the top 50), or
+        for fewer days than the counts. The setting says what keeping it
       means; turning it off, or devices off, deletes what was kept;
       "Delete what's kept" deletes it now.
 - [x] **API and roles.** `GET /api/dns/activity`, `/device`, `DELETE`,

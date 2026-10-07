@@ -61,6 +61,7 @@ type API interface {
 	DNSBlocked() (*DNSBlocked, error)
 	DNSActivity(DNSActivityRequest) (*DNSActivity, error)
 	DNSDeviceActivity(DNSActivityRequest) (*DNSDeviceActivity, error)
+	DNSNameActivity(DNSActivityRequest) (*DNSNameActivity, error)
 	ForgetDNSActivity(DNSActivityRequest) error
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)

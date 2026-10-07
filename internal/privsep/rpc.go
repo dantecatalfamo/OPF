@@ -193,6 +193,10 @@ type (
 		Result
 		Activity *appliance.DNSDeviceActivity
 	}
+	DNSNameActivityReply struct {
+		Result
+		Activity *appliance.DNSNameActivity
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -571,6 +575,16 @@ func (s *Service) DNSDeviceActivity(c Call[appliance.DNSActivityRequest], r *DNS
 	var err error
 	r.Activity, err = s.api.DNSDeviceActivity(c.Args)
 	r.set("DNSDeviceActivity", err)
+	return nil
+}
+
+func (s *Service) DNSNameActivity(c Call[appliance.DNSActivityRequest], r *DNSNameActivityReply) error {
+	if s.allow("DNSNameActivity", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Activity, err = s.api.DNSNameActivity(c.Args)
+	r.set("DNSNameActivity", err)
 	return nil
 }
 
@@ -1122,6 +1136,18 @@ func (c *Client) DNSDeviceActivity(req appliance.DNSActivityRequest) (*appliance
 	err := c.call("DNSDeviceActivity", req, &r)
 	if a := r.Activity; a != nil && a.DeviceActivity != nil {
 		a.Hours, a.Names, a.Blocked, a.Missing = nonNil(a.Hours), nonNil(a.Names), nonNil(a.Blocked), nonNil(a.Missing)
+	}
+	return r.Activity, err
+}
+
+func (c *Client) DNSNameActivity(req appliance.DNSActivityRequest) (*appliance.DNSNameActivity, error) {
+	var r DNSNameActivityReply
+	err := c.call("DNSNameActivity", req, &r)
+	if a := r.Activity; a != nil && a.NameActivity != nil {
+		a.Hours, a.Devices = nonNil(a.Hours), nonNil(a.Devices)
+		if a.DeviceInfo == nil {
+			a.DeviceInfo = map[string]appliance.ActivityDevice{}
+		}
 	}
 	return r.Activity, err
 }

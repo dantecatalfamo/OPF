@@ -201,20 +201,26 @@ func (s *Store) AddAnswer(a Answer, blocked bool) {
 	}
 	h, d, at := s.hour(a.Time), s.day(a.Time), a.Time.Unix()
 	h.Total.add(c)
-	top := func(names, missing *TopK) {
+	top := func(names, missing *TopK) *Item {
 		switch {
 		case blocked:
 		case a.Rcode == "NOERROR":
-			names.Add(a.Name, at, "", "")
+			return names.Add(a.Name, at, "", "")
 		case a.Rcode == "NXDOMAIN":
-			missing.Add(a.Name, at, "", "")
+			return missing.Add(a.Name, at, "", "")
 		}
+		return nil
 	}
-	top(&d.Names, &d.Missing)
+	key := ""
+	if a.Device != "" {
+		key = deviceKey(d, a.Device)
+	}
+	if it := top(&d.Names, &d.Missing); it != nil {
+		it.note(a.Time.Hour(), key)
+	}
 	if a.Device == "" {
 		return
 	}
-	key := deviceKey(d, a.Device)
 	h.addDevice(key, c)
 	dd := d.device(key)
 	top(&dd.Names, &dd.Missing)
@@ -234,12 +240,17 @@ func (s *Store) AddBlock(b Block) {
 			h.ByList = map[string]int64{}
 		}
 		h.ByList[b.List]++
-		d.Blocked.Add(b.Name, at, b.List, b.Entry)
+	}
+	key := ""
+	if b.Device != "" {
+		key = deviceKey(d, b.Device)
+	}
+	if !b.Pass {
+		d.Blocked.Add(b.Name, at, b.List, b.Entry).note(b.Time.Hour(), key)
 	}
 	if b.Device == "" {
 		return
 	}
-	key := deviceKey(d, b.Device)
 	h.addDevice(key, c)
 	dd := d.device(key)
 	if !b.Pass {
@@ -447,5 +458,98 @@ func (s *Store) Device(key string, now time.Time, days, n int) (DeviceActivity, 
 		}
 	}
 	out.Names, out.Blocked, out.Missing = Top(names, n), Top(blocked, n), Top(missing, n)
+	return out, found
+}
+
+// Lists of the network's names, for Name.
+const (
+	ListNames   = "names"
+	ListBlocked = "blocked"
+	ListMissing = "missing"
+)
+
+// NameActivity is when one of the network's top names was asked for,
+// and by which devices, over the last days.
+type NameActivity struct {
+	Name  string    `json:"name"`
+	List  string    `json:"list"` // ListNames, ListBlocked or ListMissing
+	Since time.Time `json:"since"`
+	Count int64     `json:"count"`
+	// Err is how much of Count may be other names'; Hours and Devices
+	// count from when it took its place in each day's list, so they may
+	// add up to less than Count.
+	Err     int64         `json:"err,omitempty"`
+	Last    time.Time     `json:"last"`
+	Hours   []NameHour    `json:"hours"`
+	Devices []DeviceCount `json:"devices"`
+	// What blocked it last (ListBlocked).
+	BlockList string `json:"blockList,omitempty"`
+	Entry     string `json:"entry,omitempty"`
+}
+
+// NameHour is how often a name was asked for in an hour.
+type NameHour struct {
+	Start time.Time `json:"start"`
+	Count int64     `json:"count"`
+}
+
+// Name is when and by whom name, in list, was asked for over the last
+// days days; false when no day's list has it.
+func (s *Store) Name(list, name string, now time.Time, days int) (NameActivity, bool) {
+	since := midnight(now).AddDate(0, 0, 1-days)
+	out := NameActivity{Name: name, List: list, Since: since, Hours: []NameHour{}, Devices: []DeviceCount{}}
+	devs := map[string]*DeviceCount{}
+	found := false
+	for _, d := range s.Days {
+		if d.Start < since.Unix() {
+			continue
+		}
+		var t *TopK
+		switch list {
+		case ListNames:
+			t = &d.Names
+		case ListBlocked:
+			t = &d.Blocked
+		case ListMissing:
+			t = &d.Missing
+		default:
+			return out, false
+		}
+		it, ok := t.Get(name)
+		if !ok {
+			continue
+		}
+		found = true
+		out.Count += it.Count
+		out.Err += it.Err
+		if it.Last >= out.Last.Unix() {
+			out.Last, out.BlockList, out.Entry = time.Unix(it.Last, 0), it.List, it.Entry
+		}
+		day := time.Unix(d.Start, 0)
+		for h, c := range it.Hours {
+			if c > 0 {
+				y, m, dd := day.Date()
+				out.Hours = append(out.Hours, NameHour{Start: time.Date(y, m, dd, h, 0, 0, 0, day.Location()), Count: c})
+			}
+		}
+		for _, dc := range it.Devices {
+			if x := devs[dc.Key]; x != nil {
+				x.Count += dc.Count
+				x.Err += dc.Err
+			} else {
+				c := dc
+				devs[dc.Key] = &c
+			}
+		}
+	}
+	for _, d := range devs {
+		out.Devices = append(out.Devices, *d)
+	}
+	sort.Slice(out.Devices, func(i, j int) bool {
+		if out.Devices[i].Count != out.Devices[j].Count {
+			return out.Devices[i].Count > out.Devices[j].Count
+		}
+		return out.Devices[i].Key < out.Devices[j].Key
+	})
 	return out, found
 }

@@ -159,6 +159,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s, appliance.API.DNSBlocked))
 	s.mux.HandleFunc("GET /api/dns/activity", s.dnsActivity)
 	s.mux.HandleFunc("GET /api/dns/activity/device", s.dnsDeviceActivity)
+	s.mux.HandleFunc("GET /api/dns/activity/name", s.dnsNameActivity)
 	s.mux.HandleFunc("DELETE /api/dns/activity", s.forgetDNSActivity)
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
@@ -650,10 +651,10 @@ func (s *Server) pfStates(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, st)
 }
 
-// activityRequest reads ?days=N[&device=key].
+// activityRequest reads ?days=N[&device=key][&name=n&list=l].
 func activityRequest(w http.ResponseWriter, r *http.Request) (appliance.DNSActivityRequest, bool) {
 	q := r.URL.Query()
-	req := appliance.DNSActivityRequest{Device: q.Get("device")}
+	req := appliance.DNSActivityRequest{Device: q.Get("device"), Name: q.Get("name"), List: q.Get("list")}
 	if v := q.Get("days"); v != "" {
 		var err error
 		if req.Days, err = strconv.Atoi(v); err != nil {
@@ -687,6 +688,23 @@ func (s *Server) dnsDeviceActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a, err := s.apiFor(r).DNSDeviceActivity(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, a)
+}
+
+func (s *Server) dnsNameActivity(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	if req.Name == "" {
+		badRequest(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	a, err := s.apiFor(r).DNSNameActivity(req)
 	if err != nil {
 		fail(w, err)
 		return

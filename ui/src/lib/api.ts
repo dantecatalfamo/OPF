@@ -517,6 +517,27 @@ export interface DnsDeviceActivityResource extends ActivityDeviceInfo {
   missing: ActivityItem[];
 }
 
+/** Which of the network's lists a name is in. */
+export type ActivityList = 'names' | 'blocked' | 'missing';
+
+/** When and by whom one of the network's names was asked for (GET /api/dns/activity/name). */
+export interface DnsNameActivityResource {
+  name: string;
+  list: ActivityList;
+  since: string;
+  count: number;
+  /** Up to this much of count may be other names'; hours and devices count from when the name took its place in each day's list. */
+  err?: number;
+  last: string;
+  /** Hours it was asked for in, those with any. */
+  hours: { start: string; count: number }[];
+  /** The devices that asked most (at most 10), while devices are kept. */
+  devices: { key: string; count: number; err?: number }[];
+  deviceInfo: Record<string, ActivityDeviceInfo>;
+  blockList?: string;
+  entry?: string;
+}
+
 /** Response policy actions that let a query through rather than block it. */
 export const rpzPass = new Set(['rpz-passthru', 'rpz-disabled', 'rpz-no-override', 'rpz-invalid']);
 
@@ -902,6 +923,8 @@ export const api = {
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
   dnsActivity: (days: number) => request<DnsActivityResource>('GET', `/dns/activity?days=${days}`),
+  dnsNameActivity: (list: ActivityList, name: string, days: number) =>
+    request<DnsNameActivityResource>('GET', `/dns/activity/name?list=${list}&name=${enc(name)}&days=${days}`),
   dnsDeviceActivity: (device: string, days: number) => request<DnsDeviceActivityResource>('GET', `/dns/activity/device?device=${enc(device)}&days=${days}`),
   /** Deletes one device's activity, or with none everything kept. */
   forgetDnsActivity: (device?: string) => request<void>('DELETE', `/dns/activity${device ? `?device=${enc(device)}` : ''}`),
