@@ -716,6 +716,7 @@ export const api = {
   sessions: () => request<{ sessions: SessionInfo[] }>('GET', '/sessions'),
   endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
   newTunnelKey: () => request<{ publicKey: string }>('POST', '/wireguard/keys').then((r) => r.publicKey),
+  importTunnelKey: (privateKey: string) => request<{ publicKey: string }>('POST', '/wireguard/keys/import', { privateKey }).then((r) => r.publicKey),
   newDeviceKey: () => request<{ privateKey: string; publicKey: string }>('POST', '/wireguard/device-keys'),
   /** Keeps a preshared key on the firewall, made there unless one's given: its id for the model, and the key to show once. */
   setPresharedKey: (key?: string) => request<{ id: string; key: string }>('POST', '/wireguard/preshared-keys', key ? { key } : {}),

@@ -374,6 +374,21 @@ export interface WireGuard {
   /** LAN or optional interfaces whose networks may start connections to the tunnel's devices, translated to OPF's tunnel address. */
   reachableFrom?: string[];
   peers: Peer[];
+  /** A way out rather than in: OPF is a client of a VPN provider, and the networks in from leave through it. */
+  exit?: Exit;
+}
+
+/** A tunnel to a VPN provider that some networks leave through, appearing at the provider's address. */
+export interface Exit {
+  /** The provider's end. */
+  publicKey: string;
+  endpoint: string;
+  presharedKey?: string;
+  keepalive?: number;
+  /** LAN or optional interfaces whose networks leave through it. */
+  from: string[];
+  /** The provider's resolvers: OPF's resolver asks them, through the tunnel. */
+  dns?: string[];
 }
 
 export interface SystemSettings {

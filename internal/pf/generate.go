@@ -7,6 +7,7 @@ import (
 	"net"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -513,6 +514,7 @@ const (
 	LabelSplit     = "split-tunnel" // limits on a tunnel's split-tunnel peers, by interface id
 	LabelIsolated  = "vpn-only"     // limits on a tunnel's devices kept to it, by interface id
 	LabelVPNIn     = "vpn-in"       // NAT into a tunnel from networks that may reach it, by tunnel id
+	LabelExit      = "exit"         // a way out through a VPN provider, by tunnel id
 	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
 )
 
@@ -534,7 +536,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelAntispoof:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof:
 	default:
 		return "", "", false
 	}
@@ -801,7 +803,8 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		add("table <private> const { 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 }", &Origin{Label: "WAN protection", To: fmt.Sprintf("/interfaces/%s", wan.ID)})
 	}
 	split := splitPeers(m)
-	if len(split) > 0 {
+	exits := exitTunnels(m)
+	if len(split) > 0 || len(exits) > 0 {
 		add(fmt.Sprintf("table <%s> const { %s }", LocalTable, strings.Join(LocalNetworks(m, true), " ")),
 			&Origin{Label: "WireGuard: your networks", To: "/services/wireguard"})
 	}
@@ -927,6 +930,18 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	}
 	blank()
 
+	// Networks leaving through a provider take the tunnel's address.
+	if exits := exitTunnels(m); len(exits) > 0 {
+		add("# Out through WireGuard providers", nil)
+		for _, t := range exits {
+			for _, i := range exitFrom(t, m) {
+				described(fmt.Sprintf("%s through %s", i.Name, t.Name), &Origin{Label: "WireGuard: " + t.Name, To: "/services/wireguard/" + t.ID},
+					fmt.Sprintf("match out on $%s inet from ($%s:network) nat-to ($%s:0)%s", t.ID, i.ID, t.ID, label(LabelExit, t.ID)))
+			}
+		}
+		blank()
+	}
+
 	// Networks that may reach into a tunnel arrive from OPF's address on
 	// it: its devices only accept, and only route back, the tunnel's
 	// addresses. A tunnel setting, so whatever the outbound NAT mode.
@@ -988,6 +1003,35 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			}
 			described(fmt.Sprintf("%s: %s", t.iface.Name, strings.Join(names, ", ")), &Origin{Label: "WireGuard: " + t.iface.Name, To: "/services/wireguard/" + t.iface.ID},
 				fmt.Sprintf("block in log quick on $%s inet from %s to ! <%s>%s", t.iface.ID, from, LocalTable, label(LabelSplit, t.iface.ID)))
+		}
+		blank()
+	}
+
+	// Ways out: what the listed networks send beyond your networks is
+	// looked up in the tunnel's own routing table, whose only route is
+	// into it. Match rules, so the rules below still decide what may
+	// pass; traffic for OPF itself goes back to the main table. The
+	// table has no other way out, so with the tunnel down it goes
+	// nowhere rather than out with your own address; pf blocks it on
+	// the other ways out too, should the table ever lose its route.
+	if len(exits) > 0 {
+		add("# WireGuard: ways out through a VPN provider", nil)
+		dyn := true
+		self := endpoint(Endpoint{Type: EndpointSelf, Dynamic: &dyn}, m)
+		for _, t := range exits {
+			n, _ := ExitRTable(t)
+			origin := &Origin{Label: "WireGuard: " + t.Name, To: "/services/wireguard/" + t.ID}
+			for _, i := range exitFrom(t, m) {
+				lines := []string{
+					// WireGuard's MTU is 1420: TCP's segments must fit inside it.
+					fmt.Sprintf("match in on $%s inet from ($%s:network) to ! <%s> rtable %d scrub (max-mss %d)%s", i.ID, i.ID, LocalTable, n, exitMSS, label(LabelExit, t.ID)),
+					fmt.Sprintf("match in on $%s to %s rtable 0%s", i.ID, self, label(LabelExit, t.ID)),
+				}
+				for _, w := range outsides(m) {
+					lines = append(lines, fmt.Sprintf("block out log quick on $%s received-on $%s%s", w.ID, i.ID, label(LabelExit, t.ID)))
+				}
+				described(fmt.Sprintf("%s leaves through %s", i.Name, t.Name), origin, lines...)
+			}
 		}
 		blank()
 	}
@@ -1114,7 +1158,26 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 
 	if wg := i.WireGuard; i.Role == RoleVPN && wg != nil {
 		// netstart evals each line; this one reads the key from its file.
-		lines = append(lines, fmt.Sprintf(`!ifconfig $if wgkey "$(cat %s)"`, WGKeyPath(wg.PublicKey)), fmt.Sprintf("wgport %d", wg.ListenPort))
+		lines = append(lines, fmt.Sprintf(`!ifconfig $if wgkey "$(cat %s)"`, WGKeyPath(wg.PublicKey)))
+		if wg.ListenPort != 0 {
+			lines = append(lines, fmt.Sprintf("wgport %d", wg.ListenPort))
+		}
+		if e := wg.Exit; e != nil {
+			// The provider takes everything sent into the tunnel; no
+			// route is added for it here, so OPF's own traffic keeps the
+			// main table's default route.
+			line := fmt.Sprintf("wgpeer %s wgaip 0.0.0.0/0", e.PublicKey)
+			if host, port, err := net.SplitHostPort(e.Endpoint); err == nil {
+				line += fmt.Sprintf(" wgendpoint %s %s", host, port)
+			}
+			if e.Keepalive != nil {
+				line += fmt.Sprintf(" wgpka %d", *e.Keepalive)
+			}
+			lines = append(lines, line+fmt.Sprintf(" wgdescr \"%s\"", i.Name))
+			if e.PresharedKey != "" {
+				lines = append(lines, fmt.Sprintf(`!ifconfig $if wgpeer %s wgpsk "$(cat %s)"`, e.PublicKey, WGPSKPath(e.PresharedKey)))
+			}
+		}
 		for _, p := range wg.Peers {
 			aips := []string{fmt.Sprintf("wgaip %s", p.Address)}
 			for _, net := range p.Networks {
@@ -1156,6 +1219,18 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 		lines = append(lines, "up")
 	} else {
 		lines = append(lines, "down")
+	}
+
+	// A way out: its routing table's only route is into the tunnel, and
+	// the provider's resolvers are reached through it too. Replaced, not
+	// added to, so applying again (or a changed address) leaves one.
+	if wg := i.WireGuard; wg != nil && wg.Exit != nil && i.IPv4.Mode == IPv4Static && i.IPv4.Address != "" {
+		if n, ok := ExitRTable(i); ok {
+			lines = append(lines, fmt.Sprintf("!route -qT %d delete -inet default >/dev/null 2>&1; route -qT %d add -inet default -iface %s\t# everything leaving through %s", n, n, i.IPv4.Address, i.Name))
+		}
+		for _, d := range wg.Exit.DNS {
+			lines = append(lines, fmt.Sprintf("!route -q delete -inet -host %s >/dev/null 2>&1; route -q add -inet -host %s -iface %s\t# the provider's resolver", d, d, i.IPv4.Address))
+		}
 	}
 
 	// Static routes through this interface
@@ -1304,7 +1379,15 @@ func GenerateUnboundConf(m *Model) string {
 	// it's downloaded again.
 	lines = append(lines, "", "remote-control:", "\tcontrol-enable: yes", "\tcontrol-interface: "+UnboundControlSocket)
 
-	if d.Mode == ResolverModeForward {
+	if via, servers := ExitResolvers(m); len(servers) > 0 {
+		// Every lookup goes to the provider, through the tunnel (its
+		// hostname.if routes them there), so none leaves from your own
+		// address. Plain DNS: it's inside the tunnel already.
+		lines = append(lines, "", "forward-zone:", "\tname: \".\"", "\t# through "+via)
+		for _, f := range servers {
+			lines = append(lines, "\tforward-addr: "+f)
+		}
+	} else if d.Mode == ResolverModeForward {
 		lines = append(lines, "", "forward-zone:", "\tname: \".\"")
 		if d.ForwardTLS {
 			lines = append(lines, "\tforward-tls-upstream: yes")
@@ -1403,8 +1486,8 @@ func LocalNetworks(m *Model, dynamic bool) []string {
 	}
 	for i := range m.Interfaces {
 		f := &m.Interfaces[i]
-		if !f.Enabled || f.Role == RoleWAN {
-			continue
+		if !f.Enabled || f.Role == RoleWAN || f.WireGuard != nil && f.WireGuard.Exit != nil {
+			continue // a way out's address is the provider's, not one of your networks
 		}
 		if n, ok := ifaceNet(f); ok {
 			add(n.String())
@@ -1453,6 +1536,75 @@ func vpnInNAT(m *Model) []vpnIn {
 			i := &m.Interfaces[k]
 			out = append(out, vpnIn{t, fmt.Sprintf("%s reaches %s, as OPF", i.Name, t.Name),
 				fmt.Sprintf("match out on $%s inet from ($%s:network) to %s nat-to ($%s:0)%s", t.ID, i.ID, dst, t.ID, label(LabelVPNIn, t.ID))})
+		}
+	}
+	return out
+}
+
+// exitMSS is the largest TCP segment for traffic leaving through a way
+// out: WireGuard's default MTU of 1420, less 40 bytes of IPv4 and TCP
+// headers.
+const exitMSS = 1380
+
+// Exit tunnels' routing tables are exitRTableBase plus the device's
+// number, up to maxExitRTable (rtable's limit is 255).
+const (
+	exitRTableBase = 200
+	maxExitRTable  = 255
+)
+
+// ExitRTable is the routing table a way-out tunnel's traffic is sent
+// to: 200 for wg0, 201 for wg1. ok is false for a device whose number
+// takes it past 255.
+func ExitRTable(t *Iface) (int, bool) {
+	n, err := strconv.Atoi(strings.TrimPrefix(t.Device, "wg"))
+	if err != nil || !strings.HasPrefix(t.Device, "wg") || exitRTableBase+n > maxExitRTable {
+		return 0, false
+	}
+	return exitRTableBase + n, true
+}
+
+// exitFrom returns the enabled interfaces that leave through tunnel t.
+func exitFrom(t *Iface, m *Model) []*Iface {
+	var out []*Iface
+	for _, id := range t.WireGuard.Exit.From {
+		if k := slices.IndexFunc(m.Interfaces, func(f Iface) bool { return f.ID == id }); k >= 0 && m.Interfaces[k].Enabled {
+			out = append(out, &m.Interfaces[k])
+		}
+	}
+	return out
+}
+
+// outsides are the interfaces traffic leaves by when it isn't tunnelled:
+// the WANs, and the inside interfaces that masquerade (AutomaticNAT's).
+func outsides(m *Model) []*Iface {
+	var out []*Iface
+	for k := range m.Interfaces {
+		if i := &m.Interfaces[k]; i.Enabled && (i.Role == RoleWAN || i.Masquerade && i.Role != RoleVPN) {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// ExitResolvers is the provider's resolvers that OPF's resolver asks
+// instead of its own settings, and the tunnel they're reached through:
+// the first enabled way out that names any.
+func ExitResolvers(m *Model) (via string, servers []string) {
+	for _, t := range exitTunnels(m) {
+		if len(t.WireGuard.Exit.DNS) > 0 {
+			return t.Name, t.WireGuard.Exit.DNS
+		}
+	}
+	return "", nil
+}
+
+// exitTunnels returns the enabled tunnels that are ways out.
+func exitTunnels(m *Model) []*Iface {
+	var out []*Iface
+	for _, t := range m.Tunnels() {
+		if t.Enabled && t.WireGuard.Exit != nil {
+			out = append(out, t)
 		}
 	}
 	return out

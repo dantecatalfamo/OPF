@@ -47,7 +47,7 @@ var methodRoles = map[string]auth.Role{
 	"Confirm": auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
-	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,
+	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "ImportTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,
 	// Who can sign in, which also asks for the password again
 	// (allowRecent).
 	"Users": auth.RoleAdmin, "CreateUser": auth.RoleAdmin, "SetUserRole": auth.RoleAdmin,
@@ -568,6 +568,19 @@ func (s *Service) NewTunnelKey(c Call[None], r *TunnelKeyReply) error {
 	return nil
 }
 
+// ImportKeyArgs is a tunnel's private key made elsewhere.
+type ImportKeyArgs struct{ PrivateKey string }
+
+func (s *Service) ImportTunnelKey(c Call[ImportKeyArgs], r *TunnelKeyReply) error {
+	if s.allow("ImportTunnelKey", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.PublicKey, err = s.api.ImportTunnelKey(c.Args.PrivateKey)
+	r.set("ImportTunnelKey", err)
+	return nil
+}
+
 func (s *Service) NewDeviceKey(c Call[None], r *DeviceKeyReply) error {
 	if s.allow("NewDeviceKey", c, &r.Result) == nil {
 		return nil
@@ -581,6 +594,12 @@ func (s *Service) NewDeviceKey(c Call[None], r *DeviceKeyReply) error {
 func (c *Client) NewTunnelKey() (string, error) {
 	var r TunnelKeyReply
 	err := c.call("NewTunnelKey", None{}, &r)
+	return r.PublicKey, err
+}
+
+func (c *Client) ImportTunnelKey(privateKey string) (string, error) {
+	var r TunnelKeyReply
+	err := c.call("ImportTunnelKey", ImportKeyArgs{privateKey}, &r)
 	return r.PublicKey, err
 }
 

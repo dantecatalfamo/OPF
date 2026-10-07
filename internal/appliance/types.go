@@ -65,6 +65,10 @@ type API interface {
 	// private key on the firewall; NewDeviceKey makes one for a device
 	// and keeps nothing (wgkeys.go).
 	NewTunnelKey() (string, error)
+	// ImportTunnelKey keeps a tunnel's private key made elsewhere (a VPN
+	// provider's) as NewTunnelKey keeps its own, and returns the public
+	// key.
+	ImportTunnelKey(privateKey string) (string, error)
 	NewDeviceKey() (*DeviceKey, error)
 	SetPresharedKey(PresharedKeyRequest) (*PresharedKey, error)
 	TestWebhook(id string) (*WebhookStatus, error)

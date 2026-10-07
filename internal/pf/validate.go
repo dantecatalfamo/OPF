@@ -250,6 +250,69 @@ func (v *validator) alias(name string) *Alias {
 	return nil
 }
 
+// exit checks a tunnel that's a way out (WireGuard.Exit).
+func (v *validator) exit(f *Iface, base string) {
+	e, p := f.WireGuard.Exit, base+".exit"
+	if len(f.WireGuard.Peers) > 0 {
+		v.fail(base+".peers", "%s is a way out through a VPN provider, so it has no devices of its own", f.Name)
+	}
+	if len(f.WireGuard.ReachableFrom) > 0 {
+		v.fail(base+".reachableFrom", "nothing reaches into %s: it's a way out", f.Name)
+	}
+	if n, ok := ExitRTable(f); !ok {
+		v.fail(at("interfaces", slices.IndexFunc(v.m.Interfaces, func(x Iface) bool { return x.ID == f.ID }))+".device", "a way out needs a device from wg0 to wg%d (its routing table is %d plus the number)", maxExitRTable-exitRTableBase, exitRTableBase)
+	} else if f.IPv4.Mode != IPv4Static || f.IPv4.Address == "" {
+		v.fail(at("interfaces", slices.IndexFunc(v.m.Interfaces, func(x Iface) bool { return x.ID == f.ID }))+".ipv4", "%s needs the address the provider gave it (table %d)", f.Name, n)
+	}
+	v.wgKey(p+".publicKey", e.PublicKey)
+	if !validHostPort(e.Endpoint) {
+		v.fail(p+".endpoint", "%q isn't host:port, like vpn.example.com:51820", e.Endpoint)
+	}
+	if e.PresharedKey != "" && !pskIDRE.MatchString(e.PresharedKey) {
+		v.fail(p+".presharedKey", "%q isn't a preshared key's id", e.PresharedKey)
+	}
+	if e.Keepalive != nil {
+		v.intRange(p+".keepalive", *e.Keepalive, 0, 65535)
+	}
+	seen := map[string]bool{}
+	for i, id := range e.From {
+		q := at(p+".from", i)
+		k := slices.IndexFunc(v.m.Interfaces, func(x Iface) bool { return x.ID == id })
+		switch {
+		case k < 0:
+			v.fail(q, "no interface %q", id)
+		case v.m.Interfaces[k].Role != RoleLAN && v.m.Interfaces[k].Role != RoleOPT:
+			v.fail(q, "only a LAN or optional interface’s network can leave through %s, not %s", f.Name, v.m.Interfaces[k].Name)
+		case seen[id]:
+			v.fail(q, "%s is listed twice", v.m.Interfaces[k].Name)
+		}
+		seen[id] = true
+		for _, t := range v.m.Tunnels() {
+			if t.ID == f.ID {
+				break // said once, on the later of the two
+			}
+			if t.WireGuard.Exit != nil && slices.Contains(t.WireGuard.Exit.From, id) && k >= 0 {
+				v.fail(q, "%s already leaves through %s", v.m.Interfaces[k].Name, t.Name)
+			}
+		}
+	}
+	for i, d := range e.DNS {
+		if a, err := netip.ParseAddr(d); err != nil || !a.Is4() {
+			v.fail(at(p+".dns", i), "%q isn't an IPv4 address", d)
+		}
+	}
+	if len(e.DNS) > 0 {
+		for _, t := range v.m.Tunnels() {
+			if t.ID == f.ID {
+				break
+			}
+			if t.WireGuard.Exit != nil && len(t.WireGuard.Exit.DNS) > 0 {
+				v.fail(p+".dns", "OPF has one resolver, and it already asks %s’s provider", t.Name)
+			}
+		}
+	}
+}
+
 func (v *validator) gatewayRef(path, id string) {
 	if !slices.ContainsFunc(v.m.Routing.Gateways, func(g Gateway) bool { return g.ID == id }) {
 		v.fail(path, "no gateway %q", id)
@@ -1048,11 +1111,16 @@ func (v *validator) wireguard() {
 			continue
 		}
 		base := at("interfaces", idx) + ".wireguard"
-		v.intRange(base+".listenPort", w.ListenPort, 1, 65535)
+		if w.Exit == nil || w.ListenPort != 0 { // an exit needn't listen on a fixed port
+			v.intRange(base+".listenPort", w.ListenPort, 1, 65535)
+		}
+		if w.Exit != nil {
+			v.exit(f, base)
+		}
 		if w.PublicEndpoint != "" && !validEndpoint(w.PublicEndpoint) {
 			v.fail(base+".publicEndpoint", "%q isn't a host, host:port or [IPv6]:port", w.PublicEndpoint)
 		}
-		if other, dup := ports[w.ListenPort]; dup {
+		if other, dup := ports[w.ListenPort]; dup && w.ListenPort != 0 {
 			v.fail(base+".listenPort", "port %d is already used by %s", w.ListenPort, other)
 		}
 		ports[w.ListenPort] = f.Name
@@ -1142,6 +1210,13 @@ func (v *validator) wireguard() {
 			}
 		}
 	}
+}
+
+// validHostPort is an endpoint OPF connects to: validEndpoint's, with
+// its port.
+func validHostPort(s string) bool {
+	_, port, err := net.SplitHostPort(s)
+	return err == nil && port != "" && validEndpoint(s)
 }
 
 // validEndpoint is where a WireGuard device connects: a DNS name, an

@@ -7,7 +7,7 @@ import type { Model, Rule } from '../model/types';
 import { call, GeneratorError } from '@wasmgen';
 import { sampleHistory, sampleModel } from '../model/sample';
 import { unifiedDiff } from './diff';
-import { browserKeyPair } from './wgkeys';
+import { browserKeyPair, publicKeyOf } from './wgkeys';
 import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleSystemLog, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
@@ -127,6 +127,7 @@ export const localApi = {
   // The preview keeps no private key: only a public one is needed.
   newTunnelKey: async (): Promise<string> => (await browserKeyPair())?.publicKey ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
   newDeviceKey: async () => (await browserKeyPair()) ?? { privateKey: '', publicKey: '' },
+  importTunnelKey: async (privateKey: string): Promise<string> => publicKeyOf(privateKey),
   setPresharedKey: async (key?: string) => ({
     id: [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join(''),
     key: key ?? btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))),

@@ -18,6 +18,7 @@ import { HistoryCard } from '../components/HistoryChart';
 import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
+import { AddExit, ExitFlow, ExitSettings } from './WireGuardExit';
 
 // Stand-in for a real key pair; the appliance generates these like wg(8).
 
@@ -36,7 +37,7 @@ function endpointOf(t: Tunnel, wan: Iface | undefined, data: Parameters<typeof i
   return `${(wan && firstIPv4(ifaceState(data, wan))) ?? 'your-public-address'}:${t.wireguard.listenPort}`;
 }
 
-function Copyable({ value }: { value: string }) {
+export function Copyable({ value }: { value: string }) {
   return (
     // A key is one long word: let it break onto a second line in a
     // narrow card rather than push the button out of it.
@@ -110,7 +111,7 @@ function RouteChoice({ tunnel, local, value, onChange }: { tunnel: Tunnel; local
 }
 
 // Replaces one tunnel's settings in the model.
-const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
+export const withTunnel = (m: Model, id: string, f: (t: Tunnel) => Iface): Model => ({
   ...m,
   interfaces: m.interfaces.map((i) => (i.id === id && i.wireguard ? f(i as Tunnel) : i)),
 });
@@ -880,6 +881,7 @@ export function WireGuardPage() {
   const tunnel = vpns.find((t) => t.id === param) ?? vpns[0];
   const [adding, setAdding] = useState(false);
   const [addingTunnel, setAddingTunnel] = useState(false);
+  const [addingExit, setAddingExit] = useState(false);
 
   return (
     <>
@@ -888,6 +890,7 @@ export function WireGuardPage() {
         description="Lets phones, laptops and other sites reach your networks securely from anywhere."
         actions={
           <Group gap="sm">
+            <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => setAddingExit(true)}>Add a way out</Button>
             <Button leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
           </Group>
         }
@@ -896,8 +899,14 @@ export function WireGuardPage() {
         <Card>
           <Stack align="center" py="xl" gap="sm">
             <Text fw={600}>No tunnels yet</Text>
-            <Text size="sm" c="dimmed" ta="center" maw={420}>A tunnel is a VPN network devices connect to. Add one, then add the devices that may use it.</Text>
-            <Button leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
+            <Text size="sm" c="dimmed" ta="center" maw={420}>
+              A tunnel is a VPN network devices connect to. Add one, then add the devices that may use it. A way out goes the other way:
+              your networks reach the internet through a VPN provider.
+            </Text>
+            <Group gap="sm">
+              <Button variant="default" leftSection={<IconPlus size={16} />} onClick={() => setAddingExit(true)}>Add a way out</Button>
+              <Button leftSection={<IconPlus size={16} />} onClick={() => setAddingTunnel(true)}>Add tunnel</Button>
+            </Group>
           </Stack>
         </Card>
       ) : (
@@ -906,7 +915,7 @@ export function WireGuardPage() {
             <Tabs value={tunnel.id} onChange={(v) => v && navigate(`/services/wireguard/${v}`)} mb="md">
               <Tabs.List>
                 {vpns.map((t) => (
-                  <Tabs.Tab key={t.id} value={t.id} rightSection={<Badge size="sm" color="gray" circle>{t.wireguard.peers.length}</Badge>}>
+                  <Tabs.Tab key={t.id} value={t.id} rightSection={t.wireguard.exit ? <Badge size="sm" color="gray">out</Badge> : <Badge size="sm" color="gray" circle>{t.wireguard.peers.length}</Badge>}>
                     {t.name}{!t.enabled && <Text span size="xs" c="dimmed"> (off)</Text>}
                   </Tabs.Tab>
                 ))}
@@ -915,24 +924,41 @@ export function WireGuardPage() {
           )}
           {/* What's happening, how it's set up, then the devices, a list that
               grows, so the settings stay put however many connect. */}
-          <Grid gutter="md">
-            <Grid.Col span={12}>
-              <TunnelTraffic tunnel={tunnel} />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 5 }}>
-              <TunnelSettings tunnel={tunnel} />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, lg: 7 }}>
-              <TrafficFlow tunnel={tunnel} />
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Devices tunnel={tunnel} onAdd={() => setAdding(true)} />
-            </Grid.Col>
-          </Grid>
-          <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
+          {tunnel.wireguard.exit ? (
+            <Grid gutter="md">
+              <Grid.Col span={12}>
+                <TunnelTraffic tunnel={tunnel} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, lg: 5 }}>
+                <ExitSettings tunnel={tunnel} onDeleted={() => navigate('/services/wireguard')} />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, lg: 7 }}>
+                <ExitFlow tunnel={tunnel} />
+              </Grid.Col>
+            </Grid>
+          ) : (
+            <>
+              <Grid gutter="md">
+                <Grid.Col span={12}>
+                  <TunnelTraffic tunnel={tunnel} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 5 }}>
+                  <TunnelSettings tunnel={tunnel} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 7 }}>
+                  <TrafficFlow tunnel={tunnel} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <Devices tunnel={tunnel} onAdd={() => setAdding(true)} />
+                </Grid.Col>
+              </Grid>
+              <AddPeer tunnel={tunnel} opened={adding} onClose={() => setAdding(false)} />
+            </>
+          )}
         </>
       )}
       <AddTunnel opened={addingTunnel} onClose={() => setAddingTunnel(false)} onAdded={(id) => navigate(`/services/wireguard/${id}`)} />
+      <AddExit opened={addingExit} onClose={() => setAddingExit(false)} onAdded={(id) => navigate(`/services/wireguard/${id}`)} />
     </>
   );
 }

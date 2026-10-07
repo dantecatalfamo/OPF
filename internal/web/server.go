@@ -80,6 +80,7 @@ type Server struct {
 func New(api appliance.API, ui fs.FS) *Server {
 	s := &Server{api: api, ui: ui, mux: http.NewServeMux()}
 	s.mux.HandleFunc("POST /api/wireguard/keys", s.newTunnelKey)
+	s.mux.HandleFunc("POST /api/wireguard/keys/import", s.importTunnelKey)
 	s.mux.HandleFunc("POST /api/wireguard/device-keys", s.newDeviceKey)
 	s.mux.HandleFunc("POST /api/wireguard/preshared-keys", s.setPresharedKey)
 	s.mux.HandleFunc("GET /api/session", s.getSession)
@@ -846,6 +847,25 @@ func (s *Server) derived(w http.ResponseWriter, r *http.Request) {
 // newTunnelKey makes a tunnel's key pair on the firewall: {"publicKey"}.
 func (s *Server) newTunnelKey(w http.ResponseWriter, r *http.Request) {
 	pub, err := s.apiFor(r).NewTunnelKey()
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, struct {
+		PublicKey string `json:"publicKey"`
+	}{pub})
+}
+
+// importTunnelKey keeps a tunnel's private key made elsewhere, such as a
+// VPN provider's, on the firewall: {"privateKey"} → {"publicKey"}.
+func (s *Server) importTunnelKey(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		PrivateKey string `json:"privateKey"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	pub, err := s.apiFor(r).ImportTunnelKey(req.PrivateKey)
 	if err != nil {
 		fail(w, err)
 		return

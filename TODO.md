@@ -533,13 +533,30 @@ Types, roughly in order of usefulness:
       device's packets reached the site router's tunnel from their real
       address, but the test site (the host, in a routing domain, its
       network on vether4) never answered for its network, even to OPF,
-      while its tunnel address did: something in that setup, not found.
-      Try with a real router, or a second VM.
+      while its tunnel address did. Likely the host itself: with IP
+      forwarding off, OpenBSD only accepts packets for an address on the
+      interface they arrive on (the way-out test met the same, a packet
+      for wg6's address arriving on the tap). Try with forwarding on in
+      that routing domain, a real router, or a second VM.
 - [ ] A site-to-site router's configuration lists "your networks",
       which include its own networks behind it; wg-quick (and routers
       that route by AllowedIPs) would then send its own LAN into the
       tunnel. Leave its own networks out. Check against a real router
       first.
+- [ ] Ways out, not tried: a real provider (Mullvad, Proton and the
+      like) and its resolvers answering (the stand-in's never did; the
+      lookups were only seen arriving). Keep a test that a provider's
+      configuration with an IPv6 address and DNS parses as expected.
+- [ ] Ways out falling back to the WAN while the tunnel is down (built,
+      then taken out: the traffic still went to the dead tunnel, since
+      nothing switched the route). It needs gateway monitoring that
+      replaces the table's route, and a page that says so loudly.
+- [ ] Ways out for some devices rather than whole networks (a table of
+      addresses, or a DHCP reservation's device), and a way out per
+      destination (only some sites through the provider).
+- [ ] Ways out and IPv6: OPF forwards no IPv6 today, so none leaks; once
+      it does, IPv6 from the networks leaving must go through the tunnel
+      or nowhere.
 - [ ] IPv6 inside tunnels: devices get IPv4 only (see IPv6, Models and
       generators). A VPN-only device's IPv6 is all blocked.
 - [ ] pf and routing per tunnel: site-to-site tunnels (routed networks,
@@ -1681,6 +1698,27 @@ Finished work, kept here for now. Git history has the details.
 
 WireGuard:
 
+- [x] Ways out through a VPN provider (a tunnel with `exit`): paste
+      the provider's WireGuard configuration, and the networks picked
+      reach everything beyond your networks through it, appearing at
+      its address, while OPF's own traffic keeps the main table and the
+      WAN. Their traffic goes to a routing table of its own (200 plus
+      the device's number) whose only route is into the tunnel, chosen
+      by pf match rules ahead of the user's, which still decide what
+      may pass; NAT to the tunnel's address and an MSS clamp to fit
+      WireGuard's MTU; the provider's private key imported and kept
+      root-only like OPF's own; the provider's resolvers, when given,
+      reached through the tunnel by OPF's resolver, so devices keep
+      using OPF's names and blocking. The kill switch is the routing
+      itself (the table has no other way out), with pf blocking the
+      other ways out as well. Tried on the VM against a stand-in
+      provider on the host: a LAN device's connection arrived from the
+      tunnel's address while OPF's own left by the WAN from its own;
+      the resolver's lookups reached the provider through the tunnel;
+      with the provider gone, or the tunnel interface down, nothing of
+      the LAN's left by the WAN, and it came back by itself; removing
+      the way out took the interface, its table's route, the rules and
+      the forwarding with it.
 - [x] A tunnel reachable from other networks ("Reachable from": LAN or
       optional interfaces): their connections to the tunnel's devices
       go in from OPF's address on the tunnel, so a device that only

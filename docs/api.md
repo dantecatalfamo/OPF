@@ -533,6 +533,11 @@ every 10 minutes for a week and every hour for the month.
   firewall (201, `{"publicKey"}`) for a new tunnel's model. The private
   key stays on the firewall, root-only, and staging a tunnel whose key
   it didn't make is `invalid`. Admins only.
+- `POST /api/wireguard/keys/import` with `{"privateKey"}`: keeps a
+  tunnel's private key made elsewhere, such as the one a VPN provider
+  issues for a way out, as `POST /api/wireguard/keys` keeps its own
+  (root-only), and answers `{"publicKey"}` (201) for the model. Not a
+  WireGuard key (44 characters of base64) is `invalid`. Admins only.
 - `POST /api/wireguard/preshared-keys` with `{"key"}`, or `{}` for
   the firewall to make one: keeps a preshared key, in a file of its
   own, and answers `{"id", "key"}` once (uncompressed). A device's

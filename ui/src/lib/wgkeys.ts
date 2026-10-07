@@ -25,6 +25,17 @@ export async function browserKeyPair(): Promise<KeyPair | undefined> {
   }
 }
 
+/** The public key of a WireGuard private key (base64), worked out here:
+ *  WebCrypto exports an X25519 private key's public half in its JWK. */
+export async function publicKeyOf(privateKey: string): Promise<string> {
+  const raw = Uint8Array.from(atob(privateKey.trim()), (c) => c.charCodeAt(0));
+  if (raw.length !== 32) throw new Error('a WireGuard private key is 44 characters of base64');
+  const pkcs8 = new Uint8Array([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6e, 0x04, 0x22, 0x04, 0x20, ...raw]);
+  const key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'X25519' }, true, ['deriveBits']);
+  const jwk = await crypto.subtle.exportKey('jwk', key);
+  return btoa(atob((jwk.x ?? '').replace(/-/g, '+').replace(/_/g, '/')));
+}
+
 /** A device's key pair: the browser's, or else the firewall's. */
 export async function deviceKeyPair(): Promise<KeyPair> {
   const k = await browserKeyPair();

@@ -702,6 +702,33 @@ type WireGuard struct {
 	// route to the tunnel through OPF.
 	ReachableFrom []string `json:"reachableFrom,omitempty"`
 	Peers         []Peer   `json:"peers"`
+	// Exit makes the tunnel a way out rather than in: OPF is a client of
+	// a VPN provider, and the networks it lists reach everything beyond
+	// your networks through it. Such a tunnel has no peers of its own.
+	Exit *Exit `json:"exit,omitempty"`
+}
+
+// Exit is a tunnel to a VPN provider that some networks leave through,
+// appearing at the provider's address. Their traffic is sent to a
+// routing table of its own (ExitRTable), whose only route is into the
+// tunnel; OPF's own traffic, the tunnel's own packets included, keeps
+// the main table and the normal default route. With the tunnel down,
+// their traffic goes nowhere: the table has no other way out (a kill
+// switch, which pf backs up).
+type Exit struct {
+	// The provider's end of the tunnel.
+	PublicKey string `json:"publicKey"`
+	Endpoint  string `json:"endpoint"` // host:port
+	// PresharedKey is the id of a kept preshared key, as for peers.
+	PresharedKey string `json:"presharedKey,omitempty"`
+	Keepalive    *int   `json:"keepalive,omitempty"`
+	// From lists the interfaces (LAN or optional) whose networks leave
+	// through the tunnel.
+	From []string `json:"from"`
+	// DNS, when set, is the provider's resolvers: OPF's resolver sends
+	// every lookup to them, through the tunnel, rather than asking from
+	// your own address. Devices keep asking OPF.
+	DNS []string `json:"dns,omitempty"`
 }
 
 // Tunnels returns the VPN interfaces, each with its WireGuard settings.

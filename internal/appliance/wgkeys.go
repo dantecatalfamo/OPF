@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
@@ -46,6 +47,30 @@ func (m *Manager) NewTunnelKey() (string, error) {
 		return "", apiError(err)
 	}
 	if err := writeAtomic(path, []byte(priv+"\n"), 0600); err != nil {
+		return "", apiError(err)
+	}
+	return pub, nil
+}
+
+// ImportTunnelKey keeps a tunnel's private key that OPF didn't make, such
+// as the one a VPN provider issues with its configuration (base64 of 32
+// bytes), as NewTunnelKey keeps its own, and returns its public key for
+// the model.
+func (m *Manager) ImportTunnelKey(privateKey string) (string, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(privateKey))
+	if err != nil || len(raw) != 32 {
+		return "", errorf(CodeInvalid, "a WireGuard private key is 44 characters of base64")
+	}
+	k, err := ecdh.X25519().NewPrivateKey(raw)
+	if err != nil {
+		return "", errorf(CodeInvalid, "that isn't a WireGuard private key")
+	}
+	pub := base64.StdEncoding.EncodeToString(k.PublicKey().Bytes())
+	path := m.store.SystemPath(pf.WGKeyPath(pub))
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return "", apiError(err)
+	}
+	if err := writeAtomic(path, []byte(base64.StdEncoding.EncodeToString(raw)+"\n"), 0600); err != nil {
 		return "", apiError(err)
 	}
 	return pub, nil
@@ -136,6 +161,11 @@ func (m *Manager) checkTunnelKeys(model, live *pf.Model) []Detail {
 				out = append(out, Detail{Path: fmt.Sprintf("interfaces[%d].wireguard.peers[%d].presharedKey", i, j), Message: "the firewall has no preshared key for this device; set one"})
 			}
 		}
+		if e := t.WireGuard.Exit; e != nil && e.PresharedKey != "" {
+			if _, err := os.Stat(m.store.SystemPath(pf.WGPSKPath(e.PresharedKey))); err != nil {
+				out = append(out, Detail{Path: fmt.Sprintf("interfaces[%d].wireguard.exit.presharedKey", i), Message: "the firewall has no preshared key for this provider; set one"})
+			}
+		}
 	}
 	return out
 }
@@ -150,6 +180,9 @@ func wgKeyFiles(models ...*pf.Model) map[string]bool {
 				if p.PresharedKey != "" {
 					keep[filepath.Base(pf.WGPSKPath(p.PresharedKey))] = true
 				}
+			}
+			if e := t.WireGuard.Exit; e != nil && e.PresharedKey != "" {
+				keep[filepath.Base(pf.WGPSKPath(e.PresharedKey))] = true
 			}
 		}
 	}

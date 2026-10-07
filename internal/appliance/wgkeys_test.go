@@ -2,6 +2,7 @@ package appliance
 
 import (
 	"crypto/ecdh"
+	"crypto/rand"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -181,5 +182,38 @@ func TestLastSeen(t *testing.T) {
 	p := ifs[0].WireGuard.Peers[0]
 	if p.LastSeen == nil || !p.LastSeen.Equal(at) || p.LastFrom != "198.51.100.7" {
 		t.Errorf("status %+v", p)
+	}
+}
+
+// A provider's private key is kept like one OPF made, and a way out
+// using it stages; something that isn't a key is refused.
+func TestImportTunnelKey(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	k, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	want := base64.StdEncoding.EncodeToString(k.PublicKey().Bytes())
+	pub, err := e.m.ImportTunnelKey(" " + base64.StdEncoding.EncodeToString(k.Bytes()) + "\n")
+	if err != nil || pub != want {
+		t.Fatalf("import = %q, %v; want %q", pub, err, want)
+	}
+	st, err := os.Stat(filepath.Join(e.root, pf.WGKeyPath(pub)))
+	if err != nil || st.Mode().Perm() != 0600 {
+		t.Fatalf("key file %v %v", st, err)
+	}
+	for _, bad := range []string{"", "not a key", base64.StdEncoding.EncodeToString(make([]byte, 31))} {
+		if _, err := e.m.ImportTunnelKey(bad); code(err) != CodeInvalid {
+			t.Errorf("%q: %v", bad, err)
+		}
+	}
+
+	live := e.live()
+	m := live.Model
+	prefix := 32
+	m.Interfaces = append(m.Interfaces, pf.Iface{ID: "vpnout", Name: "Provider", Device: "wg2", Role: pf.RoleVPN, Enabled: true,
+		IPv4: pf.IPv4Config{Mode: pf.IPv4Static, Address: "10.64.1.2", Prefix: &prefix}, IPv6: pf.IPv6None,
+		WireGuard: &pf.WireGuard{PublicKey: pub, Peers: []pf.Peer{}, Exit: &pf.Exit{
+			PublicKey: want, Endpoint: "vpn.example.net:51820", From: []string{"iot"},
+		}}})
+	if _, err := e.m.Stage(StageRequest{Base: live.Version, Model: m}); err != nil {
+		t.Fatalf("stage: %v %+v", err, AsError(err).Details)
 	}
 }
