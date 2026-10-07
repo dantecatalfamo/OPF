@@ -1007,8 +1007,36 @@ func parseARPOutput(output string) []ARPEntry {
 	return entries
 }
 
+// arpFlags are the flags OpenBSD's table prints after the expiry.
+var arpFlags = map[string]string{"l": "local", "p": "published"}
+
 func parseARPLine(line string) ARPEntry {
 	var entry ARPEntry
+
+	// OpenBSD prints a table (with -n, the host is the address):
+	//   Host          Ethernet Address   Netif Expire    Flags
+	//   192.168.50.2  fe:e1:ba:d1:94:cf   vio1 19m10s
+	//   192.168.50.1  fe:e1:bb:d2:a4:c9   vio1 permanent l
+	if !strings.Contains(line, ") at ") {
+		f := strings.Fields(line)
+		if len(f) < 4 {
+			return entry
+		}
+		if _, err := netip.ParseAddr(f[0]); err != nil {
+			return entry
+		}
+		entry.IP, entry.MAC, entry.Iface, entry.Expires = f[0], f[1], f[2], f[3]
+		var flags []string
+		for _, fl := range f[4:] {
+			if w, ok := arpFlags[fl]; ok {
+				flags = append(flags, w)
+			} else {
+				flags = append(flags, fl)
+			}
+		}
+		entry.Flags = strings.Join(flags, " ")
+		return entry
+	}
 
 	// Parse: "? (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 expires in 1198 seconds"
 	// Or:   "host (192.168.1.1) at 00:0d:b9:5e:21:a0 on em0 permanent published"

@@ -61,3 +61,28 @@ default            203.0.113.1        UGS        2    12345     -    12 em0
 		t.Errorf("loopback route: %+v", r)
 	}
 }
+
+// OpenBSD 7.9's arp -an, from the test VM: a table, not the other BSDs'
+// "? (address) at" lines.
+func TestParseARPTable(t *testing.T) {
+	output := `Host                                 Ethernet Address    Netif Expire    Flags
+100.64.1.2                           fe:e1:ba:d0:39:14    vio0 17m38s    
+100.64.1.3                           fe:e1:bb:d1:72:dc    vio0 permanent l
+192.168.50.2                         fe:e1:ba:d1:94:cf    vio1 19m10s
+10.8.0.2                             (incomplete)         wg0 expired
+   
+`
+	entries := parseARPOutput(output)
+	if len(entries) != 4 {
+		t.Fatalf("got %d entries, want 4: %+v", len(entries), entries)
+	}
+	if e := entries[0]; e.IP != "100.64.1.2" || e.MAC != "fe:e1:ba:d0:39:14" || e.Iface != "vio0" || e.Expires != "17m38s" || e.Flags != "" {
+		t.Errorf("entry 0: %+v", e)
+	}
+	if e := entries[1]; e.Expires != "permanent" || e.Flags != "local" {
+		t.Errorf("entry 1 (the firewall's own): %+v", e)
+	}
+	if e := entries[3]; e.IP != "10.8.0.2" || e.MAC != "(incomplete)" || e.Iface != "wg0" {
+		t.Errorf("entry 3 (incomplete): %+v", e)
+	}
+}
