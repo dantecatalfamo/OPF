@@ -948,6 +948,12 @@ func (v *validator) dns() {
 	if a := d.Activity; a != nil {
 		if a.Enabled || a.Devices {
 			v.intRange("dns.activity.days", a.Days, 1, MaxActivityDays)
+			if a.DeviceDays != 0 {
+				v.intRange("dns.activity.deviceDays", a.DeviceDays, 1, a.Days)
+			}
+			if a.DetailDays != 0 {
+				v.intRange("dns.activity.detailDays", a.DetailDays, 1, a.Days)
+			}
 		}
 		if a.Devices && !a.Enabled {
 			v.fail("dns.activity.devices", "keeping it per device needs it kept for the network too")

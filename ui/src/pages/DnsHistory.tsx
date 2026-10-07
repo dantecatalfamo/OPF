@@ -13,7 +13,9 @@ import { backend, useStore } from '../model/store';
 import type { ActivityCounts, ActivityDeviceInfo, ActivityHour, ActivityItem, ActivityList, DnsActivityResource, DnsDeviceActivityResource, DnsNameActivityResource } from '../lib/api';
 import { MAX_ACTIVITY_DAYS, type Model } from '../model/types';
 import { useRole } from '../lib/session';
-import { formatCount, formatLogTime } from '../lib/format';
+import { formatBytes, formatCount, formatLogTime } from '../lib/format';
+import { useLive } from '../lib/live';
+import { activityCost, costAdvice, MAX_DEVICES } from '../lib/dnsActivityCost';
 import { Empty, Mono, SectionTitle } from '../components/ui';
 
 const listName = (m: Model, id?: string) => (!id ? 'your own names' : (m.dns.blocklists ?? []).find((l) => l.id === id)?.name ?? id);
@@ -24,14 +26,22 @@ interface ActivityValues {
   enabled: boolean;
   devices: boolean;
   days: string;
+  deviceDays: string;
+  detailDays: string;
 }
+
+const dayChoices = [1, 3, 7, 14, MAX_ACTIVITY_DAYS];
+const dayLabel = (d: number) => (d === 1 ? 'Today only' : d === 7 ? 'A week' : d === 14 ? 'Two weeks' : d === MAX_ACTIVITY_DAYS ? 'A month' : `${d} days`);
 
 /** The setting: whether to keep DNS activity, per device, and for how long. */
 export function DnsActivitySettingsCard() {
   const { staged, applied, edit } = useStore();
   const { canEdit } = useRole();
   const a = staged.dns.activity;
-  const pick = (): ActivityValues => ({ enabled: !!a?.enabled, devices: !!a?.devices, days: String(a?.days || 7) });
+  const pick = (): ActivityValues => ({
+    enabled: !!a?.enabled, devices: !!a?.devices, days: String(a?.days || 7),
+    deviceDays: String(Math.min(a?.deviceDays || a?.days || 7, a?.days || 7)), detailDays: String(Math.min(a?.detailDays || a?.days || 7, a?.days || 7)),
+  });
   const form = useForm<ActivityValues>({ initialValues: pick() });
   useEffect(() => {
     form.setValues(pick());
@@ -44,13 +54,35 @@ export function DnsActivitySettingsCard() {
   const turningOff = keeping && !v.enabled;
   const droppingDevices = keeping && !!applied.dns.activity?.devices && v.enabled && !v.devices;
 
+  const { data: sys } = useLive('system');
+  const [knownDevices, setKnownDevices] = useState<number>();
+  const [saved, setSaved] = useState<number>();
+  useEffect(() => {
+    // The devices the estimate counts: those with a lease, and the VPN's.
+    const vpn = staged.interfaces.reduce((n, i) => n + (i.wireguard?.peers.length ?? 0), 0);
+    backend.dhcpLeases().then((l) => setKnownDevices(l.leases.length + vpn), () => setKnownDevices(undefined));
+    if (keeping) backend.dnsActivity(1).then((d) => setSaved(d.savedBytes), () => {});
+  }, [keeping]); // staged's devices barely change while the card is open
+  const days = Number(v.days);
+  const clampDays = (d: string) => String(Math.min(Number(d), days));
+  const settings = { days, devices: v.devices, deviceDays: Number(clampDays(v.deviceDays)), detailDays: Number(clampDays(v.detailDays)) };
+  const devices = knownDevices ?? MAX_DEVICES;
+  const cost = activityCost(settings, devices);
+  const advice = costAdvice(cost, sys);
+
   const save = form.onSubmit((v) => {
-    const next = v.enabled ? { enabled: true, devices: v.devices, days: Number(v.days) } : undefined;
+    const days = Number(v.days);
+    const devDays = Math.min(Number(v.deviceDays), days);
+    const detailDays = Math.min(Number(v.detailDays), days);
+    const next = v.enabled
+      ? { enabled: true, devices: v.devices, days, ...(v.devices && devDays < days ? { deviceDays: devDays } : {}), ...(detailDays < days ? { detailDays } : {}) }
+      : undefined;
+    const kept = [`${days} days`, ...(next?.deviceDays ? [`devices ${devDays}`] : []), ...(next?.detailDays ? [`when and who ${detailDays}`] : [])].join(', ');
     const summary = !v.enabled
       ? 'Stopped keeping DNS activity'
       : !a?.enabled
-        ? `Keep DNS activity for ${v.days} days${v.devices ? ', for each device too' : ''}`
-        : `DNS activity: ${v.devices ? 'for each device too' : 'for the network only'}, ${v.days} days`;
+        ? `Keep DNS activity${v.devices ? ', for each device too' : ''}: ${kept}`
+        : `DNS activity: ${v.devices ? 'for each device too' : 'for the network only'}, ${kept}`;
     edit('dns', summary, (m) => {
       const dns = { ...m.dns };
       if (next) dns.activity = next;
@@ -80,11 +112,40 @@ export function DnsActivitySettingsCard() {
             disabled={!v.enabled || !canEdit}
             {...form.getInputProps('devices', { type: 'checkbox' })}
           />
-          <Select
-            label="Keep it for" w={200} allowDeselect={false} disabled={!v.enabled || !canEdit}
-            data={[{ value: '1', label: 'Today only' }, { value: '7', label: 'A week' }, { value: '14', label: 'Two weeks' }, { value: String(MAX_ACTIVITY_DAYS), label: 'A month' }]}
-            {...form.getInputProps('days')}
-          />
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+            <Select
+              label="Counts and top names" description="For the network" allowDeselect={false} disabled={!v.enabled || !canEdit}
+              data={dayChoices.map((d) => ({ value: String(d), label: dayLabel(d) }))}
+              {...form.getInputProps('days')}
+            />
+            <Select
+              label="Each device’s" description="Its counts and top names" allowDeselect={false} disabled={!v.enabled || !v.devices || !canEdit}
+              data={dayChoices.filter((d) => d <= days).map((d) => ({ value: String(d), label: dayLabel(d) }))}
+              value={clampDays(v.deviceDays)} onChange={(x) => x && form.setFieldValue('deviceDays', x)}
+            />
+            <Select
+              label="When and by whom" description="For each top name" allowDeselect={false} disabled={!v.enabled || !canEdit}
+              data={dayChoices.filter((d) => d <= days).map((d) => ({ value: String(d), label: dayLabel(d) }))}
+              value={clampDays(v.detailDays)} onChange={(x) => x && form.setFieldValue('detailDays', x)}
+            />
+          </SimpleGrid>
+          {v.enabled && (
+            <Stack gap={6}>
+              <Text size="sm">
+                At most about <b>{formatBytes(cost.bytes)}</b> in memory, and as much on disk
+                {v.devices ? `, with ${devices >= MAX_DEVICES ? `${MAX_DEVICES} devices (the most a day keeps)` : `this network’s ${devices} device${devices === 1 ? '' : 's'}`}` : ''}:
+                {' '}{formatBytes(cost.network)} for the counts and top names, {formatBytes(cost.detail)} for their when and who{v.devices ? `, ${formatBytes(cost.devices)} for the devices` : ''}.
+                {saved && keeping ? ` What’s kept takes ${formatBytes(saved)}, as last saved.` : ''}
+              </Text>
+              <Text size="xs" c="dimmed">That’s if every list fills every day; most networks use a fraction of it.</Text>
+              {advice.level !== 'ok' && (
+                <Alert color={advice.level === 'warn' ? 'red' : 'yellow'} variant="light" p="sm" icon={<IconAlertTriangle size={16} />}
+                  title={advice.level === 'warn' ? 'Too much for this machine' : 'Mind this machine’s size'}>
+                  <Stack gap={4}>{advice.reasons.map((r) => <Text key={r} size="sm">{r}</Text>)}</Stack>
+                </Alert>
+              )}
+            </Stack>
+          )}
           {v.enabled && (
             <Text size="xs" c="dimmed">
               While it’s on, the resolver logs every answer to its own file for OPF to count, instead of to the system log; its warnings still reach the system log, through OPF’s.
@@ -260,6 +321,16 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
 
 const listTitles: Record<ActivityList, string> = { names: 'Looked up', blocked: 'Blocked', missing: 'Not found' };
 
+// The chart starts where hours are kept: since, or the start of the
+// days the names' when and who is kept for.
+function chartFrom(since: string, days: number, detailDays: number): string {
+  if (days <= detailDays) return since;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (detailDays - 1));
+  return d.toISOString();
+}
+
 // Every hour from since to now, so quiet hours show as gaps.
 function everyHour(since: string, hours: { start: string; count: number }[]): ActivityHour[] {
   const by = new Map(hours.map((h) => [new Date(h.start).getTime(), h.count]));
@@ -273,7 +344,7 @@ function everyHour(since: string, hours: { start: string; count: number }[]): Ac
   return out;
 }
 
-function NameDrawer({ pick, days, onClose, onDevice }: { pick?: { list: ActivityList; name: string }; days: number; onClose: () => void; onDevice?: (key: string) => void }) {
+function NameDrawer({ pick, days, detailDays, onClose, onDevice }: { pick?: { list: ActivityList; name: string }; days: number; detailDays: number; onClose: () => void; onDevice?: (key: string) => void }) {
   const { applied } = useStore();
   const [data, setData] = useState<DnsNameActivityResource>();
   const [error, setError] = useState<string>();
@@ -297,9 +368,9 @@ function NameDrawer({ pick, days, onClose, onDevice }: { pick?: { list: Activity
             {pick.list === 'blocked' ? ` · by ${listName(applied, data.blockList)}${data.entry && data.entry !== data.name ? `, as ${data.entry}` : ''}` : ''}
           </Text>
           <BarChart
-            h={160} data={everyHour(data.since, data.hours).map((h) => {
+            h={160} data={everyHour(chartFrom(data.since, days, detailDays), data.hours).map((h) => {
               const t = new Date(h.start);
-              return { hour: days > 1 ? t.toLocaleString(undefined, { weekday: 'short', hour: 'numeric' }) : t.toLocaleTimeString(undefined, { hour: 'numeric' }), Asked: h.queries };
+              return { hour: Math.min(days, detailDays) > 1 ? t.toLocaleString(undefined, { weekday: 'short', hour: 'numeric' }) : t.toLocaleTimeString(undefined, { hour: 'numeric' }), Asked: h.queries };
             })}
             dataKey="hour" withLegend={false} gridAxis="y" tickLine="none"
             series={[{ name: 'Asked', color: pick.list === 'blocked' ? 'red.6' : pick.list === 'missing' ? 'yellow.6' : 'harbor.6' }]}
@@ -309,7 +380,9 @@ function NameDrawer({ pick, days, onClose, onDevice }: { pick?: { list: Activity
           />
           {counted < data.count && (
             <Text size="xs" c="dimmed">
-              {(data.count - counted).toLocaleString()} of these came before it was among the day’s most {pick.list === 'names' ? 'looked up' : pick.list === 'blocked' ? 'blocked' : 'not found'}, so the hours and devices don’t include them.
+              {days > detailDays
+                ? `When and by whom is kept for ${detailDays === 1 ? 'today' : `the last ${detailDays} days`}, so the hours and devices show ${counted.toLocaleString()} of the ${data.count.toLocaleString()}.`
+                : `${(data.count - counted).toLocaleString()} of these came before it was among the day’s most ${pick.list === 'names' ? 'looked up' : pick.list === 'blocked' ? 'blocked' : 'not found'}, so the hours and devices don’t include them.`}
             </Text>
           )}
           <Card>
@@ -410,7 +483,7 @@ export function DnsActivityTab() {
       )}
       {data?.perDevice ? (
         <Card>
-          <SectionTitle>Devices</SectionTitle>
+          <SectionTitle right={data.deviceDays && n > data.deviceDays ? <Text size="xs" c="dimmed">Each device’s is kept for {data.deviceDays === 1 ? 'today' : `the last ${data.deviceDays} days`}</Text> : undefined}>Devices</SectionTitle>
           {data.devices?.length ? (
             <Table.ScrollContainer minWidth={560}>
               <Table verticalSpacing={6} highlightOnHover>
@@ -454,7 +527,7 @@ export function DnsActivityTab() {
           Only the network’s activity is kept. Each device’s can be too, under <Anchor component={Link} to="/services/dns?tab=settings" size="xs">Settings › Activity</Anchor>.
         </Text>
       )}
-      <NameDrawer pick={pick} days={n} onClose={() => setPick(undefined)} onDevice={data?.perDevice ? (key) => { setPick(undefined); setDevice(key); } : undefined} />
+      <NameDrawer pick={pick} days={n} detailDays={data?.detailDays ?? n} onClose={() => setPick(undefined)} onDevice={data?.perDevice ? (key) => { setPick(undefined); setDevice(key); } : undefined} />
       <DeviceDrawer device={device} info={device ? data?.deviceInfo?.[device] : undefined} days={n} onClose={() => setDevice(undefined)} onForgot={() => { setDevice(undefined); load(); }} />
     </Stack>
   );

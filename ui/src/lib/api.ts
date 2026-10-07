@@ -492,6 +492,10 @@ export interface DnsActivityResource {
   enabled: boolean;
   perDevice: boolean;
   days: number;
+  deviceDays?: number;
+  detailDays?: number;
+  /** What's kept, as last saved; about what it takes in memory too. */
+  savedBytes?: number;
   since?: string;
   total?: ActivityCounts;
   hours?: ActivityHour[];

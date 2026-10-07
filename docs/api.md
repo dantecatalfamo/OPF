@@ -456,7 +456,11 @@ unbound first starts.
   to OPF's file instead, and this is today's from the activity's counts.
 - `GET /api/dns/activity?days=N` (admin): DNS activity over the last `N`
   days, today counting as one (at most what's kept). Only `enabled`,
-  `perDevice` and `days` while it isn't kept. Otherwise `since`, `total`
+  `perDevice` and `days` while it isn't kept. Otherwise `deviceDays` and
+  `detailDays` (how long each device's and the names' when and who are
+  kept: `dns.activity.deviceDays` and `detailDays`, at most `days`, 0
+  meaning `days`), `savedBytes` (the store as last saved, about what it
+  takes in memory too), `since`, `total`
   and `hours` (counts: `queries`, `blocked`, `allowed`, `nxdomain` (not
   counting blocks), `servfail`, `cached`), `byList` (blocks by list id,
   `""` for your own names), the 50 names looked up (`names`), blocked

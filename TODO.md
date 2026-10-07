@@ -1260,9 +1260,18 @@ setting under Settings), and tried on 7.9 with the real unbound:
       list. That's at most about 300 KB a day; a worst-case day is
       about 1 MB saved and a worst-case month about 32 MB, under the
       64 MB Load reads (`TestStoreWorstDaySize`).
-  - [ ] A worst-case month is a lot of RAM on a small box: keep the when
-        and who only for the names the page can show (the top 50), or
-        for fewer days than the counts. The setting says what keeping it
+  - [x] Each kind's retention is its own setting: the counts and top
+        names (`days`), each device's (`deviceDays`) and the names' when
+        and who (`detailDays`), the last two at most the first. The
+        setting shows what the choice costs at most (from the measured
+        worst case: 65 KB a day for the network, 307 KB for the when and
+        who, 5.7 KB a device; memory about what's saved,
+        `TestStoreWorstDayMemory`) with this network's devices, what's
+        kept as last saved, and warns when that's much of the RAM, /var
+        is short of room, or the CPU looks low-power (a GX-, Atom,
+        Celeron, J/N-series or ARM chip, or two CPUs or fewer).
+  - [ ] Keep the when and who only for the names the page can show (the
+        top 50), which would quarter it. The setting says what keeping it
       means; turning it off, or devices off, deletes what was kept;
       "Delete what's kept" deletes it now.
 - [x] **API and roles.** `GET /api/dns/activity`, `/device`, `DELETE`,
@@ -1273,7 +1282,6 @@ setting under Settings), and tried on 7.9 with the real unbound:
       list has.
 - [ ] A rising NXDOMAIN rate on one device as an event (often malware);
       the Activity tab only marks a device most of whose lookups fail.
-- [ ] Retention per kind: devices shorter than the network.
 - [ ] Top names by hour for "today": the top lists are by day, so
       "today" is since midnight, not the last 24 hours.
 

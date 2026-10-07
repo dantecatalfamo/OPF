@@ -659,6 +659,25 @@ type DNSActivity struct {
 	Devices bool `json:"devices"`
 	// Days is how long it's kept, 1 to MaxActivityDays.
 	Days int `json:"days"`
+	// DeviceDays is how long each device's is kept, and DetailDays how
+	// long the network's top names keep when they were asked for and by
+	// which devices; at most Days, 0 meaning Days. The two take most of
+	// the room (package activity), so a small machine keeps them less.
+	DeviceDays int `json:"deviceDays,omitempty"`
+	DetailDays int `json:"detailDays,omitempty"`
+}
+
+// Retention is how many days the counts, the devices' activity and the
+// names' detail are each kept.
+func (a *DNSActivity) Retention() (days, devices, detail int) {
+	days, devices, detail = a.Days, a.DeviceDays, a.DetailDays
+	if devices == 0 || devices > days {
+		devices = days
+	}
+	if detail == 0 || detail > days {
+		detail = days
+	}
+	return days, devices, detail
 }
 
 // MaxActivityDays is the longest DNS activity is kept: a month, so

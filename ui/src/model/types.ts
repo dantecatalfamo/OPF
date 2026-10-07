@@ -352,6 +352,9 @@ export interface DnsActivitySettings {
   devices: boolean;
   /** How long it's kept: 1 to MAX_ACTIVITY_DAYS. */
   days: number;
+  /** How long each device's and the top names' when and who are kept: at most days; missing or 0, days. */
+  deviceDays?: number;
+  detailDays?: number;
 }
 
 export const MAX_ACTIVITY_DAYS = 31;

@@ -124,7 +124,8 @@ func (m *Manager) readDNSActivity(model *pf.Model, now time.Time) {
 	}
 	set := model.DNS.Activity
 	s := m.activityStore()
-	s.Prune(now, set.Days, set.Devices)
+	days, devDays, detailDays := set.Retention()
+	s.Prune(now, activity.Retention{Days: days, DeviceDays: devDays, DetailDays: detailDays, Devices: set.Devices})
 	if err := m.readDNSLog(model, s, set.Devices, now); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		log.Printf("reading the resolver's log: %v", err)
 	}
@@ -379,7 +380,13 @@ type DNSActivity struct {
 	Enabled bool `json:"enabled"`
 	// PerDevice: devices are kept too (pf.DNSActivity.Devices).
 	PerDevice bool `json:"perDevice"`
-	Days      int  `json:"days"`
+	// The days each kind is kept (pf.DNSActivity.Retention).
+	Days       int `json:"days"`
+	DeviceDays int `json:"deviceDays"`
+	DetailDays int `json:"detailDays"`
+	// SavedBytes is the size of what's kept, as last saved (every few
+	// minutes): about what it takes in memory too.
+	SavedBytes int64 `json:"savedBytes"`
 	*activity.Summary
 	// DeviceInfo describes each device in Summary.Devices, by key.
 	DeviceInfo map[string]ActivityDevice `json:"deviceInfo,omitempty"`
@@ -418,7 +425,11 @@ func (m *Manager) DNSActivity(req DNSActivityRequest) (*DNSActivity, error) {
 		return out, nil
 	}
 	set := model.DNS.Activity
-	out.Enabled, out.PerDevice, out.Days = true, set.Devices, set.Days
+	out.Enabled, out.PerDevice = true, set.Devices
+	out.Days, out.DeviceDays, out.DetailDays = set.Retention()
+	if fi, err := os.Stat(m.store.StatePath(activityFile)); err == nil {
+		out.SavedBytes = fi.Size()
+	}
 	m.activity.mu.Lock()
 	sum := m.activityStore().Summary(time.Now(), activityDays(req.Days, set.Days), MaxActivityNames)
 	m.activity.mu.Unlock()
@@ -442,8 +453,9 @@ func (m *Manager) DNSDeviceActivity(req DNSActivityRequest) (*DNSDeviceActivity,
 	if model == nil || !pf.KeepsDNSActivity(model) || !model.DNS.Activity.Devices {
 		return nil, errorf(CodeNotFound, "DNS activity isn't kept for each device")
 	}
+	_, devDays, _ := model.DNS.Activity.Retention()
 	m.activity.mu.Lock()
-	d, ok := m.activityStore().Device(req.Device, time.Now(), activityDays(req.Days, model.DNS.Activity.Days), MaxActivityNames)
+	d, ok := m.activityStore().Device(req.Device, time.Now(), activityDays(req.Days, devDays), MaxActivityNames)
 	m.activity.mu.Unlock()
 	if !ok {
 		return nil, errorf(CodeNotFound, "nothing is kept for that device over those days")

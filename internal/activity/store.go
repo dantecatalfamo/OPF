@@ -259,18 +259,59 @@ func (s *Store) AddBlock(b Block) {
 	dd.seen(b.Address, at)
 }
 
-// Prune drops what's older than days days before now (today counts as
-// one), and every device's when devices aren't kept.
-func (s *Store) Prune(now time.Time, days int, devices bool) {
-	cut := midnight(now).AddDate(0, 0, 1-days).Unix()
+// Retention is how many days (today counts as one) each kind is kept:
+// the counts and top names, each device's, and the top names' when and
+// who. Devices false keeps no device's.
+type Retention struct {
+	Days, DeviceDays, DetailDays int
+	Devices                      bool
+}
+
+// Prune drops what's older than its retention allows.
+func (s *Store) Prune(now time.Time, r Retention) {
+	cutoff := func(days int) int64 { return midnight(now).AddDate(0, 0, 1-days).Unix() }
+	cut := cutoff(r.Days)
 	for len(s.Hours) > 0 && s.Hours[0].Start < cut {
 		s.Hours = s.Hours[1:]
 	}
 	for len(s.Days) > 0 && s.Days[0].Start < cut {
 		s.Days = s.Days[1:]
 	}
-	if !devices {
+	if !r.Devices {
 		s.ForgetDevice("")
+	} else if devCut := cutoff(r.DeviceDays); devCut > cut {
+		for _, h := range s.Hours {
+			if h.Start < devCut {
+				h.Devices = nil
+			}
+		}
+		for _, d := range s.Days {
+			if d.Start < devCut {
+				d.Devices = nil
+			}
+		}
+	}
+	if detailCut := cutoff(r.DetailDays); detailCut > cut {
+		for _, d := range s.Days {
+			if d.Start >= detailCut {
+				break
+			}
+			for _, l := range []*TopK{&d.Names, &d.Blocked, &d.Missing} {
+				for i := range l.Items {
+					l.Items[i].Hours, l.Items[i].Devices = nil, nil
+				}
+			}
+		}
+	}
+	// A name's devices go with the devices'.
+	if !r.Devices {
+		for _, d := range s.Days {
+			for _, l := range []*TopK{&d.Names, &d.Blocked, &d.Missing} {
+				for i := range l.Items {
+					l.Items[i].Devices = nil
+				}
+			}
+		}
 	}
 }
 

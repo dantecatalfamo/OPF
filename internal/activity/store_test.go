@@ -111,7 +111,7 @@ func TestStorePruneAndForget(t *testing.T) {
 		s.AddAnswer(Answer{Time: at, Device: "bb", Name: "b.example", Rcode: "NOERROR"}, false)
 	}
 	now := day0.AddDate(0, 0, 4)
-	s.Prune(now, 2, true)
+	s.Prune(now, Retention{Days: 2, DeviceDays: 2, DetailDays: 2, Devices: true})
 	if len(s.Days) != 2 || len(s.Hours) != 2 {
 		t.Fatalf("%d days, %d hours after pruning to 2", len(s.Days), len(s.Hours))
 	}
@@ -122,7 +122,7 @@ func TestStorePruneAndForget(t *testing.T) {
 	if _, ok := s.Device("bb", now, 2, 10); !ok {
 		t.Error("forgot the other device too")
 	}
-	s.Prune(now, 2, false)
+	s.Prune(now, Retention{Days: 2, DeviceDays: 2, DetailDays: 2})
 	if sum := s.Summary(now, 2, 10); len(sum.Devices) != 0 || sum.Total.Queries != 4 {
 		t.Errorf("devices off: %+v", sum)
 	}
@@ -245,9 +245,39 @@ func TestStoreWorstDaySize(t *testing.T) {
 	}
 	buf.Reset()
 	s.Save(&buf)
-	t.Logf("a worst-case day: %d KB saved, %d KB of it when and who", with/1024, (with-buf.Len())/1024)
+	noDetail := buf.Len()
+	devices := len(s.Days[0].Devices)
+	s.ForgetDevice("")
+	buf.Reset()
+	s.Save(&buf)
+	t.Logf("a worst-case day: %d KB saved, %d KB of it when and who; the network's own %d KB, each of %d devices %d bytes",
+		with/1024, (with-noDetail)/1024, buf.Len()/1024, devices, (noDetail-buf.Len())/devices)
 	// A month of such days (about 32 MB) is still read back.
 	if 31*with > maxFileSize {
 		t.Errorf("a month of worst days is %d MB", 31*with>>20)
+	}
+}
+
+// Devices and the names' detail can be kept for less than the counts.
+func TestStorePruneByKind(t *testing.T) {
+	s := &Store{}
+	for i := 0; i < 5; i++ {
+		s.AddAnswer(Answer{Time: day0.AddDate(0, 0, i), Device: "aa", Name: "a.example", Rcode: "NOERROR"}, false)
+	}
+	now := day0.AddDate(0, 0, 4)
+	s.Prune(now, Retention{Days: 5, DeviceDays: 2, DetailDays: 1, Devices: true})
+	if sum := s.Summary(now, 5, 10); sum.Total.Queries != 5 || len(sum.Devices) != 1 || sum.Devices[0].Queries != 2 {
+		t.Errorf("summary %+v", sum)
+	}
+	if d, _ := s.Device("aa", now, 5, 10); d.Total.Queries != 2 {
+		t.Errorf("device kept %d queries, want the last 2 days'", d.Total.Queries)
+	}
+	if n, _ := s.Name(ListNames, "a.example", now, 5); n.Count != 5 || len(n.Hours) != 1 {
+		t.Errorf("name: count %d (all 5 days), hours %d (today's only)", n.Count, len(n.Hours))
+	}
+	// Devices off: a name keeps no devices either.
+	s.Prune(now, Retention{Days: 5, DeviceDays: 5, DetailDays: 5})
+	if n, _ := s.Name(ListNames, "a.example", now, 5); len(n.Devices) != 0 {
+		t.Errorf("a name's devices outlived the devices': %+v", n.Devices)
 	}
 }
