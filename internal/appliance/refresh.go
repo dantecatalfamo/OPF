@@ -159,21 +159,30 @@ func (m *Manager) pruneDownloads() {
 			}
 		}
 	}
-	m.prune(filepath.Dir(pf.TablePath("x")), tables)
-	m.prune(pf.WGKeyDir, wgKeyFiles(models...))
-	m.prune(pf.DNSListsDir, lists)
-	m.prune(filepath.Dir(pf.DNSListZonePath("x", pf.BlockAnswerNull)), lists)
+	m.prune(filepath.Dir(pf.TablePath("x")), tables, 0)
+	// A key is made (or imported) before any model has it: the edit
+	// stays in the browser until it's reviewed. So an unused key goes
+	// only once it's old enough that nobody is still editing with it.
+	m.prune(pf.WGKeyDir, wgKeyFiles(models...), keyGrace)
+	m.prune(pf.DNSListsDir, lists, 0)
+	m.prune(filepath.Dir(pf.DNSListZonePath("x", pf.BlockAnswerNull)), lists, 0)
 }
+
+// keyGrace is how long a WireGuard key file nothing uses yet is kept.
+const keyGrace = 24 * time.Hour
 
 // prune removes the files in dir (a system path) not in keep. Files
 // being written (writeAtomic's dot files) and directories are left.
-func (m *Manager) prune(dir string, keep map[string]bool) {
+func (m *Manager) prune(dir string, keep map[string]bool, minAge time.Duration) {
 	entries, err := os.ReadDir(m.store.SystemPath(dir))
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
 		if keep[e.Name()] || strings.HasPrefix(e.Name(), ".") || !e.Type().IsRegular() {
+			continue
+		}
+		if info, err := e.Info(); err != nil || time.Since(info.ModTime()) < minAge {
 			continue
 		}
 		path := filepath.Join(dir, e.Name())

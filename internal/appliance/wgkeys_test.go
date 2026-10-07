@@ -87,9 +87,35 @@ func TestTunnelKeys(t *testing.T) {
 		t.Logf("removing the tunnel didn't stage (%v); checking pruning by hand", err)
 		return
 	}
+	// Gone once it's past the grace a fresh key has.
+	old := time.Now().Add(-keyGrace - time.Hour)
+	os.Chtimes(path, old, old)
 	e.m.pruneDownloads()
 	if _, err := os.Stat(path); err == nil {
 		t.Error("the removed tunnel's key is still there")
+	}
+}
+
+// A key is made before any model has it (the edit stays in the browser
+// until it's reviewed), so pruning in the meantime mustn't take it: it
+// did, a minute after adding a way out, and staging then said the
+// firewall had no key.
+func TestFreshKeyOutlivesPruning(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	pub, err := e.m.NewTunnelKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	k, _ := ecdh.X25519().GenerateKey(rand.Reader)
+	imported, err := e.m.ImportTunnelKey(base64.StdEncoding.EncodeToString(k.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.m.pruneDownloads()
+	for _, p := range []string{pub, imported} {
+		if _, err := os.Stat(filepath.Join(e.root, pf.WGKeyPath(p))); err != nil {
+			t.Errorf("a fresh key was pruned: %v", err)
+		}
 	}
 }
 
