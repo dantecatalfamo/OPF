@@ -157,7 +157,7 @@ function DnsSettingsForm() {
   // "Answer on" would leave unable to look anything up.
   const strandedBy = (v: Settings) => !v.enabled || !v.interfaces?.length ? [] : staged.dhcp
     .filter((s) => s.enabled && s.dns === 'self' && !v.interfaces!.includes(s.iface))
-    .map((s) => staged.interfaces.find((i) => i.id === s.iface)?.name ?? s.iface);
+    .map((s) => ({ id: s.iface, name: staged.interfaces.find((i) => i.id === s.iface)?.name ?? s.iface }));
   const form = useForm<Settings>({
     initialValues: pick(dns),
     validateInputOnChange: ['interfaces'],
@@ -166,11 +166,18 @@ function DnsSettingsForm() {
       interfaces: (_, vals) => {
         const left = strandedBy(vals);
         if (!left.length) return null;
-        const them = left.join(' and ');
+        const one = left.length === 1;
+        // Each network's name takes you to its DHCP settings.
+        const dhcpLinks = left.map((n, k) => (
+          <span key={n.id}>
+            {k > 0 && (k === left.length - 1 ? ' and ' : ', ')}
+            <Anchor component={Link} to={`/services/dhcp?iface=${encodeURIComponent(n.id)}`} size="xs">{n.name}’s DHCP</Anchor>
+          </span>
+        ));
         return (
           <>
-            {them}’s DHCP tells devices to ask OPF for names, so leaving {left.length === 1 ? 'it' : 'them'} out would leave those devices unable to look anything up.
-            Add {left.length === 1 ? 'it' : 'them'} here, or first have {them}’s <Anchor component={Link} to="/services/dhcp" size="xs">DHCP</Anchor> hand out other DNS servers.
+            {left.map((n) => n.name).join(' and ')}’s DHCP tells devices to ask OPF for names, so leaving {one ? 'it' : 'them'} out would leave those devices unable to look anything up.
+            Add {one ? 'it' : 'them'} here, or first have {dhcpLinks} hand out other DNS servers.
           </>
         );
       },
