@@ -517,8 +517,9 @@ interfaces need, first:
       from Routing's default gateway, still "dhcp". The page now edits
       that gateway (renaming WAN_DHCP to WAN_GW), and staging refuses a
       DHCP default gateway on an interface with a fixed address.
-  - [ ] `ipv4.gateway` is still accepted in the model and ignored:
-        drop it, moving any value to Routing when a config loads.
+  - [x] `ipv4.gateway` is gone from the model: an older config.json
+        or stage request with one has it moved to Routing (pf.Upgrade,
+        when a model is read or staged), and validation refuses it.
 - [ ] **An interface kind in the model** (physical, vlan, wireguard,
       bridge, aggr, carp, gre, pppoe, …) with per-kind settings,
       replacing the vlan and wireguard special cases. Validation:

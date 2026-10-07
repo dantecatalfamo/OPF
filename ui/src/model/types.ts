@@ -11,7 +11,7 @@ export interface Iface {
   device: string; // em0, vlan20, wg0
   role: IfaceRole;
   enabled: boolean;
-  ipv4: { mode: 'dhcp' | 'static' | 'none'; address?: string; prefix?: number; gateway?: string };
+  ipv4: { mode: 'dhcp' | 'static' | 'none'; address?: string; prefix?: number };
   ipv6: 'slaac' | 'none';
   mtu?: number;
   vlan?: { parent: string; tag: number };

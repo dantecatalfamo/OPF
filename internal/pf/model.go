@@ -97,7 +97,9 @@ type IPv4Config struct {
 	Mode    IPv4Mode `json:"mode"`
 	Address string   `json:"address,omitempty"`
 	Prefix  *int     `json:"prefix,omitempty"`
-	Gateway string   `json:"gateway,omitempty"`
+	// Gateway is only read from older models: Upgrade moves it to
+	// Routing, where /etc/mygate comes from, and it's never written.
+	Gateway string `json:"gateway,omitempty"`
 }
 
 type IPv6Mode string

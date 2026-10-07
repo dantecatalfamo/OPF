@@ -296,6 +296,7 @@ func decodeModel(data []byte) (*pf.Model, error) {
 	if err := dec.Decode(&m); err != nil {
 		return nil, err
 	}
+	pf.Upgrade(&m)
 	return &m, nil
 }
 
@@ -449,6 +450,7 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 	if req.Model == nil {
 		return nil, errorf(CodeInvalid, "no model")
 	}
+	pf.Upgrade(req.Model)
 	if errs := pf.Validate(req.Model); len(errs) > 0 {
 		e := errorf(CodeInvalid, "the configuration has %d problem(s)", len(errs))
 		for _, fe := range errs {

@@ -392,6 +392,9 @@ func (v *validator) interfaces() {
 		v.re(p+".name", f.Name, plainNameRE, "name (letters, digits, spaces, _ . -)")
 		v.oneOf(p+".role", string(f.Role), string(RoleWAN), string(RoleLAN), string(RoleOPT), string(RoleVPN))
 		v.oneOf(p+".ipv6", string(f.IPv6), string(IPv6SLAAC), string(IPv6None))
+		if f.IPv4.Gateway != "" {
+			v.fail(p+".ipv4.gateway", "is set under routing.gateways now (Upgrade moves it)")
+		}
 		switch f.IPv4.Mode {
 		case IPv4Static:
 			v.addr(p+".ipv4.address", f.IPv4.Address, true)
@@ -400,11 +403,8 @@ func (v *validator) interfaces() {
 			} else {
 				v.intRange(p+".ipv4.prefix", *f.IPv4.Prefix, 1, 32)
 			}
-			if f.IPv4.Gateway != "" {
-				v.addr(p+".ipv4.gateway", f.IPv4.Gateway, true)
-			}
 		case IPv4DHCP, IPv4None:
-			if f.IPv4.Address != "" || f.IPv4.Prefix != nil || f.IPv4.Gateway != "" {
+			if f.IPv4.Address != "" || f.IPv4.Prefix != nil {
 				v.fail(p+".ipv4", "an address is only allowed with mode static")
 			}
 		default:

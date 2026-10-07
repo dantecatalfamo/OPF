@@ -67,7 +67,7 @@ function toValues(i: Iface, m: Model): Values {
     mode: i.ipv4.mode,
     address: i.ipv4.address ?? '',
     prefix: String(i.ipv4.prefix ?? 24),
-    gateway: i.ipv4.gateway || (gw && gw.address !== 'dhcp' ? gw.address : ''),
+    gateway: gw && gw.address !== 'dhcp' ? gw.address : '',
     ipv6: i.ipv6,
     mtu: i.mtu ?? '',
     blockPrivate: !!i.blockPrivate,
