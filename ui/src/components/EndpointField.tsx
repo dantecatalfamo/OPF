@@ -89,7 +89,8 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
         onChange={(p) => onChange({ ...value, part: p === 'address' ? undefined : (p as IfacePart) })}
       />
       <Text size="xs" c="dimmed">{help}</Text>
-      <Group gap="md" align="flex-end">
+      {/* Side by side when they fit; wrapped, spaced like "Everything except this" below. */}
+      <Group gap="md" align="center" style={{ rowGap: 10 }} mt={4}>
         <Checkbox
           size="xs"
           label="Primary address only"
@@ -148,6 +149,7 @@ export function EndpointField({ label, value, onChange, model, error }: {
       {value.type !== 'any' && (
         <Checkbox
           size="xs"
+          mt={4}
           label="Everything except this"
           checked={!!value.not}
           onChange={(ev) => onChange({ ...value, not: ev.currentTarget.checked || undefined })}
