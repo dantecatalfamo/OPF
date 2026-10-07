@@ -25,6 +25,8 @@ type Derived struct {
 	DynamicIfaces map[string]bool `json:"dynamicIfaces"`
 	// SelfDynamic is the same for self.
 	SelfDynamic bool `json:"selfDynamic"`
+	// DNSServed is the interfaces the resolver answers on, by id.
+	DNSServed []string `json:"dnsServed"`
 }
 
 // Derive works out Derived for a model.
@@ -35,6 +37,12 @@ func Derive(m *Model) Derived {
 		Rules:         map[string]string{},
 		DynamicIfaces: map[string]bool{},
 		SelfDynamic:   ifaceDynamic(Endpoint{Type: EndpointSelf}, m),
+		DNSServed:     []string{},
+	}
+	if m.DNS.Enabled {
+		for _, i := range DNSServed(m) {
+			d.DNSServed = append(d.DNSServed, i.ID)
+		}
 	}
 	if d.AutomaticNAT == nil {
 		d.AutomaticNAT = []NATRule{}

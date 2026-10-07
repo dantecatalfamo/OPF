@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Divider, Grid, Group, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Badge, Button, Card, Divider, Grid, Group, MultiSelect, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
 import { LocalNames } from './DnsRecords';
@@ -8,7 +8,7 @@ import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
 import { formatAgo } from '../lib/format';
 import { useNow } from '../lib/useNow';
-import type { Dns as DnsSettings } from '../model/types';
+import type { Dns as DnsSettings, Iface } from '../model/types';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
@@ -18,6 +18,10 @@ import { useSearchParams } from 'react-router';
 type Settings = Omit<DnsSettings, 'overrides'>;
 
 // What changed in the resolver settings, for review and history.
+// Whether the resolver can answer on an interface (pf.DNSEligible): an
+// inside one with a fixed address, not a way out through a provider.
+const answerable = (i: Iface) => i.enabled && i.role !== 'wan' && !i.wireguard?.exit && i.ipv4.mode === 'static' && !!i.ipv4.address;
+
 const switches: [keyof Settings, string][] = [
   ['enabled', 'the DNS resolver'],
   ['forwardTls', 'encrypted lookups'],
@@ -27,8 +31,11 @@ const switches: [keyof Settings, string][] = [
   ['rewriteInvalidLeaseNames', 'fixing invalid device names'],
 ];
 
-function describeSettings(before: Settings, after: Settings): string {
+function describeSettings(before: Settings, after: Settings, names: (ids: string[]) => string): string {
   const parts: string[] = [];
+  if ((after.interfaces ?? []).join() !== (before.interfaces ?? []).join()) {
+    parts.push(after.interfaces?.length ? `DNS now answers only on ${names(after.interfaces)}` : 'DNS now answers on every inside network');
+  }
   if (after.mode !== before.mode) parts.push(after.mode === 'forward' ? `DNS now forwards to ${after.forwarders.join(', ')}` : 'DNS now resolves directly (recursive)');
   else if (after.mode === 'forward' && after.forwarders.join() !== before.forwarders.join()) parts.push(`DNS now forwards to ${after.forwarders.join(', ')}`);
   for (const [key, what] of switches) {
@@ -145,7 +152,7 @@ function DeviceNames() {
 function DnsSettingsForm() {
   const { staged, edit } = useStore();
   const dns = staged.dns;
-  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
+  const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, interfaces: d.interfaces ?? [], mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
   const form = useForm<Settings>({
     initialValues: pick(dns),
     validate: { forwarders: (v, vals) => (vals.mode === 'recursive' || (v.length && v.every(isIPv4)) ? null : 'Enter one or more IPv4 addresses') },
@@ -155,9 +162,15 @@ function DnsSettingsForm() {
     form.resetDirty();
   }, [dns]); // form is stable
   const domain = staged.system.domain;
+  const insides = staged.interfaces.filter((i) => i.role !== 'wan' && !i.wireguard?.exit);
+  const names = (ids: string[]) => ids.map((id) => staged.interfaces.find((i) => i.id === id)?.name ?? id).join(', ');
   return (
     <Card maw={760}>
-      <form onSubmit={form.onSubmit((v) => edit('dns', describeSettings(dns, v), (m) => ({ ...m, dns: { ...m.dns, ...v } })))}>
+      <form onSubmit={form.onSubmit((v) => edit('dns', describeSettings(pick(dns), v, names), (m) => {
+        const next = { ...m.dns, ...v };
+        if (!next.interfaces?.length) delete next.interfaces; // every one it can
+        return { ...m, dns: next };
+      }))}>
         <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Resolver</SectionTitle>
         <Stack gap="lg">
           <Stack gap="md">
@@ -180,6 +193,20 @@ function DnsSettingsForm() {
               </>
             )}
             <Switch label="Verify answers with DNSSEC" description="Rejects answers that have been tampered with." {...form.getInputProps('dnssec', { type: 'checkbox' })} />
+          </Stack>
+          <Divider />
+          <Stack gap="md">
+            <Text size="sm" fw={600}>Who can ask</Text>
+            <MultiSelect
+              label="Answer on" placeholder={form.values.interfaces?.length ? undefined : 'Every inside network and tunnel'}
+              description="Devices on other networks are refused, whatever the firewall’s rules allow. Those rules still apply on top: a network listed here can be blocked from port 53 too."
+              inputWrapperOrder={['label', 'input', 'description', 'error']}
+              data={insides.map((i) => ({
+                value: i.id, disabled: !answerable(i),
+                label: answerable(i) ? i.name : `${i.name} (${!i.enabled ? 'off' : 'gets its address by DHCP'})`,
+              }))}
+              {...form.getInputProps('interfaces')}
+            />
           </Stack>
           <Divider />
           <Stack gap="md">

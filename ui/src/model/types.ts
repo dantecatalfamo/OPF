@@ -319,6 +319,8 @@ export interface DnsZone {
 
 export interface Dns {
   enabled: boolean;
+  /** The interfaces the resolver answers on; empty, every inside one with a fixed address. */
+  interfaces?: string[];
   mode: 'recursive' | 'forward';
   forwarders: string[];
   forwardTls: boolean;

@@ -599,7 +599,11 @@ const (
 )
 
 type DNS struct {
-	Enabled    bool         `json:"enabled"`
+	Enabled bool `json:"enabled"`
+	// Interfaces lists the interfaces the resolver answers on (their
+	// ids); empty, every one it can (DNSServed). Any other network's
+	// queries are refused, whatever the firewall's rules allow.
+	Interfaces []string     `json:"interfaces,omitempty"`
 	Mode       ResolverMode `json:"mode"`
 	Forwarders []string     `json:"forwarders"`
 	ForwardTLS bool         `json:"forwardTls"`

@@ -844,6 +844,9 @@ func (v *validator) dhcp() {
 		}
 		v.intRange(p+".leaseHours", s.LeaseHours, 1, 8760)
 		v.oneOf(p+".dns", string(s.DNS), string(DNSModeSelf), string(DNSModeCustom))
+		if s.Enabled && s.DNS == DNSModeSelf && v.m.DNS.Enabled && !slices.ContainsFunc(DNSServed(v.m), func(i Iface) bool { return i.ID == s.Iface }) {
+			v.fail(p+".dns", "the DNS resolver doesn’t answer on this network: let it (DNS resolver › Answer on), or hand out other servers")
+		}
 		for j, d := range s.DNSServers {
 			v.addr(at(p+".dnsServers", j), d, true)
 		}
@@ -881,6 +884,24 @@ func (v *validator) httpsURL(path, s string) {
 
 func (v *validator) dns() {
 	d := v.m.DNS
+	seen := map[string]bool{}
+	for i, id := range d.Interfaces {
+		p := at("dns.interfaces", i)
+		k := slices.IndexFunc(v.m.Interfaces, func(x Iface) bool { return x.ID == id })
+		switch {
+		case k < 0:
+			v.fail(p, "no interface %q", id)
+		case seen[id]:
+			v.fail(p, "%s is listed twice", v.m.Interfaces[k].Name)
+		case v.m.Interfaces[k].Role == RoleWAN:
+			v.fail(p, "the resolver doesn’t answer on a WAN (%s)", v.m.Interfaces[k].Name)
+		case v.m.Interfaces[k].WireGuard != nil && v.m.Interfaces[k].WireGuard.Exit != nil:
+			v.fail(p, "%s is a way out through a VPN provider; the resolver doesn’t answer there", v.m.Interfaces[k].Name)
+		case !DNSEligible(&v.m.Interfaces[k]) && v.m.Interfaces[k].Enabled:
+			v.fail(p, "%s gets its address by DHCP; for now the resolver only answers on interfaces with a fixed address", v.m.Interfaces[k].Name)
+		}
+		seen[id] = true
+	}
 	v.oneOf("dns.mode", string(d.Mode), string(ResolverModeRecursive), string(ResolverModeForward))
 	if d.Mode == ResolverModeForward && len(d.Forwarders) == 0 {
 		v.fail("dns.forwarders", "forwarding needs at least one server")

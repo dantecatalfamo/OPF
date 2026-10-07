@@ -601,6 +601,8 @@ export interface Derived {
   rules: Record<string, string>;
   /** Whether a reference to each interface is in parentheses by default. */
   dynamicIfaces: Record<string, boolean>;
+  /** The interfaces the resolver answers on, by id. */
+  dnsServed?: string[];
   selfDynamic: boolean;
 }
 

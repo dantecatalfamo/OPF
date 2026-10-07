@@ -623,6 +623,21 @@ Types, roughly in order of usefulness:
 - [ ] `rewriteInvalidLeaseNames` is meant to be on by default, but a
       model that leaves it out has it off. Import and the first-run
       wizard must set it.
+- [x] Which networks the resolver answers on (`dns.interfaces`, "Answer
+      on" in its settings): every inside interface with a fixed address
+      by default, never a WAN or a way out (which it used to listen on);
+      one left out gets no listening address and no access, so its
+      queries are refused whatever the firewall allows. A DHCP scope that
+      hands out OPF as the resolver on a network it doesn't answer on is
+      refused, and VPN devices' configurations name OPF's DNS only when
+      it answers on their tunnel.
+- [ ] The resolver can't answer on a DHCP-addressed inside interface
+      (the LAN-only layout with its LAN by DHCP from the router): unbound
+      needs the address to listen on and the network to allow, and 7.9's
+      unbound (1.24.2) has no `access-control-interface` to allow it by
+      name. Write the lease's network when the address arrives (a
+      commit-free regeneration of unbound.conf, or `unbound-control
+      set_option`), or wait for an unbound that has it.
 - [x] Reverse names (PTR): one per address, a reverse name record's
       first, then the firewall's on each inside network, host names and
       reserved devices'; a DHCP lease's name becomes its address's

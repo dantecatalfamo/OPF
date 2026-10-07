@@ -242,7 +242,8 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
   const endpoint = useEndpoint(tunnel);
   const derived = useDerived(staged).data;
   const local = derived?.localNetworks ?? [];
-  const clientConfig = deviceConfig(local, endpoint, tunnel, created ?? { address: v.address, clientRoutes: v.clientRoutes }, { privateKey: keys.priv, presharedKey: psk });
+  const answers = derived?.dnsServed?.includes(tunnel.id) ?? true;
+  const clientConfig = deviceConfig(local, endpoint, tunnel, created ?? { address: v.address, clientRoutes: v.clientRoutes }, { privateKey: keys.priv, presharedKey: psk }, answers);
 
   return (
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">Add a device to {tunnel.name}</Text>}>
@@ -519,6 +520,7 @@ function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; o
   const { staged, edit } = useStore();
   const derived = useDerived(staged).data;
   const local = derived?.localNetworks ?? [];
+  const answers = derived?.dnsServed?.includes(tunnel.id) ?? true;
   const endpoint = useEndpoint(tunnel);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -558,7 +560,7 @@ function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; o
             Apply the change, then give each device its new configuration: only the tunnel’s public key has changed, so each keeps its own private key{peers.some((p) => p.presharedKey) ? ' and preshared key' : ''}.
           </Alert>
           {peers.map((p) => {
-            const conf = deviceConfig(local, endpoint, staged.interfaces.find((i) => i.id === tunnel.id) as Tunnel ?? tunnel, p);
+            const conf = deviceConfig(local, endpoint, staged.interfaces.find((i) => i.id === tunnel.id) as Tunnel ?? tunnel, p, {}, answers);
             return (
               <Stack key={p.id} gap={4}>
                 <Group justify="space-between">
@@ -581,14 +583,15 @@ function Rekey({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean; o
 // The device's configuration. Its keys are given only when they're new
 // (OPF keeps neither the device's private key nor shows a preshared key
 // twice); otherwise the lines say to keep the ones it has.
-function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes' | 'presharedKey'>, keys: { privateKey?: string; presharedKey?: string } = {}): string {
+// dns is whether OPF's resolver answers on the tunnel; when it doesn't,
+// the configuration names no DNS server, and the device keeps its own.
+function deviceConfig(local: string[], endpoint: string, t: Tunnel, p: Pick<Peer, 'address' | 'clientRoutes' | 'presharedKey'>, keys: { privateKey?: string; presharedKey?: string } = {}, dns = true): string {
   const allowed = p.clientRoutes === 'full' ? '0.0.0.0/0' : p.clientRoutes === 'vpn' ? tunnelNet(t) : local.join(', ');
   const psk = keys.presharedKey ?? (p.presharedKey ? '<the device’s existing preshared key>' : undefined);
   return `[Interface]
 PrivateKey = ${keys.privateKey ?? '<the device’s existing private key>'}
 Address = ${p.address}
-DNS = ${t.ipv4.address}
-
+${dns ? `DNS = ${t.ipv4.address}\n` : ''}
 [Peer]
 PublicKey = ${t.wireguard.publicKey}
 ${psk ? `PresharedKey = ${psk}\n` : ''}Endpoint = ${endpoint}
@@ -639,6 +642,7 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
   const [ownPsk, setOwnPsk] = useState<string | null>(null);
   const derived = useDerived(staged).data;
   const local = derived?.localNetworks ?? [];
+  const answers = derived?.dnsServed?.includes(tunnel.id) ?? true;
   const wan = useEndpoint(tunnel);
   const form = useForm({
     initialValues: { name: '', address: '', clientRoutes: 'split' as Peer['clientRoutes'], networks: [] as string[], endpoint: '', keepalive: 25 as number | string },
@@ -712,9 +716,9 @@ function EditPeer({ tunnel, peer, onClose }: { tunnel: Tunnel; peer: Peer | null
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Update the device too">
             {saved.why}
           </Alert>
-          <Code block>{deviceConfig(local, wan, tunnel, saved.peer, saved.keys)}</Code>
+          <Code block>{deviceConfig(local, wan, tunnel, saved.peer, saved.keys, answers)}</Code>
           <Group justify="flex-end">
-            <CopyButton value={deviceConfig(local, wan, tunnel, saved.peer, saved.keys)}>
+            <CopyButton value={deviceConfig(local, wan, tunnel, saved.peer, saved.keys, answers)}>
               {({ copied, copy }) => (
                 <Button variant="light" leftSection={copied ? <IconCheck size={16} /> : <IconCopy size={16} />} onClick={copy}>{copied ? 'Copied' : 'Copy configuration'}</Button>
               )}

@@ -1295,15 +1295,31 @@ func GenerateDHCPdConf(m *Model) string {
 }
 
 // GenerateUnboundConf generates /var/unbound/etc/unbound.conf content.
-func GenerateUnboundConf(m *Model) string {
-	d := m.DNS
-	inside := staticIfaces(m)
-	insideNonWAN := []Iface{}
-	for _, i := range inside {
-		if i.Role != RoleWAN {
-			insideNonWAN = append(insideNonWAN, i)
+// DNSEligible reports whether the resolver can answer on an interface:
+// an enabled inside one (LAN, optional or a tunnel devices connect to)
+// with a fixed address. unbound has to be told the address to listen on
+// and the network to allow, and on 7.9 it can't allow an interface's
+// network by the interface's name, so a DHCP-addressed one can't be.
+func DNSEligible(i *Iface) bool {
+	return i.Enabled && i.Role != RoleWAN && !(i.WireGuard != nil && i.WireGuard.Exit != nil) &&
+		i.IPv4.Mode == IPv4Static && i.IPv4.Address != "" && i.IPv4.Prefix != nil
+}
+
+// DNSServed are the interfaces the resolver answers on: those listed in
+// DNS.Interfaces, or every eligible one when none are.
+func DNSServed(m *Model) []Iface {
+	var out []Iface
+	for _, i := range m.Interfaces {
+		if DNSEligible(&i) && (len(m.DNS.Interfaces) == 0 || slices.Contains(m.DNS.Interfaces, i.ID)) {
+			out = append(out, i)
 		}
 	}
+	return out
+}
+
+func GenerateUnboundConf(m *Model) string {
+	d := m.DNS
+	insideNonWAN := DNSServed(m)
 
 	var lines []string
 	lines = append(lines, header, "", "server:", "\tinterface: 127.0.0.1")
