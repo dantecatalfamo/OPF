@@ -142,6 +142,30 @@ export interface SystemResource {
   errors: string[];
 }
 
+/** One of the files the configuration manages (GET /api/files). */
+export interface ConfigFile {
+  path: string;
+  /** What it's for, like "DHCP server". */
+  desc: string;
+  exists: boolean;
+  /** OPF's own config.json. */
+  model?: boolean;
+  /** What the staged changes do to it. */
+  staged?: 'added' | 'modified' | 'removed';
+  /** It differs from what OPF last wrote there. */
+  outside?: boolean;
+  /** The last commit that wrote it and is in effect. */
+  commit?: { id: string; time: string; message: string };
+}
+
+/** A managed file with its contents (GET /api/files/content). */
+export interface ConfigFileView extends ConfigFile {
+  content: string;
+  stagedDiff?: string;
+  /** From what OPF last wrote to what's there now. */
+  outsideDiff?: string;
+}
+
 export interface WgPeerState {
   publicKey: string;
   description?: string;
@@ -718,6 +742,8 @@ export const api = {
   sessions: () => request<{ sessions: SessionInfo[] }>('GET', '/sessions'),
   endSession: (id: string) => request<void>('DELETE', `/sessions/${encodeURIComponent(id)}`),
   newTunnelKey: () => request<{ publicKey: string }>('POST', '/wireguard/keys').then((r) => r.publicKey),
+  files: () => request<{ files: ConfigFile[] }>('GET', '/files').then((r) => r.files),
+  file: (path: string) => request<ConfigFileView>('GET', `/files/content?path=${enc(path)}`),
   importTunnelKey: (privateKey: string) => request<{ publicKey: string }>('POST', '/wireguard/keys/import', { privateKey }).then((r) => r.publicKey),
   newDeviceKey: () => request<{ privateKey: string; publicKey: string }>('POST', '/wireguard/device-keys'),
   /** Keeps a preshared key on the firewall, made there unless one's given: its id for the model, and the key to show once. */

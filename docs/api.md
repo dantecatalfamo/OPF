@@ -501,6 +501,24 @@ every 10 minutes for a week and every hour for the month.
   because the group is full. Lowering a cap forgets the things updated
   least recently beyond it.
 
+### Configuration files
+
+The files the configuration manages: what the applied model generates,
+what's staged, and what a commit wrote and hasn't removed. Any role may
+read them; they hold no secrets (WireGuard keys are in files of their
+own, which aren't listed).
+
+- `GET /api/files`: `{"files": [...]}`, each `{"path", "desc",
+  "exists", "model", "staged", "outside", "commit"}`. `desc` is what
+  the file is for; `staged` is `added`, `modified` or `removed` when the
+  staged changes touch it; `outside` means it differs from what OPF last
+  wrote there (staging asks before replacing it); `commit` (`{"id",
+  "time", "message"}`) is the last commit in effect that wrote it.
+- `GET /api/files/content?path=/etc/dhcpd.conf`: the same, plus
+  `content` (as it is on the firewall), `stagedDiff` and `outsideDiff`
+  (from what OPF last wrote to what's there now). Only a path `GET
+  /api/files` lists can be read; anything else is `not_found`.
+
 ### System logs
 
 - `GET /api/logs/system/{log}?q=<search>&program=<name>&limit=`: `log` is

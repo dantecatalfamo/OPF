@@ -10,6 +10,7 @@ import { GraphSettings } from './GraphSettings';
 import { useSession } from '../lib/session';
 import { ApiError, type Role, type SessionInfo } from '../lib/api';
 import { SessionRow } from './Users';
+import { FileLink } from './ConfigFiles';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -189,7 +190,8 @@ export function SystemGeneral() {
                 </Group>
                 <Select label="Time zone" data={zones} searchable allowDeselect={false} {...form.getInputProps('timezone')} />
                 <TagsInput label="Time servers" {...form.getInputProps('ntpServers')} />
-                <Group justify="flex-end">
+                <Group justify="space-between">
+                  <Group gap="md"><FileLink path="/etc/myname" /><FileLink path="/etc/ntpd.conf" /></Group>
                   <Button type="submit" disabled={!form.isDirty()}>Save</Button>
                 </Group>
               </Stack>

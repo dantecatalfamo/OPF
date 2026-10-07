@@ -11,6 +11,7 @@ import { fromInt, inSubnet, isIPv4, isMAC, network, toInt } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { poolSize } from '../lib/ip';
 import { HistoryCard } from '../components/HistoryChart';
+import { FileLink } from './ConfigFiles';
 
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
@@ -71,7 +72,8 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
             />
             {form.values.dns === 'custom' && <TagsInput placeholder="9.9.9.9" {...form.getInputProps('dnsServers')} />}
           </Stack>
-          <Group justify="flex-end">
+          <Group justify="space-between">
+            <FileLink path="/etc/dhcpd.conf" />
             <Button type="submit" disabled={!form.isDirty()}>Save</Button>
           </Group>
         </Stack>

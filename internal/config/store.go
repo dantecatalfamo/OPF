@@ -567,6 +567,28 @@ func (s *Store) writeBases(m map[string]string) error {
 
 // Diff returns a unified diff between two files, either of which may be
 // missing. It uses the system's diff(1).
+// DiffWith is a unified diff from content to f's live file, such as
+// from what OPF last wrote there to what's there now.
+func (s *Store) DiffWith(name string, content []byte, labelA, labelB string) (string, error) {
+	f, err := s.Lookup(name)
+	if err != nil {
+		return "", err
+	}
+	tmp, err := os.CreateTemp(filepath.Join(s.dir, "tmp"), f.Name+".*")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(content); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	if err := tmp.Close(); err != nil {
+		return "", err
+	}
+	return Diff(tmp.Name(), s.livePath(f), labelA, labelB)
+}
+
 func Diff(a, b, labelA, labelB string) (string, error) {
 	for _, p := range []*string{&a, &b} {
 		if _, err := os.Stat(*p); errors.Is(err, fs.ErrNotExist) {

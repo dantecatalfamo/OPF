@@ -13,6 +13,7 @@ import { formatBits } from '../lib/format';
 import { HistoryCard } from '../components/HistoryChart';
 
 import { DeleteInterface } from '../components/DeleteInterface';
+import { FileLink } from './ConfigFiles';
 
 interface Values {
   name: string;
@@ -138,12 +139,15 @@ export function InterfaceEdit() {
       <PageHeader
         title={iface.name}
         description={
-          iface.wireguard ? (
-            <>
-              WireGuard tunnel {iface.device} ·{' '}
-              <Anchor component={Link} to={`/services/wireguard/${iface.id}`} size="sm">Its keys, port and devices are on WireGuard VPN</Anchor>
-            </>
-          ) : iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`
+          <>
+            {iface.wireguard ? (
+              <>
+                WireGuard tunnel {iface.device} ·{' '}
+                <Anchor component={Link} to={`/services/wireguard/${iface.id}`} size="sm">Its keys, port and devices are on WireGuard VPN</Anchor>
+              </>
+            ) : iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`}
+            {' · '}<FileLink path={`/etc/hostname.${iface.device}`} />
+          </>
         }
         actions={
           <>

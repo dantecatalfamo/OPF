@@ -19,6 +19,7 @@ import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
 import { AddExit, ExitFlow, ExitSettings } from './WireGuardExit';
+import { FileLink } from './ConfigFiles';
 
 // Stand-in for a real key pair; the appliance generates these like wg(8).
 
@@ -489,7 +490,7 @@ function TunnelSettings({ tunnel }: { tunnel: Tunnel }) {
             <Text size="sm" fw={500}>Tunnel address</Text>
             <Group gap="xs">
               <Mono>{tunnel.ipv4.address}/{tunnel.ipv4.prefix}</Mono>
-              <Text size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono> · <Anchor component={Link} to={`/interfaces/${tunnel.id}`} size="xs">change</Anchor></Text>
+              <Text size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono> · <Anchor component={Link} to={`/interfaces/${tunnel.id}`} size="xs">change</Anchor> · <FileLink path={`/etc/hostname.${tunnel.device}`} /></Text>
             </Group>
           </Stack>
           <Stack gap={2}>

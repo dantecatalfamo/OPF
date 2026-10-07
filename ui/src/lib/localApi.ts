@@ -11,7 +11,7 @@ import { browserKeyPair, publicKeyOf } from './wgkeys';
 import { cancelLocalTool, localToolRun, startLocalTool } from './localTools';
 import { leases as sampleLeases, arpTable as sampleArpTable, routingTable as sampleRoutingTable, sampleDnsBlocked, sampleDnsStats, sampleEvents, sampleSystemLog, sampleMetrics, sampleFirewallLog, sampleGateways, sampleInterfaces, samplePfStates, samplePfStatus, sampleRuleCounters, sampleSystem, sampleUpdates } from '../model/live';
 import {
-  ApiError, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
+  ApiError, type ConfigFile, type ConfigFileView, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
   type DnsBlockedResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
@@ -128,6 +128,25 @@ export const localApi = {
   newTunnelKey: async (): Promise<string> => (await browserKeyPair())?.publicKey ?? 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
   newDeviceKey: async () => (await browserKeyPair()) ?? { privateKey: '', publicKey: '' },
   importTunnelKey: async (privateKey: string): Promise<string> => publicKeyOf(privateKey),
+  // The preview has no disk: a file is what the applied model generates.
+  files: async (): Promise<ConfigFile[]> => {
+    const now = await files(live);
+    const next = staged ? await files(staged) : now;
+    return [...new Set([...now.keys(), ...next.keys()])].sort().map((path) => ({
+      path, desc: path === MODEL_PATH ? 'OPF’s configuration model' : '', exists: now.has(path), model: path === MODEL_PATH,
+      ...(staged && now.get(path) !== next.get(path) ? { staged: !now.has(path) ? 'added' as const : !next.has(path) ? 'removed' as const : 'modified' as const } : {}),
+    }));
+  },
+  file: async (path: string): Promise<ConfigFileView> => {
+    const now = await files(live);
+    const next = staged ? await files(staged) : now;
+    if (!now.has(path) && !next.has(path)) throw new ApiError(404, 'not_found', `${path} isn't one of the files this configuration manages`);
+    const changed = staged && now.get(path) !== next.get(path);
+    return {
+      path, desc: '', exists: now.has(path), model: path === MODEL_PATH, content: now.get(path) ?? '',
+      ...(changed ? { staged: !now.has(path) ? 'added' as const : !next.has(path) ? 'removed' as const : 'modified' as const, stagedDiff: unifiedDiff(now.get(path) ?? '', next.get(path) ?? '', `${path} (live)`, `${path} (staged)`) } : {}),
+    };
+  },
   setPresharedKey: async (key?: string) => ({
     id: [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join(''),
     key: key ?? btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))),

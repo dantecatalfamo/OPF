@@ -101,6 +101,14 @@ type (
 		Result
 		Gateways *appliance.GatewaysStatus
 	}
+	FilesReply struct {
+		Result
+		Files []appliance.ConfigFile
+	}
+	FileReply struct {
+		Result
+		File *appliance.ConfigFileView
+	}
 	UpdatesReply struct {
 		Result
 		Updates *appliance.UpdatesStatus
@@ -278,6 +286,29 @@ func (s *Service) Gateways(c Call[None], r *GatewaysReply) error {
 	var err error
 	r.Gateways, err = s.api.Gateways()
 	r.set("Gateways", err)
+	return nil
+}
+
+func (s *Service) Files(c Call[None], r *FilesReply) error {
+	if s.allow("Files", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Files, err = s.api.Files()
+	r.set("Files", err)
+	return nil
+}
+
+// PathArgs names a managed file by its path.
+type PathArgs struct{ Path string }
+
+func (s *Service) File(c Call[PathArgs], r *FileReply) error {
+	if s.allow("File", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.File, err = s.api.File(c.Args.Path)
+	r.set("File", err)
 	return nil
 }
 
@@ -838,6 +869,21 @@ func (c *Client) Interfaces() (*appliance.InterfacesStatus, error) {
 		}
 	}
 	return r.Interfaces, err
+}
+
+func (c *Client) Files() ([]appliance.ConfigFile, error) {
+	var r FilesReply
+	err := c.call("Files", None{}, &r)
+	if r.Files == nil {
+		r.Files = []appliance.ConfigFile{} // gob drops an empty slice
+	}
+	return r.Files, err
+}
+
+func (c *Client) File(path string) (*appliance.ConfigFileView, error) {
+	var r FileReply
+	err := c.call("File", PathArgs{path}, &r)
+	return r.File, err
 }
 
 func (c *Client) Gateways() (*appliance.GatewaysStatus, error) {

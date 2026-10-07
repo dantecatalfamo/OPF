@@ -113,6 +113,20 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/network/routes", s.routingTable)
 	s.mux.HandleFunc("GET /api/network/interfaces", getter(s, appliance.API.Interfaces))
 	s.mux.HandleFunc("GET /api/network/gateways", getter(s, appliance.API.Gateways))
+	s.mux.HandleFunc("GET /api/files", getter(s, func(a appliance.API) (any, error) {
+		f, err := a.Files()
+		return struct {
+			Files []appliance.ConfigFile `json:"files"`
+		}{f}, err
+	}))
+	s.mux.HandleFunc("GET /api/files/content", func(w http.ResponseWriter, r *http.Request) {
+		f, err := s.apiFor(r).File(r.URL.Query().Get("path"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, f)
+	})
 	s.mux.HandleFunc("GET /api/system", getter(s, appliance.API.System))
 	s.mux.HandleFunc("GET /api/system/updates", getter(s, appliance.API.Updates))
 	s.mux.HandleFunc("POST /api/system/updates/check", getter(s, appliance.API.CheckUpdates))

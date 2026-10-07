@@ -39,6 +39,10 @@ type API interface {
 	System() (*SystemStatus, error)
 	Interfaces() (*InterfacesStatus, error)
 	Gateways() (*GatewaysStatus, error)
+	// Files lists the files the configuration manages, and File one of
+	// them with its contents (never an arbitrary path).
+	Files() ([]ConfigFile, error)
+	File(path string) (*ConfigFileView, error)
 	Updates() (*UpdatesStatus, error)
 	CheckUpdates() (*UpdatesStatus, error)
 	PfStatus() (*PfStatus, error)

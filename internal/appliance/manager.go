@@ -532,23 +532,7 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		// What OPF last wrote there, if anything. Not what it would
 		// write now: after an upgrade that changes a generator, that
 		// differs from every file it wrote before.
-		prev, wrote := lastWrite(path)
-		outside := onDisk != wrote || (wrote && !bytes.Equal(disk, config.Normalize(prev)))
-		switch path {
-		case pf.RcPath:
-			// Only OPF's own lines count; the rest isn't OPF's, and a
-			// missing file means rc.conf's defaults.
-			outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
-		case pf.SysctlPath:
-			outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
-		}
-		if _, ever := written[path]; !ever && !onDisk {
-			// A file OPF has never written and that isn't there has no
-			// one's changes to lose: one this version of OPF manages and
-			// the last didn't, say.
-			outside = false
-		}
-		if outside && !slices.Contains(req.Overwrite, path) {
+		if _, _, outside := outsideChange(path, disk, onDisk, written, liveGen); outside && !slices.Contains(req.Overwrite, path) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF; list it in overwrite to replace it"})
 		}
 	}
@@ -649,6 +633,37 @@ func (m *Manager) lastWritten() (map[string]writtenFile, error) {
 		}
 	}
 	return out, nil
+}
+
+// outsideChange reports whether a file was changed outside OPF, and what
+// OPF last left in it: the copy the newest commit wrote (written), or,
+// for a file no commit has touched yet, what the applied model generates
+// (liveGen), the best there is. Not what OPF would write now: after an
+// upgrade that changes a generator, that differs from every file it
+// wrote before. Of a shared file (rc.conf.local, sysctl.conf) only OPF's
+// own lines count.
+func outsideChange(path string, disk []byte, onDisk bool, written map[string]writtenFile, liveGen map[string]string) (prev []byte, wrote, outside bool) {
+	if w, ok := written[path]; ok {
+		prev, wrote = w.content, w.exists
+	} else if g, ok := liveGen[path]; ok {
+		prev, wrote = []byte(g), true
+	}
+	outside = onDisk != wrote || (wrote && !bytes.Equal(disk, config.Normalize(prev)))
+	switch path {
+	case pf.RcPath:
+		// The rest isn't OPF's, and a missing file means rc.conf's
+		// defaults.
+		outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
+	case pf.SysctlPath:
+		outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
+	}
+	if _, ever := written[path]; !ever && !onDisk {
+		// A file OPF has never written and that isn't there has no one's
+		// changes to lose: one this version of OPF manages and the last
+		// didn't, say.
+		outside = false
+	}
+	return prev, wrote, outside
 }
 
 func generated(model *pf.Model) map[string]string {

@@ -74,6 +74,7 @@ const nav: NavGroup[] = [
       { label: 'ARP table', to: '/diagnostics/arp' },
       { label: 'Firewall log', to: '/diagnostics/log' },
       { label: 'System logs', to: '/diagnostics/system-logs' },
+      { label: 'Configuration files', to: '/diagnostics/files' },
     ],
   },
 ];

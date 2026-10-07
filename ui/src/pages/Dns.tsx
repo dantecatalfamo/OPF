@@ -14,6 +14,7 @@ import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
 import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
 import { Link, useSearchParams } from 'react-router';
+import { FileLink } from './ConfigFiles';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
@@ -250,7 +251,8 @@ function DnsSettingsForm() {
               {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
             />
           </Stack>
-          <Group justify="flex-end">
+          <Group justify="space-between">
+            <FileLink path="/var/unbound/etc/unbound.conf" />
             <Button type="submit" disabled={!form.isDirty()}>Save</Button>
           </Group>
         </Stack>

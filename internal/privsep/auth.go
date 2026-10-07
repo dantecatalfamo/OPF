@@ -30,7 +30,7 @@ var methodRoles = map[string]auth.Role{
 	// Looking.
 	"Status": auth.RoleView, "LeaseNames": auth.RoleView, "DHCPLeases": auth.RoleView,
 	"ARPTable": auth.RoleView, "RoutingTable": auth.RoleView, "System": auth.RoleView,
-	"Interfaces": auth.RoleView, "Gateways": auth.RoleView, "Updates": auth.RoleView,
+	"Interfaces": auth.RoleView, "Gateways": auth.RoleView, "Files": auth.RoleView, "File": auth.RoleView, "Updates": auth.RoleView,
 	"PfStatus": auth.RoleView, "PfStates": auth.RoleView, "RuleCounters": auth.RoleView,
 	"FirewallLog": auth.RoleView, "Tables": auth.RoleView, "DNSLists": auth.RoleView,
 	"Webhooks": auth.RoleView, "SystemLog": auth.RoleView, "Events": auth.RoleView,

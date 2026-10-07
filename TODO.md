@@ -1805,6 +1805,16 @@ Commit engine:
       touched yet are still judged against what the applied model
       generates.
 
+Configuration files:
+
+- [x] Diagnostics › Configuration files: every file the configuration
+      manages, grouped by what it's for, as it is on the firewall (with
+      line numbers and a copy button), with the staged change to it and,
+      for one changed by hand, a diff from what OPF last wrote, the same
+      check staging uses. Read only through the parent, and only the
+      files it lists. Each service links to its own (DHCP, DNS, General,
+      each interface and tunnel); pf.conf points to Firewall › Ruleset.
+
 Live data:
 
 - [x] Checked on 7.9 with Hagezi Pro and OISD small (574,720 names):

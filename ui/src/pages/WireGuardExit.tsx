@@ -15,6 +15,7 @@ import { isIPv4 } from '../lib/ip';
 import { Mono, SectionTitle } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
 import { Copyable, withTunnel } from './WireGuard';
+import { FileLink } from './ConfigFiles';
 
 /** What OPF needs from a provider's WireGuard configuration. */
 export interface ProviderConfig {
@@ -240,7 +241,7 @@ export function ExitSettings({ tunnel, onDeleted }: { tunnel: Tunnel; onDeleted:
           <NumberInput label="Keepalive" description="Seconds between keepalive packets; empty for none." min={0} max={65535} {...form.getInputProps('keepalive')} />
           <Stack gap={2}>
             <Text size="sm" fw={500}>Tunnel address</Text>
-            <Text size="sm"><Mono>{tunnel.ipv4.address}/{tunnel.ipv4.prefix}</Mono> <Text span size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono>, from the provider</Text></Text>
+            <Text size="sm"><Mono>{tunnel.ipv4.address}/{tunnel.ipv4.prefix}</Mono> <Text span size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono>, from the provider · <FileLink path={`/etc/hostname.${tunnel.device}`} /></Text></Text>
           </Stack>
           <Stack gap={2}>
             <Text size="sm" fw={500}>Provider’s public key</Text>
