@@ -74,6 +74,7 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
   // knows at run time.
   const derived = useDerived(model).data;
   const auto = value.type === 'self' ? derived?.selfDynamic ?? false : value.group ? true : derived?.dynamicIfaces[value.iface ?? ''] ?? true;
+  const follows = value.dynamic ?? auto;
   const help = {
     address: 'The addresses assigned to it.',
     network: 'The networks attached to it.',
@@ -89,8 +90,7 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
         onChange={(p) => onChange({ ...value, part: p === 'address' ? undefined : (p as IfacePart) })}
       />
       <Text size="xs" c="dimmed">{help}</Text>
-      {/* Side by side when they fit; wrapped, spaced like "Everything except this" below. */}
-      <Group gap="md" align="center" style={{ rowGap: 10 }} mt={4}>
+      <Group gap="lg" mt={4}>
         <Checkbox
           size="xs"
           label="Primary address only"
@@ -98,20 +98,21 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
           checked={!!value.noAlias}
           onChange={(ev) => onChange({ ...value, noAlias: ev.currentTarget.checked || undefined })}
         />
-        <Select
+        <Checkbox
           size="xs"
-          w={300}
-          aria-label="Follow address changes"
-          allowDeselect={false}
-          value={value.dynamic === undefined ? 'auto' : value.dynamic ? 'yes' : 'no'}
-          data={[
-            { value: 'auto', label: `Follow address changes: automatic (${auto ? 'yes' : 'no'})` },
-            { value: 'yes', label: 'Follow address changes: always' },
-            { value: 'no', label: 'Follow address changes: never' },
-          ]}
-          onChange={(d) => onChange({ ...value, dynamic: d === 'auto' ? undefined : d === 'yes' })}
+          label="Follow address changes"
+          title="pf updates the rule when the address changes, as a DHCP lease or an edit makes it"
+          checked={follows}
+          // Back to the default when it matches, so the model only says
+          // something when it differs from what OPF would write anyway.
+          onChange={(ev) => onChange({ ...value, dynamic: ev.currentTarget.checked === auto ? undefined : ev.currentTarget.checked })}
         />
       </Group>
+      {!follows && (
+        <Text size="xs" c="dimmed">
+          pf takes the address once, when the rules load. If the interface has no address then, the rules won’t load.
+        </Text>
+      )}
     </Stack>
   );
 }
