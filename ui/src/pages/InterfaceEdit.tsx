@@ -6,7 +6,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useStore } from '../model/store';
-import type { Iface } from '../model/types';
+import type { Gateway, Iface, Model } from '../model/types';
 import { isIPv4, inSubnet } from '../lib/ip';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { formatBits } from '../lib/format';
@@ -32,14 +32,42 @@ interface Values {
   vlanTag: number | '';
 }
 
-function toValues(i: Iface): Values {
+// The gateway the WAN page edits: the default one when it's on this
+// interface, else the first that is. /etc/mygate comes from Routing,
+// so the page's Gateway field is that gateway's address.
+function ownGateway(m: Model, id: string): Gateway | undefined {
+  const own = m.routing.gateways.filter((g) => g.iface === id);
+  return own.find((g) => g.id === m.routing.defaultGateway) ?? own[0];
+}
+
+/** The model with this interface's gateway following its address: the
+ * one given for a fixed address, the lease's for DHCP. */
+function withGateway(m: Model, i: Iface, address: string): Model {
+  const gw = ownGateway(m, i.id);
+  const fixed = address !== 'dhcp';
+  // Its name says where it comes from when OPF named it so.
+  const rename = (n: string) => (fixed ? n.replace(/_DHCP$/, '_GW') : n.replace(/_GW$/, '_DHCP'));
+  if (gw) {
+    if (gw.address === address) return m;
+    const next = { ...gw, address, name: rename(gw.name) };
+    return { ...m, routing: { ...m.routing, gateways: m.routing.gateways.map((g) => (g.id === gw.id ? next : g)) } };
+  }
+  let gid = `gw_${i.id}`;
+  for (let n = 2; m.routing.gateways.some((g) => g.id === gid); n++) gid = `gw_${i.id}${n}`;
+  const name = `${i.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'WAN'}_${fixed ? 'GW' : 'DHCP'}`;
+  const added: Gateway = { id: gid, name, iface: i.id, address, description: '' };
+  return { ...m, routing: { ...m.routing, gateways: [...m.routing.gateways, added], defaultGateway: m.routing.defaultGateway || gid } };
+}
+
+function toValues(i: Iface, m: Model): Values {
+  const gw = ownGateway(m, i.id);
   return {
     name: i.name,
     enabled: i.enabled,
     mode: i.ipv4.mode,
     address: i.ipv4.address ?? '',
     prefix: String(i.ipv4.prefix ?? 24),
-    gateway: i.ipv4.gateway ?? '',
+    gateway: i.ipv4.gateway || (gw && gw.address !== 'dhcp' ? gw.address : ''),
     ipv6: i.ipv6,
     mtu: i.mtu ?? '',
     blockPrivate: !!i.blockPrivate,
@@ -77,12 +105,16 @@ export function InterfaceEdit() {
   const iface = staged.interfaces.find((i) => i.id === id);
 
   const form = useForm<Values>({
-    initialValues: iface ? toValues(iface) : toValues(staged.interfaces[0]),
+    initialValues: toValues(iface ?? staged.interfaces[0], staged),
     validate: {
       name: (v) => (v.trim() ? null : 'Name can’t be empty'),
       address: (v, vals) => (vals.mode !== 'static' || isIPv4(v) ? null : 'Enter an IPv4 address like 192.168.1.1'),
       gateway: (v, vals) => {
-        if (vals.mode !== 'static' || iface?.role !== 'wan' || !v) return null;
+        if (vals.mode !== 'static' || iface?.role !== 'wan') return null;
+        // The default route needs it; another gateway can be the default.
+        const gw = ownGateway(staged, iface.id);
+        const isDefault = !staged.routing.defaultGateway || gw?.id === staged.routing.defaultGateway;
+        if (!v) return isDefault ? 'Enter the gateway your ISP gave with the address: it’s the firewall’s way to the internet' : null;
         if (!isIPv4(v)) return 'Enter an IPv4 address';
         return inSubnet(v, vals.address, Number(vals.prefix)) ? null : 'The gateway must be inside this network';
       },
@@ -97,7 +129,7 @@ export function InterfaceEdit() {
   });
 
   useEffect(() => {
-    if (iface) form.setValues(toValues(iface));
+    if (iface) form.setValues(toValues(iface, staged));
   }, [id]); // only when switching interfaces
 
   if (!iface) {
@@ -118,7 +150,7 @@ export function InterfaceEdit() {
       name: v.name.trim(),
       enabled: v.enabled,
       ipv4: v.mode === 'static'
-        ? { mode: 'static', address: v.address, prefix: Number(v.prefix), ...(isWan && v.gateway ? { gateway: v.gateway } : {}) }
+        ? { mode: 'static', address: v.address, prefix: Number(v.prefix) }
         : { mode: v.mode },
       ipv6: v.ipv6,
       mtu: v.mtu === '' ? undefined : Number(v.mtu),
@@ -140,14 +172,16 @@ export function InterfaceEdit() {
     }
     if (next.antispoof === undefined) delete next.antispoof;
     if (next.masquerade === undefined) delete next.masquerade;
-    if (JSON.stringify(next) === JSON.stringify(iface)) {
-      navigate('/interfaces');
-      return;
+    // The WAN's gateway is kept under Routing, where mygate comes from.
+    const gateway = isWan && v.mode === 'static' && v.gateway ? v.gateway : isWan && v.mode === 'dhcp' ? 'dhcp' : undefined;
+    const gwBefore = ownGateway(staged, iface.id);
+    const gwAfter = gateway ? ownGateway(withGateway(staged, next, gateway), iface.id) : gwBefore;
+    if (JSON.stringify(next) !== JSON.stringify(iface)) {
+      edit('interfaces', describe(iface, next), (m) => ({ ...m, interfaces: m.interfaces.map((i) => (i.id === iface.id ? next : i)) }));
     }
-    edit('interfaces', describe(iface, next), (m) => ({
-      ...m,
-      interfaces: m.interfaces.map((i) => (i.id === iface.id ? next : i)),
-    }));
+    if (gateway && gwAfter && JSON.stringify(gwAfter) !== JSON.stringify(gwBefore)) {
+      edit('routing', gwAfter.address === 'dhcp' ? `${gwAfter.name}: from ${next.name}’s DHCP lease` : `${gwAfter.name}: ${gwAfter.address}${gwBefore ? '' : ', added'} on ${next.name}`, (m) => withGateway(m, next, gateway));
+    }
     navigate('/interfaces');
   });
 

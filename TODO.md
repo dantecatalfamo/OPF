@@ -509,7 +509,16 @@ interfaces need, first:
   - [ ] The tag is tied to the device name (`vlan35` is tag 35): two
         parents can't both carry VLAN 35.
   - [ ] MTU isn't checked against the parent's.
-  - [ ] Not tried on the VM yet: a tagged WAN, a bare parent.
+  - [x] Tried on the VM: the WAN tagged as VLAN 35 on vio0 (802.1Q
+        VID 35 on the wire, vio0 up bare), through a reboot, an
+        unconfirmed commit's revert, and back to untagged DHCP.
+- [x] **A fixed WAN address got no default route.** The edit page's
+      Gateway went to `ipv4.gateway`, which nothing reads; mygate comes
+      from Routing's default gateway, still "dhcp". The page now edits
+      that gateway (renaming WAN_DHCP to WAN_GW), and staging refuses a
+      DHCP default gateway on an interface with a fixed address.
+  - [ ] `ipv4.gateway` is still accepted in the model and ignored:
+        drop it, moving any value to Routing when a config loads.
 - [ ] **An interface kind in the model** (physical, vlan, wireguard,
       bridge, aggr, carp, gre, pppoe, …) with per-kind settings,
       replacing the vlan and wireguard special cases. Validation:
