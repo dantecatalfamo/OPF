@@ -452,7 +452,27 @@ unbound first starts.
   by your never-block names) and `names`, the 50 blocked most
   (`{"name", "count", "last", "list", "entry"}`; `list` is absent for
   your own entries). Only DNS names are listed, and which device asked
-  isn't kept.
+  isn't kept. While DNS activity is kept (`dns.activity`), unbound logs
+  to OPF's file instead, and this is today's from the activity's counts.
+- `GET /api/dns/activity?days=N` (admin): DNS activity over the last `N`
+  days, today counting as one (at most what's kept). Only `enabled`,
+  `perDevice` and `days` while it isn't kept. Otherwise `since`, `total`
+  and `hours` (counts: `queries`, `blocked`, `allowed`, `nxdomain` (not
+  counting blocks), `servfail`, `cached`), `byList` (blocks by list id,
+  `""` for your own names), the 50 names looked up (`names`), blocked
+  (`blocked`, with `list` and `entry`) and not found (`missing`) most,
+  each `{"name", "count", "err", "last"}` where `err` is how much of
+  `count` may be other names' (the lists are bounded), and with
+  `perDevice`, `devices` (`{"key", "address", "last", ...counts}`) and
+  `deviceInfo` by key (`{"kind", "name", "mac"}`; kind is `device`,
+  `vpn`, `firewall`, `address` or `other`).
+- `GET /api/dns/activity/device?device=key&days=N` (admin): one device's
+  activity: its `kind`, `name`, `mac`, `address`, `last`, `total`,
+  `hours`, `names`, `blocked` and `missing`. `not_found` when devices
+  aren't kept or nothing of it is.
+- `DELETE /api/dns/activity[?device=key]` (admin): deletes one device's
+  activity, or everything kept. Turning DNS activity off deletes it too,
+  once that's applied.
 - `POST /api/dns/tools` with `{"tool", "name"}`: asks unbound over its
   control socket, and answers `{"lines", "truncated"}` (at most 1,000
   lines). `lookup` (the servers it would ask for `name`), `cache` (the

@@ -136,6 +136,13 @@ type BlockedName struct {
 
 // DNSBlocked reads unbound's rpz-log lines from the daemon log.
 func (m *Manager) DNSBlocked() (*DNSBlocked, error) {
+	// While DNS activity is kept, unbound's lines go to OPF's file, and
+	// what's blocked comes from the counts kept from it.
+	if m.store != nil {
+		if model, _, err := m.live(); err == nil && model != nil && pf.KeepsDNSActivity(model) {
+			return m.blockedFromActivity(model), nil
+		}
+	}
 	res := &DNSBlocked{ByList: map[string]int{}, Names: []BlockedName{}}
 	out, err := m.read("tail", "-n", strconv.Itoa(daemonLogLines), daemonLog)
 	if err != nil {

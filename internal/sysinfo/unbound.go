@@ -141,7 +141,12 @@ func parseRPZLine(l string, now time.Time) (RPZHit, bool) {
 	if err != nil {
 		return h, false
 	}
-	h.Time = withYear(t, now)
+	return parseRPZApplied(rest, withYear(t, now))
+}
+
+// parseRPZApplied reads what follows "rpz: applied " in a line.
+func parseRPZApplied(rest string, t time.Time) (RPZHit, bool) {
+	h := RPZHit{Time: t}
 	f := strings.Fields(rest)
 	if len(f) > 0 && strings.HasPrefix(f[0], "[") && strings.HasSuffix(f[0], "]") {
 		h.Zone = f[0][1 : len(f[0])-1]
@@ -196,4 +201,82 @@ func ParseProcessRSS(out, name string) (uint64, bool) {
 		found = true
 	}
 	return total, found
+}
+
+// UnboundLine is one line of unbound's own log file (logfile: with
+// log-replies and log-tag-queryreply), which OPF reads while it keeps
+// DNS activity:
+//
+//	[1791387199] unbound[46658:0] reply: 192.168.1.23 example.com. A IN NOERROR 0.012000 0 56
+//	[1791387199] unbound[46658:0] info: rpz: applied [opf:own] blocked.example. rpz-nxdomain 192.168.1.23@45073 blocked.example. A IN
+//	[1791387206] unbound[46658:0] warning: continuing with less udp ports: 472
+//
+// Exactly one of Reply and RPZ is set for an answer or a block; any
+// other line is Level and Message.
+type UnboundLine struct {
+	Time  time.Time
+	Reply *UnboundReply
+	RPZ   *RPZHit
+	// Level is unbound's: notice, info, warning, error, debug.
+	Level, Message string
+}
+
+// UnboundReply is an answer unbound gave.
+type UnboundReply struct {
+	Client string // the address that asked
+	Name   string // without the final dot
+	Type   string
+	Rcode  string // NOERROR, NXDOMAIN, SERVFAIL, REFUSED…
+	Cached bool
+}
+
+// ParseUnboundLogLine reads one line of unbound's log file; false for a
+// line that isn't one of unbound's.
+func ParseUnboundLogLine(l string) (UnboundLine, bool) {
+	var u UnboundLine
+	if !strings.HasPrefix(l, "[") {
+		return u, false
+	}
+	stamp, rest, ok := strings.Cut(l[1:], "] ")
+	if !ok {
+		return u, false
+	}
+	sec, err := strconv.ParseInt(stamp, 10, 64)
+	if err != nil || sec < 0 {
+		return u, false
+	}
+	u.Time = time.Unix(sec, 0)
+	// unbound[pid:thread]
+	who, rest, ok := strings.Cut(rest, " ")
+	if !ok || !strings.HasPrefix(who, "unbound[") {
+		return u, false
+	}
+	level, msg, ok := strings.Cut(rest, ": ")
+	if !ok {
+		return u, false
+	}
+	switch level {
+	case "reply":
+		// client name type class rcode time cached size
+		f := strings.Fields(msg)
+		if len(f) != 8 {
+			return u, false
+		}
+		u.Reply = &UnboundReply{Client: f[0], Name: strings.TrimSuffix(f[1], "."), Type: f[2], Rcode: f[4], Cached: f[6] == "1"}
+		if u.Reply.Name == "" {
+			u.Reply.Name = "." // the root
+		}
+		return u, true
+	case "info":
+		if applied, ok := strings.CutPrefix(msg, "rpz: applied "); ok {
+			h, ok := parseRPZApplied(applied, u.Time)
+			if !ok {
+				return u, false
+			}
+			u.RPZ = &h
+			return u, true
+		}
+	}
+	u.Level, u.Message = level, msg
+	return u, true
 }

@@ -157,6 +157,9 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("PUT /api/webhooks/{id}/secret", s.setWebhookSecret)
 	s.mux.HandleFunc("POST /api/webhooks/{id}/test", s.testWebhook)
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s, appliance.API.DNSBlocked))
+	s.mux.HandleFunc("GET /api/dns/activity", s.dnsActivity)
+	s.mux.HandleFunc("GET /api/dns/activity/device", s.dnsDeviceActivity)
+	s.mux.HandleFunc("DELETE /api/dns/activity", s.forgetDNSActivity)
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
@@ -645,6 +648,63 @@ func (s *Server) pfStates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, st)
+}
+
+// activityRequest reads ?days=N[&device=key].
+func activityRequest(w http.ResponseWriter, r *http.Request) (appliance.DNSActivityRequest, bool) {
+	q := r.URL.Query()
+	req := appliance.DNSActivityRequest{Device: q.Get("device")}
+	if v := q.Get("days"); v != "" {
+		var err error
+		if req.Days, err = strconv.Atoi(v); err != nil {
+			badRequest(w, http.StatusBadRequest, "days is a number of days")
+			return req, false
+		}
+	}
+	return req, true
+}
+
+func (s *Server) dnsActivity(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	a, err := s.apiFor(r).DNSActivity(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, a)
+}
+
+func (s *Server) dnsDeviceActivity(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	if req.Device == "" {
+		badRequest(w, http.StatusBadRequest, "device is required")
+		return
+	}
+	a, err := s.apiFor(r).DNSDeviceActivity(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, a)
+}
+
+// forgetDNSActivity deletes ?device=key's activity, or everything.
+func (s *Server) forgetDNSActivity(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	if err := s.apiFor(r).ForgetDNSActivity(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // metrics answers ?series=a,b&range=<seconds>[&step=<seconds>].

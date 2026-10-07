@@ -945,6 +945,14 @@ func (v *validator) dns() {
 		}
 		seen[id] = true
 	}
+	if a := d.Activity; a != nil {
+		if a.Enabled || a.Devices {
+			v.intRange("dns.activity.days", a.Days, 1, MaxActivityDays)
+		}
+		if a.Devices && !a.Enabled {
+			v.fail("dns.activity.devices", "keeping it per device needs it kept for the network too")
+		}
+	}
 	v.oneOf("dns.mode", string(d.Mode), string(ResolverModeRecursive), string(ResolverModeForward))
 	if d.Mode == ResolverModeForward && len(d.Forwarders) == 0 {
 		v.fail("dns.forwarders", "forwarding needs at least one server")

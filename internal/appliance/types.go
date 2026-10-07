@@ -59,6 +59,9 @@ type API interface {
 	RefreshDNSList(id string) (*DNSListStatus, error)
 	DNSStats() (*DNSStats, error)
 	DNSBlocked() (*DNSBlocked, error)
+	DNSActivity(DNSActivityRequest) (*DNSActivity, error)
+	DNSDeviceActivity(DNSActivityRequest) (*DNSDeviceActivity, error)
+	ForgetDNSActivity(DNSActivityRequest) error
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)
 	SystemLog(SystemLogRequest) (*SystemLog, error)

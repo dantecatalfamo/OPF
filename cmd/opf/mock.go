@@ -146,6 +146,9 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 		seedHistory(api.MetricsStore(), m, leases, time.Now())
 		seedEvents(api, m, time.Now())
 	}
+	// unbound's log, while DNS activity is on, and an unbound writing it.
+	api.DNSLog = filepath.Join(root, pf.DNSLogPath)
+	go mockUnbound(context.Background(), api, api.DNSLog)
 	go api.RunCollector(context.Background())
 	go api.RunUpdateChecker(context.Background())
 	// Webhooks really are sent, by this binary, unsandboxed.

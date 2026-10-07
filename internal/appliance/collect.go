@@ -254,11 +254,15 @@ func (m *Manager) RunCollector(ctx context.Context) {
 	}
 }
 
-// SaveMetrics writes the series and the event log to the state
-// directory, replacing each last copy only once the new one is complete.
+// SaveMetrics writes the series, the event log and the DNS activity to
+// the state directory, replacing each last copy only once the new one
+// is complete.
 func (m *Manager) SaveMetrics() error {
 	if err := m.saveEvents(); err != nil {
 		log.Printf("saving the event log: %v", err)
+	}
+	if err := m.SaveDNSActivity(); err != nil {
+		log.Printf("saving the DNS activity: %v", err)
 	}
 	path := m.store.StatePath(metricsFile)
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+metricsFile+".*")
@@ -283,6 +287,7 @@ func (m *Manager) sample(now time.Time) {
 	c := m.collect
 	model, _, _ := m.live()
 	m.applyGraphLimits(model) // a commit may have changed them
+	m.readDNSActivity(model, now)
 
 	// Interfaces: bits a second in and out.
 	if b, err := m.read("netstat", "-ibn"); err == nil {

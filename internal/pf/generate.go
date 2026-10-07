@@ -56,6 +56,18 @@ const OwnLogName = "opf:own"
 
 func DNSListLogName(id string) string { return "opf:list:" + id }
 
+// DNSLogPath is where unbound logs, every answer included, while DNS
+// activity is kept (DNSActivity): its own file rather than syslog, which
+// a busy network would flood. unbound writes it as _unbound, so it's in
+// the one directory of its chroot that _unbound can write; OPF reads it
+// and empties it as it goes.
+const DNSLogPath = "/var/unbound/db/opf-dns.log"
+
+// KeepsDNSActivity says whether the resolver logs its answers for OPF.
+func KeepsDNSActivity(m *Model) bool {
+	return m.DNS.Enabled && m.DNS.Activity != nil && m.DNS.Activity.Enabled
+}
+
 // UnboundControlSocket is unbound's control socket.
 const UnboundControlSocket = "/var/run/unbound.sock"
 
@@ -1376,6 +1388,11 @@ func GenerateUnboundConf(m *Model) string {
 	// Answers by response code and blocks by action, for the DNS page
 	// (unbound-control stats_noreset).
 	lines = append(lines, "\textended-statistics: yes")
+	// Every answer, and rpz-log's blocks, to OPF's file (DNSActivity).
+	// Its timestamps are seconds since 1970, as OPF reads them.
+	if KeepsDNSActivity(m) {
+		lines = append(lines, "\tuse-syslog: no", "\tlogfile: \""+DNSLogPath+"\"", "\tlog-replies: yes", "\tlog-tag-queryreply: yes")
+	}
 
 	if d.DNSSEC {
 		lines = append(lines, "\tauto-trust-anchor-file: \""+RootKeyPath+"\"", "\tval-log-level: 2")

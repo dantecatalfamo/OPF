@@ -641,7 +641,29 @@ type DNS struct {
 	// ::, as Pi-hole does, since some apps retry harder or change
 	// resolver on NXDOMAIN) or "nxdomain" (no such name).
 	BlockAnswer BlockAnswer `json:"blockAnswer,omitempty"`
+
+	// Activity keeps what the resolver answered: nil, or not Enabled,
+	// nothing beyond unbound's own counters.
+	Activity *DNSActivity `json:"activity,omitempty"`
 }
+
+// DNSActivity is what OPF keeps of the resolver's answers, opt in since
+// the names a network looks up are personal (TODO.md › Per-device
+// activity). It has unbound log every answer to its own file
+// (DNSLogPath), which OPF reads and keeps counts from, never the lines.
+type DNSActivity struct {
+	// Enabled keeps counts (answers, blocks, failures) by hour and the
+	// names looked up and blocked most by day, for the whole network.
+	Enabled bool `json:"enabled"`
+	// Devices keeps the same for each device too.
+	Devices bool `json:"devices"`
+	// Days is how long it's kept, 1 to MaxActivityDays.
+	Days int `json:"days"`
+}
+
+// MaxActivityDays is the longest DNS activity is kept: a month, so
+// per-device top lists stay a few megabytes (package activity).
+const MaxActivityDays = 31
 
 // DNSBlocklist is a list of names the resolver blocks, in any of the
 // formats DNS blockers use: hosts files, plain names, the domain rules

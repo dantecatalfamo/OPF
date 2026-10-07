@@ -185,6 +185,14 @@ type (
 		Result
 		Stats *appliance.DNSStats
 	}
+	DNSActivityReply struct {
+		Result
+		Activity *appliance.DNSActivity
+	}
+	DNSDeviceActivityReply struct {
+		Result
+		Activity *appliance.DNSDeviceActivity
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -543,6 +551,34 @@ func (s *Service) DNSBlocked(c Call[None], r *DNSBlockedReply) error {
 	var err error
 	r.Blocked, err = s.api.DNSBlocked()
 	r.set("DNSBlocked", err)
+	return nil
+}
+
+func (s *Service) DNSActivity(c Call[appliance.DNSActivityRequest], r *DNSActivityReply) error {
+	if s.allow("DNSActivity", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Activity, err = s.api.DNSActivity(c.Args)
+	r.set("DNSActivity", err)
+	return nil
+}
+
+func (s *Service) DNSDeviceActivity(c Call[appliance.DNSActivityRequest], r *DNSDeviceActivityReply) error {
+	if s.allow("DNSDeviceActivity", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Activity, err = s.api.DNSDeviceActivity(c.Args)
+	r.set("DNSDeviceActivity", err)
+	return nil
+}
+
+func (s *Service) ForgetDNSActivity(c Call[appliance.DNSActivityRequest], r *EmptyReply) error {
+	if s.allow("ForgetDNSActivity", c, &r.Result) == nil {
+		return nil
+	}
+	r.set("ForgetDNSActivity", s.api.ForgetDNSActivity(c.Args))
 	return nil
 }
 
@@ -1067,6 +1103,31 @@ func (c *Client) DNSStats() (*appliance.DNSStats, error) {
 		s.Errors = nonNil(s.Errors)
 	}
 	return r.Stats, err
+}
+
+func (c *Client) DNSActivity(req appliance.DNSActivityRequest) (*appliance.DNSActivity, error) {
+	var r DNSActivityReply
+	err := c.call("DNSActivity", req, &r)
+	if a := r.Activity; a != nil && a.Summary != nil {
+		a.Hours, a.Names, a.Blocked, a.Missing, a.Devices = nonNil(a.Hours), nonNil(a.Names), nonNil(a.Blocked), nonNil(a.Missing), nonNil(a.Devices)
+		if a.ByList == nil {
+			a.ByList = map[string]int64{}
+		}
+	}
+	return r.Activity, err
+}
+
+func (c *Client) DNSDeviceActivity(req appliance.DNSActivityRequest) (*appliance.DNSDeviceActivity, error) {
+	var r DNSDeviceActivityReply
+	err := c.call("DNSDeviceActivity", req, &r)
+	if a := r.Activity; a != nil && a.DeviceActivity != nil {
+		a.Hours, a.Names, a.Blocked, a.Missing = nonNil(a.Hours), nonNil(a.Names), nonNil(a.Blocked), nonNil(a.Missing)
+	}
+	return r.Activity, err
+}
+
+func (c *Client) ForgetDNSActivity(req appliance.DNSActivityRequest) error {
+	return c.call("ForgetDNSActivity", req, &EmptyReply{})
 }
 
 func (c *Client) DNSBlocked() (*appliance.DNSBlocked, error) {

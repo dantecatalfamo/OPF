@@ -66,6 +66,11 @@ type Manager struct {
 	// makes it log them instead.
 	Actions run.Runner
 
+	// DNSLog is unbound's log file while DNS activity is kept; empty,
+	// pf.DNSLogPath. The mock's is in its scratch directory.
+	DNSLog   string
+	activity dnsActivity
+
 	// Earlier readings, for rates (status.go).
 	cpu         rate[sysinfo.CPUTicks]
 	ifCounters  rate[map[string]sysinfo.Counters]
