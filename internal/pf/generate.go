@@ -704,6 +704,45 @@ func staticIfaces(m *Model) []Iface {
 	return result
 }
 
+// BareParent is a port that carries VLANs and isn't an interface of the
+// model itself: OPF brings it up for them.
+type BareParent struct {
+	Device string
+	Tags   []int
+}
+
+// BareParents are the ports enabled VLANs are carried on that no model
+// interface is, in device order.
+func BareParents(m *Model) []BareParent {
+	tags := map[string][]int{}
+	for _, i := range m.Interfaces {
+		if i.Enabled && i.VLAN != nil && !slices.ContainsFunc(m.Interfaces, func(p Iface) bool { return p.Device == i.VLAN.Parent }) {
+			tags[i.VLAN.Parent] = append(tags[i.VLAN.Parent], i.VLAN.Tag)
+		}
+	}
+	var out []BareParent
+	for dev, t := range tags {
+		slices.Sort(t)
+		out = append(out, BareParent{dev, t})
+	}
+	slices.SortFunc(out, func(a, b BareParent) int { return strings.Compare(a.Device, b.Device) })
+	return out
+}
+
+// GenerateBareParent is hostname.if for a port that only carries VLANs:
+// up, and nothing else.
+func GenerateBareParent(p BareParent) string {
+	ids := make([]string, len(p.Tags))
+	for i, t := range p.Tags {
+		ids[i] = strconv.Itoa(t)
+	}
+	noun := "VLAN"
+	if len(ids) > 1 {
+		noun = "VLANs"
+	}
+	return strings.Join([]string{header, fmt.Sprintf("description \"Carries %s %s\"", noun, strings.Join(ids, ", ")), "up"}, "\n") + "\n"
+}
+
 // isFloating returns true if the rule applies to multiple or no interfaces.
 // ifaceAddr is the addresses of a model interface.
 func ifaceAddr(id string) Endpoint { return Endpoint{Type: EndpointIface, Iface: id} }
@@ -1452,6 +1491,11 @@ func GenerateFiles(m *Model) []GeneratedFile {
 			Path:    fmt.Sprintf("/etc/hostname.%s", m.Interfaces[i].Device),
 			Content: GenerateHostnameIf(&m.Interfaces[i], m),
 		})
+	}
+	// A port that only carries VLANs is no network of its own, but it
+	// has to be up for them to carry anything.
+	for _, p := range BareParents(m) {
+		files = append(files, GeneratedFile{Path: "/etc/hostname." + p.Device, Content: GenerateBareParent(p)})
 	}
 
 	return files

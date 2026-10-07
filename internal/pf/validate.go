@@ -313,6 +313,37 @@ func (v *validator) exit(f *Iface, base string) {
 	}
 }
 
+// vlanParent checks the port a VLAN is carried on: a physical one,
+// enabled if OPF manages it. A VLAN on another VLAN needs svlan, and one
+// on a tunnel or bridge can't be tagged at all.
+func (v *validator) vlanParent(path string, f *Iface) {
+	dev := f.VLAN.Parent
+	switch {
+	case dev == f.Device:
+		v.fail(path, "a VLAN can't be carried on itself")
+		return
+	case !PhysicalDevice(dev):
+		v.fail(path, "%s isn't a port: a VLAN is carried on a physical port, like em1", dev)
+		return
+	}
+	for _, p := range v.m.Interfaces {
+		if p.Device == dev && !p.Enabled && f.Enabled {
+			v.fail(path, "its port, %s (%s), is turned off, so the VLAN would carry nothing", p.Name, dev)
+		}
+	}
+}
+
+// PhysicalDevice reports whether a device name is a physical port (em0,
+// vio1, ix2) rather than an interface made in software: VLANs, tunnels,
+// bridges, aggregates.
+func PhysicalDevice(dev string) bool {
+	switch strings.TrimRight(dev, "0123456789") {
+	case "vlan", "svlan", "aggr", "trunk", "carp", "pppoe", "tun", "tap", "gif", "etherip", "gre", "egre", "nvgre", "eoip", "vxlan", "pflow", "wg", "bridge", "veb", "vport", "tpmr", "vether", "lo", "enc", "pflog", "pfsync", "mpe", "mpw", "mpip":
+		return false
+	}
+	return true
+}
+
 func (v *validator) gatewayRef(path, id string) {
 	if !slices.ContainsFunc(v.m.Routing.Gateways, func(g Gateway) bool { return g.ID == id }) {
 		v.fail(path, "no gateway %q", id)
@@ -383,10 +414,12 @@ func (v *validator) interfaces() {
 			v.intRange(p+".mtu", *f.MTU, 576, 9216)
 		}
 		if f.VLAN != nil {
-			v.re(p+".vlan.parent", f.VLAN.Parent, deviceRE, "device name")
 			v.intRange(p+".vlan.tag", f.VLAN.Tag, 1, 4094)
 			if !strings.HasPrefix(f.Device, "vlan") {
 				v.fail(p+".device", "a VLAN's device must be a vlan interface, like vlan%d", f.VLAN.Tag)
+			}
+			if v.re(p+".vlan.parent", f.VLAN.Parent, deviceRE, "device name") {
+				v.vlanParent(p+".vlan.parent", &f)
 			}
 		}
 		// A VPN interface is a WireGuard tunnel, and only one is.

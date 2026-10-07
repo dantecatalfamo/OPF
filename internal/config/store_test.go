@@ -936,3 +936,27 @@ func TestUnboundCheckFindsStagedZones(t *testing.T) {
 		t.Errorf("nothing staged:\n%s", out)
 	}
 }
+
+// Interfaces are applied the way netstart brings them up, not by name:
+// a VLAN on vmx0 comes after vmx0, though "vlan" sorts first.
+func TestInterfacesApplyParentsFirst(t *testing.T) {
+	root := t.TempDir()
+	r := &fakeRunner{}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage(t, s, "hostname.wg0", "up\n")
+	stage(t, s, "hostname.vlan20", "vnetid 20 parent vmx0\nup\n")
+	stage(t, s, "hostname.vmx0", "up\n")
+	stage(t, s, "hostname.em1", "up\n")
+	var got []string
+	for _, n := range staged(t, s) {
+		if strings.HasPrefix(n, "hostname.") {
+			got = append(got, n)
+		}
+	}
+	if want := []string{"hostname.em1", "hostname.vmx0", "hostname.vlan20", "hostname.wg0"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("order %v, want %v", got, want)
+	}
+}

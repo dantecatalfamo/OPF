@@ -79,6 +79,10 @@ type File struct {
 	// Mode is used when creating a file that doesn't exist yet.
 	Mode fs.FileMode
 
+	// Order, for a pattern entry, sorts its instances for applying:
+	// lower first, by name within the same. Nil sorts by name.
+	Order func(name string) int
+
 	// Match makes this entry a pattern for a family of files: Name and
 	// Path each contain one "*", and a file matches when the text in
 	// its place matches this regular expression in full. "{*}" in Check
@@ -160,6 +164,7 @@ func DefaultFiles() []File {
 			Desc:             "Network interface",
 			Apply:            []string{"sh", "-c", HostnameApply, "sh", "{*}"},
 			ConfirmInstalled: true,
+			Order:            netstartOrder,
 			// Virtual interfaces (vlan, wg) are destroyed; a physical
 			// port can't be, so it's taken down instead.
 			Remove: []string{"sh", "-c", `ifconfig "$1" destroy 2>/dev/null || ifconfig "$1" down`, "sh", "{*}"},
@@ -287,6 +292,27 @@ if cmp -s "$conf" "$tmp"; then
 	exec unbound-checkconf "$conf"
 fi
 unbound-checkconf "$tmp"`
+
+// netstartOrder is when netstart brings an interface up at boot, so a
+// commit applies them the same way: physical ports first, then the
+// interfaces built on them (aggregates, then VLANs, then carp and PPPoE),
+// then tunnels, bridges and the rest. Not by name: a VLAN on vmx0 would
+// come before its parent.
+func netstartOrder(name string) int {
+	switch strings.TrimRight(strings.TrimPrefix(name, "hostname."), "0123456789") {
+	case "aggr", "trunk":
+		return 1
+	case "svlan", "vlan":
+		return 2
+	case "carp":
+		return 3
+	case "pppoe":
+		return 4
+	case "tun", "tap", "gif", "etherip", "gre", "egre", "nvgre", "eoip", "vxlan", "pflow", "wg", "bridge", "veb", "vport", "tpmr", "vether":
+		return 5
+	}
+	return 0 // a physical port
+}
 
 // HostnameApply applies /etc/hostname.$1 with netstart. An interface
 // that leaves DHCP or SLAAC for a fixed address keeps its AUTOCONF flag

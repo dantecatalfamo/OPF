@@ -195,7 +195,14 @@ func (s *Store) instances() ([]File, error) {
 				names = append(names, name)
 			}
 		}
-		slices.Sort(names)
+		slices.SortFunc(names, func(a, b string) int {
+			if f.Order != nil {
+				if d := f.Order(a) - f.Order(b); d != 0 {
+					return d
+				}
+			}
+			return strings.Compare(a, b)
+		})
 		for _, name := range names {
 			g, _ := f.match(name)
 			out = append(out, g)
