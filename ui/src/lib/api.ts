@@ -449,6 +449,74 @@ export interface DnsBlockedResource {
   error?: string;
 }
 
+/** What the resolver did (package activity's Counts). */
+export interface ActivityCounts {
+  queries: number;
+  blocked: number;
+  allowed?: number;
+  /** Not counting blocks. */
+  nxdomain?: number;
+  servfail?: number;
+  cached?: number;
+}
+
+/** A name and how often; err is how much of count may be another name's (the top lists are bounded). */
+export interface ActivityItem {
+  name: string;
+  count: number;
+  err?: number;
+  last: number; // unix seconds
+  list?: string;
+  entry?: string;
+}
+
+export interface ActivityHour extends ActivityCounts {
+  start: string;
+}
+
+export interface ActivityDeviceSummary extends ActivityCounts {
+  key: string;
+  address: string;
+  last: string;
+}
+
+/** Who a device in the activity is. */
+export interface ActivityDeviceInfo {
+  kind: 'device' | 'vpn' | 'firewall' | 'address' | 'other';
+  name?: string;
+  mac?: string;
+}
+
+/** The network's DNS activity (GET /api/dns/activity?days=N); only enabled is set while it's off. */
+export interface DnsActivityResource {
+  enabled: boolean;
+  perDevice: boolean;
+  days: number;
+  since?: string;
+  total?: ActivityCounts;
+  hours?: ActivityHour[];
+  byList?: Record<string, number>;
+  names?: ActivityItem[];
+  blocked?: ActivityItem[];
+  /** Names that don't exist (NXDOMAIN), blocks aside. */
+  missing?: ActivityItem[];
+  devices?: ActivityDeviceSummary[];
+  deviceInfo?: Record<string, ActivityDeviceInfo>;
+}
+
+/** One device's DNS activity (GET /api/dns/activity/device?device=key&days=N). */
+export interface DnsDeviceActivityResource extends ActivityDeviceInfo {
+  key: string;
+  since: string;
+  address: string;
+  last: string;
+  total: ActivityCounts;
+  hours: ActivityHour[];
+  names: ActivityItem[];
+  blocked: ActivityItem[];
+  missing: ActivityItem[];
+}
+
 /** Response policy actions that let a query through rather than block it. */
 export const rpzPass = new Set(['rpz-passthru', 'rpz-disabled', 'rpz-no-override', 'rpz-invalid']);
 
@@ -833,6 +901,10 @@ export const api = {
   metrics: (series: string[], range: number, step?: number) =>
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
+  dnsActivity: (days: number) => request<DnsActivityResource>('GET', `/dns/activity?days=${days}`),
+  dnsDeviceActivity: (device: string, days: number) => request<DnsDeviceActivityResource>('GET', `/dns/activity/device?device=${enc(device)}&days=${days}`),
+  /** Deletes one device's activity, or with none everything kept. */
+  forgetDnsActivity: (device?: string) => request<void>('DELETE', `/dns/activity${device ? `?device=${enc(device)}` : ''}`),
   startTool: (req: ToolRequest) => request<ToolRun>('POST', '/diagnostics/runs', req),
   toolRun: (id: string, from: number) => request<ToolRun>('GET', `/diagnostics/runs/${enc(id)}?from=${from}`),
   cancelTool: (id: string) => request<void>('POST', `/diagnostics/runs/${enc(id)}/cancel`),

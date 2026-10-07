@@ -13,6 +13,7 @@ import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
 import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
+import { DnsActivitySettingsCard, DnsActivityTab } from './DnsHistory';
 import { Link, useSearchParams } from 'react-router';
 import { FileLink } from './ConfigFiles';
 
@@ -261,7 +262,7 @@ function DnsSettingsForm() {
   );
 }
 
-const tabs = ['overview', 'names', 'settings', 'blocking', 'tools'] as const;
+const tabs = ['overview', 'activity', 'names', 'settings', 'blocking', 'tools'] as const;
 type Tab = (typeof tabs)[number];
 
 export function Dns() {
@@ -280,6 +281,7 @@ export function Dns() {
       <Tabs value={tab} onChange={(v) => setParams(v && v !== 'overview' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="overview">Overview</Tabs.Tab>
+          <Tabs.Tab value="activity">Activity</Tabs.Tab>
           <Tabs.Tab value="names" rightSection={names ? <Badge size="xs" variant="light" circle>{names}</Badge> : undefined}>Local names</Tabs.Tab>
           <Tabs.Tab value="settings">Settings</Tabs.Tab>
           <Tabs.Tab value="blocking" rightSection={enabledLists ? <Badge size="xs" variant="light" circle>{enabledLists}</Badge> : undefined}>Blocking</Tabs.Tab>
@@ -293,13 +295,19 @@ export function Dns() {
             <DeviceNames />
           </Stack>
         </Tabs.Panel>
+        <Tabs.Panel value="activity">
+          <DnsActivityTab />
+        </Tabs.Panel>
         <Tabs.Panel value="names">
           <Stack gap="md">
             <Card><LocalNames /></Card>
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="settings">
-          <DnsSettingsForm />
+          <Stack gap="md">
+            <DnsSettingsForm />
+            <DnsActivitySettingsCard />
+          </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="blocking">
           {/* The lists and your own names, then what they blocked, a list

@@ -649,6 +649,10 @@ Types, roughly in order of usefulness:
       hands out OPF as the resolver on a network it doesn't answer on is
       refused, and VPN devices' configurations name OPF's DNS only when
       it answers on their tunnel.
+- [ ] Check on the VM that a reload takes a new `interface:` (DNS
+      resolver › Answer on): unbound binds as root before it chroots and
+      drops to _unbound, so a reload may not be able to bind a new
+      address on port 53, as it can't go back to syslog (RestartIf).
 - [ ] The resolver can't answer on a DHCP-addressed inside interface
       (the LAN-only layout with its LAN by DHCP from the router): unbound
       needs the address to listen on and the network to allow, and 7.9's
@@ -910,7 +914,8 @@ DNS:
   Per-device activity below.
 - [ ] Blocked names older than the current daemon log (newsyslog
       rotates it at 300 KB, which on a busy network is an hour or less):
-      read the rotated copies too, or keep counts in the collector.
+      with DNS activity on they come from its counts, as far back as
+      it keeps; without it, read the rotated copies too.
 
 Network, VPN and logs:
 
@@ -1200,45 +1205,71 @@ them, so they can be graphed and compared):
       custom time range beside the hour, day, week and month.
 
 Per-device activity (what each machine on the network does: its DNS
-names and its traffic, and the top names overall). Nothing collects
-this yet; the DNS page's top blocked names come from the current daemon
-log alone, with no device attached. Everything here is under Privacy
-above: off until the admin turns it on, kept for a short, set time.
+names and its traffic, and the top names overall). Everything here is
+under Privacy above: off until the admin turns it on, kept for a short,
+set time.
 
-- [ ] **Who a device is.** Key activity by MAC address, named from its
-      lease, its own name in OPF, or the ARP table, so a device's
-      history survives a new address. A VPN device by its peer. An
-      address no lease or ARP entry explains (a fixed address on
-      another network, an IPv6 privacy address later) is kept by
-      address and says so.
-- [ ] **DNS per device: collecting it.** 7.9's unbound is built without
-      dnstap (no `--enable-dnstap` in `unbound -V`, and with
-      `dnstap-enable: yes` it stops at startup: "dnstap enabled in
-      config but not built with dnstap support"; `unbound-checkconf`
-      passes that config, so it would only fail on restart). So it has
-      to come from unbound's own logging:
-      `log-replies` (client, name, type, response code, time, cached)
-      and `log-local-actions` (blocks, which OPF reads today from
-      `rpz-log`). Every query is a log line, so not to syslog: a busy
-      network would rotate everything else out of the daemon log in
-      minutes. A `logfile:` inside unbound's chroot that OPF reads as
-      it grows and truncates itself, or a pipe; check which unbound
-      keeps writing to after a truncate, and that `log-replies` is
-      cheap enough on an APU-class box. OPF counts lines and keeps no
-      line itself.
-- [ ] **DNS per device: what's kept.** Per device and per hour: queries,
-      blocked, NXDOMAIN and SERVFAIL counts, and its top names and top
-      blocked names (a bounded top-N per bucket, Space-Saving or
-      similar, so a device asking for a million random names costs
-      the same as one asking for ten). Overall: top names, top blocked
-      names and which list blocked each, per hour. That replaces
-      reading the daemon log for top blocked names, so they go back
-      further than its last rotation (Live data › DNS).
-- [ ] **DNS per device: the pages.** The DNS page's top names and top
-      blocked names with the devices that asked; a device's page (from
-      DHCP leases, the ARP table, a VPN device) with its names, its
-      blocks and a link to allow a name that broke something; a rising
-      NXDOMAIN rate on one device as an event (often malware).
+DNS activity is built (`dns.activity`: `internal/activity`,
+`internal/appliance/dnsactivity.go`, DNS resolver › Activity, and its
+setting under Settings), and tried on 7.9 with the real unbound:
+
+- [x] **Collecting it.** 7.9's unbound is built without dnstap (no
+      `--enable-dnstap` in `unbound -V`; with `dnstap-enable: yes` it
+      stops at startup, "dnstap enabled in config but not built with
+      dnstap support", though `unbound-checkconf` passes that config).
+      So while it's on, unbound logs to its own file
+      (`/var/unbound/db/opf-dns.log`, `use-syslog: no`, `log-replies`,
+      `log-tag-queryreply`), which the collector reads every tick and
+      empties past 4 MB once it's read to the end. unbound appends, so
+      truncating leaves no hole; a reload reopens the file. OPF makes
+      the file 0600 (unbound makes it world-readable, in a directory
+      anyone can list) and passes unbound's other lines on to its own
+      log, so they still reach the daemon log.
+  - [x] unbound never goes back to syslog on a reload, only reopens its
+        file: turning activity off left it writing every query to the
+        deleted file. Changing where it logs restarts it now
+        (`RestartIf` in the registry), on commits and reverts.
+  - [ ] Whether `log-replies` is cheap enough on an APU-class box with a
+        busy network; the 4 MB truncation has been tried with a test
+        file, not under real load.
+  - [ ] The other lines unbound logs go to OPF's log at most 50 a tick;
+        say so when some were dropped.
+- [x] **Who a device is.** A MAC address from the DHCP leases or the ARP
+      table, a VPN device by its peer's address, the firewall itself
+      for loopback, or else the address. An address not known yet is
+      looked up again (at most every 10 s), so a device that has only
+      just asked isn't filed under its address. Named from DHCP
+      reservations, then the lease's name in DNS or the one it asked
+      for. Found the ARP table's parser didn't read OpenBSD's table
+      format (it expected other BSDs' `? (addr) at` lines), so
+      Diagnostics › ARP table was empty on a real firewall; fixed.
+- [x] **What's kept.** By hour: queries, blocked, allowed, NXDOMAIN (not
+      counting blocks), SERVFAIL and cached, for the network and each
+      device, and blocks by list. By day: the names looked up, blocked
+      and not found most, Space-Saving top lists (200 for the network,
+      25 a device), at most 128 devices a day (the rest pooled as
+      "other"), at most 31 days. In `dns-activity.json` in the state
+      directory, with the place in unbound's file so a restart doesn't
+      count lines twice. DNSBlocked reads from it while it's on.
+- [x] **The pages.** Activity: counts, an hourly chart, the names looked
+      up, blocked and not found most, and devices, each with its own
+      view and "Forget this device". The setting says what keeping it
+      means; turning it off, or devices off, deletes what was kept;
+      "Delete what's kept" deletes it now.
+- [x] **API and roles.** `GET /api/dns/activity`, `/device`, `DELETE`,
+      admin only (the overall top names too), never in webhooks.
+- [ ] A device's activity from where the device is shown: DHCP leases,
+      the ARP table, a VPN device's page.
+- [ ] "Never block" from the Activity tab's blocked names, as Blocking's
+      list has.
+- [ ] A rising NXDOMAIN rate on one device as an event (often malware);
+      the Activity tab only marks a device most of whose lookups fail.
+- [ ] Retention per kind: devices shorter than the network.
+- [ ] Top names by hour for "today": the top lists are by day, so
+      "today" is since midnight, not the last 24 hours.
+
+Traffic per device isn't started:
+
 - [ ] **Traffic per device: collecting it.** pf counts bytes per live
       state only, and forgets them when the state goes. Two ways, to
       decide between or combine:

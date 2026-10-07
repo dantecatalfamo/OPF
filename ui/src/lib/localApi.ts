@@ -14,7 +14,7 @@ import {
   ApiError, type ConfigFile, type ConfigFileView, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type DnsActivityResource, type DnsDeviceActivityResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -299,6 +299,14 @@ export const localApi = {
     }),
   dnsStats: async (): Promise<DnsStatsResource> => sampleDnsStats(live, (live.dns.blocklists ?? []).filter((l) => l.enabled).length * 48225),
   dnsBlocked: async (): Promise<DnsBlockedResource> => sampleDnsBlocked(live),
+  // The preview has no resolver: nothing is ever kept.
+  dnsActivity: async (): Promise<DnsActivityResource> => {
+    const a = live.dns.enabled ? live.dns.activity : undefined;
+    if (!a?.enabled) return { enabled: false, perDevice: false, days: 0 };
+    return { enabled: true, perDevice: a.devices, days: a.days, since: new Date().toISOString(), total: { queries: 0, blocked: 0 }, hours: [], byList: {}, names: [], blocked: [], missing: [], devices: [], deviceInfo: {} };
+  },
+  dnsDeviceActivity: async (): Promise<DnsDeviceActivityResource> => { throw new Error('The preview keeps no DNS activity.'); },
+  forgetDnsActivity: async (): Promise<void> => {},
   // The preview can't send anything: webhooks' URLs are remembered, and
   // a test says why nothing went.
   webhooks: async (): Promise<WebhookStatus[]> => (live.notifications?.webhooks ?? []).concat(staged?.notifications?.webhooks ?? []).map((w) => ({ id: w.id, ...previewHooks.get(w.id) })),

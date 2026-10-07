@@ -126,7 +126,8 @@ export function DnsBlockedNames() {
         {data && data.blocked > 0 && (
           <Text size="sm" c="dimmed">
             {data.blocked.toLocaleString()} {data.blocked === 1 ? 'query' : 'queries'} blocked{by.length > 1 ? `: ${by.join(', ')}` : ''}
-            {data.allowed ? `. Your never-block names let ${data.allowed.toLocaleString()} through` : ''}. Which device asked isn’t kept.
+            {data.allowed ? `. Your never-block names let ${data.allowed.toLocaleString()} through` : ''}.
+            {applied.dns.activity?.enabled ? (applied.dns.activity.devices ? ' Which device asked is under Activity.' : ' Today’s, from what Activity keeps.') : ' Which device asked isn’t kept.'}
           </Text>
         )}
         {data?.names.length ? (

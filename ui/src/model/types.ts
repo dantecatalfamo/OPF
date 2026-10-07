@@ -342,7 +342,19 @@ export interface Dns {
   allowed?: string[];
   /** How a blocked name is answered: 0.0.0.0 and :: (the default, as Pi-hole does) or "no such name". */
   blockAnswer?: '' | 'nxdomain';
+  /** What OPF keeps of the resolver's answers; missing or not enabled, nothing. */
+  activity?: DnsActivitySettings;
 }
+
+/** Opt-in: unbound logs every answer and OPF keeps counts and top names, for the network and optionally each device. */
+export interface DnsActivitySettings {
+  enabled: boolean;
+  devices: boolean;
+  /** How long it's kept: 1 to MAX_ACTIVITY_DAYS. */
+  days: number;
+}
+
+export const MAX_ACTIVITY_DAYS = 31;
 
 export interface DnsBlocklist {
   id: string;
