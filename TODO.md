@@ -1212,7 +1212,11 @@ above: off until the admin turns it on, kept for a short, set time.
       another network, an IPv6 privacy address later) is kept by
       address and says so.
 - [ ] **DNS per device: collecting it.** 7.9's unbound is built without
-      dnstap, so it has to come from unbound's own logging:
+      dnstap (no `--enable-dnstap` in `unbound -V`, and with
+      `dnstap-enable: yes` it stops at startup: "dnstap enabled in
+      config but not built with dnstap support"; `unbound-checkconf`
+      passes that config, so it would only fail on restart). So it has
+      to come from unbound's own logging:
       `log-replies` (client, name, type, response code, time, cached)
       and `log-local-actions` (blocks, which OPF reads today from
       `rpz-log`). Every query is a log line, so not to syslog: a busy
