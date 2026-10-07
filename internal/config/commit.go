@@ -143,7 +143,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			if err := s.remove(ctx, f, s.historyFile(e.ID, "old", f.Path), "commit "+e.ID, &logBuf); err != nil {
 				return fail(err)
 			}
-			batch.add(f, true)
+			batch.add(f, true, s.historyFile(e.ID, "old", f.Path), "")
 		} else {
 			staged, _, err := s.staged(f)
 			if err != nil {
@@ -156,7 +156,7 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 			if err := s.applyFile(ctx, f, s.livePath(f), &logBuf); err != nil {
 				return fail(err)
 			}
-			batch.add(f, false)
+			batch.add(f, false, s.historyFile(e.ID, "old", f.Path), s.historyFile(e.ID, "new", f.Path))
 		}
 		if f.Service != "" && last[f.Service] == i && !managed[f.Service] {
 			if err := s.tellService(ctx, batch, f.Service, &logBuf); err != nil {
@@ -423,7 +423,7 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 					errs = append(errs, err)
 				}
 			}
-			batch.add(f, true)
+			batch.add(f, true, s.historyFile(e.ID, "new", f.Path), "")
 			continue
 		}
 		if _, err := os.Stat(live); err != nil {
@@ -432,7 +432,7 @@ func (s *Store) revertEntry(ctx context.Context, e *Entry, logBuf *bytes.Buffer)
 		if err := s.applyFile(ctx, f, live, logBuf); err != nil {
 			errs = append(errs, err)
 		}
-		batch.add(f, false)
+		batch.add(f, false, s.historyFile(e.ID, "new", f.Path), live)
 	}
 	// Services are told once, when every file is back.
 	managed := s.managed(e)
@@ -531,14 +531,18 @@ type serviceBatch struct {
 	order []string
 	files map[string][]File
 	full  map[string]bool // a file without ReloadWith, or removed, changed
-	done  map[string]bool
+	// restart: a file's RestartIf asked for it.
+	restart map[string]bool
+	done    map[string]bool
 }
 
 func newServiceBatch() *serviceBatch {
-	return &serviceBatch{files: map[string][]File{}, full: map[string]bool{}, done: map[string]bool{}}
+	return &serviceBatch{files: map[string][]File{}, full: map[string]bool{}, restart: map[string]bool{}, done: map[string]bool{}}
 }
 
-func (b *serviceBatch) add(f File, removed bool) {
+// add notes that f changed, from the contents in the file before to
+// those in after (paths; either may not exist).
+func (b *serviceBatch) add(f File, removed bool, before, after string) {
 	if f.Service == "" {
 		return
 	}
@@ -548,6 +552,13 @@ func (b *serviceBatch) add(f File, removed bool) {
 	b.files[f.Service] = append(b.files[f.Service], f)
 	if removed || f.ReloadWith == nil {
 		b.full[f.Service] = true
+	}
+	if f.RestartIf != nil {
+		old, _ := os.ReadFile(before)
+		now, _ := os.ReadFile(after)
+		if f.RestartIf(old, now) {
+			b.full[f.Service], b.restart[f.Service] = true, true
+		}
 	}
 }
 
@@ -562,7 +573,7 @@ func (s *Store) tellService(ctx context.Context, b *serviceBatch, svc string, lo
 	files := b.files[svc]
 	action := "reload"
 	for _, f := range files {
-		if f.ServiceAction == "restart" {
+		if f.ServiceAction == "restart" || b.restart[svc] {
 			action = "restart"
 		}
 	}

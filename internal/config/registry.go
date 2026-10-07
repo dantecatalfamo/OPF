@@ -53,6 +53,12 @@ type File struct {
 	// restarted as usual, which takes them all.
 	ReloadWith []string
 
+	// RestartIf says whether a change, from before to after, is one the
+	// service can't take with a reload, so it's restarted instead:
+	// unbound reopens its log file when it reloads, but never goes back
+	// to syslog from one.
+	RestartIf func(before, after []byte) bool
+
 	// Manages lists services this file's Apply brings in line itself,
 	// starting, stopping or restarting them. When the file is part of a
 	// commit or a revert, those services aren't also told about their
@@ -140,6 +146,10 @@ const ModelPath = "/var/opf/config.json"
 
 // DefaultFiles are the files managed on a stock OpenBSD system, in the
 // order they are applied during a commit.
+// unboundOwnLog is in unbound.conf while unbound logs to a file of its
+// own rather than syslog.
+const unboundOwnLog = "\tuse-syslog: no\n"
+
 func DefaultFiles() []File {
 	return []File{
 		{
@@ -221,6 +231,10 @@ func DefaultFiles() []File {
 			Desc:    "Recursive DNS resolver",
 			Check:   []string{"sh", "-c", UnboundCheck, "sh", "{}", "{staged}", "{root}"},
 			Service: "unbound", ServiceAction: "reload",
+			// Logging to its own file or to syslog (DNS activity).
+			RestartIf: func(before, after []byte) bool {
+				return strings.Contains(string(before), unboundOwnLog) != strings.Contains(string(after), unboundOwnLog)
+			},
 			Mode: 0644,
 		},
 		{

@@ -960,3 +960,61 @@ func TestInterfacesApplyParentsFirst(t *testing.T) {
 		t.Errorf("order %v, want %v", got, want)
 	}
 }
+
+// unbound reopens its log file when reloaded, but never goes back to
+// syslog from one (seen on 7.9: after DNS activity was turned off it
+// kept writing every query to the deleted file). Changing where it logs
+// restarts it, on the commit and on the revert; anything else reloads.
+func TestUnboundRestartsWhenItsLoggingChanges(t *testing.T) {
+	root := t.TempDir()
+	r := &fakeRunner{}
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: DefaultFiles(), Runner: r, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conf := "server:\n\tinterface: 127.0.0.1\n"
+	writeLive(t, root, "/var/unbound/etc/unbound.conf", conf)
+	told := func() []string {
+		var out []string
+		for _, c := range r.commands() {
+			if strings.HasPrefix(c, "rcctl reload unbound") || strings.HasPrefix(c, "rcctl restart unbound") {
+				out = append(out, strings.Fields(c)[1])
+			}
+		}
+		r.mu.Lock()
+		r.cmds = nil
+		r.mu.Unlock()
+		return out
+	}
+	commit := func(content string) *Entry {
+		t.Helper()
+		stage(t, s, "unbound.conf", content)
+		e, err := s.Commit(context.Background(), CommitInfo{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+
+	commit(conf + "\thide-version: yes\n")
+	if got := told(); !reflect.DeepEqual(got, []string{"reload"}) {
+		t.Errorf("another change: %v", got)
+	}
+	own := conf + "\thide-version: yes\n" + unboundOwnLog + "\tlogfile: \"/var/unbound/db/opf-dns.log\"\n"
+	e := commit(own)
+	if got := told(); !reflect.DeepEqual(got, []string{"restart"}) {
+		t.Errorf("to its own file: %v", got)
+	}
+	if err := s.revertEntry(context.Background(), e, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := told(); !reflect.DeepEqual(got, []string{"restart"}) {
+		t.Errorf("reverting that: %v", got)
+	}
+	commit(own)
+	told()
+	commit(conf)
+	if got := told(); !reflect.DeepEqual(got, []string{"restart"}) {
+		t.Errorf("back to syslog: %v", got)
+	}
+}
