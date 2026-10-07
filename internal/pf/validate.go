@@ -844,8 +844,8 @@ func (v *validator) dhcp() {
 		}
 		v.intRange(p+".leaseHours", s.LeaseHours, 1, 8760)
 		v.oneOf(p+".dns", string(s.DNS), string(DNSModeSelf), string(DNSModeCustom))
-		if s.Enabled && s.DNS == DNSModeSelf && v.m.DNS.Enabled && !slices.ContainsFunc(DNSServed(v.m), func(i Iface) bool { return i.ID == s.Iface }) {
-			v.fail(p+".dns", "the DNS resolver doesn’t answer on this network: let it (DNS resolver › Answer on), or hand out other servers")
+		if f != nil && s.Enabled && s.DNS == DNSModeSelf && v.m.DNS.Enabled && !slices.ContainsFunc(DNSServed(v.m), func(i Iface) bool { return i.ID == s.Iface }) {
+			v.fail(p+".dns", "%s’s DHCP tells devices to ask OPF for names, but the DNS resolver doesn’t answer on %s: add it under DNS resolver › Answer on, or have %s’s DHCP hand out other DNS servers", f.Name, f.Name, f.Name)
 		}
 		for j, d := range s.DNSServers {
 			v.addr(at(p+".dnsServers", j), d, true)

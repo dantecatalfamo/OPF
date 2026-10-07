@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Divider, Grid, Group, MultiSelect, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Divider, Grid, Group, MultiSelect, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
 import { LocalNames } from './DnsRecords';
@@ -13,7 +13,7 @@ import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
 import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
@@ -153,9 +153,28 @@ function DnsSettingsForm() {
   const { staged, edit } = useStore();
   const dns = staged.dns;
   const pick = (d: DnsSettings): Settings => ({ enabled: d.enabled, interfaces: d.interfaces ?? [], mode: d.mode, forwarders: d.forwarders, forwardTls: d.forwardTls, dnssec: d.dnssec, registerReservations: d.registerReservations, registerDynamicLeases: d.registerDynamicLeases, rewriteInvalidLeaseNames: d.rewriteInvalidLeaseNames });
+  // Networks whose DHCP tells devices to ask OPF, which a narrower
+  // "Answer on" would leave unable to look anything up.
+  const strandedBy = (v: Settings) => !v.enabled || !v.interfaces?.length ? [] : staged.dhcp
+    .filter((s) => s.enabled && s.dns === 'self' && !v.interfaces!.includes(s.iface))
+    .map((s) => staged.interfaces.find((i) => i.id === s.iface)?.name ?? s.iface);
   const form = useForm<Settings>({
     initialValues: pick(dns),
-    validate: { forwarders: (v, vals) => (vals.mode === 'recursive' || (v.length && v.every(isIPv4)) ? null : 'Enter one or more IPv4 addresses') },
+    validateInputOnChange: ['interfaces'],
+    validate: {
+      forwarders: (v, vals) => (vals.mode === 'recursive' || (v.length && v.every(isIPv4)) ? null : 'Enter one or more IPv4 addresses'),
+      interfaces: (_, vals) => {
+        const left = strandedBy(vals);
+        if (!left.length) return null;
+        const them = left.join(' and ');
+        return (
+          <>
+            {them}’s DHCP tells devices to ask OPF for names, so leaving {left.length === 1 ? 'it' : 'them'} out would leave those devices unable to look anything up.
+            Add {left.length === 1 ? 'it' : 'them'} here, or first have {them}’s <Anchor component={Link} to="/services/dhcp" size="xs">DHCP</Anchor> hand out other DNS servers.
+          </>
+        );
+      },
+    },
   });
   useEffect(() => {
     form.setValues(pick(dns));
