@@ -87,3 +87,40 @@ func TestWANAsVLAN(t *testing.T) {
 		t.Error("pf doesn't name the WAN's VLAN")
 	}
 }
+
+// A static WAN needs its gateway's address: a DHCP gateway on it brings
+// no default route. Found tagging the VM's WAN, where the edit page's
+// gateway went nowhere and the firewall was left without one.
+func TestStaticWANNeedsFixedGateway(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	prefix := 24
+	m.Interfaces[0].IPv4 = IPv4Config{Mode: IPv4Static, Address: "100.64.35.3", Prefix: &prefix}
+	for i, g := range m.Routing.Gateways {
+		if g.ID == m.Routing.DefaultGateway {
+			m.Routing.Gateways[i].Address = "dhcp"
+			m.Routing.Gateways[i].Iface = m.Interfaces[0].ID
+		}
+	}
+	has := func() bool {
+		for _, e := range Validate(m) {
+			if e.Path == "routing.defaultGateway" && strings.Contains(e.Message, "fixed address") {
+				return true
+			}
+		}
+		return false
+	}
+	if !has() {
+		t.Error("a DHCP default gateway on a static WAN was accepted")
+	}
+	for i, g := range m.Routing.Gateways {
+		if g.ID == m.Routing.DefaultGateway {
+			m.Routing.Gateways[i].Address = "100.64.35.2"
+		}
+	}
+	if has() {
+		t.Error("a fixed gateway on a static WAN was refused")
+	}
+	if c, _ := genFile(m, "/etc/mygate"); c != "100.64.35.2\n" {
+		t.Errorf("mygate = %q", c)
+	}
+}

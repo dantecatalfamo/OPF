@@ -504,7 +504,17 @@ func (v *validator) routing() {
 		// address by DHCP (the lease brings a gateway), and dhcpleased's
 		// default route would fight a fixed one.
 		for _, g := range r.Gateways {
-			if g.ID != r.DefaultGateway || g.Address == "dhcp" {
+			if g.ID != r.DefaultGateway {
+				continue
+			}
+			// The other way round: a DHCP gateway on an interface with
+			// a fixed address brings no default route at all.
+			if g.Address == "dhcp" {
+				for _, f := range v.m.Interfaces {
+					if f.ID == g.Iface && f.Enabled && f.IPv4.Mode != IPv4DHCP {
+						v.fail("routing.defaultGateway", "%s is the default gateway, but %s has a fixed address, so no DHCP lease brings it: give %s the gateway’s address (your ISP gives it with the fixed address)", g.Name, f.Name, g.Name)
+					}
+				}
 				continue
 			}
 			for _, f := range v.m.Interfaces {
