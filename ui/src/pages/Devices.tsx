@@ -334,7 +334,12 @@ function FirewallLog({ addresses }: { addresses: string[] }) {
             <Group key={e.time + i} gap="xs" wrap="nowrap" align="flex-start">
               <Text size="xs" c="dimmed" w={110} style={{ flexShrink: 0 }}>{formatLogTime(e.time)}</Text>
               <Text size="sm" c={e.action === 'block' ? 'red' : undefined}>{e.action}</Text>
-              <Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{e.proto} {e.source} → {e.destination}</Text>
+              {/* Lines wrap at the arrow, not inside an address; tcpdump
+                  leaves a decoded packet's protocol unknown. */}
+              <Text size="sm" className="mono">
+                {e.proto && <><span style={{ whiteSpace: 'nowrap' }}>{e.proto}</span> </>}
+                <span style={{ whiteSpace: 'nowrap' }}>{e.source}</span> → <span style={{ whiteSpace: 'nowrap' }}>{e.destination}</span>
+              </Text>
             </Group>
           ))}
         </Stack>
