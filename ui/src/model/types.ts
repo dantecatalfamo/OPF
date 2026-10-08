@@ -232,6 +232,8 @@ export interface Firewall {
   aliases: Alias[];
   options: FirewallOptions;
   custom: CustomPf;
+  /** Each device's traffic, counted by pf; missing or not enabled, nothing. */
+  traffic?: TrafficAccounting;
 }
 
 // ---------- Routing ----------
@@ -358,6 +360,13 @@ export interface DnsActivitySettings {
 }
 
 export const MAX_ACTIVITY_DAYS = 31;
+
+/** Opt-in: pf counts what each device sends and receives, in a table with per-address counters. */
+export interface TrafficAccounting {
+  enabled: boolean;
+  /** How long it's kept: 1 to MAX_ACTIVITY_DAYS. */
+  days: number;
+}
 
 export interface DnsBlocklist {
   id: string;

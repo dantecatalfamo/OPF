@@ -1346,29 +1346,45 @@ setting under Settings), and tried on 7.9 with the real unbound:
 - [ ] Top names by hour for "today": the top lists are by day, so
       "today" is since midnight, not the last 24 hours.
 
-Traffic per device isn't started:
+Traffic per device is built (`firewall.traffic`: `internal/activity/
+traffic.go`, `internal/appliance/traffic.go`, Diagnostics › Traffic,
+its setting on Firewall › Settings), and tried on 7.9:
 
-- [ ] **Traffic per device: collecting it.** pf counts bytes per live
-      state only, and forgets them when the state goes. Two ways, to
-      decide between or combine:
-      - Poll the state table (`pfctl -ss -v`, as the Connections page
-        does) and sum bytes by inside address. Shows what's live now,
-        but misses connections that open and close between polls and
-        double-counts across a NAT unless it reads the inside side.
-      - pflow(4): states created by rules marked `pflow` are exported
-        as IPFIX (`pflowproto 10`) to a receiver when they end, with
-        their bytes. Complete, but a long download only appears when
-        it finishes, and it needs a UDP receiver: the parent has no
-        `inet`, so a small collector process (unprivileged, pledged to
-        stdio and inet, listening on loopback) sends totals to the
-        parent. It also needs a `pflowN` interface (a `hostname.pflow0`
-        OPF manages) and the `pflow` keyword on OPF's pass rules.
-      Likely both: polling for now, pflow for the totals.
-- [ ] **Traffic per device: what's kept and shown.** Bytes in and out
-      per device per hour (and per destination country or port later),
-      top talkers over a day, week and month, a device's own graph on
-      its page, and a device suddenly sending far more than its usual
-      as an event.
+- [x] **Collecting it.** pf's table counters (`table <opf_hosts>
+      persist counters`) with, on each inside interface, `match in on
+      $if from <opf_hosts>`, `match out on $if to <opf_hosts>` and a
+      catch-all `match in on $if from ! <opf_hosts>` for addresses not
+      in the table yet; match rules, so they change nothing else.
+      Tried on the VM before building on it: pf updates the counters
+      for every packet of a connection (4 MB up showed 4,348,092
+      bytes), both ways (In is what the host sent, Out what it got),
+      outgoing through NAT and incoming through a port forward,
+      between two inside networks each host once, a static host with
+      no lease too; counters survive ruleset reloads, and a table
+      declared empty keeps what was added at runtime. Every collector
+      tick OPF reads the counters into the hour by device (the same
+      devices as DNS activity: devices.go), adds the devices on the
+      inside networks the leases, ARP and VPN show, and takes out
+      those not seen for an hour after reading their last counts.
+      Tried after building: 3 MB up, 2 MB down and 1 MB in through a
+      forward counted to within headers; a restart counts nothing
+      twice (the counters as last read are saved); turned off, the
+      rules, the table and what was kept go.
+- [x] pflow, checked against these claims on the VM: only states of
+      rules marked pflow (or state-defaults) are exported, each when
+      pf removes it, about 90 s after a TCP connection closes
+      (tcp.closed), never while it's open; one record per direction
+      with the inside address before NAT and a template carrying the
+      translation. bpf on pflow0 fails on 7.9 ("Device not
+      configured"), despite pflow(4); the export can be captured on
+      lo0. Not used: the table counters are complete and current.
+- [ ] Traffic per destination (country, port, the names DNS activity
+      saw), top talkers as an event when one moves far more than its
+      usual, and per-device retention apart from the network's.
+- [ ] The firewall's own traffic as a row (the interfaces' graphs have
+      its total).
+- [ ] IPv6, once OPF forwards it.
+
 - [ ] **Storage.** Not the graphs' rings: they're capped at 256 series,
       and a series per device or name would fill them. Hourly buckets
       per device in their own file in the state directory, with a cap

@@ -144,6 +144,37 @@ export interface SystemResource {
   errors: string[];
 }
 
+/** Traffic: what a device sent and received (package activity's Bytes). */
+export interface TrafficBytes {
+  sent: number;
+  received: number;
+  sentPackets?: number;
+  receivedPackets?: number;
+}
+
+/** The network's traffic per device (GET /api/traffic?days=N); only enabled is set while it's off. */
+export interface TrafficResource {
+  enabled: boolean;
+  days: number;
+  since?: string;
+  total?: TrafficBytes;
+  /** From addresses not in pf's table yet, counted apart. */
+  unknown?: number;
+  hours?: (TrafficBytes & { start: string; unknown?: number })[];
+  /** Those that moved most first. */
+  devices?: (TrafficBytes & { key: string })[];
+  deviceInfo?: Record<string, ActivityDeviceInfo>;
+  savedBytes?: number;
+}
+
+/** One device's traffic by hour (GET /api/traffic/device?device=key&days=N). */
+export interface TrafficDeviceResource extends ActivityDeviceInfo {
+  key: string;
+  since: string;
+  total: TrafficBytes;
+  hours: (TrafficBytes & { start: string })[];
+}
+
 /** Something that fills up as the firewall runs (GET /api/diagnostics/storage). */
 export interface StorageItem {
   id: string;
@@ -955,6 +986,10 @@ export const api = {
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
   storage: () => request<StorageResource>('GET', '/diagnostics/storage'),
+  traffic: (days: number) => request<TrafficResource>('GET', `/traffic?days=${days}`),
+  trafficDevice: (device: string, days: number) => request<TrafficDeviceResource>('GET', `/traffic/device?device=${enc(device)}&days=${days}`),
+  /** Deletes one device's traffic, or with none all of it. */
+  forgetTraffic: (device?: string) => request<void>('DELETE', `/traffic${device ? `?device=${enc(device)}` : ''}`),
   dnsActivity: (days: number) => request<DnsActivityResource>('GET', `/dns/activity?days=${days}`),
   dnsNameActivity: (list: ActivityList, name: string, days: number) =>
     request<DnsNameActivityResource>('GET', `/dns/activity/name?list=${list}&name=${enc(name)}&days=${days}`),

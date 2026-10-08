@@ -71,6 +71,7 @@ const nav: NavGroup[] = [
       { label: 'Events', to: '/diagnostics/events' },
       { label: 'Tools', to: '/diagnostics/tools' },
       { label: 'Connections', to: '/diagnostics/connections' },
+      { label: 'Traffic', to: '/diagnostics/traffic' },
       { label: 'ARP table', to: '/diagnostics/arp' },
       { label: 'Firewall log', to: '/diagnostics/log' },
       { label: 'System logs', to: '/diagnostics/system-logs' },

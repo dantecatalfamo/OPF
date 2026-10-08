@@ -1,10 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
-import { Accordion, Alert, Button, Card, Checkbox, Divider, Grid, Group, NumberInput, Select, SimpleGrid, Stack, Switch, TagsInput, Text, TextInput } from '@mantine/core';
+import { Accordion, Alert, Box, Button, Card, Checkbox, Divider, Grid, Group, NumberInput, Select, SimpleGrid, Stack, Switch, TagsInput, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { timeoutNames, type FirewallOptions } from '../model/types';
 import { PageHeader, SectionTitle } from '../components/ui';
+import { TrafficSettingsCard } from './Traffic';
 
 // Number fields are '' while empty; empty means pf's default. The form
 // library reads dots in a field's path as nesting, so timeouts are kept
@@ -126,6 +127,7 @@ export function FirewallSettings() {
   const scrubEmpty = v.scrub.enabled && !v.scrub.noDf && !v.scrub.randomId && v.scrub.maxMss === '' && v.scrub.minTtl === '' && !v.scrub.reassembleTcp;
 
   return (
+    <>
     <form onSubmit={form.onSubmit((vals) => {
       const next = fromValues(vals);
       edit('firewall', describe(opts, next), (m) => ({ ...m, firewall: { ...m.firewall, options: next } }));
@@ -324,5 +326,8 @@ export function FirewallSettings() {
         </Grid.Col>
       </Grid>
     </form>
+    {/* A setting of its own, saved apart from the options above. */}
+    <Box mt="md"><TrafficSettingsCard /></Box>
+    </>
   );
 }
