@@ -12,9 +12,8 @@ import { notifications } from '@mantine/notifications';
 import { IconAlertTriangle, IconDots, IconPlayerPlay, IconPlayerStop, IconRefresh, IconRotateClockwise, IconSearch, IconSettings } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { ServiceSetting } from '../model/types';
-import type { ServiceDetailResource, ServicesResource, ServiceStatus } from '../lib/api';
+import type { LogLine, ServiceDetailResource, ServicesResource, ServiceStatus } from '../lib/api';
 import { useRole } from '../lib/session';
-import { formatLogTime } from '../lib/format';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
 const POLL_MS = 30_000; // rcctl takes seconds to say
@@ -120,6 +119,45 @@ function BootModal({ s, onClose }: { s?: ServiceStatus; onClose: () => void }) {
   );
 }
 
+const dayLabel = (t: Date, now = new Date()) => {
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(t)) / 86_400_000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return t.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', ...(t.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+};
+
+// A service's log lines, newest first, under a heading for each day so
+// a line needs only its time.
+function RecentLog({ lines }: { lines: LogLine[] }) {
+  const groups: { day: string; lines: LogLine[] }[] = [];
+  for (const l of lines) {
+    const day = l.time ? dayLabel(new Date(l.time)) : '';
+    if (groups.at(-1)?.day !== day) groups.push({ day, lines: [] });
+    groups.at(-1)!.lines.push(l);
+  }
+  return (
+    <Stack gap="sm">
+      {groups.map((g) => (
+        <div key={g.day}>
+          {g.day && <Text size="xs" fw={600} c="dimmed" tt="uppercase" lts={0.5} mb={4}>{g.day}</Text>}
+          <Card withBorder padding={0} radius="sm">
+            {g.lines.map((l, i) => (
+              <Group key={i} gap="sm" wrap="nowrap" align="baseline" px="sm" py={6} style={i ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
+                <Text size="xs" c="dimmed" className="num" w={64} style={{ flexShrink: 0, whiteSpace: 'nowrap' }} title={l.time ? new Date(l.time).toLocaleString() : undefined}>
+                  {l.time ? new Date(l.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : ''}
+                </Text>
+                {/* Written by the service, and by whoever it logs about: text, never markup. */}
+                <Text size="xs" className="mono" style={{ wordBreak: 'break-word', lineHeight: 1.5 }}>{l.message}</Text>
+              </Group>
+            ))}
+          </Card>
+        </div>
+      ))}
+    </Stack>
+  );
+}
+
 function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () => void; onAction: (s: ServiceStatus, a: Action) => void }) {
   const [d, setD] = useState<ServiceDetailResource>();
   const [error, setError] = useState<string>();
@@ -160,17 +198,10 @@ function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () 
             <Text size="xs" c="dimmed" mt={4}>As rcctl get has them: rc.conf’s defaults, then rc.conf.local.</Text>
           </div>
           <div>
-            <SectionTitle right={<Anchor component={Link} to={`/system/logs?log=${d.logName}`} size="xs">The {d.logName} log</Anchor>}>Its recent log</SectionTitle>
-            {d.log.length ? (
-              <Stack gap={2}>
-                {d.log.slice(0, 20).map((l, i) => (
-                  <Group key={i} gap="xs" wrap="nowrap" align="flex-start">
-                    <Text size="xs" c="dimmed" w={110} style={{ flexShrink: 0 }}>{l.time ? formatLogTime(l.time) : ''}</Text>
-                    <Text size="xs" className="mono" style={{ wordBreak: 'break-word' }}>{l.message}</Text>
-                  </Group>
-                ))}
-              </Stack>
-            ) : <Empty>Nothing from it in the {d.logName} log lately.</Empty>}
+            <SectionTitle right={<Anchor component={Link} to={`/system/logs?log=${d.logName}`} size="xs">Open {d.logName}</Anchor>}>Its recent log</SectionTitle>
+            {d.log.length ? <RecentLog lines={d.log.slice(0, 20)} /> : null}
+            {d.log.length ? null : (              <Empty>Nothing from it in {d.logName} lately.</Empty>
+            )}
           </div>
         </Stack>
       )}
