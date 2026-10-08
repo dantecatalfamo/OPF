@@ -1574,6 +1574,11 @@ setting under Settings), and tried on 7.9 with the real unbound:
         doesn't count as a device (the WAN's gateway, which an event
         links) said "None now" though ARP had it; and the firewall log
         card broke addresses across lines.
+  - [ ] Try the Connections now card on the VM: a device's connection
+        out through NAT (one row, with the address it leaves as), one in
+        through a port forward (From, with the address it arrived at),
+        one to the firewall itself, the far end's name with Names on,
+        and the device's own end on hover; only the mock has shown it.
   - [ ] Still to see on the VM: a name's source, and DHCP's links,
         which need a device with a lease (the VM's LAN client has a
         fixed address).
