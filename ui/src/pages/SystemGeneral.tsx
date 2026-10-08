@@ -49,7 +49,7 @@ function Updates() {
     );
   }
   return (
-    <Card>
+    <Card id="updates">
       <SectionTitle>Updates</SectionTitle>
       {body}
       {upd?.checkedAt && (
@@ -76,7 +76,7 @@ function Account() {
   const load = () => { if (accounts) backend.sessions().then((r) => setMine(r.sessions.filter((s) => s.user === session?.user)), () => {}); };
   useEffect(load, [accounts, session?.user]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Card>
+    <Card id="account">
       <SectionTitle right={accounts && <Button size="xs" variant="default" onClick={signOut}>Sign out</Button>}>Your account</SectionTitle>
       {accounts && session ? (
         <Stack gap="sm">
@@ -173,7 +173,7 @@ export function SystemGeneral() {
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Stack gap="md">
-          <Card>
+          <Card id="identity">
             <form
               onSubmit={form.onSubmit((v) => {
                 const parts: string[] = [];

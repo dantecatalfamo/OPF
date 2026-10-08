@@ -238,7 +238,7 @@ export function Dhcp() {
               <ScopeSettings iface={iface} scope={scope} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 7 }}>
-              <Card>
+              <Card id="reservations">
                 <SectionTitle right={<Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setModal({ open: true, initial: null })}>Reserve address</Button>}>
                   Reserved addresses
                 </SectionTitle>
@@ -267,7 +267,7 @@ export function Dhcp() {
               </Card>
             </Grid.Col>
             <Grid.Col span={12}>
-              <Card>
+              <Card id="leases">
                 <SectionTitle right={<Badge color="gray">{ifaceLeases.length} devices</Badge>}>Connected devices</SectionTitle>
                 {leasesFailed && <Alert color="red" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {leasesFailed}</Alert>}
                 {leaseData?.error && <Alert color="yellow" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>{leaseData.error}.</Alert>}

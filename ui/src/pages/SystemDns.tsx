@@ -72,7 +72,7 @@ export function FirewallDns() {
   });
 
   return (
-    <Card>
+    <Card id="system-dns">
       <form onSubmit={save}>
         <SectionTitle>DNS for the firewall itself</SectionTitle>
         <Stack gap="md">

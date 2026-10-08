@@ -1495,6 +1495,14 @@ its setting on Firewall › Settings), and tried on 7.9:
       devices, by name, address or MAC. An address or host name also
       offers ping, traceroute and a DNS lookup of it. Built from
       Mantine's Modal rather than adding @mantine/spotlight.
+  - [x] Tabs and cards within pages (lib/nav.ts `places`): DNS's
+        Blocking, Local names and the rest, Routing's and NAT's tabs,
+        the firewall settings' cards, the tools, each system log, and
+        System › General's cards, with anchors where a card had none.
+        Pages and places have keywords too ("adblock" finds DNS
+        Blocking, "syspatch" Updates, "timeout" Connection tracking).
+  - [ ] A new tab or card isn't found until it's added to `places`;
+        nothing checks the list against the pages.
   - [ ] Open an alias, port forward or reservation itself, not only its
         page, once those pages take a link to one.
 - [x] A device page's DNS card shows one of its top-name lists at a

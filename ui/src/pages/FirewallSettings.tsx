@@ -193,7 +193,7 @@ export function FirewallSettings() {
           </Card>
         </Grid.Col>
         <Grid.Col span={12}>
-          <Card>
+          <Card id="scrub">
             <SectionTitle right={<Switch label="Enabled" {...form.getInputProps('scrub.enabled', { type: 'checkbox' })} />}>Packet normalization (scrub)</SectionTitle>
             <Group grow align="flex-start">
               <Stack gap="sm">

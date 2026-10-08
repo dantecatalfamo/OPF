@@ -140,7 +140,7 @@ export function Users() {
             </Text>
           </Stack>
         </Card>
-        <Card>
+        <Card id="sessions">
           <SectionTitle>Signed in now</SectionTitle>
           <Table.ScrollContainer minWidth={520}>
             <Table verticalSpacing={6}>

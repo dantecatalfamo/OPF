@@ -9,7 +9,7 @@ import { IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { tunnels, type Model } from '../model/types';
 import { useRole } from '../lib/session';
-import { nav } from '../lib/nav';
+import { nav, places } from '../lib/nav';
 import type { DeviceInfo } from '../lib/api';
 
 interface Entry {
@@ -21,16 +21,23 @@ interface Entry {
   also?: string;
   /** Pages before things, at the same match. */
   page?: boolean;
+  /** A tab or card within a page: not listed until something's typed. */
+  place?: boolean;
 }
 
 const enc = encodeURIComponent;
 
+// The pages, then the tabs and cards within them (places), found by
+// their names, their sections and their keywords.
 function pages(canEdit: boolean): Entry[] {
-  return nav.flatMap((g) =>
-    g.to
-      ? [{ label: g.label, kind: 'Page', to: g.to, page: true }]
-      : g.items!.filter((i) => !i.admin || canEdit).map((i) => ({ label: i.label, kind: g.label, to: i.to, also: g.label, page: true })),
-  );
+  return [
+    ...nav.flatMap((g) =>
+      g.to
+        ? [{ label: g.label, kind: 'Page', to: g.to, page: true }]
+        : g.items!.filter((i) => !i.admin || canEdit).map((i) => ({ label: i.label, kind: g.label, to: i.to, also: `${g.label} ${i.keywords ?? ''}`, page: true })),
+    ),
+    ...places.filter((p) => !p.admin || canEdit).map((p) => ({ label: p.label, kind: p.page, to: p.to, also: p.keywords, page: true, place: true })),
+  ];
 }
 
 // known: the MACs of the devices listed, whose reservations they stand for.
@@ -127,7 +134,7 @@ export function CommandPalette({ opened, onClose }: { opened: boolean; onClose: 
     const words = query.split(/\s+/).filter(Boolean);
     let out: Entry[];
     if (!words.length) {
-      out = entries.filter((e) => e.page);
+      out = entries.filter((e) => e.page && !e.place);
     } else {
       out = entries
         .map((e) => ({ e, s: score(e, words, query) }))
