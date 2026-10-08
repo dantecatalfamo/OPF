@@ -86,3 +86,27 @@ func TestUpgradeMovesInterfaceGateway(t *testing.T) {
 		t.Error("an interface gateway was accepted")
 	}
 }
+
+func TestUpgradeDropsTableEntries(t *testing.T) {
+	m := &Model{Firewall: Firewall{Aliases: []Alias{
+		{Name: "bruteforce", Type: AliasTable, Entries: []string{"192.0.2.1"}},
+		{Name: "internal", Type: AliasNetworks, Entries: []string{"10.0.0.0/8"}},
+	}}}
+	Upgrade(m)
+	if len(m.Firewall.Aliases[0].Entries) != 0 || len(m.Firewall.Aliases[1].Entries) != 1 {
+		t.Errorf("aliases %+v", m.Firewall.Aliases)
+	}
+	m.Firewall.Aliases[0].Entries = []string{"192.0.2.1"}
+	if errs := Validate(m); !slicesContainsPath(errs, "firewall.aliases[0].entries[0]") {
+		t.Errorf("a table's entry validated: %v", errs)
+	}
+}
+
+func slicesContainsPath(errs []FieldError, path string) bool {
+	for _, e := range errs {
+		if e.Path == path {
+			return true
+		}
+	}
+	return false
+}

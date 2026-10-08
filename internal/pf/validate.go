@@ -711,8 +711,10 @@ func (v *validator) firewall() {
 			switch a.Type {
 			case AliasHosts:
 				v.addr(ep, e, false)
-			case AliasNetworks, AliasTable:
+			case AliasNetworks:
 				v.addrOrPrefix(ep, e)
+			case AliasTable:
+				v.fail(ep, "a dynamic table starts empty: rules and operators fill it")
 			case AliasPorts:
 				if !validPort(e) {
 					v.fail(ep, "%q isn't a port", e)

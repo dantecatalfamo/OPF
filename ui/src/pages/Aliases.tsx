@@ -27,7 +27,7 @@ const typeHelp: Record<Alias['type'], string> = {
   hosts: 'A fixed list of addresses.',
   networks: 'A fixed list of networks in CIDR form.',
   ports: 'A fixed list of ports, for the port field of rules.',
-  table: 'Starts empty (or with the entries below) and is filled at runtime, for example by a rule’s connection limits. Entries survive rule reloads, and stay until they expire (below), the table is flushed or the firewall restarts.',
+  table: 'Starts empty and is filled at runtime: by a rule’s connection limits, or by hand from what’s in it now. Entries survive rule reloads, and stay until they expire (below), the table is emptied or the firewall restarts.',
   url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it, again on the schedule below, and from its menu whenever you want the latest.',
 };
 
@@ -77,8 +77,8 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
         return staged.firewall.aliases.some((a) => a.name === v && a.id !== alias?.id) ? 'That name is taken' : null;
       },
       entries: (v, vals) => {
-        if (vals.type === 'url') return null;
-        if (!v.length && vals.type !== 'table') return 'Add at least one entry';
+        if (vals.type === 'url' || vals.type === 'table') return null;
+        if (!v.length) return 'Add at least one entry';
         const check = vals.type === 'hosts' ? isIPv4 : vals.type === 'ports' ? isPortSpec : (s: string) => isCIDR(s) || isIPv4(s);
         const bad = v.find((e) => !check(e));
         return bad ? `“${bad}” isn’t a valid ${vals.type === 'ports' ? 'port' : 'address'}` : null;
@@ -98,7 +98,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
       <form onSubmit={form.onSubmit((v) => {
         // An emptied number field is ''; unset is every 24 hours.
         const hours = v.refreshHours as number | string | undefined;
-        onSave({ ...v, refreshHours: v.type === 'url' && typeof hours === 'number' ? hours : undefined, expireMinutes: v.type === 'table' ? v.expireMinutes : undefined });
+        onSave({ ...v, entries: v.type === 'table' || v.type === 'url' ? [] : v.entries, refreshHours: v.type === 'url' && typeof hours === 'number' ? hours : undefined, expireMinutes: v.type === 'table' ? v.expireMinutes : undefined });
         onClose();
       })}>
         <Stack>
@@ -110,8 +110,8 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
               <TextInput label="List URL" description="One address or network a line; comments after # or ; are fine" inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
               <NumberInput label="Download it again every" suffix=" hours" min={1} max={8760} placeholder="24" {...form.getInputProps('refreshHours')} />
             </>
-          ) : (
-            <TagsInput label={t === 'table' ? 'Initial entries' : 'Entries'} description="Press Enter after each one" placeholder={placeholder} {...form.getInputProps('entries')} />
+          ) : t !== 'table' && (
+            <TagsInput label="Entries" description="Press Enter after each one" placeholder={placeholder} {...form.getInputProps('entries')} />
           )}
           {t === 'table' && <ExpiryInput value={form.values.expireMinutes} onChange={(n) => form.setFieldValue('expireMinutes', n)} />}
           <TextInput label="Description" {...form.getInputProps('description')} />
@@ -199,7 +199,7 @@ export function Aliases() {
                             return tables ? <ListState applied={live} fetched={t?.fetched} count={t && `${t.entries.toLocaleString()} entries`} refresh={t?.refresh} /> : <Text size="xs" c="dimmed">…</Text>;
                           })()}
                         </Stack>
-                      ) : a.type === 'table' && !a.entries.length ? (
+                      ) : a.type === 'table' ? (
                         <Text size="xs" c="dimmed">
                           {inPf(a) ? <Anchor component="button" type="button" size="xs" onClick={() => show(a.name)}>What’s in it now</Anchor> : 'Filled at runtime'}
                           {' · '}{a.expireMinutes ? `each address kept ${minutesText(a.expireMinutes)}` : 'addresses kept until a flush or restart'}

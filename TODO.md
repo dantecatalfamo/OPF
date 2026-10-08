@@ -362,10 +362,11 @@ In order. Each step's details are in the section it points to.
     19:39:59 with 2 minutes set was out at 19:42:59 and got through
     again; a fresh address in the same table stayed. A protection
     will set it for its own table.
-  - [ ] A table alias's "Initial entries" never reach pf: the generator
-    writes `table <x> persist` without them. Load them (knowing a
-    commit's reload then puts them back if they expired or were
-    flushed), or stop offering them.
+  - [x] A dynamic table has no initial entries: the form offered them,
+    but pf.conf declared the table empty, so they never reached pf.
+    The form no longer asks, validation refuses them, and an older
+    model's are dropped on upgrade. Add one by hand from what's in it
+    now (Aliases).
   - Never lock out the admin: the addresses of signed-in sessions and
     the anti-lockout rule's sources are kept out of the table (a
     `pass quick` for them ahead of the block, or never adding them),

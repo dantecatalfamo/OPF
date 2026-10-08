@@ -13,7 +13,15 @@ import (
 // An interface's ipv4.gateway used to be where the WAN page kept a
 // fixed gateway, but nothing generated from it: /etc/mygate comes from
 // Routing. It moves to the interface's gateway there.
+//
+// A dynamic table alias used to take initial entries, but pf.conf
+// declared the table empty, so they never reached pf. They're dropped.
 func Upgrade(m *Model) {
+	for i := range m.Firewall.Aliases {
+		if a := &m.Firewall.Aliases[i]; a.Type == AliasTable {
+			a.Entries = []string{}
+		}
+	}
 	for i := range m.Interfaces {
 		f := &m.Interfaces[i]
 		g := f.IPv4.Gateway
