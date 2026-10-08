@@ -1357,6 +1357,10 @@ setting under Settings), and tried on 7.9 with the real unbound:
         (its reservation, its lease's name in DNS, what it calls itself
         when DNS has no name for it, the VPN device's), the list marking
         a device's own name.
+  - [ ] Try on the VM: the rules card, a VPN device's graph and the
+        name's source on a device's page, and the links to it from the
+        WireGuard, DHCP, DNS and Events pages (by address too); only the
+        mock has shown them.
 - [ ] "Never block" from the Activity tab's blocked names, as Blocking's
       list has.
 - [ ] A rising NXDOMAIN rate on one device as an event (often malware);
