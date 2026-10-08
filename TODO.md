@@ -929,6 +929,13 @@ Firewall:
       menu. One at a time from Connections is done.
 - [ ] Record each state killed in the event log (who, when, which
       connection) once there's one.
+- [ ] Reverse DNS for the addresses on Connections (and the firewall
+      log, a device's connections): a button or toggle that looks up
+      each address's PTR name through the firewall's own resolver and
+      shows it beside the address. Asked for, not by default: a lookup
+      for every address on a busy table is a lot of queries, and they
+      go out to the address's owner. Cache the answers for a while,
+      in the web child's memory only.
 - [ ] The firewall log: follow pflog0 live (`tcpdump -l -i pflog0`,
       over a WebSocket) instead of rereading the file, and read the
       rotated `pflog.0.gz` for older entries.
@@ -1473,6 +1480,17 @@ its setting on Firewall › Settings), and tried on 7.9:
   Monitoring (graphs, events, tools), System (with its logs, files and
   storage). Diagnostics held eleven pages and grew with every feature.
   The old /diagnostics/... addresses redirect.
+- [ ] A command palette (Ctrl/Cmd-K) for getting around: every page
+      by its name and section, and things by name (an interface, a
+      tunnel, a VPN device, a device, an alias, a rule), opening the
+      page that has them. Mantine has Spotlight for it.
+- [ ] A device page's DNS card: the "Looked up most", "Blocked most"
+      and "Not found most" lists are hard to read. Three columns of a
+      name and a count each run together, the counts sit far from
+      their names, and "None" sits where a list would be. Give each a
+      clear heading and a small table (name, count, close together), or
+      a single list with tabs; and say "Nothing blocked" rather than
+      "None".
 - [ ] Responsive design: usable from phones to large monitors, since
       admins may need to check status or make an urgent change from a
       phone. Test at phone (375px), tablet (768px), laptop (1024px) and
