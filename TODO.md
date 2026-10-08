@@ -445,10 +445,21 @@ In order. Each step's details are in the section it points to.
     - [ ] **Per-session traffic and connections**: each session's rule
           counters (`pfctl -a 'authpf/<user>(<pid>)' -vsr`) and its
           address's states on Signed in now.
-    - [ ] **Groups**: user groups in the model, rules for a group
-          (`/etc/authpf/groups/<group>/authpf.rules`, between everyone's
-          and a user's own), "For" choosing groups, `%group` in
-          authpf.allow.
+    - [ ] **Groups**: sign-in groups in the model (a name, a
+          description, its members; a user in any number), managed on
+          the page beside the users, with a user's groups shown on them.
+    - [ ] **Rules for everyone, groups or users**: a rule's "For" is
+          every signed-in user, or any mix of groups and individual users
+          (`authpf.users` grows `groups`). A session loads everyone's
+          rules, then each of its user's groups', then the user's own, in
+          that order, each once. authpf reads only the first rules file
+          it finds (users/<name>, then groups/<group> for the account's
+          primary group only, then the shared one), so OPF writes each
+          user with group or own rules a file of their own composed that
+          way, rather than relying on authpf's groups/ directory, which
+          can't hold a user in several groups. Removing a group takes it
+          out of rules; a rule left for no one goes, as removing a user
+          does now. The rules list says who each is for.
     - [ ] **Where each user may sign in from**: sshd's `Match User …
           Address …`, so a contractor signs in only from the guest
           network.
