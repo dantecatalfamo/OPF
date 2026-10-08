@@ -2,7 +2,7 @@
 // and the servers they go to now, from resolv.conf.
 import { useEffect } from 'react';
 import { Link } from 'react-router';
-import { Alert, Anchor, Button, Card, Group, SegmentedControl, Stack, TagsInput, Text } from '@mantine/core';
+import { Alert, Anchor, Button, Card, Checkbox, Group, SegmentedControl, Stack, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useStore } from '../model/store';
@@ -16,8 +16,8 @@ const MAX_NAMESERVERS = 3;
 
 const help: Record<SystemDnsMode, string> = {
   wan: 'The servers the WAN learns with its DHCP lease, as OpenBSD does by default. A WAN with a fixed address learns none.',
-  self: 'OPF’s own DNS resolver first, so the firewall gets your local names and blocklists too. The servers below, then the WAN’s, answer if it doesn’t.',
-  servers: 'These servers first, such as Quad9 (9.9.9.9) or your provider’s. The WAN’s come after them while there’s room: the system asks at most three.',
+  self: 'OPF’s own DNS resolver first, so the firewall gets your local names and blocklists too. The servers below answer if it doesn’t, then the WAN’s unless you choose only these.',
+  servers: 'These servers first, such as Quad9 (9.9.9.9) or your provider’s. The WAN’s come after them while there’s room (the system asks at most three), unless you choose only these.',
 };
 
 const isIP = (s: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s) ? s.split('.').every((o) => Number(o) <= 255) : /^[0-9a-f:]+$/i.test(s) && s.includes(':');
@@ -25,6 +25,7 @@ const isIP = (s: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s) ? s.split('.').eve
 interface Values {
   mode: SystemDnsMode;
   servers: string[];
+  only: boolean;
 }
 
 export function FirewallDns() {
@@ -32,7 +33,7 @@ export function FirewallDns() {
   const { canEdit } = useRole();
   const { data: sys } = useLive('system');
   const current = staged.system.dns;
-  const pick = (): Values => ({ mode: current?.mode ?? 'wan', servers: current?.servers ?? [] });
+  const pick = (): Values => ({ mode: current?.mode ?? 'wan', servers: current?.servers ?? [], only: !!current?.only });
   const max = (mode: SystemDnsMode) => (mode === 'self' ? MAX_NAMESERVERS - 1 : MAX_NAMESERVERS);
   const form = useForm<Values>({
     initialValues: pick(),
@@ -59,13 +60,13 @@ export function FirewallDns() {
   const asking = servers?.filter((s) => !s.unused) ?? [];
 
   const save = form.onSubmit((v) => {
-    const summary = v.mode === 'wan' ? 'The firewall asks the WAN’s DNS servers'
+    const summary = (v.mode === 'wan' ? 'The firewall asks the WAN’s DNS servers'
       : v.mode === 'self' ? `The firewall asks its own resolver${v.servers.length ? `, then ${v.servers.join(', ')}` : ''}`
-        : `The firewall asks ${v.servers.join(', ')}`;
+        : `The firewall asks ${v.servers.join(', ')}`) + (v.mode !== 'wan' && v.only ? ', never the WAN’s' : '');
     edit('system', summary, (m) => {
       const system = { ...m.system };
       if (v.mode === 'wan') delete system.dns;
-      else system.dns = { mode: v.mode, ...(v.servers.length ? { servers: v.servers } : {}) };
+      else system.dns = { mode: v.mode, ...(v.servers.length ? { servers: v.servers } : {}), ...(v.only ? { only: true } : {}) };
       return { ...m, system };
     });
   });
@@ -99,6 +100,17 @@ export function FirewallDns() {
               placeholder="9.9.9.9" disabled={!canEdit}
               {...form.getInputProps('servers')}
             />
+          )}
+          {v.mode !== 'wan' && (
+            <Checkbox
+              label={v.mode === 'self' ? 'Only these: never the WAN’s servers' : 'Only these servers: never the WAN’s'}
+              description="Keeps the firewall’s lookups off your provider’s DNS servers: the DHCP client ignores the ones its lease brings."
+              disabled={!canEdit}
+              {...form.getInputProps('only', { type: 'checkbox' })}
+            />
+          )}
+          {v.mode !== 'wan' && v.only && wan?.ipv6 === 'slaac' && (
+            <Text size="xs" c="dimmed">The WAN also takes IPv6 settings from your provider’s routers, which can bring DNS servers too; those aren’t ignored. Asking now, below, shows any.</Text>
           )}
           {v.mode === 'wan' && fixedWan && (
             <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>

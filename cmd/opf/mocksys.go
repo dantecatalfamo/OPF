@@ -73,7 +73,10 @@ peer
 		for _, ns := range appliance.SystemDNSWants(m) {
 			fmt.Fprintf(&b, "nameserver %s # resolvd: lo0\n", ns)
 		}
-		b.WriteString("nameserver 203.0.113.53 # resolvd: em0\nnameserver 203.0.113.54 # resolvd: em0\nlookup file bind\n")
+		if !pf.IgnoresLeaseDNS(m) {
+			b.WriteString("nameserver 203.0.113.53 # resolvd: em0\nnameserver 203.0.113.54 # resolvd: em0\n")
+		}
+		b.WriteString("lookup file bind\n")
 		out = b.String()
 	case cmd == "pfctl -v -s info", cmd == "pfctl -vv -s states", cmd == "pfctl -vv -s rules", strings.HasPrefix(cmd, "tcpdump -n -e -ttt -r "):
 		m, err := s.model()

@@ -3,10 +3,13 @@ package appliance
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
@@ -112,5 +115,58 @@ func TestSystemDNSValidation(t *testing.T) {
 		if bad == tc.ok {
 			t.Errorf("%s: valid %v, want %v (%v)", name, !bad, tc.ok, pf.Validate(m))
 		}
+	}
+}
+
+// Only these: dhcpleased ignores the leases' DNS servers while it's on,
+// and is told to reload each way.
+func TestSystemDNSOnly(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	path := filepath.Join(e.root, pf.DhcpleasedPath)
+	hups := func() int {
+		n := 0
+		for _, c := range e.run.commands() {
+			if strings.Contains(c, "pkill -HUP -x dhcpleased") {
+				n++
+			}
+		}
+		return n
+	}
+	m := e.live().Model
+	if m.Interfaces[0].IPv4.Mode != pf.IPv4DHCP {
+		t.Fatal("the sample's WAN should use DHCP")
+	}
+	m.System.DNS = &pf.SystemDNS{Mode: pf.SystemDNSServers, Servers: []string{"9.9.9.9"}, Only: true}
+	if err := stageCommit(t, e, m); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || !strings.Contains(string(got), "interface "+m.Interfaces[0].Device+" {\n\tignore dns\n}\n") || hups() != 1 {
+		t.Fatalf("dhcpleased.conf %q %v, %d reloads", got, err, hups())
+	}
+	checked := false
+	for _, c := range e.run.commands() {
+		checked = checked || strings.HasPrefix(c, "dhcpleased -n -f ")
+	}
+	if !checked {
+		t.Error("dhcpleased.conf wasn't checked")
+	}
+	// Not only: the file goes, and dhcpleased proposes them again.
+	m = e.live().Model
+	m.System.DNS.Only = false
+	if err := stageCommit(t, e, m); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err == nil || hups() != 2 {
+		t.Errorf("still there (%v), %d reloads", err, hups())
+	}
+	// The WAN's, only: nonsense.
+	m.System.DNS = &pf.SystemDNS{Mode: pf.SystemDNSWAN, Only: true}
+	bad := false
+	for _, e := range pf.Validate(m) {
+		bad = bad || e.Path == "system.dns.only"
+	}
+	if !bad {
+		t.Error("only the WAN's accepted")
 	}
 }

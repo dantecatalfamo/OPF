@@ -425,6 +425,8 @@ export interface SystemDns {
   mode: SystemDnsMode;
   /** For 'servers', the servers; for 'self', ones to fall back on. */
   servers?: string[];
+  /** Never the WAN's servers: dhcpleased ignores the ones its leases bring. */
+  only?: boolean;
 }
 
 export interface GraphLimits {

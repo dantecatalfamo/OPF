@@ -264,6 +264,17 @@ func DefaultFiles() []File {
 			// /etc/rc applies the file at boot. Gone (a revert of the
 			// commit that made it), forwarding is off, OpenBSD's
 			// default.
+			// The firewall's own DNS servers alone (System › General):
+			// dhcpleased ignores the leases' and withdraws them when it
+			// reloads; gone, it proposes them again.
+			Name: "dhcpleased.conf", Path: "/etc/dhcpleased.conf",
+			Desc:   "DHCP client: ignoring the WAN's DNS servers",
+			Check:  []string{"dhcpleased", "-n", "-f", "{}"},
+			Apply:  []string{"sh", "-c", "pkill -HUP -x dhcpleased || true"},
+			Remove: []string{"sh", "-c", "pkill -HUP -x dhcpleased || true"},
+			Mode:   0644,
+		},
+		{
 			// The firewall's own name, for its own programs; read at
 			// every lookup, so nothing to apply.
 			Name: "hosts", Path: "/etc/hosts",

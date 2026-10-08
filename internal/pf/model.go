@@ -70,6 +70,10 @@ type SystemDNS struct {
 	// Servers are SystemDNSServers' servers, or SystemDNSSelf's to fall
 	// back on while the resolver doesn't answer. IP addresses.
 	Servers []string `json:"servers,omitempty"`
+	// Only keeps the WAN's servers out: dhcpleased ignores the DNS
+	// servers its leases bring (DhcpleasedPath), so no lookup of the
+	// firewall's goes to the ISP's.
+	Only bool `json:"only,omitempty"`
 }
 
 type SystemDNSMode string

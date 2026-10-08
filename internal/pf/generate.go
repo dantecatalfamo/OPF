@@ -1495,6 +1495,10 @@ func GenerateFiles(m *Model) []GeneratedFile {
 		files = append(files, GeneratedFile{Path: OwnZonePath, Content: RPZZone(WithApexes(m.DNS.Blocked), WithApexes(m.DNS.Allowed), m.DNS.BlockAnswer)})
 	}
 
+	if IgnoresLeaseDNS(m) {
+		files = append(files, GeneratedFile{Path: DhcpleasedPath, Content: GenerateDhcpleasedConf(m)})
+	}
+
 	// Default gateway
 	for _, g := range m.Routing.Gateways {
 		if g.ID == m.Routing.DefaultGateway && g.Address != "dhcp" {

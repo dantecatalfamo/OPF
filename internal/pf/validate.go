@@ -373,6 +373,9 @@ func (v *validator) system() {
 			if len(d.Servers) > 0 {
 				v.fail("system.dns.servers", "the WAN's servers are learned, not given")
 			}
+			if d.Only {
+				v.fail("system.dns.only", "only the WAN's servers is the WAN's servers")
+			}
 		case SystemDNSSelf:
 			// 127.0.0.1 is the first.
 			max--

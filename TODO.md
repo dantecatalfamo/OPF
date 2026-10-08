@@ -742,9 +742,15 @@ Types, roughly in order of usefulness:
       resolvd restart, a reboot, and back.
   - [ ] It isn't a file, so a commit's review shows no diff for it and
         a revert puts it back only through the model (a tick later).
-  - [ ] With the WAN's servers after OPF's while there's room, "these
-        servers" doesn't keep lookups off the ISP's servers when fewer
-        than three are given; say so, or offer "only these".
+  - [x] "Only these": the WAN's servers are kept out too. OPF writes
+        /etc/dhcpleased.conf with `ignore dns` for each interface on
+        DHCP (checked with dhcpleased -n, then a SIGHUP), and removes it
+        to undo; dhcpleased withdraws the lease's servers on the HUP and
+        proposes them again at once when the file goes (seen on 7.9).
+        Tried on the VM with these servers and with its own resolver.
+  - [ ] A WAN on IPv6 autoconfiguration can still bring servers from
+        router advertisements (slaacd, which has no such option); the
+        page says so. Not tried: the VM's WAN has no IPv6.
 
 DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
 in 7.9 has RPZ, response policy zones, through its respip module):
