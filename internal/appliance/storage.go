@@ -36,15 +36,39 @@ type StorageItem struct {
 	// Note says more: how the most is reached, what happens then.
 	Note string `json:"note,omitempty"`
 	Off  bool   `json:"off,omitempty"`
-	// Link is the UI page that shows or sets it.
+	// Link is the UI page that shows what it holds.
 	Link string `json:"link,omitempty"`
+	// Settings are where its limit, or what fills it, is set; Fixed
+	// says why there's nowhere when there isn't.
+	Settings []StorageLink `json:"settings,omitempty"`
+	Fixed    string        `json:"fixed,omitempty"`
 }
 
+// StorageLink is a UI page, and a card on it (#id), with its name.
+type StorageLink struct {
+	Label string `json:"label"`
+	To    string `json:"to"`
+}
+
+// Where the settings are.
+var (
+	setGraphs      = StorageLink{"System › General › Graphs", "/system/general#graphs"}
+	setActivity    = StorageLink{"DNS resolver › Settings › Activity", "/services/dns?tab=settings#activity"}
+	setBlocklists  = StorageLink{"DNS resolver › Blocking", "/services/dns?tab=blocking"}
+	setAliases     = StorageLink{"Firewall › Aliases", "/firewall/aliases"}
+	setMaxStates   = StorageLink{"Firewall › Settings › Connection tracking", "/firewall/settings#connections"}
+	setPfLimits    = StorageLink{"Firewall › Settings › Limits", "/firewall/settings#limits"}
+	setLogBlocked  = StorageLink{"Firewall › Settings › Blocking", "/firewall/settings#blocking"}
+	setRules       = StorageLink{"Firewall › Rules (each rule’s log)", "/firewall/rules"}
+	newsyslogFixed = "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage."
+)
+
 const (
-	StorageOPF  = "opf"
-	StoragePf   = "pf"
-	StorageLogs = "logs"
-	StorageDisk = "disk"
+	StorageOPF    = "opf"
+	StorageGraphs = "graphs"
+	StoragePf     = "pf"
+	StorageLogs   = "logs"
+	StorageDisk   = "disk"
 )
 
 // Storage is every StorageItem, and what couldn't be read.
@@ -86,16 +110,9 @@ func (m *Manager) Storage() (*Storage, error) {
 	}
 
 	// OPF's own records.
-	var mem, memMax int64
-	for _, g := range m.graphUse() {
-		mem += int64(g.Series * g.SeriesBytes)
-		memMax += int64(g.Max * g.ItemBytes)
-	}
-	add(StorageItem{ID: "graphs", Group: StorageOPF, Name: "Graphs", Desc: "A month of history for each interface, gateway, VPN device, DHCP network and rule, and the system",
-		Unit: "bytes", Where: "memory", Current: ptr(mem), Max: ptr(memMax), Link: "/system/general",
-		Note: "Each kind has its own cap, set on System › General; past it, new ones aren't recorded."})
+	memMax := m.graphStorage(add)
 	saved := StorageItem{ID: "graphs-saved", Group: StorageOPF, Name: "Graphs, saved", Desc: "The same, saved every few minutes and when OPF stops",
-		Unit: "bytes", Where: "disk", Current: fileSize(m.store.StatePath(metricsFile)), Max: ptr(memMax), Link: "/diagnostics/graphs"}
+		Unit: "bytes", Where: "disk", Current: fileSize(m.store.StatePath(metricsFile)), Max: ptr(memMax), Link: "/diagnostics/graphs", Settings: []StorageLink{setGraphs}}
 	if saved.Current == nil {
 		saved.Note = "Not saved yet."
 	}
@@ -103,27 +120,29 @@ func (m *Manager) Storage() (*Storage, error) {
 	events := int64(m.eventLog().count())
 	add(StorageItem{ID: "events", Group: StorageOPF, Name: "Event log", Desc: "Links, addresses, gateways, devices and commits as they happen",
 		Unit: "entries", Where: "memory", Current: ptr(events), Max: ptr(MaxEvents), Link: "/diagnostics/events",
-		Note: "The newest are kept, none older than 90 days."})
+		Note: "The newest are kept, none older than 90 days.", Fixed: "Fixed in OPF."})
 	if model.DNS.Activity != nil && pf.KeepsDNSActivity(model) {
 		set := model.DNS.Activity
 		days, devDays, detailDays := set.Retention()
 		worst := activity.WorstCase(activity.Retention{Days: days, DeviceDays: devDays, DetailDays: detailDays, Devices: set.Devices}, activity.MaxDevices)
 		add(StorageItem{ID: "dns-activity", Group: StorageOPF, Name: "DNS activity", Desc: "Counts and top names, for the network and each device",
 			Unit: "bytes", Where: "memory and disk", Current: ptr(m.activitySize()), Max: ptr(worst), Link: "/services/dns?tab=settings",
-			Note: "Saved, about what it takes in memory too. The most is if every list fills every day with " + strconv.Itoa(activity.MaxDevices) + " devices; how long each kind is kept is set under DNS resolver › Settings."})
+			Note: "Saved, about what it takes in memory too. The most is if every list fills every day with " + strconv.Itoa(activity.MaxDevices) + " devices.", Settings: []StorageLink{setActivity}})
 		add(StorageItem{ID: "dns-log", Group: StorageOPF, Name: "Resolver's answers, not yet counted", Desc: "unbound's log of every answer, which OPF reads and empties",
 			Unit: "bytes", Where: "disk", Current: fileSize(m.dnsLogPath()), Max: ptr(truncateAt),
-			Note: "Emptied once it passes this and OPF has read it all; it can pass it by what arrives in one collector tick."})
+			Note: "Emptied once it passes this and OPF has read it all; it can pass it by what arrives in one collector tick.", Settings: []StorageLink{setActivity}})
 	} else {
 		add(StorageItem{ID: "dns-activity", Group: StorageOPF, Name: "DNS activity", Desc: "Counts and top names, for the network and each device",
-			Unit: "bytes", Where: "memory and disk", Off: true, Link: "/services/dns?tab=settings", Note: "Not kept."})
+			Unit: "bytes", Where: "memory and disk", Off: true, Note: "Not kept.", Settings: []StorageLink{setActivity}})
 	}
 	entries, _ := m.store.History()
 	hist, _ := treeSize(m.store.StatePath("history"))
 	add(StorageItem{ID: "history-entries", Group: StorageOPF, Name: "Change history", Desc: "Every commit, with every file before and after",
-		Unit: "entries", Where: "disk", Current: ptr(int64(len(entries))), Unbounded: "Every commit is kept: nothing prunes the history yet.", Link: "/system/history"})
+		Unit: "entries", Where: "disk", Current: ptr(int64(len(entries))), Unbounded: "Every commit is kept: nothing prunes the history yet.", Link: "/system/history",
+		Fixed: "There's no setting yet: nothing prunes it."})
 	add(StorageItem{ID: "history-bytes", Group: StorageOPF, Name: "Change history, on disk", Desc: "The commits' files",
-		Unit: "bytes", Where: "disk", Current: ptr(hist), Unbounded: "Grows with every commit."})
+		Unit: "bytes", Where: "disk", Current: ptr(hist), Unbounded: "Grows with every commit.", Link: "/system/history",
+		Fixed: "There's no setting yet: nothing prunes it."})
 	var lists int64
 	for _, a := range model.Firewall.Aliases {
 		if a.Type == pf.AliasURL {
@@ -138,7 +157,7 @@ func (m *Manager) Storage() (*Storage, error) {
 	tables, _ := treeSize(m.store.SystemPath(filepath.Dir(pf.TablePath("x"))))
 	dnsLists, _ := treeSize(m.store.SystemPath(pf.DNSListsDir))
 	listsItem := StorageItem{ID: "lists", Group: StorageOPF, Name: "Downloaded lists", Desc: "Address lists for aliases and DNS blocklists, as OPF keeps them",
-		Unit: "bytes", Where: "disk", Current: ptr(tables + dnsLists), Max: ptr(lists * maxListBytes), Link: "/services/dns?tab=blocking",
+		Unit: "bytes", Where: "disk", Current: ptr(tables + dnsLists), Max: ptr(lists * maxListBytes), Settings: []StorageLink{setBlocklists, setAliases},
 		Note: "A download over " + formatMB(maxListBytes) + " is refused; the most is that for each list in use (" + strconv.FormatInt(lists, 10) + ")."}
 	if lists == 0 && tables+dnsLists == 0 {
 		listsItem.Current, listsItem.Max, listsItem.Off, listsItem.Note = nil, nil, true, "No lists in use."
@@ -167,17 +186,17 @@ func (m *Manager) Storage() (*Storage, error) {
 	}
 	add(StorageItem{ID: "pf-states", Group: StoragePf, Name: "Connections", Desc: "pf's state table: one entry for each connection through or to the firewall",
 		Unit: "entries", Where: "kernel", Current: states, Max: limit("states"), Link: "/diagnostics/connections",
-		Note: "Full, new connections are refused until old ones end."})
+		Note: "Full, new connections are refused until old ones end.", Settings: []StorageLink{setMaxStates}})
 	var tableCount, addrs *int64
 	if out, err := m.read("pfctl", "-vvs", "Tables"); err == nil {
 		n, a := sysinfo.ParsePfTables(out)
 		tableCount, addrs = ptr(int64(n)), ptr(int64(a))
 	}
 	add(StorageItem{ID: "pf-tables", Group: StoragePf, Name: "Tables", Desc: "Address tables: aliases, blocklists, OPF's own",
-		Unit: "entries", Where: "kernel", Current: tableCount, Max: limit("tables"), Link: "/firewall/aliases"})
+		Unit: "entries", Where: "kernel", Current: tableCount, Max: limit("tables"), Link: "/firewall/aliases", Settings: []StorageLink{setPfLimits}})
 	add(StorageItem{ID: "pf-table-entries", Group: StoragePf, Name: "Table entries", Desc: "Addresses and networks in all the tables together",
 		Unit: "entries", Where: "kernel", Current: addrs, Max: limit("table-entries"), Link: "/firewall/aliases",
-		Note: "Full, a list too big to load fails the commit or refresh that loads it."})
+		Note: "Full, a list too big to load fails the commit or refresh that loads it.", Settings: []StorageLink{setPfLimits}})
 
 	// The logs OPF reads, as newsyslog rotates them.
 	m.logSizes(res, add)
@@ -224,6 +243,62 @@ type countWriter int64
 
 func (c *countWriter) Write(p []byte) (int, error) { *c += countWriter(len(p)); return len(p), nil }
 
+// graphStorage adds a row for each kind of graph: the system's own
+// series by what they're about (the firewall's states and blocks, DNS,
+// the machine), each fixed, and each capped group against its cap.
+// It returns the most they can all take.
+func (m *Manager) graphStorage(add func(StorageItem)) int64 {
+	keys := map[string]bool{}
+	for _, k := range m.metricsStore().Keys() {
+		keys[k] = true
+	}
+	var total int64
+	fixed := []struct {
+		id, name, desc, link string
+		series               []string
+	}{
+		{"graphs-firewall", "Firewall", "Connections (pf’s states) and blocked packets", "/diagnostics/graphs", []string{SeriesPfStates, SeriesPfBlocked}},
+		{"graphs-dns", "DNS", "Queries, blocks and cache hits, a second", "/services/dns", []string{SeriesDNSQueries, SeriesDNSBlocked, SeriesDNSCacheHit}},
+		{"graphs-system", "System", "CPU, memory, load and the clock’s offset", "/diagnostics/graphs", []string{SeriesCPU, SeriesMemory, SeriesLoad, SeriesTimeOffset}},
+	}
+	names := map[string]string{
+		GroupInterfaces: "Interfaces", GroupGateways: "Gateways", GroupVPN: "VPN devices", GroupDHCP: "DHCP networks", GroupRules: "Firewall rules",
+	}
+	descs := map[string]string{
+		GroupInterfaces: "Traffic in and out of each", GroupGateways: "Each one’s latency and loss", GroupVPN: "Each device’s traffic and handshakes",
+		GroupDHCP: "Leases in use on each", GroupRules: "Packets each rule matched",
+	}
+	for _, g := range m.graphUse() {
+		if g.Name == GroupSystem {
+			for _, f := range fixed {
+				var have int64
+				for _, s := range f.series {
+					if keys[s] {
+						have++
+					}
+				}
+				max := int64(len(f.series) * g.SeriesBytes)
+				total += max
+				// Their rings are made full size, so there's no filling up
+				// to show: just the size.
+				add(StorageItem{ID: f.id, Group: StorageGraphs, Name: f.name, Desc: f.desc, Unit: "bytes", Where: "memory", Link: f.link,
+					Current: ptr(have * int64(g.SeriesBytes)),
+					Note:    strconv.Itoa(len(f.series)) + " series, a month each.", Fixed: "Always kept, at this size."})
+			}
+			continue
+		}
+		max := int64(g.Max * g.ItemBytes)
+		total += max
+		note := strconv.Itoa(g.Items) + " of at most " + strconv.Itoa(g.Max) + " recorded, a month each."
+		if g.Refused {
+			note += " It’s full: more aren’t recorded."
+		}
+		add(StorageItem{ID: "graphs-" + g.Name, Group: StorageGraphs, Name: names[g.Name], Desc: descs[g.Name], Unit: "bytes", Where: "memory",
+			Link: "/diagnostics/graphs", Current: ptr(int64(g.Series * g.SeriesBytes)), Max: ptr(max), Note: note, Settings: []StorageLink{setGraphs}})
+	}
+	return total
+}
+
 func formatMB(n int64) string { return strconv.FormatInt(n>>20, 10) + " MB" }
 
 // logSizes adds each log OPF reads: its size and its old copies', and
@@ -253,7 +328,11 @@ func (m *Manager) logSizes(res *Storage, add func(StorageItem)) {
 	out, _ := m.read(append([]string{"ls", "-ln"}, paths...)...)
 	sizes := sysinfo.ParseLsSizes(out)
 	for _, l := range logs {
-		it := StorageItem{ID: "log-" + filepath.Base(l.path), Group: StorageLogs, Name: l.name, Desc: l.desc, Unit: "bytes", Where: "disk", Link: l.link}
+		it := StorageItem{ID: "log-" + filepath.Base(l.path), Group: StorageLogs, Name: l.name, Desc: l.desc, Unit: "bytes", Where: "disk", Link: l.link, Fixed: newsyslogFixed}
+		if l.path == pflogPath {
+			// What fills it is OPF's to set.
+			it.Settings = []StorageLink{setLogBlocked, setRules}
+		}
 		r, rotated := rot[l.path]
 		if n, ok := sizes[l.path]; ok {
 			total := n

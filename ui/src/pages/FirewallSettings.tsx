@@ -137,7 +137,7 @@ export function FirewallSettings() {
       />
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 6 }}>
-          <Card h="100%">
+          <Card h="100%" id="blocking">
             <SectionTitle>Blocking</SectionTitle>
             <Stack>
               <Select
@@ -152,7 +152,7 @@ export function FirewallSettings() {
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 6 }}>
-          <Card h="100%">
+          <Card h="100%" id="connections">
             <SectionTitle>Connection tracking</SectionTitle>
             <Stack>
               <Select
@@ -210,7 +210,7 @@ export function FirewallSettings() {
           </Card>
         </Grid.Col>
         <Grid.Col span={12}>
-          <Card>
+          <Card id="limits">
             <SectionTitle>Limits</SectionTitle>
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} verticalSpacing="lg">
               {limitFields.map((f) => (

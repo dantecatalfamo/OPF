@@ -92,7 +92,7 @@ export function DnsActivitySettingsCard() {
   });
 
   return (
-    <Card maw={760}>
+    <Card maw={760} id="activity">
       <form onSubmit={save}>
         <SectionTitle right={<Switch label="Keep" disabled={!canEdit} {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Activity</SectionTitle>
         <Stack gap="md">

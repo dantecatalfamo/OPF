@@ -12,6 +12,7 @@ import { PageHeader, SectionTitle } from '../components/ui';
 const groups: { id: StorageItem['group']; title: string; desc: string }[] = [
   { id: 'pf', title: 'pf, in the kernel', desc: 'Its tables have hard limits; once one is full, what needs a new entry fails.' },
   { id: 'opf', title: 'Kept by OPF', desc: 'Its own records, each with its own limit.' },
+  { id: 'graphs', title: 'Graphs', desc: 'A month of history in memory, by what it records; saved under Kept by OPF.' },
   { id: 'logs', title: 'Logs', desc: 'The system’s logs OPF reads, rotated by newsyslog.' },
   { id: 'disk', title: 'OPF and its disk', desc: '' },
 ];
@@ -30,6 +31,15 @@ function Row({ it }: { it: StorageItem }) {
         </Group>
         <Text size="xs" c="dimmed">{it.desc}</Text>
         {it.note && <Text size="xs" c="dimmed" mt={2}>{it.note}</Text>}
+        {it.settings?.length ? (
+          <Text size="xs" mt={2}>
+            Set under{' '}
+            {it.settings.map((s, i) => (
+              <span key={s.to}>{i > 0 && ' and '}<Anchor component={Link} to={s.to} size="xs">{s.label}</Anchor></span>
+            ))}
+            {it.fixed ? <Text span size="xs" c="dimmed">; {it.fixed.charAt(0).toLowerCase() + it.fixed.slice(1)}</Text> : ''}
+          </Text>
+        ) : it.fixed && <Text size="xs" c="dimmed" mt={2}>{it.fixed}</Text>}
       </Table.Td>
       <Table.Td w={260} style={{ verticalAlign: 'top' }}>
         {it.off ? (

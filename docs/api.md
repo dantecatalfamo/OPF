@@ -330,9 +330,15 @@ request after a quiet minute takes a second longer, to measure one.
   reads) and `lookup`.
 - `GET /api/diagnostics/storage`: everything that fills up as the
   firewall runs: `items`, each `{"id", "group", "name", "desc", "unit",
-  "where", "current", "max", "unbounded", "note", "off", "link"}`.
-  `group` is `opf` (its own records: graphs, the event log, DNS
-  activity, the change history, downloaded lists), `pf` (the state
+  "where", "current", "max", "unbounded", "note", "off", "link",
+  "settings", "fixed"}`: `settings` are where its limit or what fills
+  it is set (`{"label", "to"}`, a UI path with the card as `#id`),
+  `fixed` why there's nowhere. `group` is `opf` (its own records: the
+  saved graphs, the event log, DNS activity, the change history,
+  downloaded lists), `graphs` (the graphs in memory by what they
+  record: the firewall's states and blocks, DNS, the system, each a
+  fixed size, and interfaces, gateways, VPN devices, DHCP networks and
+  rules against their caps), `pf` (the state
   table, tables and their entries against pf's hard limits), `logs`
   (the logs it reads, with their old copies, against what newsyslog
   lets them reach) or `disk` (OPF's memory, the disk its state is on).

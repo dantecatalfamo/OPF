@@ -1060,7 +1060,10 @@ Storage:
       and its unread log, change history and downloaded lists; the
       logs OPF reads with their old copies against newsyslog's sizes;
       OPF's memory and the disk its state is on. Tried on the VM, under
-      the sandbox.
+      the sandbox. The graphs by what they record (the firewall's,
+      DNS's, the system's, then each capped kind), and each row says
+      where its limit is set, linking to the card (#id; the layout
+      scrolls to it), or why there's no setting.
 - [ ] Warn somewhere people look (the dashboard, an event) when one is
       near its limit, pf's state table above all.
 - [ ] pf's source nodes and fragments: their limits are there, their

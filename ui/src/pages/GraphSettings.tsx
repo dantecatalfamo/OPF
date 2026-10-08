@@ -51,7 +51,7 @@ export function GraphSettings() {
   };
 
   return (
-    <Card>
+    <Card id="graphs">
       <SectionTitle>Graphs</SectionTitle>
       <Stack gap="sm">
         <Text size="sm" c="dimmed">

@@ -147,7 +147,7 @@ export interface SystemResource {
 /** Something that fills up as the firewall runs (GET /api/diagnostics/storage). */
 export interface StorageItem {
   id: string;
-  group: 'opf' | 'pf' | 'logs' | 'disk';
+  group: 'opf' | 'graphs' | 'pf' | 'logs' | 'disk';
   name: string;
   desc: string;
   unit: 'bytes' | 'entries';
@@ -160,6 +160,9 @@ export interface StorageItem {
   note?: string;
   off?: boolean;
   link?: string;
+  /** Where its limit, or what fills it, is set; fixed says why there's nowhere. */
+  settings?: { label: string; to: string }[];
+  fixed?: string;
 }
 
 export interface StorageResource {

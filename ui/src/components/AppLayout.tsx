@@ -169,6 +169,22 @@ export function AppLayout() {
   // Show the confirmation dialog as soon as a commit starts waiting.
   useEffect(() => setConfirmOpened(!!confirming), [confirming]);
 
+  // A link to a card on a page (#limits): scroll to it once it's there,
+  // which may be after the page has loaded its data.
+  const { pathname, search, hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      const el = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (el || ++tries > 20) {
+        clearInterval(t);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+    return () => clearInterval(t);
+  }, [pathname, search, hash]);
+
   return (
     <AppShell
       header={{ height: 60 }}
