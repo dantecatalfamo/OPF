@@ -133,8 +133,11 @@ func hasOwnRules(m *Model, u *AuthpfUser) bool {
 
 // GenerateAuthpfRules is a session's rules file. pf loads it into the
 // session's own anchor, where pf.conf's macros aren't defined, so it
-// defines the interfaces' itself; tables are pf.conf's (an anchor that
-// names a table it doesn't define uses the main ruleset's).
+// defines the interfaces' itself, and the fixed lists (address aliases)
+// its rules name: pf.conf loads a const table only when a rule there
+// names it, so the anchor can't count on finding one. A dynamic table
+// or a downloaded list is persist in pf.conf, always there, and an
+// anchor that names a table it doesn't define uses the main ruleset's.
 func GenerateAuthpfRules(m *Model, u *AuthpfUser) string {
 	var b strings.Builder
 	b.WriteString(header + "\n")
@@ -146,7 +149,13 @@ func GenerateAuthpfRules(m *Model, u *AuthpfUser) string {
 	for _, i := range m.Interfaces {
 		fmt.Fprintf(&b, "%s = \"%s\"\n", i.ID, i.Device)
 	}
-	for _, r := range authpfRulesFor(m, u) {
+	rules := authpfRulesFor(m, u)
+	for _, a := range m.Firewall.Aliases {
+		if (a.Type == AliasHosts || a.Type == AliasNetworks) && slices.ContainsFunc(rules, func(r Rule) bool { return namesAlias(r, a.Name) }) {
+			fmt.Fprintf(&b, "table <%s> const { %s }\n", a.Name, strings.Join(a.Entries, " "))
+		}
+	}
+	for _, r := range rules {
 		if r.Description != "" {
 			b.WriteString("# " + r.Description + "\n")
 		}
@@ -211,6 +220,12 @@ func authpfPf(m *Model) (table string, lines []string) {
 	}
 	lines = append(lines, fmt.Sprintf("anchor \"%s/*\"", AuthpfAnchor))
 	return table, lines
+}
+
+// namesAlias is whether a guided rule's source or destination is an
+// alias.
+func namesAlias(r Rule, name string) bool {
+	return (r.Source.Type == EndpointAlias && r.Source.Alias == name) || (r.Destination.Type == EndpointAlias && r.Destination.Alias == name)
 }
 
 func ifaceByID(m *Model, id string) *Iface {

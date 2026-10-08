@@ -54,6 +54,16 @@ func TestAuthpfFiles(t *testing.T) {
 			t.Errorf("authpf.rules lacks %q:\n%s", want, everyone)
 		}
 	}
+	// A fixed list its rules name is defined in it; one they don't, not.
+	m2 := withAuthpf(t)
+	m2.Firewall.Rules[len(m2.Firewall.Rules)-2].Destination = Endpoint{Type: EndpointAlias, Alias: "internal"}
+	if got := GenerateAuthpfRules(m2, nil); !strings.Contains(got, "table <internal> const { ") || strings.Contains(got, "<contractors>") {
+		t.Errorf("tables:\n%s", got)
+	}
+	m2.Firewall.Rules[len(m2.Firewall.Rules)-2].Destination = Endpoint{Type: EndpointAlias, Alias: "bruteforce"}
+	if got := GenerateAuthpfRules(m2, nil); strings.Contains(got, "table <bruteforce>") {
+		t.Errorf("a dynamic table defined in the anchor:\n%s", got)
+	}
 	if strings.Contains(everyone, "445") {
 		t.Errorf("alice's rule is everyone's:\n%s", everyone)
 	}

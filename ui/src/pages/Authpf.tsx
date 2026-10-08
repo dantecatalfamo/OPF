@@ -270,10 +270,14 @@ function Sessions({ data, error, onEnded }: { data?: AuthpfSessionsResource; err
     try {
       await backend.authpfEnd(pid);
       notifications.show({ color: 'teal', message: 'Session ended' });
-      onEnded();
     } catch (e) {
-      notifications.show({ color: 'red', title: 'Couldn’t end it', message: errorText(e) });
+      // Ending a session from its own address cuts this request too:
+      // what's left says whether it ended.
+      const still = await backend.authpfSessions().then((d) => d.sessions.some((s) => s.pid === pid), () => true);
+      if (still) notifications.show({ color: 'red', title: 'Couldn’t end it', message: errorText(e) });
+      else notifications.show({ color: 'teal', message: 'Session ended; the connection from that address, this one included, was cut' });
     }
+    onEnded();
     setEnding(undefined);
   };
   return (

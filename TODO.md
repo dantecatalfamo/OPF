@@ -417,9 +417,20 @@ In order. Each step's details are in the section it points to.
     root-owned key file, the anchor authpf/<user>(<pid>), cleanup on
     kill, and that cleanup ending every connection from the address
     (an admin's SSH from the same host included; the page says so).
-  - [ ] Try OPF's on the VM end to end: commit, the accounts, a real
-        sign-in, a rule naming one of pf.conf's tables from inside the
-        anchor, the session's end.
+  - [x] Tried OPF's on the VM end to end. A commit made alice's account
+        and every file, and sshd -t passed. Her sign-in from the LAN
+        loaded her anchor and put her address in <authpf_users>. Port
+        9999 (by a fixed list) and 9998 (by the dynamic table
+        bruteforce) were blocked before, open while signed in, and
+        blocked once OPF ended the session. Turning it off took out
+        the account, the files, the sshd block and pf.conf's lines.
+        Found there:
+        - pf.conf loads a const table only when one of its own rules
+          names it, so each rules file now defines the fixed lists its
+          rules use. A persist table (dynamic, downloaded) is pf.conf's,
+          which the anchor uses.
+        - Ending a session from the user's own address cuts the request
+          that asked; the page checks again and says so.
   - [ ] The firewall log, rule counters and the packet tester don't
         follow anchors yet; sign-in rules don't show up in them.
   - [ ] The SSH port is 22, and the anti-lockout's; take both from
