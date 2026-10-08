@@ -178,12 +178,18 @@ export function DnsActivitySettingsCard() {
   );
 }
 
-function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
+// Many lookups for names that don't exist: a quarter of them, once
+// there are enough to tell. Malware often finds its server by trying
+// made-up names, nearly all of which don't exist.
+const manyMissing = (missing: number, queries: number) => queries > 50 && missing > queries / 4;
+
+function Stat({ label, value, detail, warn }: { label: string; value: string; detail?: string; warn?: string }) {
   return (
     <Stack gap={0}>
       <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.6}>{label}</Text>
-      <Text fw={600} size="lg" className="num">{value}</Text>
+      <Text fw={600} size="lg" className="num" c={warn ? 'yellow' : undefined}>{value}</Text>
       {detail && <Text size="xs" c="dimmed">{detail}</Text>}
+      {warn && <Text size="xs" c="yellow">{warn}</Text>}
     </Stack>
   );
 }
@@ -194,7 +200,10 @@ function CountStats({ total, narrow }: { total: ActivityCounts; narrow?: boolean
     <SimpleGrid cols={narrow ? { base: 2, sm: 3 } : { base: 2, sm: 3, lg: 5 }} spacing="md">
       <Stat label="Queries" value={formatCount(q)} />
       <Stat label="Blocked" value={formatCount(total.blocked)} detail={`${pct(total.blocked, q)} of queries`} />
-      <Stat label="No such name" value={formatCount(total.nxdomain ?? 0)} detail={`${pct(total.nxdomain ?? 0, q)}; many can mean malware`} />
+      <Stat
+        label="No such name" value={formatCount(total.nxdomain ?? 0)} detail={`${pct(total.nxdomain ?? 0, q)} of queries`}
+        warn={manyMissing(total.nxdomain ?? 0, q) ? 'That’s a lot. Malware often tries many made-up names; see Not found most.' : undefined}
+      />
       <Stat label="Failed" value={formatCount(total.servfail ?? 0)} detail={`${pct(total.servfail ?? 0, q)} the resolver couldn’t answer`} />
       <Stat label="From the cache" value={pct(total.cached ?? 0, q)} detail="answered without asking" />
     </SimpleGrid>
@@ -511,8 +520,8 @@ export function DnsActivityTab() {
                         </Table.Td>
                         <Table.Td ta="right" className="num">{d.queries.toLocaleString()}</Table.Td>
                         <Table.Td ta="right" className="num">{d.blocked.toLocaleString()}</Table.Td>
-                        {/* A device most of whose lookups fail stands out. */}
-                        <Table.Td ta="right" className="num" c={(d.nxdomain ?? 0) > d.queries / 4 && d.queries > 50 ? 'yellow' : undefined}>{(d.nxdomain ?? 0).toLocaleString()}</Table.Td>
+                        {/* A device many of whose lookups fail stands out. */}
+                        <Table.Td ta="right" className="num" c={manyMissing(d.nxdomain ?? 0, d.queries) ? 'yellow' : undefined}>{(d.nxdomain ?? 0).toLocaleString()}</Table.Td>
                         <Table.Td ta="right" className="num">{(d.servfail ?? 0).toLocaleString()}</Table.Td>
                       </Table.Tr>
                     );
