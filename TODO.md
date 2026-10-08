@@ -1311,7 +1311,10 @@ setting under Settings), and tried on 7.9 with the real unbound:
       25 a device), at most 128 devices a day by default (the rest
       pooled as "other"; `maxDevices`, up to 4,096, each about 5.6 KB a
       day at most; traffic's default is 512, at about 140 bytes a device
-      an hour), at most 31 days. In `dns-activity.json` in the state
+      an hour), at most 31 days.
+  - [ ] Try the device caps on the VM: a low cap (2, say) with more
+        devices than that, for DNS activity and traffic, to see the
+        rest pooled as other devices; only tests and the mock have. In `dns-activity.json` in the state
       directory, with the place in unbound's file so a restart doesn't
       count lines twice. DNSBlocked reads from it while it's on.
 - [x] **The pages.** Activity: counts, an hourly chart, the names looked
