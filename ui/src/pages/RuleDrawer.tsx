@@ -31,8 +31,12 @@ function overloadKept(m: Model, table?: string): string | undefined {
   return a.expireMinutes ? `Each is taken out ${minutesText(a.expireMinutes)} later.` : `It stays there until <${a.name}> is flushed or the firewall restarts; set how long under Aliases.`;
 }
 
-function toValues(rule: Rule | null, iface: string | null): Values {
+function toValues(rule: Rule | null, iface: string | null, authpf = false): Values {
   const base = formRule({ id: 'new', interfaces: iface ? [iface] : [], description: '', protocol: 'tcp' });
+  if (!rule && authpf) {
+    // A rule for signed-in users is about them: from the signed-in user.
+    return { ...stripIds(base), protocol: 'any', groups: [], source: { type: 'authpfUser' }, authpf: {}, mode: 'form', rawText: '' };
+  }
   if (!rule) {
     const src = iface && iface !== 'wan' ? { type: 'iface' as const, iface, part: 'network' as const } : { type: 'any' as const };
     return { ...stripIds(base), groups: [], source: src, mode: 'form', rawText: '' };
@@ -82,7 +86,7 @@ function SectionLabel({ label, count }: { label: string; count: number }) {
 }
 
 export function RuleDrawer({
-  opened, onClose, model, rule, iface, onSave,
+  opened, onClose, model, rule, iface, onSave, authpf = false,
 }: {
   opened: boolean;
   onClose: () => void;
@@ -90,9 +94,11 @@ export function RuleDrawer({
   rule: Rule | null; // null: new rule
   iface: string | null; // null: floating
   onSave: (r: RuleInput) => void;
+  /** A rule for signed-in users (Sign-in access): guided only, and for whom. */
+  authpf?: boolean;
 }) {
   const form = useForm<Values>({
-    initialValues: toValues(null, iface),
+    initialValues: toValues(null, iface, authpf),
     validate: (v) => {
       const e: Record<string, string | null> = {};
       e.description = v.description.trim() ? null : 'Describe what this rule is for';
@@ -103,6 +109,7 @@ export function RuleDrawer({
         return e;
       }
       e.source = validateEndpoint(v.source, isIPv4, isCIDR);
+      if (authpf && v.source.type !== 'authpfUser' && v.destination.type !== 'authpfUser') e.source = 'A rule for signed-in users is from or to the signed-in user';
       e.destination = validateEndpoint(v.destination, isIPv4, isCIDR);
       const port = (s?: string) => (!s?.trim() || s.startsWith('alias:') || isPfPortExpr(s) ? null : 'Use pf port syntax: 443, 8000:8080, > 1023, != 22, or 80,443');
       if (hasPorts(v.protocol)) {
@@ -117,7 +124,7 @@ export function RuleDrawer({
 
   useEffect(() => {
     if (!opened) return;
-    form.setValues(toValues(rule, iface));
+    form.setValues(toValues(rule, iface, authpf));
     form.resetDirty();
     form.clearErrors();
   }, [opened, rule, iface]); // form is stable
@@ -184,14 +191,25 @@ export function RuleDrawer({
     <Drawer opened={opened} onClose={onClose} size="xl" title={<Text fw={600} size="lg">{rule ? 'Edit rule' : 'Add rule'}</Text>}>
       <form onSubmit={submit}>
         <Stack gap="lg">
-          <SegmentedControl
+          {authpf && (
+            <MultiSelect
+              label="For"
+              description="Everyone signed in, or only these users: a user's own rules come after everyone's."
+              placeholder={(v.authpf?.users ?? []).length ? undefined : 'Everyone'}
+              data={(model.firewall.authpf?.users ?? []).map((u) => ({ value: u.id, label: u.name }))}
+              value={v.authpf?.users ?? []}
+              onChange={(users) => form.setFieldValue('authpf', users.length ? { users } : {})}
+              clearable
+            />
+          )}
+          {!authpf && <SegmentedControl
             value={v.mode}
             onChange={switchMode}
             data={[
               { value: 'form', label: <Group gap={6} justify="center"><IconForms size={16} />Guided</Group> },
               { value: 'raw', label: <Group gap={6} justify="center"><IconCode size={16} />pf syntax</Group> },
             ]}
-          />
+          />}
 
           {v.mode === 'raw' ? (
             <>
@@ -340,13 +358,13 @@ export function RuleDrawer({
 
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <Stack gap="xs">
-                  <EndpointField label="From" value={v.source} onChange={(e) => form.setFieldValue('source', e)} model={model} error={form.errors.source} />
+                  <EndpointField label="From" value={v.source} onChange={(e) => form.setFieldValue('source', e)} model={model} error={form.errors.source} authpf={authpf} />
                   {hasPorts(v.protocol) && (
                     <Autocomplete label="From port" placeholder="Any" data={portData} styles={mono} {...form.getInputProps('sourcePort')} />
                   )}
                 </Stack>
                 <Stack gap="xs">
-                  <EndpointField label="To" value={v.destination} onChange={(e) => form.setFieldValue('destination', e)} model={model} error={form.errors.destination} />
+                  <EndpointField label="To" value={v.destination} onChange={(e) => form.setFieldValue('destination', e)} model={model} error={form.errors.destination} authpf={authpf} />
                   {hasPorts(v.protocol) && (
                     <Autocomplete label="To port" placeholder="Any" data={portData} styles={mono} {...form.getInputProps('port')} />
                   )}

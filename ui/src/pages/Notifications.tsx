@@ -29,6 +29,7 @@ const kinds: { value: string; label: string }[] = [
   { value: 'commit', label: 'Changes' },
   { value: 'login', label: 'Sign-ins' },
   { value: 'table', label: 'Tables' },
+  { value: 'authpf', label: 'Sign-in access' },
   { value: 'opf', label: 'OPF' },
 ];
 

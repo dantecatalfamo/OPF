@@ -162,9 +162,9 @@ func authpfFiles(m *Model) []GeneratedFile {
 	}
 	a := m.Firewall.Authpf
 	files := []GeneratedFile{
-		// Empty is every default: the anchor "authpf", the table
-		// "authpf_users". authpf reads name=value lines only.
-		{Path: AuthpfConfPath, Content: ""},
+		// authpf runs only while this exists. Its defaults, written out:
+		// an empty file would be no file to the commit engine.
+		{Path: AuthpfConfPath, Content: "anchor=" + AuthpfAnchor + "\ntable=" + AuthpfUsersTable + "\n"},
 		{Path: AuthpfRulesPath, Content: GenerateAuthpfRules(m, nil)},
 	}
 	// Only OPF's users may use authpf, whatever other account has it as

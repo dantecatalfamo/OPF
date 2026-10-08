@@ -20,9 +20,10 @@ const ifaceName = (m: Model, id: string) => m.interfaces.find((i) => i.id === id
 /** A rule's tab on the Rules page. */
 export const ruleTab = (r: Rule) => (isFloating(r) ? 'floating' : r.interfaces[0]);
 
-/** A link that opens a rule's editor. */
+/** A link that opens a rule's editor: on its tab, or Sign-in access's for a rule for signed-in users. */
 export const ruleLink = (m: Model, id: string): string => {
   const r = m.firewall.rules.find((x) => x.id === id);
+  if (r?.authpf) return `/firewall/authpf?edit=${encodeURIComponent(id)}`;
   return r ? `/firewall/rules/${encodeURIComponent(ruleTab(r))}?edit=${encodeURIComponent(id)}` : '/firewall/rules';
 };
 
@@ -42,7 +43,7 @@ export function aliasUsers(m: Model, name: string): AliasUser[] {
       if (r.state?.overload === name) how.push('overload');
     }
     if (how.length) {
-      const where = isFloating(r) ? 'Floating rule' : `Rule on ${ifaceName(m, r.interfaces[0])}`;
+      const where = r.authpf ? 'Rule for signed-in users' : isFloating(r) ? 'Floating rule' : `Rule on ${ifaceName(m, r.interfaces[0])}`;
       out.push({ kind: 'rule', id: r.id, label: r.description || `Rule ${r.id}`, where, how, to: ruleLink(m, r.id) });
     }
   }

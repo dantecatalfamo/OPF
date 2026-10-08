@@ -29,6 +29,7 @@ import { Traffic } from './pages/Traffic';
 import { Device, Devices } from './pages/Devices';
 import { FirewallLog } from './pages/FirewallLog';
 import { ARP } from './pages/ARP';
+import { Authpf } from './pages/Authpf';
 
 const preview = import.meta.env.MODE === 'preview';
 
@@ -103,6 +104,7 @@ function AppRoutes() {
         <Route path="devices/:key" element={<Device />} />
         <Route path="firewall/connections" element={<Connections />} />
         <Route path="firewall/log" element={<FirewallLog />} />
+        <Route path="firewall/authpf" element={<Authpf />} />
         <Route path="monitoring/graphs" element={<Graphs />} />
         <Route path="monitoring/events" element={<Events />} />
         <Route path="monitoring/tools" element={<Tools />} />

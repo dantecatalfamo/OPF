@@ -57,7 +57,11 @@ export type EndpointTarget =
   | IfaceEndpoint
   | { type: 'host'; value: string }
   | { type: 'network'; value: string }
-  | { type: 'alias'; alias: string };
+  | { type: 'alias'; alias: string }
+  /** The signed-in user ($user_ip): in a rule for signed-in users only. */
+  | { type: 'authpfUser' }
+  /** Every signed-in user (<authpf_users>), with sign-in access on. */
+  | { type: 'authpfUsers' };
 
 // Interface modifiers, shared by interface references and self.
 export interface IfaceModifiers {
@@ -105,6 +109,8 @@ interface RuleBase {
   // Any groups make the rule floating.
   groups?: string[];
   description: string;
+  /** Set: a rule for signed-in users (sign-in access), loaded when one signs in; users are AuthpfUser ids, none is everyone. */
+  authpf?: { users?: string[] };
 }
 
 export type BlockReturn = 'drop' | 'return' | 'return-rst' | 'return-icmp' | 'return-icmp6';
@@ -176,6 +182,27 @@ export interface NatRule {
   description: string;
 }
 
+/** Sign-in access: network access while someone is signed in over SSH (authpf). */
+export interface Authpf {
+  enabled: boolean;
+  /** Interfaces users sign in on (SSH to the firewall there is let in). */
+  signIn: string[];
+  /** Shown once signed in. */
+  message?: string;
+  users: AuthpfUser[];
+}
+
+export interface AuthpfUser {
+  id: string;
+  /** Their login: a system account OPF makes. */
+  name: string;
+  description: string;
+  /** SSH public keys; signing in takes one, never a password. */
+  keys: string[];
+  /** Set: banned, with the message they see. */
+  banned?: string;
+}
+
 export interface Alias {
   id: string;
   name: string;
@@ -236,6 +263,8 @@ export interface Firewall {
   custom: CustomPf;
   /** Each device's traffic, counted by pf; missing or not enabled, nothing. */
   traffic?: TrafficAccounting;
+  /** Sign-in access (authpf); missing or not enabled, none. */
+  authpf?: Authpf;
 }
 
 // ---------- Routing ----------

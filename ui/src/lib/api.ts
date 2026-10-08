@@ -709,7 +709,7 @@ export interface SystemLogRequest {
   limit?: number;
 }
 
-export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit' | 'login' | 'table';
+export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit' | 'login' | 'table' | 'authpf';
 
 /** Something that happened (GET /api/events). */
 export interface OpfEvent {
@@ -782,6 +782,12 @@ export interface TableFindResource {
   address: string;
   tables: { table: string; kind: 'dynamic' | 'list'; entry: string; added?: string; expires?: string; usedBy: TableRuleRef[] }[];
   errors: string[];
+}
+
+/** GET /api/firewall/authpf/sessions: who's signed in (sign-in access). */
+export interface AuthpfSessionsResource {
+  enabled: boolean;
+  sessions: { user: string; address: string; pid: number; since: string; rules: boolean }[];
 }
 
 export interface TableStatus {
@@ -1026,6 +1032,8 @@ export const api = {
     request<TableEntriesResource>('GET', `/firewall/tables/${enc(table)}/entries?q=${enc(q)}&offset=${offset}&limit=${limit}`),
   tableChange: (table: string, op: 'add' | 'delete' | 'flush', addresses: string[] = []) =>
     request<void>('POST', `/firewall/tables/${enc(table)}/entries`, { op, addresses }),
+  authpfSessions: () => request<AuthpfSessionsResource>('GET', '/firewall/authpf/sessions'),
+  authpfEnd: (pid: number) => request<void>('POST', `/firewall/authpf/sessions/${pid}/end`),
   tableFind: (address: string) => request<TableFindResource>('GET', `/firewall/tables/find?address=${enc(address)}`),
   dnsLists: async () => (await request<{ lists: DnsListStatus[] }>('GET', '/dns/blocklists')).lists,
   /** Downloads a DNS blocklist again and reloads it in the resolver. */

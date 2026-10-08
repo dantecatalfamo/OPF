@@ -27,6 +27,10 @@ export function endpointLabel(e: Endpoint, m: Model): string {
       return `${not}${e.value}`;
     case 'alias':
       return `${not}${e.alias}`;
+    case 'authpfUser':
+      return `${not}The signed-in user`;
+    case 'authpfUsers':
+      return `${not}Any signed-in user`;
   }
 }
 

@@ -45,7 +45,7 @@ func TestAuthpfFiles(t *testing.T) {
 		t.Fatalf("invalid: %v", errs)
 	}
 	f := files(m)
-	if c, ok := f[AuthpfConfPath]; !ok || c != "" {
+	if c, ok := f[AuthpfConfPath]; !ok || c != "anchor=authpf\ntable=authpf_users\n" {
 		t.Errorf("authpf.conf %q %v", c, ok)
 	}
 	everyone := f[AuthpfRulesPath]

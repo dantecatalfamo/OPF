@@ -209,7 +209,8 @@ export function FirewallRules() {
   const floating = param === FLOATING;
   const current = floating ? null : ifaces.find((i) => i.id === param) ?? ifaces.find((i) => i.role === 'lan') ?? ifaces[0];
   const tab = floating ? FLOATING : current!.id;
-  const inTab = (r: Rule) => (floating ? isFloating(r) : !isFloating(r) && r.interfaces[0] === current!.id);
+  // Rules for signed-in users are Sign-in access's, loaded per session.
+  const inTab = (r: Rule) => !r.authpf && (floating ? isFloating(r) : !isFloating(r) && r.interfaces[0] === current!.id);
   const rules = staged.firewall.rules.filter(inTab);
   // Every row's matches over the last day, in one request.
   const builtins = ['pf.builtin.anti-lockout', 'pf.builtin.block-private', 'pf.builtin.block-bogons', 'pf.builtin.default-block'];
@@ -259,11 +260,11 @@ export function FirewallRules() {
       />
       <Tabs value={tab} onChange={(v) => v && navigate(`/firewall/rules/${v}`)} mb="md">
         <Tabs.List>
-          <Tabs.Tab value={FLOATING} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter(isFloating).length}</Badge>}>
+          <Tabs.Tab value={FLOATING} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => !r.authpf && isFloating(r)).length}</Badge>}>
             Floating
           </Tabs.Tab>
           {ifaces.map((i) => (
-            <Tabs.Tab key={i.id} value={i.id} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => !isFloating(r) && r.interfaces[0] === i.id).length}</Badge>}>
+            <Tabs.Tab key={i.id} value={i.id} rightSection={<Badge size="sm" color="gray" circle>{staged.firewall.rules.filter((r) => !r.authpf && !isFloating(r) && r.interfaces[0] === i.id).length}</Badge>}>
               {i.name}
             </Tabs.Tab>
           ))}

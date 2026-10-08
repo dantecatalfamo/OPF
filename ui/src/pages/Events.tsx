@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, Anchor, Button, Card, Chip, Group, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
 import {
-  IconDeviceLaptop, IconGitCommit, IconLogin, IconList, IconPlugConnected, IconPower, IconRoute, IconSearch, IconServer, IconShieldCheck, IconShieldLock, IconTable, IconWorldWww,
+  IconDeviceLaptop, IconGitCommit, IconLogin, IconList, IconPlugConnected, IconPower, IconRoute, IconSearch, IconServer, IconKey, IconShieldCheck, IconShieldLock, IconTable, IconWorldWww,
 } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { tunnels, type Model } from '../model/types';
@@ -26,6 +26,7 @@ const kinds: { value: EventKind; label: string; icon: typeof IconPower }[] = [
   { value: 'commit', label: 'Changes', icon: IconGitCommit },
   { value: 'login', label: 'Sign-ins', icon: IconLogin },
   { value: 'table', label: 'Tables', icon: IconTable },
+  { value: 'authpf', label: 'Sign-in access', icon: IconKey },
   { value: 'opf', label: 'OPF', icon: IconPower },
 ];
 const iconOf = Object.fromEntries(kinds.map((k) => [k.value, k.icon])) as Record<EventKind, typeof IconPower>;
@@ -53,6 +54,8 @@ function linkOf(m: Model, e: OpfEvent): string | undefined {
       return '/system/general';
     case 'commit':
       return '/system/history';
+    case 'authpf':
+      return '/firewall/authpf';
     case 'table':
       return m.firewall.aliases.some((a) => a.name === s && a.type === 'table') ? `/firewall/aliases?table=${encodeURIComponent(s)}` : '/firewall/aliases';
   }

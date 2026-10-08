@@ -41,6 +41,7 @@ export const nav: NavGroup[] = [
       { label: 'Aliases', to: '/firewall/aliases', keywords: 'tables lists groups of addresses url lists' },
       { label: 'Connections', to: '/firewall/connections', keywords: 'states state table sessions kill close' },
       { label: 'Firewall log', to: '/firewall/log', keywords: 'pflog blocked packets logged' },
+      { label: 'Sign-in access', to: '/firewall/authpf', keywords: 'authpf ssh sign in login contractors guests captive access while signed in' },
       { label: 'Ruleset', to: '/firewall/ruleset', keywords: 'pf.conf generated rules raw' },
       { label: 'Settings', to: '/firewall/settings', keywords: 'firewall options pf' },
     ],

@@ -28,14 +28,22 @@ function fromKind(kind: Kind, prev: Endpoint): Endpoint {
   if (kind.startsWith('iface:')) return { type: 'iface', iface: kind.slice(6), ...opts, ...n };
   if (kind.startsWith('group:')) return { type: 'iface', group: kind.slice(6), ...opts, ...n };
   if (kind.startsWith('alias:')) return { type: 'alias', alias: kind.slice(6), ...n };
+  if (kind === 'authpfUser' || kind === 'authpfUsers') return { type: kind, ...n };
   if (kind === 'host' || kind === 'network') return { type: kind, value: prev.type === 'host' || prev.type === 'network' ? prev.value : '', ...n };
   // This firewall defaults to its own addresses, not its networks.
   if (kind === 'self') return prev.type === 'iface' || prev.type === 'self' ? { type: 'self', ...opts, ...n } : { type: 'self', ...n };
   return { type: 'any' };
 }
 
-export function endpointOptions(m: Model) {
+/** The picker's choices. In a rule for signed-in users (authpf), the
+ *  signed-in user comes first; elsewhere, with sign-in access on, any
+ *  signed-in user is one. */
+export function endpointOptions(m: Model, authpf = false) {
+  const signIn = authpf
+    ? [{ group: 'Sign-in access', items: [{ value: 'authpfUser', label: 'The signed-in user' }] }]
+    : m.firewall.authpf?.enabled ? [{ group: 'Sign-in access', items: [{ value: 'authpfUsers', label: 'Any signed-in user' }] }] : [];
   return [
+    ...signIn,
     { group: 'General', items: [{ value: 'any', label: 'Any' }, { value: 'self', label: 'This firewall (all addresses)' }] },
     { group: 'Interfaces', items: m.interfaces.map((i) => ({ value: `iface:${i.id}`, label: i.name })) },
     {
@@ -117,15 +125,17 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
   );
 }
 
-export function EndpointField({ label, value, onChange, model, error }: {
+export function EndpointField({ label, value, onChange, model, error, authpf }: {
   label: string; value: Endpoint; onChange: (e: Endpoint) => void; model: Model; error?: React.ReactNode;
+  /** In a rule for signed-in users. */
+  authpf?: boolean;
 }) {
   const kind = kindOf(value);
   const custom = value.type === 'host' || value.type === 'network';
   const typedGroup = kind === 'group:';
   return (
     <Stack gap={6}>
-      <Select label={label} data={endpointOptions(model)} value={kind} allowDeselect={false} searchable onChange={(k) => k && onChange(fromKind(k, value))} />
+      <Select label={label} data={endpointOptions(model, authpf)} value={kind} allowDeselect={false} searchable onChange={(k) => k && onChange(fromKind(k, value))} />
       {custom && (
         <TextInput
           aria-label={`${label} address`}

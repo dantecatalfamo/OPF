@@ -390,36 +390,41 @@ In order. Each step's details are in the section it points to.
       and TFTP through NAT, with their `anchor "ftp-proxy/*"` and
       `divert-to` rules generated. TFTP matters for PXE boot and for
       phones and switches fetching their configuration.
-- [ ] **authpf** (authpf(8)): network access that opens when someone
-      logs in over SSH and closes when they log out, for contractors,
-      guests or anything that should need a person present. authpf is
-      the user's login shell; on login it loads rules for their address
-      (`$user_ip`) into the anchor `authpf/<user>(<pid>)` and adds it to
-      the `<authpf_users>` table, and on logout removes both.
-  - Generated: `anchor "authpf/*"` in pf.conf at a point the page shows
-    (before the interface rules, so an authenticated user's rules are
-    reached), `/etc/authpf/authpf.conf`, `authpf.rules` (for everyone)
-    and `users/<name>/authpf.rules` (for one), `authpf.allow`,
-    `banned/<name>` (with the message the user sees) and
-    `authpf.message`. The rules are ordinary OPF rules written with
-    `$user_ip` as the source, from the same form, and checked by
-    `pfctl -n` with the anchor loaded (`pfctl -a authpf/test -n -f`).
-  - Simpler still, for rules that only need to know "is this address
-    logged in": `<authpf_users>` in any rule's source, offered as an
-    endpoint ("any authenticated user").
-  - Accounts: authpf users are system accounts with `/usr/sbin/authpf`
-    as their shell, created and removed by OPF, apart from the admin
-    accounts (Security › User accounts) and never able to reach OPF's
-    interface. Their SSH keys are managed on the page; sshd needs
-    `AllowTcpForwarding no` and a `Match` for them, and
-    `ClientAliveInterval` so a dropped connection ends the session.
-  - Live: who's logged in, from where and since when (the anchors
-    under `authpf/*` and the table), their rules' counters and states
-    (`pfctl -a 'authpf/…' -s rules`), and a way to end a session
-    (kill that authpf process, which removes its rules). Logins and
-    logouts go in the event log.
-  - The firewall log, rule counters and the packet tester don't follow
-    anchors yet; they need to for authpf rules to show up in them.
+- [x] **Sign-in access** (authpf(8), Firewall › Sign-in access): network
+      access that opens while someone is signed in over SSH and closes
+      when they sign out.
+  - The model: on or off, the networks users sign in from (SSH to the
+    firewall there is let in), the message shown, and users (a login,
+    SSH public keys, an optional ban with its message). Rules marked
+    authpf are for signed-in users, everyone's or some users', from
+    the same guided form with "the signed-in user" ($user_ip) as an
+    endpoint; "any signed-in user" (<authpf_users>) works in any rule.
+  - Generated: /etc/authpf (authpf.conf, everyone's rules, a rules file
+    per user with rules of their own, authpf.allow naming OPF's users
+    only, ban messages, the message, each user's keys, root's), pf.conf's
+    table, SSH pass and `anchor "authpf/*"` after the defaults and
+    before every user rule, and a marked block at the end of
+    sshd_config for the authpf group (keys only, no forwarding or
+    tunnels, ClientAliveInterval 15, ending with "Match all").
+  - Accounts: made and removed by OPF after each commit and every
+    collector tick (useradd, userdel without -r), only those whose
+    comment starts with "OPF sign-in"; a login another account has is
+    reported, never taken.
+  - Live: who's signed in (ps and the anchors), ending a session
+    (operators; only a real session's process), and sign-ins,
+    sign-outs and accounts as events.
+  - Tried by hand on the VM first: key login with no password through a
+    root-owned key file, the anchor authpf/<user>(<pid>), cleanup on
+    kill, and that cleanup ending every connection from the address
+    (an admin's SSH from the same host included; the page says so).
+  - [ ] Try OPF's on the VM end to end: commit, the accounts, a real
+        sign-in, a rule naming one of pf.conf's tables from inside the
+        anchor, the session's end.
+  - [ ] The firewall log, rule counters and the packet tester don't
+        follow anchors yet; sign-in rules don't show up in them.
+  - [ ] The SSH port is 22, and the anti-lockout's; take both from
+        sshd_config.
+  - [ ] Removing a user leaves their empty /etc/authpf/users/<name>/.
 - [ ] A packet tester: "what happens to tcp 192.168.20.5 →
       192.168.1.20:445?", evaluated against the ruleset. A wrong
       "allowed" is worse than no answer, so it has to follow pf

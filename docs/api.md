@@ -459,6 +459,17 @@ never by number: numbers change with every reload.
   contains it, unless that entry is negated): `{"address", "tables":
   [{"table", "kind", "entry", "added", "expires", "usedBy": [{"id",
   "description"}]}], "errors"}`.
+- `GET /api/firewall/authpf/sessions`: who's signed in to sign-in
+  access (authpf), any role: `{"enabled", "sessions": [{"user",
+  "address", "pid", "since", "rules"}]}`, newest first, from the authpf
+  processes (`ps`), with `rules` whether their anchor
+  (`authpf/<user>(<pid>)`) is loaded.
+- `POST /api/firewall/authpf/sessions/{pid}/end`: ends a session,
+  operators and admins: only an authpf process that's signed in now, 404
+  for any other pid. authpf takes the user's rules out and ends every
+  connection from their address. An event of kind `authpf` names who
+  ended it; sign-ins, sign-outs and accounts made or removed are events
+  of that kind too.
 - `POST /api/dns/reverse`: `{"addresses": ["192.168.1.112",
   "140.82.112.4"]}` (at most 256; any role) answers each address's name
   (its PTR record), `{"names": {"192.168.1.112":

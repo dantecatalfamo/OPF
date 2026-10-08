@@ -55,6 +55,10 @@ function things(m: Model, known: Set<string>): Entry[] {
   const ifaceName = (id: string) => m.interfaces.find((i) => i.id === id)?.name ?? id;
   for (const r of m.firewall.rules) {
     if (!r.description) continue;
+    if (r.authpf) {
+      out.push({ label: r.description, kind: 'Rule for signed-in users', to: `/firewall/authpf?edit=${enc(r.id)}` });
+      continue;
+    }
     const tab = r.interfaces.length === 1 && !(r.groups ?? []).length ? r.interfaces[0] : 'floating';
     out.push({ label: r.description, kind: `Rule on ${tab === 'floating' ? 'floating' : ifaceName(tab)}`, to: `/firewall/rules/${enc(tab)}` });
   }
@@ -66,6 +70,9 @@ function things(m: Model, known: Set<string>): Entry[] {
   }
   for (const a of m.firewall.aliases) {
     out.push({ label: a.name, kind: 'Alias', to: '/firewall/aliases', also: a.description });
+  }
+  for (const u of m.firewall.authpf?.users ?? []) {
+    out.push({ label: u.name, kind: 'Sign-in user', to: '/firewall/authpf', also: u.description });
   }
   for (const g of m.routing.gateways) {
     out.push({ label: g.name, kind: 'Gateway', to: '/network/routing/gateways', also: `${g.address} ${g.description}` });
