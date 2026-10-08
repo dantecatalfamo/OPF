@@ -48,6 +48,26 @@ func TestDevices(t *testing.T) {
 	if d, err := e.m.Device("ip:192.168.1.77"); err != nil || d.Kind != "address" || d.Networks[0].ID != "lan" {
 		t.Errorf("an address only: %+v %v", d, err)
 	}
+	// The WAN's neighbour has a page too, by its MAC address (an event
+	// links it), showing where ARP has it.
+	t2, err := e.m.ARPTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	neighbours := 0
+	for _, a := range t2.Entries {
+		if !strings.HasPrefix(a.IP, "203.0.113.") || strings.Contains(a.Flags, "local") {
+			continue
+		}
+		neighbours++
+		d, err := e.m.Device("mac:" + strings.ToLower(a.MAC))
+		if err != nil || len(d.ARP) != 1 || len(d.Addresses) != 1 || d.Addresses[0] != a.IP || len(d.Networks) != 1 || d.Networks[0].ID != "wan" {
+			t.Errorf("the WAN's neighbour: %+v %v", d, err)
+		}
+	}
+	if neighbours == 0 {
+		t.Error("the sample's ARP table has no WAN neighbour to try")
+	}
 	if _, err := e.m.Device("nonsense"); code(err) != CodeNotFound {
 		t.Errorf("an unknown key: %v", err)
 	}

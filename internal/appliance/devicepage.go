@@ -298,8 +298,35 @@ func (m *Manager) Device(key string) (*DeviceInfo, error) {
 	case key == deviceFirewall:
 		return &DeviceInfo{Key: key, Kind: "firewall", Name: "This firewall", Addresses: []string{}, Networks: []DeviceNetwork{}}, nil
 	case strings.HasPrefix(key, deviceMAC) && validMAC(strings.TrimPrefix(key, deviceMAC)):
-		// Not seen now (no lease or ARP entry), but its activity may be kept.
-		return &DeviceInfo{Key: key, Kind: "device", MAC: strings.TrimPrefix(key, deviceMAC), Addresses: []string{}, Networks: []DeviceNetwork{}}, nil
+		// Not one of the network's devices now (no lease, nor an ARP entry
+		// on an inside network), but its activity may be kept, and it may
+		// be outside (the WAN's gateway, say), where ARP still has it.
+		mac := strings.TrimPrefix(key, deviceMAC)
+		d := &DeviceInfo{Key: key, Kind: "device", MAC: mac, Addresses: []string{}, Networks: []DeviceNetwork{}}
+		if t, err := m.ARPTable(); err == nil {
+			model, _ := m.liveOrEmpty()
+			for _, e := range t.Entries {
+				if !strings.EqualFold(e.MAC, mac) || strings.Contains(e.Flags, "local") {
+					continue
+				}
+				d.ARP = append(d.ARP, e)
+				if !slices.Contains(d.Addresses, e.IP) {
+					d.Addresses = append(d.Addresses, e.IP)
+				}
+				if model == nil {
+					continue
+				}
+				for _, i := range model.Interfaces {
+					if i.Device == e.Iface && !slices.ContainsFunc(d.Networks, func(n DeviceNetwork) bool { return n.ID == i.ID }) {
+						d.Networks = append(d.Networks, DeviceNetwork{ID: i.ID, Name: i.Name, Device: i.Device})
+					}
+				}
+			}
+		}
+		if t, ok := m.eventLog().knownSince(mac); ok {
+			d.FirstSeen = &t
+		}
+		return d, nil
 	}
 	return nil, errorf(CodeNotFound, "OPF knows no device %q", key)
 }
