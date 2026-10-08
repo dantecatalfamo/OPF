@@ -60,6 +60,9 @@ type API interface {
 	TableChange(TableChangeRequest) error
 	AuthpfSessions() (*AuthpfSessions, error)
 	AuthpfEnd(AuthpfEndRequest) error
+	Services() (*Services, error)
+	Service(name string) (*ServiceDetail, error)
+	ServiceAction(ServiceActionRequest) (*ServiceActionResult, error)
 	DNSLists() ([]DNSListStatus, error)
 	RefreshDNSList(id string) (*DNSListStatus, error)
 	DNSStats() (*DNSStats, error)

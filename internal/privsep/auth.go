@@ -34,6 +34,7 @@ var methodRoles = map[string]auth.Role{
 	"PfStatus": auth.RoleView, "PfStates": auth.RoleView, "RuleCounters": auth.RoleView,
 	"FirewallLog": auth.RoleView, "Tables": auth.RoleView, "DNSLists": auth.RoleView,
 	"TableEntries": auth.RoleView, "TableFind": auth.RoleView, "AuthpfSessions": auth.RoleView,
+	"Services": auth.RoleView, "Service": auth.RoleView,
 	"Webhooks": auth.RoleView, "SystemLog": auth.RoleView, "Events": auth.RoleView,
 	"Metrics": auth.RoleView, "DNSStats": auth.RoleView, "DNSBlocked": auth.RoleView, "Storage": auth.RoleView,
 	// Who each device is: what the DHCP and ARP pages show already.
@@ -57,7 +58,10 @@ var methodRoles = map[string]auth.Role{
 	"TableChange": auth.RoleOperator,
 	// Ending someone's sign-in session, as closing a connection is.
 	"AuthpfEnd": auth.RoleOperator,
-	"Confirm":   auth.RoleOperator, "Revert": auth.RoleOperator,
+	// Starting, stopping and restarting a daemon, as closing a
+	// connection is; whether it starts at boot is the configuration's.
+	"ServiceAction": auth.RoleOperator,
+	"Confirm":       auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
 	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "ImportTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,

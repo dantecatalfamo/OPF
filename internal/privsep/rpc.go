@@ -229,6 +229,18 @@ type (
 		Result
 		Sessions *appliance.AuthpfSessions
 	}
+	ServicesReply struct {
+		Result
+		Services *appliance.Services
+	}
+	ServiceReply struct {
+		Result
+		Service *appliance.ServiceDetail
+	}
+	ServiceActionReply struct {
+		Result
+		Action *appliance.ServiceActionResult
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -527,6 +539,39 @@ func (s *Service) AuthpfEnd(c Call[appliance.AuthpfEndRequest], r *EmptyReply) e
 	a := c.Args
 	a.By = sess.User // whoever the session is, whatever was sent
 	r.set("AuthpfEnd", s.api.AuthpfEnd(a))
+	return nil
+}
+
+func (s *Service) Services(c Call[None], r *ServicesReply) error {
+	if s.allow("Services", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Services, err = s.api.Services()
+	r.set("Services", err)
+	return nil
+}
+
+func (s *Service) Service(c Call[NameArgs], r *ServiceReply) error {
+	if s.allow("Service", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Service, err = s.api.Service(c.Args.Name)
+	r.set("Service", err)
+	return nil
+}
+
+func (s *Service) ServiceAction(c Call[appliance.ServiceActionRequest], r *ServiceActionReply) error {
+	sess := s.allow("ServiceAction", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
+	a.By = sess.User // whoever the session is, whatever was sent
+	var err error
+	r.Action, err = s.api.ServiceAction(a)
+	r.set("ServiceAction", err)
 	return nil
 }
 
@@ -1218,6 +1263,33 @@ func (c *Client) AuthpfSessions() (*appliance.AuthpfSessions, error) {
 
 func (c *Client) AuthpfEnd(req appliance.AuthpfEndRequest) error {
 	return c.call("AuthpfEnd", req, &EmptyReply{})
+}
+
+func (c *Client) Services() (*appliance.Services, error) {
+	var r ServicesReply
+	err := c.call("Services", None{}, &r)
+	if s := r.Services; s != nil {
+		s.Services, s.Errors = nonNil(s.Services), nonNil(s.Errors)
+	}
+	return r.Services, err
+}
+
+func (c *Client) Service(name string) (*appliance.ServiceDetail, error) {
+	var r ServiceReply
+	err := c.call("Service", NameArgs{name}, &r)
+	if d := r.Service; d != nil {
+		d.Log = nonNil(d.Log)
+		if d.Vars == nil {
+			d.Vars = map[string]string{}
+		}
+	}
+	return r.Service, err
+}
+
+func (c *Client) ServiceAction(req appliance.ServiceActionRequest) (*appliance.ServiceActionResult, error) {
+	var r ServiceActionReply
+	err := c.call("ServiceAction", req, &r)
+	return r.Action, err
 }
 
 func (c *Client) DNSLists() ([]appliance.DNSListStatus, error) {

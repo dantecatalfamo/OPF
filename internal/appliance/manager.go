@@ -698,7 +698,7 @@ func outsideChange(path string, disk []byte, onDisk bool, written map[string]wri
 	case pf.RcPath:
 		// The rest isn't OPF's, and a missing file means rc.conf's
 		// defaults.
-		outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
+		outside = wrote && (!maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev))) || !slices.Equal(pf.RcServiceValues(string(disk)), pf.RcServiceValues(string(prev))))
 	case pf.SysctlPath:
 		outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
 	case pf.SshdPath:

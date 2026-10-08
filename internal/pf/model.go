@@ -62,6 +62,10 @@ type SystemSettings struct {
 	// DNS is where the firewall's own lookups go (updates, list
 	// downloads, its tools); nil is the WAN's servers.
 	DNS *SystemDNS `json:"dns,omitempty"`
+	// Services are boot settings for the base system's services
+	// (services.go), each written into rc.conf.local; one not here is
+	// as the system has it.
+	Services []ServiceSetting `json:"services,omitempty"`
 }
 
 // SystemDNS is the firewall's own DNS client: /etc/resolv.conf.

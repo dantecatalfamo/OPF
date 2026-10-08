@@ -27,6 +27,8 @@ type mockSystem struct {
 	tables *mockTableStore
 	// authpf is sign-in access's accounts and session (mockauthpf.go).
 	authpf *mockAuthpf
+	// services is rcctl's view (mockservices.go).
+	services *mockServices
 	// dnsNames is how many names the enabled blocklists have.
 	dnsNames func() int
 	next     run.Runner
@@ -35,6 +37,13 @@ type mockSystem struct {
 func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	cmd := strings.Join(argv, " ")
 	t := time.Since(s.start).Seconds()
+	if s.services != nil && len(argv) > 0 && argv[0] == "rcctl" {
+		if m, err := s.model(); err == nil {
+			if out, ok, err := s.services.handle(m, argv); ok {
+				return []byte(out), err
+			}
+		}
+	}
 	if s.authpf != nil {
 		if out, ok, err := s.authpf.account(argv); ok {
 			return []byte(out), err

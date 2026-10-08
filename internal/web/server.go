@@ -35,6 +35,9 @@
 //	GET    /api/firewall/tables/find      which table aliases hold ?address=
 //	GET    /api/firewall/authpf/sessions  who's signed in (sign-in access)
 //	POST   /api/firewall/authpf/sessions/{pid}/end  end one
+//	GET    /api/services                  every service: starts at boot, running
+//	GET    /api/services/{name}           one, with its rc.d variables and log
+//	POST   /api/services/{name}/{action}  start, stop, restart, reload or check it
 //	GET    /api/dns/blocklists            DNS blocklists' downloads
 //	POST   /api/dns/blocklists/{id}/refresh  download one again and reload it
 //	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
@@ -153,6 +156,23 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("POST /api/firewall/tables/{name}/entries", s.tableChange)
 	s.mux.HandleFunc("GET /api/firewall/tables/find", s.tableFind)
 	s.mux.HandleFunc("GET /api/firewall/authpf/sessions", getter(s, appliance.API.AuthpfSessions))
+	s.mux.HandleFunc("GET /api/services", getter(s, appliance.API.Services))
+	s.mux.HandleFunc("GET /api/services/{name}", func(w http.ResponseWriter, r *http.Request) {
+		d, err := s.apiFor(r).Service(r.PathValue("name"))
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, d)
+	})
+	s.mux.HandleFunc("POST /api/services/{name}/{action}", func(w http.ResponseWriter, r *http.Request) {
+		res, err := s.apiFor(r).ServiceAction(appliance.ServiceActionRequest{Name: r.PathValue("name"), Action: r.PathValue("action")})
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, res)
+	})
 	s.mux.HandleFunc("POST /api/firewall/authpf/sessions/{pid}/end", s.authpfEnd)
 	s.mux.HandleFunc("GET /api/dns/blocklists", getter(s, func(api appliance.API) (dnsListsBody, error) {
 		l, err := api.DNSLists()

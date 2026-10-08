@@ -58,9 +58,19 @@ func RcVars(m *Model) map[string]string {
 // another line can't be replaced safely, so it's an error.
 func MergeRcConfLocal(existing string, m *Model) (string, error) {
 	var kept []string
+	// The service settings' variables: OPF's lines for them are taken
+	// out wherever rcctl's sorting put them, and so is any other
+	// assignment to a variable OPF now sets, so OPF's is the only one.
+	svcVars := rcServiceNames(m)
 	if existing != "" {
 		for n, line := range strings.Split(strings.TrimSuffix(existing, "\n"), "\n") {
-			if line == rcMarker {
+			if line == rcMarker || isRcServiceLine(line) {
+				continue
+			}
+			if name, _, ok := strings.Cut(strings.TrimSpace(line), "="); ok && svcVars[name] {
+				if strings.HasSuffix(line, `\`) || strings.Count(line, `"`)%2 != 0 || strings.Count(line, `'`)%2 != 0 {
+					return "", fmt.Errorf("line %d of %s sets %s over more than one line; put it on one line", n+1, RcPath, name)
+				}
 				continue
 			}
 			if rcAssignRE.MatchString(line) {
@@ -88,6 +98,9 @@ func MergeRcConfLocal(existing string, m *Model) (string, error) {
 		// Plain double quotes: the values are device names (validated to
 		// letters and digits) and NO, so nothing in them is special to sh.
 		fmt.Fprintf(&b, "%s=\"%s\"\n", name, vars[name])
+	}
+	for _, l := range RcServiceLines(m) {
+		b.WriteString(l + "\n")
 	}
 	return b.String(), nil
 }

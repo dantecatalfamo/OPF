@@ -40,6 +40,7 @@ func Validate(m *Model) []FieldError {
 	v.dhcp()
 	v.dns()
 	v.authpf()
+	v.services()
 	v.wireguard()
 	v.notifications()
 	return v.errs
@@ -1493,5 +1494,44 @@ func (v *validator) message(path, s string, max int) {
 		v.fail(path, "is %d bytes; the most is %d", len(s), max)
 	case strings.ContainsFunc(s, func(r rune) bool { return unicode.IsControl(r) && r != '\n' && r != '\t' }):
 		v.fail(path, "can't contain control characters")
+	}
+}
+
+// services checks the boot settings for base services.
+func (v *validator) services() {
+	seen := map[string]bool{}
+	for i, s := range v.m.System.Services {
+		p := at("system.services", i)
+		info, ok := BaseService(s.Name)
+		switch {
+		case !ok:
+			v.fail(p+".name", "%q isn't one of the base system's services", printable(s.Name, 40))
+			continue
+		case info.ManagedAt != "":
+			v.fail(p+".name", "%s is set up on its own page (%s)", s.Name, info.ManagedAt)
+		}
+		v.unique(p+".name", seen, s.Name, "service")
+		if info.Kind == ServiceBoot {
+			if s.Flags != nil || s.RTable != nil || s.Timeout != nil {
+				v.fail(p, "%s is a boot setting: on or off only", s.Name)
+			}
+			continue
+		}
+		if s.Flags != nil {
+			switch {
+			case len(*s.Flags) > 256:
+				v.fail(p+".flags", "is %d bytes; the most is 256", len(*s.Flags))
+			case !serviceFlagsRE.MatchString(*s.Flags):
+				v.fail(p+".flags", "flags are letters, digits, spaces and . _ , : / = @ %% + -; no quotes or shell characters")
+			case !s.Enabled:
+				v.fail(p+".flags", "a service that doesn't start has no flags")
+			}
+		}
+		if s.RTable != nil {
+			v.intRange(p+".rtable", *s.RTable, 0, 255)
+		}
+		if s.Timeout != nil {
+			v.intRange(p+".timeout", *s.Timeout, 1, 3600)
+		}
 	}
 }
