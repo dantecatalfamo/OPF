@@ -11,6 +11,7 @@ import { useNow } from '../lib/useNow';
 import type { Dns as DnsSettings, Iface } from '../model/types';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
+import { DeviceLink } from '../components/DeviceLink';
 import { DnsBlocklists, DnsOwnNames } from './DnsBlocklists';
 import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
 import { DnsActivitySettingsCard, DnsActivityTab } from './DnsHistory';
@@ -107,7 +108,7 @@ function DeviceNames() {
                   <Table.Tbody>
                     {data.registered.map((r) => (
                       <Table.Tr key={r.name}>
-                        <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.name}</Mono></Table.Td>
+                        <Table.Td style={{ whiteSpace: 'nowrap' }}><DeviceLink deviceKey={`ip:${r.ip}`}><Mono>{r.name}</Mono></DeviceLink></Table.Td>
                         <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
                         {/* Chosen by the device; shown as text, never markup. */}
                         <Table.Td><Text size="sm" c="dimmed">{r.from ? `“${r.from}”` : ''}</Text></Table.Td>
@@ -133,7 +134,7 @@ function DeviceNames() {
                   {refused.map((r) => (
                     <Table.Tr key={r.ip}>
                       {/* Chosen by the device; shown as text, never markup. */}
-                      <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>“{r.hostname}”</Mono></Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap' }}><DeviceLink deviceKey={`ip:${r.ip}`}><Mono>“{r.hostname}”</Mono></DeviceLink></Table.Td>
                       <Table.Td style={{ whiteSpace: 'nowrap' }}><Mono>{r.ip}</Mono></Table.Td>
                       <Table.Td><Text size="sm" c="dimmed">{r.reason}</Text></Table.Td>
                     </Table.Tr>

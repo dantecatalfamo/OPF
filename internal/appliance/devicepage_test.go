@@ -41,6 +41,10 @@ func TestDevices(t *testing.T) {
 	if d, err := e.m.Device("mac:3c:22:fb:91:04:7d"); err != nil || d.Lease == nil {
 		t.Errorf("one device: %+v %v", d, err)
 	}
+	// By an address a device has: that device.
+	if d, err := e.m.Device("ip:192.168.1.112"); err != nil || d.Key != "mac:3c:22:fb:91:04:7d" {
+		t.Errorf("by its address: %+v %v", d, err)
+	}
 	if d, err := e.m.Device("ip:192.168.1.77"); err != nil || d.Kind != "address" || d.Networks[0].ID != "lan" {
 		t.Errorf("an address only: %+v %v", d, err)
 	}

@@ -340,8 +340,9 @@ request after a quiet minute takes a second longer, to measure one.
   itself, with no name in DNS) or `vpn`.
 - `GET /api/devices/device?key=…`: one device, with its VPN tunnel's
   state now (`endpoint`, `handshakeAgo`, `rxBytes`, `txBytes`) for a
-  VPN device. A key DNS activity or traffic counted but nothing else
-  knows (`ip:…`, a MAC not seen now, `firewall`) is a device too, with
+  VPN device. `ip:<address>` is the device that has the address now,
+  when OPF knows one (a device first, else a VPN device). A key DNS
+  activity or traffic counted but nothing else knows (`ip:…`, a MAC not seen now, `firewall`) is a device too, with
   `kind` `address` or `firewall`; anything else is `not_found`.
 - `GET /api/traffic?days=N` (admin): what each device sent and
   received over the last `N` days (`firewall.traffic`). Only `enabled`

@@ -20,7 +20,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   );
 }
 
-export function StatusDot({ ok, label }: { ok: boolean | 'warn'; label: string }) {
+export function StatusDot({ ok, label }: { ok: boolean | 'warn'; label: ReactNode }) {
   const color = ok === 'warn' ? 'yellow' : ok ? 'teal' : 'red';
   return (
     <Group gap={8} wrap="nowrap">

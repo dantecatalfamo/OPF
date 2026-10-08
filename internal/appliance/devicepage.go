@@ -267,6 +267,22 @@ func (m *Manager) Device(key string) (*DeviceInfo, error) {
 			return &d, nil
 		}
 	}
+	// An address: the device that has it now, when OPF knows one (a page
+	// that only knows the address, like the DNS names', links by it).
+	if addr, ok := strings.CutPrefix(key, deviceAddress); ok {
+		var vpn *DeviceInfo
+		for i := range all.Devices {
+			if d := &all.Devices[i]; slices.Contains(d.Addresses, addr) {
+				if d.Kind == "device" {
+					return d, nil
+				}
+				vpn = d
+			}
+		}
+		if vpn != nil {
+			return vpn, nil
+		}
+	}
 	switch {
 	case strings.HasPrefix(key, deviceAddress):
 		addr := strings.TrimPrefix(key, deviceAddress)

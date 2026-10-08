@@ -38,12 +38,12 @@ function linkOf(m: Model, e: OpfEvent): string | undefined {
       return m.interfaces.some((i) => i.id === s) ? `/interfaces/${s}` : undefined;
     case 'gateway':
       return '/network/routing';
-    case 'vpn': {
-      const t = tunnels(m).find((x) => x.wireguard.peers.some((p) => p.id === s));
-      return t ? `/services/wireguard/${t.id}` : undefined;
-    }
+    case 'vpn':
+      // A VPN device's own page; it links to its tunnel.
+      return tunnels(m).some((x) => x.wireguard.peers.some((p) => p.id === s)) ? `/diagnostics/devices/${encodeURIComponent(`vpn:${s}`)}` : undefined;
     case 'device':
-      return '/diagnostics/arp';
+      // Its subject is its MAC address.
+      return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(s) ? `/diagnostics/devices/${encodeURIComponent(`mac:${s.toLowerCase()}`)}` : '/diagnostics/arp';
     case 'service':
       return { dhcpd: '/services/dhcp', unbound: '/services/dns', ntpd: '/system/general' }[s];
     case 'list':

@@ -17,6 +17,7 @@ import { HistoryCard } from '../components/HistoryChart';
 
 import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
+import { DeviceLink } from '../components/DeviceLink';
 import { DeleteInterface } from '../components/DeleteInterface';
 import { AddExit, ExitFlow, ExitSettings } from './WireGuardExit';
 import { FileLink } from './ConfigFiles';
@@ -829,7 +830,7 @@ function Devices({ tunnel, onAdd }: { tunnel: Tunnel; onAdd: () => void }) {
               return (
                 <Table.Tr key={p.id}>
                   <Table.Td>
-                    <StatusDot ok={online ? true : s?.lastSeen ? 'warn' : false} label={p.name} />
+                    <StatusDot ok={online ? true : s?.lastSeen ? 'warn' : false} label={<DeviceLink deviceKey={`vpn:${p.id}`}>{p.name}</DeviceLink>} />
                     <Text size="xs" c="dimmed" ml={16}>
                       {s?.endpoint ? `From ${s.endpoint.replace(/:\d+$/, '')}` : s?.lastFrom ? `Last from ${s.lastFrom}` : p.endpoint ?? 'Not connected yet'}
                       {p.presharedKey ? ' · preshared key' : ''}

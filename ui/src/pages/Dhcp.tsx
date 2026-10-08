@@ -248,7 +248,7 @@ export function Dhcp() {
                       <Table.Tbody>
                         {scope.reservations.map((r) => (
                           <Table.Tr key={r.id}>
-                            <Table.Td><Text size="sm" fw={500}>{r.hostname}</Text></Table.Td>
+                            <Table.Td>{r.mac ? <DeviceLink deviceKey={macKey(r.mac)}><Text span size="sm" fw={500}>{r.hostname}</Text></DeviceLink> : <Text size="sm" fw={500}>{r.hostname}</Text>}</Table.Td>
                             <Table.Td><Mono>{r.ip}</Mono></Table.Td>
                             <Table.Td><Mono c="dimmed">{r.mac}</Mono></Table.Td>
                             <Table.Td w={40}>
@@ -288,8 +288,10 @@ export function Dhcp() {
                           <Table.Tr key={l.ip}>
                             <Table.Td>
                               {/* The name is the device's own choice; shown as text, never markup. */}
-                              {l.hostname ? <Text size="sm" fw={500}>{l.hostname}</Text> : <Text size="sm" c="dimmed">Unnamed device</Text>}
-                              {l.mac && <DeviceLink deviceKey={macKey(l.mac)} size="sm" c="dimmed"><Mono c="dimmed">{l.mac}</Mono></DeviceLink>}
+                              <DeviceLink deviceKey={l.mac ? macKey(l.mac) : `ip:${l.ip}`}>
+                                {l.hostname ? <Text span size="sm" fw={500}>{l.hostname}</Text> : <Text span size="sm">Unnamed device</Text>}
+                              </DeviceLink>
+                              {l.mac && <div><Mono c="dimmed">{l.mac}</Mono></div>}
                               {l.dnsName && <Text size="xs" c="dimmed">In DNS as <Mono>{l.dnsName}</Mono></Text>}
                               {l.dnsRefused && <Text size="xs" c="dimmed">Not in DNS: {l.dnsRefused}</Text>}
                             </Table.Td>
