@@ -5,8 +5,8 @@
 // kept, its traffic and DNS activity.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
-import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
+import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { IconAlertTriangle, IconArrowDownLeft, IconArrowUpRight, IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
 import { useRole } from '../lib/session';
@@ -19,6 +19,7 @@ import { DeviceLink } from '../components/DeviceLink';
 import { listName } from './DnsHistory';
 import { NamesSwitch, Wrapped } from '../components/HostName';
 import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
+import { protoGroup, stateLabel } from '../lib/connections';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -291,14 +292,47 @@ function DnsCard({ deviceKey, days }: { deviceKey: string; days: number }) {
   );
 }
 
-// The name of the end of a connection that isn't this device, under it,
-// when it has one.
-function Names({ names, own, from, to }: { names: Map<string, string>; own: string[]; from?: string; to?: string }) {
-  const fromOwn = own.includes(hostOf(from) ?? '');
-  const far = fromOwn ? to : from;
-  const n = names.get(hostOf(far) ?? '');
-  if (!n) return null;
-  return <Text size="xs" c="dimmed" className="mono">{fromOwn ? 'to ' : 'from '}<Wrapped name={n} /></Text>;
+// One connection, as this device's page shows it: the other end (its
+// address, port and name), which way it was opened, and what's left of
+// pf's detail (this device's own address and port, the raw state) on
+// hover.
+interface DeviceConn {
+  key: string;
+  proto: string;
+  /** out: this device opened it; in: it was opened to the device. */
+  dir: 'out' | 'in';
+  farHost: string;
+  farPort?: string;
+  ownEnd: string;
+  /** The address it leaves as or arrives at, through NAT. */
+  via?: string;
+  state: string;
+  bytes: number;
+  ageSec: number;
+}
+
+const splitEnd = (end: string) => {
+  const h = hostOf(end) ?? end;
+  const rest = end.slice(end.indexOf(h) + h.length).replace(/^[:[\]]+|\]$/g, '');
+  return { host: h, port: rest || undefined };
+};
+
+// A connection through the firewall has a state on each side, the same
+// ends both times; one row each, with the NAT address when one has it.
+function deviceConns(states: PfState[], own: string[]): DeviceConn[] {
+  const byKey = new Map<string, DeviceConn>();
+  for (const s of states) {
+    const fromOwn = own.includes(hostOf(s.source) ?? '');
+    const far = splitEnd(fromOwn ? s.destination : s.source);
+    const key = `${s.proto} ${s.source} ${s.destination}`;
+    const prev = byKey.get(key);
+    const c: DeviceConn = {
+      key, proto: protoGroup(s.proto), dir: fromOwn ? 'out' : 'in', farHost: far.host, farPort: far.port, ownEnd: fromOwn ? s.source : s.destination,
+      via: s.translated ? splitEnd(s.translated).host : prev?.via, state: s.state, bytes: Math.max(s.bytes, prev?.bytes ?? 0), ageSec: Math.max(s.ageSec, prev?.ageSec ?? 0),
+    };
+    byKey.set(key, c);
+  }
+  return [...byKey.values()].sort((a, b) => b.bytes - a.bytes);
 }
 
 function Connections({ addresses, showNames }: { addresses: string[]; showNames: boolean }) {
@@ -310,28 +344,73 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
       .then((rs) => live && setStates(rs.flatMap((r) => r.states)), (e) => live && setError(errorText(e)));
     return () => { live = false; };
   }, [addresses.join()]);
-  const names = useReverseNames((states ?? []).slice(0, 25).flatMap((s) => [s.source, s.destination]), showNames);
+  const conns = useMemo(() => deviceConns(states ?? [], addresses).slice(0, 25), [states, addresses.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const names = useReverseNames(conns.map((c) => c.farHost), showNames);
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
-      {error ? <Alert color="red" variant="light" p="sm">{error}</Alert> : !states ? <Text size="sm" c="dimmed">Reading…</Text> : states.length ? (
-        <Table.ScrollContainer minWidth={560}>
-          <Table verticalSpacing={4}>
+      {error ? <Alert color="red" variant="light" p="sm">{error}</Alert> : !states ? <Text size="sm" c="dimmed">Reading…</Text> : conns.length ? (
+        <Table.ScrollContainer minWidth={520}>
+          <Table verticalSpacing={6} highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={110}>Way</Table.Th>
+                <Table.Th>Other end</Table.Th>
+                <Table.Th w={100}>State</Table.Th>
+                <Table.Th w={90} ta="right">Data</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
             <Table.Tbody>
-              {states.slice(0, 25).map((s) => (
-                <Table.Tr key={s.id + s.creatorId}>
-                  <Table.Td><Text size="xs" c="dimmed">{s.proto}</Text></Table.Td>
-                  <Table.Td><Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{s.source} → {s.destination}</Text><Names names={names} own={addresses} from={s.source} to={s.destination} />{s.translated && <Text size="xs" c="dimmed" className="mono">via {s.translated}</Text>}</Table.Td>
-                  <Table.Td><Text size="xs" c="dimmed">{s.state}</Text></Table.Td>
-                  <Table.Td ta="right"><Text size="sm" className="num">{formatBytes(s.bytes)}</Text><Text size="xs" c="dimmed">{formatDuration(s.ageSec)}</Text></Table.Td>
-                </Table.Tr>
-              ))}
+              {conns.map((c) => {
+                const name = names.get(c.farHost);
+                const Arrow = c.dir === 'out' ? IconArrowUpRight : IconArrowDownLeft;
+                return (
+                  <Table.Tr key={c.key}>
+                    <Table.Td>
+                      <Tooltip label={c.dir === 'out' ? `This device opened it, from ${c.ownEnd}` : `Opened to this device, at ${c.ownEnd}`}>
+                        <Group gap={6} wrap="nowrap">
+                          <Arrow size={16} color={c.dir === 'out' ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-yellow-5)'} />
+                          <Text size="sm">{c.dir === 'out' ? 'To' : 'From'}</Text>
+                          <Badge size="xs" variant="light" color="gray">{c.proto}</Badge>
+                        </Group>
+                      </Tooltip>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" className="mono" fw={500}>
+                        {c.farHost}{c.farPort && <Text span size="sm" c="dimmed" className="mono" fw={400}> port {c.farPort}</Text>}
+                      </Text>
+                      {(name || c.via) && (
+                        <Text size="xs" c="dimmed">
+                          {name && <span className="mono"><Wrapped name={name} /></span>}
+                          {name && c.via && ' · '}
+                          {c.via && <>{c.dir === 'out' ? 'leaves as ' : 'arrives at '}<span className="mono">{c.via}</span></>}
+                        </Text>
+                      )}
+                    </Table.Td>
+                    <Table.Td><Tooltip label={c.state}><Text size="sm" c="dimmed">{stateLabel(c.state)}</Text></Tooltip></Table.Td>
+                    <Table.Td ta="right">
+                      <Text size="sm" className="num">{formatBytes(c.bytes)}</Text>
+                      <Text size="xs" c="dimmed">{formatDuration(c.ageSec)}</Text>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
       ) : <Empty>None now.</Empty>}
     </Card>
   );
+}
+
+// The name of the end of a log entry that isn't this device, under it,
+// when it has one.
+function Names({ names, own, from, to }: { names: Map<string, string>; own: string[]; from?: string; to?: string }) {
+  const fromOwn = own.includes(hostOf(from) ?? '');
+  const far = fromOwn ? to : from;
+  const n = names.get(hostOf(far) ?? '');
+  if (!n) return null;
+  return <Text size="xs" c="dimmed" className="mono">{fromOwn ? 'to ' : 'from '}<Wrapped name={n} /></Text>;
 }
 
 function Events({ terms }: { terms: string[] }) {
