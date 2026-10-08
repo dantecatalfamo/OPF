@@ -20,6 +20,7 @@ import { listName } from './DnsHistory';
 import { NamesSwitch, Wrapped } from '../components/HostName';
 import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateLabel } from '../lib/connections';
+import { StateTip } from '../components/StateTip';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -307,6 +308,8 @@ interface DeviceConn {
   /** The address it leaves as or arrives at, through NAT. */
   via?: string;
   state: string;
+  /** The state's direction, as pf has it (which end its pair names first). */
+  pfDir: 'in' | 'out';
   bytes: number;
   ageSec: number;
 }
@@ -328,7 +331,7 @@ function deviceConns(states: PfState[], own: string[]): DeviceConn[] {
     const prev = byKey.get(key);
     const c: DeviceConn = {
       key, proto: protoGroup(s.proto), dir: fromOwn ? 'out' : 'in', farHost: far.host, farPort: far.port, ownEnd: fromOwn ? s.source : s.destination,
-      via: s.translated ? splitEnd(s.translated).host : prev?.via, state: s.state, bytes: Math.max(s.bytes, prev?.bytes ?? 0), ageSec: Math.max(s.ageSec, prev?.ageSec ?? 0),
+      via: s.translated ? splitEnd(s.translated).host : prev?.via, state: s.state, pfDir: s.direction === 'in' ? 'in' : 'out', bytes: Math.max(s.bytes, prev?.bytes ?? 0), ageSec: Math.max(s.ageSec, prev?.ageSec ?? 0),
     };
     byKey.set(key, c);
   }
@@ -387,7 +390,11 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                         </Text>
                       )}
                     </Table.Td>
-                    <Table.Td><Tooltip label={c.state}><Text size="sm" c="dimmed">{stateLabel(c.state)}</Text></Tooltip></Table.Td>
+                    <Table.Td>
+                      <StateTip state={c.state} direction={c.pfDir} opener={c.dir === 'out' ? 'This device' : 'The other end'} other={c.dir === 'out' ? 'the other end' : 'this device'}>
+                        <Text size="sm" c="dimmed">{stateLabel(c.state)}</Text>
+                      </StateTip>
+                    </Table.Td>
                     <Table.Td ta="right">
                       <Text size="sm" className="num">{formatBytes(c.bytes)}</Text>
                       <Text size="xs" c="dimmed">{formatDuration(c.ageSec)}</Text>

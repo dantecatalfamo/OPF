@@ -13,6 +13,7 @@ import { Mono, PageHeader } from '../components/ui';
 import { HostName, NamesSwitch } from '../components/HostName';
 import { useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateLabel } from '../lib/connections';
+import { StateTip } from '../components/StateTip';
 
 function Proto({ c }: { c: PfState }) {
   const { applied } = useStore();
@@ -53,9 +54,9 @@ function AllowedBy({ c }: { c: PfState }) {
 
 function State({ c }: { c: PfState }) {
   return (
-    <Tooltip label={c.state}>
+    <StateTip state={c.state} direction={c.direction === 'in' ? 'in' : 'out'}>
       <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{stateLabel(c.state)}</Text>
-    </Tooltip>
+    </StateTip>
   );
 }
 
