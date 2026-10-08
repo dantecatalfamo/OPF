@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import {
-  ActionIcon, Alert, AppShell, Avatar, Badge, Burger, Button, Group, Menu, NavLink, ScrollArea, Text, Tooltip,
+  ActionIcon, Alert, AppShell, Avatar, Badge, Burger, Button, Group, Kbd, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton,
   useComputedColorScheme, useMantineColorScheme,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useHotkeys, useOs } from '@mantine/hooks';
 import {
-  IconActivity, IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconDevices, IconGauge, IconLogout, IconMoon, IconNetwork,
-  IconServer2, IconSettings, IconShieldHalf, IconSun, IconUser,
+  IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconLogout, IconMoon, IconSearch, IconSettings, IconSun, IconUser,
 } from '@tabler/icons-react';
 import { Brand } from './Brand';
 import { ApplyModal } from './ApplyModal';
@@ -16,84 +15,11 @@ import { useStore } from '../model/store';
 import { useRole, useSession } from '../lib/session';
 import { offline } from '../lib/api';
 import { useNow } from '../lib/useNow';
+import { activePath, nav } from '../lib/nav';
+import { CommandPalette } from './CommandPalette';
 import type { Role } from '../lib/api';
 
 const roleLabel: Record<Role, string> = { admin: 'admin', operator: 'operator', view: 'read-only' };
-
-interface NavItem {
-  label: string;
-  to: string;
-  /** Only for admins (and servers without accounts). */
-  admin?: boolean;
-}
-interface NavGroup {
-  label: string;
-  icon: typeof IconGauge;
-  to?: string;
-  items?: NavItem[];
-}
-
-const nav: NavGroup[] = [
-  { label: 'Dashboard', icon: IconGauge, to: '/' },
-  {
-    label: 'Devices', icon: IconDevices, items: [
-      { label: 'All devices', to: '/devices' },
-      { label: 'Traffic', to: '/devices/traffic' },
-      { label: 'ARP table', to: '/devices/arp' },
-    ],
-  },
-  {
-    label: 'Network', icon: IconNetwork, items: [
-      { label: 'Interfaces', to: '/interfaces' },
-      { label: 'Routing', to: '/network/routing' },
-    ],
-  },
-  {
-    label: 'Firewall', icon: IconShieldHalf, items: [
-      { label: 'Rules', to: '/firewall/rules' },
-      { label: 'NAT', to: '/firewall/nat' },
-      { label: 'Aliases', to: '/firewall/aliases' },
-      { label: 'Connections', to: '/firewall/connections' },
-      { label: 'Firewall log', to: '/firewall/log' },
-      { label: 'Ruleset', to: '/firewall/ruleset' },
-      { label: 'Settings', to: '/firewall/settings' },
-    ],
-  },
-  {
-    label: 'Services', icon: IconServer2, items: [
-      { label: 'DHCP server', to: '/services/dhcp' },
-      { label: 'DNS resolver', to: '/services/dns' },
-      { label: 'WireGuard VPN', to: '/services/wireguard' },
-    ],
-  },
-  {
-    label: 'Monitoring', icon: IconActivity, items: [
-      { label: 'Graphs', to: '/monitoring/graphs' },
-      { label: 'Events', to: '/monitoring/events' },
-      { label: 'Tools', to: '/monitoring/tools' },
-    ],
-  },
-  {
-    label: 'System', icon: IconSettings, items: [
-      { label: 'General', to: '/system/general' },
-      { label: 'Users', to: '/system/users', admin: true },
-      { label: 'Notifications', to: '/system/notifications' },
-      { label: 'Change history', to: '/system/history' },
-      { label: 'System logs', to: '/system/logs' },
-      { label: 'Configuration files', to: '/system/files' },
-      { label: 'Storage', to: '/system/storage' },
-    ],
-  },
-];
-
-const matches = (path: string, to: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'));
-
-// The page's item is the one whose path matches most of it: on
-// /devices/traffic that's Traffic, not All devices; on a device's page,
-// All devices.
-const allPaths = nav.flatMap((g) => (g.to ? [g.to] : g.items!.map((i) => i.to)));
-const activePath = (path: string) =>
-  allPaths.filter((to) => matches(path, to)).sort((a, b) => b.length - a.length)[0];
 
 function Navigation({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
@@ -173,6 +99,10 @@ function PendingButton({ onReview, onConfirm }: { onReview: () => void; onConfir
 export function AppLayout() {
   const [navOpened, nav] = useDisclosure();
   const [reviewOpened, review] = useDisclosure();
+  const [paletteOpened, palette] = useDisclosure();
+  // In text fields too: Ctrl-K isn't anything a field needs.
+  useHotkeys([['mod+K', palette.toggle]], []);
+  const mac = ['macos', 'ios'].includes(useOs());
   const [confirmOpened, setConfirmOpened] = useState(false);
   const { staged, confirming, release } = useStore();
   const { accounts, session, signOut } = useSession();
@@ -215,6 +145,25 @@ export function AppLayout() {
             </Badge>
           </Group>
           <Group gap="sm" wrap="nowrap">
+            <UnstyledButton
+              onClick={palette.open}
+              visibleFrom="sm"
+              aria-label="Go to"
+              px="sm"
+              py={5}
+              style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 6 }}
+            >
+              <Group gap={8} wrap="nowrap" c="dimmed">
+                <IconSearch size={16} />
+                <Text size="sm">Go to</Text>
+                <Kbd size="xs">{mac ? '⌘' : 'Ctrl'} K</Kbd>
+              </Group>
+            </UnstyledButton>
+            <Tooltip label="Go to">
+              <ActionIcon variant="subtle" color="gray" size="lg" hiddenFrom="sm" onClick={palette.open} aria-label="Go to">
+                <IconSearch size={18} />
+              </ActionIcon>
+            </Tooltip>
             <PendingButton onReview={review.open} onConfirm={() => setConfirmOpened(true)} />
             <Tooltip label={scheme === 'dark' ? 'Light theme' : 'Dark theme'}>
               <ActionIcon
@@ -276,6 +225,7 @@ export function AppLayout() {
         </div>
       </AppShell.Main>
 
+      <CommandPalette opened={paletteOpened} onClose={palette.close} />
       <ApplyModal opened={reviewOpened} onClose={review.close} />
       <ConfirmModal opened={confirmOpened} onClose={() => setConfirmOpened(false)} />
     </AppShell>

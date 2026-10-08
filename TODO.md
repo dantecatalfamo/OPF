@@ -1480,10 +1480,15 @@ its setting on Firewall › Settings), and tried on 7.9:
   Monitoring (graphs, events, tools), System (with its logs, files and
   storage). Diagnostics held eleven pages and grew with every feature.
   The old /diagnostics/... addresses redirect.
-- [ ] A command palette (Ctrl/Cmd-K) for getting around: every page
-      by its name and section, and things by name (an interface, a
-      tunnel, a VPN device, a device, an alias, a rule), opening the
-      page that has them. Mantine has Spotlight for it.
+- [x] A command palette (Ctrl-K or ⌘K, and Go to in the header): every
+      page by its name and section; the interfaces, tunnels, VPN
+      devices, named rules, port forwards, outbound NAT rules, aliases,
+      gateways and reservations in the configuration; and the network's
+      devices, by name, address or MAC. An address or host name also
+      offers ping, traceroute and a DNS lookup of it. Built from
+      Mantine's Modal rather than adding @mantine/spotlight.
+  - [ ] Open an alias, port forward or reservation itself, not only its
+        page, once those pages take a link to one.
 - [x] A device page's DNS card shows one of its top-name lists at a
       time (Looked up, Blocked, Not found, each tab with how many), as
       a table: the name, a bar for its share of the first, and the
