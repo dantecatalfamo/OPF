@@ -1501,8 +1501,11 @@ its setting on Firewall › Settings), and tried on 7.9:
         System › General's cards, with anchors where a card had none.
         Pages and places have keywords too ("adblock" finds DNS
         Blocking, "syspatch" Updates, "timeout" Connection tracking).
-  - [ ] A new tab or card isn't found until it's added to `places`;
-        nothing checks the list against the pages.
+  - [x] `npm run check:places` (and `make test`) checks `places`
+        against the pages both ways: each place's route, tab, #anchor
+        and page name; each tab and anchored card a page has. A new tab
+        or card fails it until it has a place (or a reason it's not
+        one in the script).
   - [ ] Open an alias, port forward or reservation itself, not only its
         page, once those pages take a link to one.
 - [x] A device page's DNS card shows one of its top-name lists at a

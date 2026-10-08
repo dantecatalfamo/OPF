@@ -12,6 +12,7 @@ ui:
 test:
 	go vet ./...
 	go test -race ./...
+	cd ui && { [ -d node_modules ] || npm ci; } && npm run --silent check:places
 
 # Run against a scratch copy of dev/seed with system commands logged
 # instead of executed.
