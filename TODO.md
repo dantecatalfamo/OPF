@@ -1308,8 +1308,10 @@ setting under Settings), and tried on 7.9 with the real unbound:
       counting blocks), SERVFAIL and cached, for the network and each
       device, and blocks by list. By day: the names looked up, blocked
       and not found most, Space-Saving top lists (200 for the network,
-      25 a device), at most 128 devices a day (the rest pooled as
-      "other"), at most 31 days. In `dns-activity.json` in the state
+      25 a device), at most 128 devices a day by default (the rest
+      pooled as "other"; `maxDevices`, up to 4,096, each about 5.6 KB a
+      day at most; traffic's default is 512, at about 140 bytes a device
+      an hour), at most 31 days. In `dns-activity.json` in the state
       directory, with the place in unbound's file so a restart doesn't
       count lines twice. DNSBlocked reads from it while it's on.
 - [x] **The pages.** Activity: counts, an hourly chart, the names looked

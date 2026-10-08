@@ -115,6 +115,7 @@ func (m *Manager) readTraffic(model *pf.Model, now time.Time) {
 	}
 	t.dropped = false
 	s := m.trafficStore()
+	s.DeviceCap = model.Firewall.Traffic.DeviceCap()
 	s.Prune(now, model.Firewall.Traffic.Days)
 
 	// The counters, before the table changes, so an address taken out
@@ -225,6 +226,8 @@ type Traffic struct {
 	// The setting in effect; when Enabled is false nothing else is set.
 	Enabled bool `json:"enabled"`
 	Days    int  `json:"days"`
+	// MaxDevices is how many devices a day are kept apart.
+	MaxDevices int `json:"maxDevices"`
 	*activity.TrafficSummary
 	DeviceInfo map[string]ActivityDevice `json:"deviceInfo,omitempty"`
 	// SavedBytes is the traffic kept, as last saved.
@@ -247,7 +250,7 @@ func (m *Manager) Traffic(req TrafficRequest) (*Traffic, error) {
 	if model == nil || !pf.KeepsTraffic(model) {
 		return out, nil
 	}
-	out.Enabled, out.Days = true, model.Firewall.Traffic.Days
+	out.Enabled, out.Days, out.MaxDevices = true, model.Firewall.Traffic.Days, model.Firewall.Traffic.DeviceCap()
 	if fi, err := os.Stat(m.store.StatePath(trafficFile)); err == nil {
 		out.SavedBytes = fi.Size()
 	}

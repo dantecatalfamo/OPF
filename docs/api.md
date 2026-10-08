@@ -330,7 +330,9 @@ request after a quiet minute takes a second longer, to measure one.
   reads) and `lookup`.
 - `GET /api/traffic?days=N` (admin): what each device sent and
   received over the last `N` days (`firewall.traffic`). Only `enabled`
-  and `days` while it isn't counted. Otherwise `since`, `total` and
+  and `days` while it isn't counted. Otherwise `maxDevices` (devices
+  kept apart a day: `firewall.traffic.maxDevices`, 512 unset), `since`,
+  `total` and
   `hours` (`{"sent", "received", "sentPackets", "receivedPackets"}`,
   bytes, by the device: sent is what it sent), `unknown` (bytes from
   addresses not in pf's table yet), `devices` (those that moved most
@@ -494,7 +496,9 @@ unbound first starts.
   `perDevice` and `days` while it isn't kept. Otherwise `deviceDays` and
   `detailDays` (how long each device's and the names' when and who are
   kept: `dns.activity.deviceDays` and `detailDays`, at most `days`, 0
-  meaning `days`), `savedBytes` (the store as last saved, about what it
+  meaning `days`), `maxDevices` (how many devices a day are kept apart,
+  the rest pooled as `other`: `dns.activity.maxDevices`, 128 unset),
+  `savedBytes` (the store as last saved, about what it
   takes in memory too), `since`, `total`
   and `hours` (counts: `queries`, `blocked`, `allowed`, `nxdomain` (not
   counting blocks), `servfail`, `cached`), `byList` (blocks by list id,

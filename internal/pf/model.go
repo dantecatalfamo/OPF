@@ -589,6 +589,17 @@ type TrafficAccounting struct {
 	Enabled bool `json:"enabled"`
 	// Days is how long it's kept, 1 to MaxActivityDays.
 	Days int `json:"days"`
+	// MaxDevices is how many devices a day are kept apart, the rest
+	// pooled; 0 is DefaultTrafficDevices.
+	MaxDevices int `json:"maxDevices,omitempty"`
+}
+
+// DeviceCap is how many devices a day traffic keeps apart.
+func (t *TrafficAccounting) DeviceCap() int {
+	if t.MaxDevices > 0 {
+		return t.MaxDevices
+	}
+	return DefaultTrafficDevices
 }
 
 // TrafficTable is pf's table of the devices whose traffic is counted.
@@ -744,6 +755,26 @@ type DNSActivity struct {
 	// the room (package activity), so a small machine keeps them less.
 	DeviceDays int `json:"deviceDays,omitempty"`
 	DetailDays int `json:"detailDays,omitempty"`
+	// MaxDevices is how many devices a day are kept apart, the rest
+	// pooled; 0 is DefaultActivityDevices. Each costs memory (package
+	// activity's worst case), which the setting shows.
+	MaxDevices int `json:"maxDevices,omitempty"`
+}
+
+// Devices kept apart a day: DNS activity's, each with its top lists,
+// cost far more than traffic's hourly counts, so their defaults differ.
+const (
+	DefaultActivityDevices = 128
+	DefaultTrafficDevices  = 512
+	MaxDeviceCap           = 4096
+)
+
+// DeviceCap is how many devices a day DNS activity keeps apart.
+func (a *DNSActivity) DeviceCap() int {
+	if a.MaxDevices > 0 {
+		return a.MaxDevices
+	}
+	return DefaultActivityDevices
 }
 
 // Retention is how many days the counts, the devices' activity and the

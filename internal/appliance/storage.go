@@ -125,10 +125,10 @@ func (m *Manager) Storage() (*Storage, error) {
 	if model.DNS.Activity != nil && pf.KeepsDNSActivity(model) {
 		set := model.DNS.Activity
 		days, devDays, detailDays := set.Retention()
-		worst := activity.WorstCase(activity.Retention{Days: days, DeviceDays: devDays, DetailDays: detailDays, Devices: set.Devices}, activity.MaxDevices)
+		worst := activity.WorstCase(activity.Retention{Days: days, DeviceDays: devDays, DetailDays: detailDays, Devices: set.Devices, MaxDevices: set.DeviceCap()}, set.DeviceCap())
 		add(StorageItem{ID: "dns-activity", Group: StorageOPF, Name: "DNS activity", Desc: "Counts and top names, for the network and each device",
 			Unit: "bytes", Where: "memory and disk", Current: ptr(m.activitySize()), Max: ptr(worst), Link: "/services/dns?tab=settings",
-			Note: "Saved, about what it takes in memory too. The most is if every list fills every day with " + strconv.Itoa(activity.MaxDevices) + " devices.", Settings: []StorageLink{setActivity}})
+			Note: "Saved, about what it takes in memory too. The most is if every list fills every day with " + strconv.Itoa(set.DeviceCap()) + " devices, the most it keeps apart a day.", Settings: []StorageLink{setActivity}})
 		add(StorageItem{ID: "dns-log", Group: StorageOPF, Name: "Resolver's answers, not yet counted", Desc: "unbound's log of every answer, which OPF reads and empties",
 			Unit: "bytes", Where: "disk", Current: fileSize(m.dnsLogPath()), Max: ptr(truncateAt),
 			Note: "Emptied once it passes this and OPF has read it all; it can pass it by what arrives in one collector tick.", Settings: []StorageLink{setActivity}})
@@ -142,8 +142,8 @@ func (m *Manager) Storage() (*Storage, error) {
 			saved = *n
 		}
 		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
-			Unit: "bytes", Where: "memory and disk", Current: ptr(saved), Max: ptr(activity.WorstTraffic(model.Firewall.Traffic.Days)), Link: "/diagnostics/traffic",
-			Note: "As last saved. The most is " + strconv.Itoa(activity.MaxDevices) + " devices every hour.", Settings: []StorageLink{setTraffic}})
+			Unit: "bytes", Where: "memory and disk", Current: ptr(saved), Max: ptr(activity.WorstTraffic(model.Firewall.Traffic.Days, model.Firewall.Traffic.DeviceCap())), Link: "/diagnostics/traffic",
+			Note: "As last saved. The most is " + strconv.Itoa(model.Firewall.Traffic.DeviceCap()) + " devices, the most it keeps apart, every hour.", Settings: []StorageLink{setTraffic}})
 	} else {
 		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
 			Unit: "bytes", Where: "memory and disk", Off: true, Note: "Not kept.", Settings: []StorageLink{setTraffic}})

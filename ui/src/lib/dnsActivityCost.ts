@@ -3,14 +3,13 @@
 // TestStoreWorstDayMemory: memory is about what's saved), and whether
 // the machine looks small or slow for it.
 import type { SystemResource } from './api';
-import type { DnsActivitySettings } from '../model/types';
+import { DEFAULT_ACTIVITY_DEVICES, type DnsActivitySettings } from '../model/types';
 
 // A worst-case day, in bytes: every list full, every name asked for in
 // every hour by its full ten devices.
 const NETWORK_DAY = 65 * 1024; // the counts and the network's top names
 const DETAIL_DAY = 307 * 1024; // their when and who
 const DEVICE_DAY = 5705; // each device's counts and top names
-export const MAX_DEVICES = 128; // a day's, past which they're pooled
 
 export interface ActivityCost {
   /** Bytes at most, in memory and about as much on disk. */
@@ -21,11 +20,11 @@ export interface ActivityCost {
 }
 
 /** The most the settings can take, with devices devices on the network. */
-export function activityCost(a: Pick<DnsActivitySettings, 'days' | 'devices' | 'deviceDays' | 'detailDays'>, devices: number): ActivityCost {
+export function activityCost(a: Pick<DnsActivitySettings, 'days' | 'devices' | 'deviceDays' | 'detailDays' | 'maxDevices'>, devices: number): ActivityCost {
   const days = a.days;
   const devDays = Math.min(a.deviceDays || days, days);
   const detailDays = Math.min(a.detailDays || days, days);
-  const n = Math.min(Math.max(devices, 1), MAX_DEVICES);
+  const n = Math.min(Math.max(devices, 1), a.maxDevices || DEFAULT_ACTIVITY_DEVICES);
   const network = NETWORK_DAY * days;
   const detail = DETAIL_DAY * detailDays;
   const devs = a.devices ? DEVICE_DAY * n * devDays : 0;

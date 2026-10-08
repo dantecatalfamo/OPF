@@ -217,7 +217,7 @@ func TestDNSActivityIsOptIn(t *testing.T) {
 	if errs := pf.Validate(m); len(errs) > 0 {
 		t.Errorf("shorter retentions refused: %v", errs)
 	}
-	for _, bad := range []pf.DNSActivity{{Enabled: true, Days: 0}, {Enabled: true, Days: pf.MaxActivityDays + 1}, {Devices: true, Days: 7}, {Enabled: true, Days: 7, DeviceDays: 8}, {Enabled: true, Days: 7, DetailDays: 8}} {
+	for _, bad := range []pf.DNSActivity{{Enabled: true, Days: 0}, {Enabled: true, Days: pf.MaxActivityDays + 1}, {Devices: true, Days: 7}, {Enabled: true, Days: 7, DeviceDays: 8}, {Enabled: true, Days: 7, DetailDays: 8}, {Enabled: true, Days: 7, MaxDevices: pf.MaxDeviceCap + 1}} {
 		m.DNS.Activity = &bad
 		if len(pf.Validate(m)) == 0 {
 			t.Errorf("%+v accepted", bad)

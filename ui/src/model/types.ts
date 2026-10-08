@@ -357,15 +357,24 @@ export interface DnsActivitySettings {
   /** How long each device's and the top names' when and who are kept: at most days; missing or 0, days. */
   deviceDays?: number;
   detailDays?: number;
+  /** Devices kept apart a day, the rest pooled; missing, DEFAULT_ACTIVITY_DEVICES. */
+  maxDevices?: number;
 }
 
 export const MAX_ACTIVITY_DAYS = 31;
+
+/** Devices kept apart a day by default: DNS activity's cost far more than traffic's. */
+export const DEFAULT_ACTIVITY_DEVICES = 128;
+export const DEFAULT_TRAFFIC_DEVICES = 512;
+export const MAX_DEVICE_CAP = 4096;
 
 /** Opt-in: pf counts what each device sends and receives, in a table with per-address counters. */
 export interface TrafficAccounting {
   enabled: boolean;
   /** How long it's kept: 1 to MAX_ACTIVITY_DAYS. */
   days: number;
+  /** Devices kept apart a day, the rest pooled; missing, DEFAULT_TRAFFIC_DEVICES. */
+  maxDevices?: number;
 }
 
 export interface DnsBlocklist {

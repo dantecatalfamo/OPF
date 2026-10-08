@@ -4,19 +4,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { BarChart } from '@mantine/charts';
-import { Alert, Anchor, Button, Card, Drawer, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, UnstyledButton } from '@mantine/core';
+import { Alert, Anchor, Button, Card, Drawer, Group, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, UnstyledButton } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconLock } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { ActivityDeviceInfo, TrafficBytes, TrafficDeviceResource, TrafficResource } from '../lib/api';
-import { MAX_ACTIVITY_DAYS } from '../model/types';
+import { DEFAULT_TRAFFIC_DEVICES, MAX_ACTIVITY_DAYS, MAX_DEVICE_CAP } from '../model/types';
 import { useRole } from '../lib/session';
 import { useLive } from '../lib/live';
 import { formatBytes } from '../lib/format';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
-// An hour at most, saved, with 128 devices (activity.WorstTrafficHour).
-const WORST_HOUR = 18 * 1024;
+// An hour at most, saved (activity.WorstTraffic): a little for the hour
+// and about 140 bytes a device.
+const WORST_HOUR_BASE = 256;
+const WORST_DEVICE_HOUR = 140;
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const dayChoices = [1, 7, 14, MAX_ACTIVITY_DAYS];
 const dayLabel = (d: number) => (d === 1 ? 'Today only' : d === 7 ? 'A week' : d === 14 ? 'Two weeks' : 'A month');
@@ -27,8 +29,11 @@ export function TrafficSettingsCard() {
   const { canEdit } = useRole();
   const { data: sys } = useLive('system');
   const t = staged.firewall.traffic;
-  const pick = () => ({ enabled: !!t?.enabled, days: String(t?.days || 7) });
-  const form = useForm({ initialValues: pick() });
+  const pick = () => ({ enabled: !!t?.enabled, days: String(t?.days || 7), maxDevices: (t?.maxDevices || DEFAULT_TRAFFIC_DEVICES) as number | string });
+  const form = useForm({
+    initialValues: pick(),
+    validate: { maxDevices: (v) => (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= MAX_DEVICE_CAP ? null : `1 to ${MAX_DEVICE_CAP.toLocaleString()}`) },
+  });
   useEffect(() => {
     form.setValues(pick());
     form.resetDirty();
@@ -37,13 +42,15 @@ export function TrafficSettingsCard() {
   const [error, setError] = useState<string>();
   const v = form.values;
   const keeping = !!applied.firewall.traffic?.enabled;
-  const worst = WORST_HOUR * 24 * Number(v.days);
+  const cap = Number(v.maxDevices) || DEFAULT_TRAFFIC_DEVICES;
+  const worst = (WORST_HOUR_BASE + WORST_DEVICE_HOUR * cap) * 24 * Number(v.days);
   const ram = sys?.memory?.total;
   return (
     <Card id="traffic">
       <form onSubmit={form.onSubmit((v) => edit('firewall', v.enabled ? `Count each device’s traffic, kept ${dayLabel(Number(v.days)).toLowerCase()}` : 'Stopped counting each device’s traffic', (m) => {
         const firewall = { ...m.firewall };
-        if (v.enabled) firewall.traffic = { enabled: true, days: Number(v.days) };
+        const maxDevices = Number(v.maxDevices);
+        if (v.enabled) firewall.traffic = { enabled: true, days: Number(v.days), ...(maxDevices !== DEFAULT_TRAFFIC_DEVICES ? { maxDevices } : {}) };
         else delete firewall.traffic;
         return { ...m, firewall };
       }))}>
@@ -56,11 +63,19 @@ export function TrafficSettingsCard() {
           <Alert color="gray" variant="light" p="sm" icon={<IconLock size={16} />}>
             <Text size="sm">How much each device moves, and when, says when people are home and what they do. Only admins can see it, and nothing of it goes to webhooks.</Text>
           </Alert>
-          <Select label="Keep it for" w={220} allowDeselect={false} disabled={!v.enabled || !canEdit}
-            data={dayChoices.map((d) => ({ value: String(d), label: dayLabel(d) }))} {...form.getInputProps('days')} />
+          <Group align="flex-start" grow>
+            <Select label="Keep it for" allowDeselect={false} disabled={!v.enabled || !canEdit}
+              data={dayChoices.map((d) => ({ value: String(d), label: dayLabel(d) }))} {...form.getInputProps('days')} />
+            <NumberInput
+              label="Devices kept apart a day" min={1} max={MAX_DEVICE_CAP} allowDecimal={false} thousandSeparator="," disabled={!v.enabled || !canEdit}
+              description={`Past it, the rest are counted together; ${DEFAULT_TRAFFIC_DEVICES} by default.`}
+              inputWrapperOrder={['label', 'input', 'description', 'error']}
+              {...form.getInputProps('maxDevices')}
+            />
+          </Group>
           {v.enabled && (
             <Text size="sm">
-              At most about <b>{formatBytes(worst)}</b> in memory, and as much on disk, with 128 devices every hour.
+              At most about <b>{formatBytes(worst)}</b> in memory, and as much on disk, with {cap.toLocaleString()} devices every hour.
               {ram && worst / ram > 0.03 ? ` That’s ${(worst / ram * 100).toFixed(1)}% of this machine’s memory.` : ''}
             </Text>
           )}
@@ -120,7 +135,7 @@ function HoursChart({ hours, days }: { hours: (TrafficBytes & { start: string })
 
 const deviceLabel = (key: string, info?: ActivityDeviceInfo) => info?.name || info?.mac || key.replace(/^(ip|mac|vpn):/, '');
 const kindWords: Record<ActivityDeviceInfo['kind'], string> = {
-  device: 'Device', vpn: 'VPN device', address: 'Address only', other: 'Past the day’s 128 devices',
+  device: 'Device', vpn: 'VPN device', address: 'Address only', other: 'Past the devices kept apart a day',
   firewall: 'What it starts itself: DNS lookups for your devices, updates, downloads, time',
 };
 

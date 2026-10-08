@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// Bounds on what's kept a day. A device past MaxDevices in a day is
-// counted as Other; the caps are what keeps a month a few megabytes.
+// Bounds on what's kept a day. A device past the day's cap (the store's
+// DeviceCap, MaxDevices unset) is counted as Other; the caps are what
+// keeps a month bounded.
 const (
 	MaxDevices  = 128
 	NetworkTop  = 200 // names and blocked names a day, for the network
@@ -75,6 +76,9 @@ type DeviceDay struct {
 type Store struct {
 	Hours []*Hour `json:"hours"`
 	Days  []*Day  `json:"days"`
+	// DeviceCap is how many devices a day are kept apart; 0 is
+	// MaxDevices. Set by whoever adds, from the settings.
+	DeviceCap int `json:"-"`
 	// Log is the reader's place in unbound's log file.
 	Log LogPosition `json:"log"`
 }
@@ -137,16 +141,23 @@ func (s *Store) day(t time.Time) *Day {
 	return d
 }
 
+func (s *Store) deviceCap() int {
+	if s.DeviceCap > 0 {
+		return s.DeviceCap
+	}
+	return MaxDevices
+}
+
 // device is a device's place in a day, or Other's once the day has
-// MaxDevices.
-func (d *Day) device(key string) *DeviceDay {
+// limit devices.
+func (d *Day) device(key string, limit int) *DeviceDay {
 	if d.Devices == nil {
 		d.Devices = map[string]*DeviceDay{}
 	}
 	if dd := d.Devices[key]; dd != nil {
 		return dd
 	}
-	if len(d.Devices) >= MaxDevices {
+	if len(d.Devices) >= limit {
 		key = Other
 		if dd := d.Devices[key]; dd != nil {
 			return dd
@@ -169,8 +180,8 @@ func (dd *DeviceDay) seen(address string, at int64) {
 
 // deviceKey is the key a device's counts go under in h: Other once the
 // day has no room for it.
-func deviceKey(day *Day, key string) string {
-	if _, ok := day.Devices[key]; ok || len(day.Devices) < MaxDevices {
+func deviceKey(day *Day, key string, limit int) string {
+	if _, ok := day.Devices[key]; ok || len(day.Devices) < limit {
 		return key
 	}
 	return Other
@@ -213,7 +224,7 @@ func (s *Store) AddAnswer(a Answer, blocked bool) {
 	}
 	key := ""
 	if a.Device != "" {
-		key = deviceKey(d, a.Device)
+		key = deviceKey(d, a.Device, s.deviceCap())
 	}
 	if it := top(&d.Names, &d.Missing); it != nil {
 		it.note(a.Time.Hour(), key)
@@ -222,7 +233,7 @@ func (s *Store) AddAnswer(a Answer, blocked bool) {
 		return
 	}
 	h.addDevice(key, c)
-	dd := d.device(key)
+	dd := d.device(key, s.deviceCap())
 	top(&dd.Names, &dd.Missing)
 	dd.seen(a.Address, at)
 }
@@ -243,7 +254,7 @@ func (s *Store) AddBlock(b Block) {
 	}
 	key := ""
 	if b.Device != "" {
-		key = deviceKey(d, b.Device)
+		key = deviceKey(d, b.Device, s.deviceCap())
 	}
 	if !b.Pass {
 		d.Blocked.Add(b.Name, at, b.List, b.Entry).note(b.Time.Hour(), key)
@@ -252,7 +263,7 @@ func (s *Store) AddBlock(b Block) {
 		return
 	}
 	h.addDevice(key, c)
-	dd := d.device(key)
+	dd := d.device(key, s.deviceCap())
 	if !b.Pass {
 		dd.Blocked.Add(b.Name, at, b.List, b.Entry)
 	}
@@ -265,6 +276,9 @@ func (s *Store) AddBlock(b Block) {
 type Retention struct {
 	Days, DeviceDays, DetailDays int
 	Devices                      bool
+	// MaxDevices is the day's cap on devices kept apart; 0 is
+	// MaxDevices.
+	MaxDevices int
 }
 
 // Prune drops what's older than its retention allows.
@@ -609,7 +623,11 @@ const (
 func WorstCase(r Retention, devices int) int64 {
 	n := int64(WorstNetworkDay)*int64(r.Days) + int64(WorstDetailDay)*int64(min(r.DetailDays, r.Days))
 	if r.Devices {
-		n += int64(WorstDeviceDay) * int64(min(max(devices, 1), MaxDevices)) * int64(min(r.DeviceDays, r.Days))
+		limit := r.MaxDevices
+		if limit <= 0 {
+			limit = MaxDevices
+		}
+		n += int64(WorstDeviceDay) * int64(min(max(devices, 1), limit)) * int64(min(r.DeviceDays, r.Days))
 	}
 	return n
 }

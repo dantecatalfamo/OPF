@@ -56,6 +56,9 @@ type Counter struct {
 // It isn't safe for concurrent use.
 type TrafficStore struct {
 	Hours []*TrafficHour `json:"hours"`
+	// DeviceCap is how many devices a day are kept apart; 0 is
+	// DefaultTrafficDevices. Set by whoever reads, from the settings.
+	DeviceCap int `json:"-"`
 	// Last is each address's counters, and each unknown-traffic label's
 	// bytes, when they were last read.
 	Last        map[string]Counter `json:"last,omitempty"`
@@ -86,6 +89,16 @@ func delta(now, before uint64) int64 {
 		return int64(now)
 	}
 	return int64(now - before)
+}
+
+// DefaultTrafficDevices is TrafficStore's cap when none is set.
+const DefaultTrafficDevices = 512
+
+func (s *TrafficStore) deviceCap() int {
+	if s.DeviceCap > 0 {
+		return s.DeviceCap
+	}
+	return DefaultTrafficDevices
 }
 
 func (s *TrafficStore) hour(t time.Time) *TrafficHour {
@@ -125,7 +138,7 @@ func (s *TrafficStore) Read(now time.Time, counters map[string]Counter, deviceOf
 		if key == "" {
 			key = "ip:" + addr
 		}
-		if !day[key] && len(day) >= MaxDevices {
+		if !day[key] && len(day) >= s.deviceCap() {
 			key = Other
 		}
 		day[key] = true
@@ -317,9 +330,15 @@ func LoadTraffic(r io.Reader) (*TrafficStore, error) {
 	return &s, nil
 }
 
-// WorstTrafficHour is an hour's traffic at most, saved: MaxDevices
-// devices with every count, measured (TestTrafficWorstCase).
-const WorstTrafficHour = 18 * 1024
+// An hour's traffic at most, saved, measured (TestTrafficWorstCase):
+// a little for the hour itself and about 140 bytes a device.
+const (
+	WorstTrafficHourBase = 256
+	WorstTrafficDevice   = 140
+)
 
-// WorstTraffic is the most days of traffic can take.
-func WorstTraffic(days int) int64 { return int64(WorstTrafficHour) * 24 * int64(days) }
+// WorstTraffic is the most days of traffic can take with devices kept
+// apart a day.
+func WorstTraffic(days, devices int) int64 {
+	return (WorstTrafficHourBase + WorstTrafficDevice*int64(devices)) * 24 * int64(days)
+}

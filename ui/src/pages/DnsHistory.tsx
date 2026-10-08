@@ -5,17 +5,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { BarChart } from '@mantine/charts';
 import {
-  ActionIcon, Alert, Anchor, Button, Card, Drawer, Grid, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, Tooltip, UnstyledButton,
+  ActionIcon, Alert, Anchor, Button, Card, Drawer, Grid, Group, Modal, NumberInput, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, Tooltip, UnstyledButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconChartBar, IconLock } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { ActivityCounts, ActivityDeviceInfo, ActivityHour, ActivityItem, ActivityList, DnsActivityResource, DnsDeviceActivityResource, DnsNameActivityResource } from '../lib/api';
-import { MAX_ACTIVITY_DAYS, type Model } from '../model/types';
+import { DEFAULT_ACTIVITY_DEVICES, MAX_ACTIVITY_DAYS, MAX_DEVICE_CAP, type Model } from '../model/types';
 import { useRole } from '../lib/session';
 import { formatBytes, formatCount, formatLogTime } from '../lib/format';
 import { useLive } from '../lib/live';
-import { activityCost, costAdvice, MAX_DEVICES } from '../lib/dnsActivityCost';
+import { activityCost, costAdvice } from '../lib/dnsActivityCost';
 import { Empty, Mono, SectionTitle } from '../components/ui';
 
 const listName = (m: Model, id?: string) => (!id ? 'your own names' : (m.dns.blocklists ?? []).find((l) => l.id === id)?.name ?? id);
@@ -28,6 +28,7 @@ interface ActivityValues {
   days: string;
   deviceDays: string;
   detailDays: string;
+  maxDevices: number | string;
 }
 
 const dayChoices = [1, 3, 7, 14, MAX_ACTIVITY_DAYS];
@@ -41,8 +42,12 @@ export function DnsActivitySettingsCard() {
   const pick = (): ActivityValues => ({
     enabled: !!a?.enabled, devices: !!a?.devices, days: String(a?.days || 7),
     deviceDays: String(Math.min(a?.deviceDays || a?.days || 7, a?.days || 7)), detailDays: String(Math.min(a?.detailDays || a?.days || 7, a?.days || 7)),
+    maxDevices: a?.maxDevices || DEFAULT_ACTIVITY_DEVICES,
   });
-  const form = useForm<ActivityValues>({ initialValues: pick() });
+  const form = useForm<ActivityValues>({
+    initialValues: pick(),
+    validate: { maxDevices: (v) => (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= MAX_DEVICE_CAP ? null : `1 to ${MAX_DEVICE_CAP.toLocaleString()}`) },
+  });
   useEffect(() => {
     form.setValues(pick());
     form.resetDirty();
@@ -65,8 +70,9 @@ export function DnsActivitySettingsCard() {
   }, [keeping]); // staged's devices barely change while the card is open
   const days = Number(v.days);
   const clampDays = (d: string) => String(Math.min(Number(d), days));
-  const settings = { days, devices: v.devices, deviceDays: Number(clampDays(v.deviceDays)), detailDays: Number(clampDays(v.detailDays)) };
-  const devices = knownDevices ?? MAX_DEVICES;
+  const cap = Number(v.maxDevices) || DEFAULT_ACTIVITY_DEVICES;
+  const settings = { days, devices: v.devices, deviceDays: Number(clampDays(v.deviceDays)), detailDays: Number(clampDays(v.detailDays)), maxDevices: cap };
+  const devices = knownDevices ?? cap;
   const cost = activityCost(settings, devices);
   const advice = costAdvice(cost, sys);
 
@@ -74,8 +80,12 @@ export function DnsActivitySettingsCard() {
     const days = Number(v.days);
     const devDays = Math.min(Number(v.deviceDays), days);
     const detailDays = Math.min(Number(v.detailDays), days);
+    const maxDevices = Number(v.maxDevices);
     const next = v.enabled
-      ? { enabled: true, devices: v.devices, days, ...(v.devices && devDays < days ? { deviceDays: devDays } : {}), ...(detailDays < days ? { detailDays } : {}) }
+      ? {
+        enabled: true, devices: v.devices, days, ...(v.devices && devDays < days ? { deviceDays: devDays } : {}), ...(detailDays < days ? { detailDays } : {}),
+        ...(v.devices && maxDevices !== DEFAULT_ACTIVITY_DEVICES ? { maxDevices } : {}),
+      }
       : undefined;
     const kept = [`${days} days`, ...(next?.deviceDays ? [`devices ${devDays}`] : []), ...(next?.detailDays ? [`when and who ${detailDays}`] : [])].join(', ');
     const summary = !v.enabled
@@ -129,11 +139,18 @@ export function DnsActivitySettingsCard() {
               value={clampDays(v.detailDays)} onChange={(x) => x && form.setFieldValue('detailDays', x)}
             />
           </SimpleGrid>
+          {v.enabled && v.devices && (
+            <NumberInput
+              label="Devices kept apart a day" w={420} min={1} inputWrapperOrder={['label', 'input', 'description', 'error']} max={MAX_DEVICE_CAP} allowDecimal={false} thousandSeparator="," disabled={!canEdit}
+              description={`Past it, the rest of the day’s are counted together as other devices. Each takes up to about 5.6 KB a day; ${DEFAULT_ACTIVITY_DEVICES} by default.`}
+              {...form.getInputProps('maxDevices')}
+            />
+          )}
           {v.enabled && (
             <Stack gap={6}>
               <Text size="sm">
                 At most about <b>{formatBytes(cost.bytes)}</b> in memory, and as much on disk
-                {v.devices ? `, with ${devices >= MAX_DEVICES ? `${MAX_DEVICES} devices (the most a day keeps)` : `this network’s ${devices} device${devices === 1 ? '' : 's'}`}` : ''}:
+                {v.devices ? `, with ${devices >= cap ? `${cap.toLocaleString()} devices (the most kept apart a day)` : `this network’s ${devices} device${devices === 1 ? '' : 's'}`}` : ''}:
                 {' '}{formatBytes(cost.network)} for the counts and top names, {formatBytes(cost.detail)} for their when and who{v.devices ? `, ${formatBytes(cost.devices)} for the devices` : ''}.
                 {saved && keeping ? ` What’s kept takes ${formatBytes(saved)}, as last saved.` : ''}
               </Text>
@@ -278,7 +295,7 @@ function NameList({ title, items, blocked, model, empty, onPick }: { title: stri
 }
 
 const deviceLabel = (key: string, info?: ActivityDeviceInfo) => info?.name || info?.mac || key.replace(/^(ip|mac|vpn):/, '');
-const kindWords: Record<ActivityDeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', firewall: 'OPF itself', address: 'Address only', other: 'Past the day’s 128 devices' };
+const kindWords: Record<ActivityDeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', firewall: 'OPF itself', address: 'Address only', other: 'Past the devices kept apart a day' };
 
 function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: string; info?: ActivityDeviceInfo; days: number; onClose: () => void; onForgot: () => void }) {
   const { applied } = useStore();

@@ -110,6 +110,7 @@ func (m *Manager) readDNSActivity(model *pf.Model, now time.Time) {
 	}
 	set := model.DNS.Activity
 	s := m.activityStore()
+	s.DeviceCap = set.DeviceCap()
 	days, devDays, detailDays := set.Retention()
 	s.Prune(now, activity.Retention{Days: days, DeviceDays: devDays, DetailDays: detailDays, Devices: set.Devices})
 	if err := m.readDNSLog(model, s, set.Devices, now); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -292,6 +293,9 @@ type DNSActivity struct {
 	Days       int `json:"days"`
 	DeviceDays int `json:"deviceDays"`
 	DetailDays int `json:"detailDays"`
+	// MaxDevices is how many devices a day are kept apart, the rest
+	// pooled as activity.Other.
+	MaxDevices int `json:"maxDevices"`
 	// SavedBytes is the size of what's kept, as last saved (every few
 	// minutes): about what it takes in memory too.
 	SavedBytes int64 `json:"savedBytes"`
@@ -335,6 +339,7 @@ func (m *Manager) DNSActivity(req DNSActivityRequest) (*DNSActivity, error) {
 	set := model.DNS.Activity
 	out.Enabled, out.PerDevice = true, set.Devices
 	out.Days, out.DeviceDays, out.DetailDays = set.Retention()
+	out.MaxDevices = set.DeviceCap()
 	if fi, err := os.Stat(m.store.StatePath(activityFile)); err == nil {
 		out.SavedBytes = fi.Size()
 	}

@@ -281,3 +281,14 @@ func TestStorePruneByKind(t *testing.T) {
 		t.Errorf("a name's devices outlived the devices': %+v", n.Devices)
 	}
 }
+
+// DNS activity's cap is the setting's too.
+func TestStoreDeviceCapSetting(t *testing.T) {
+	s := &Store{DeviceCap: 2}
+	for i := 0; i < 5; i++ {
+		s.AddAnswer(Answer{Time: day0, Device: fmt.Sprint("d", i), Name: "a.example", Rcode: "NOERROR"}, false)
+	}
+	if n := len(s.Summary(day0, 1, 10).Devices); n != 3 {
+		t.Errorf("%d devices, want 2 and other", n)
+	}
+}

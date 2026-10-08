@@ -39,12 +39,24 @@ func TestTrafficRules(t *testing.T) {
 	if k, id, ok := ParseLabel("opf:traffic-unknown:lan"); !ok || k != LabelTrafficUnknown || id != "lan" {
 		t.Errorf("label %q %q %v", k, id, ok)
 	}
-	m.Firewall.Traffic.Days = 0
-	bad := false
-	for _, e := range Validate(m) {
-		bad = bad || e.Path == "firewall.traffic.days"
+	for _, tc := range []struct {
+		t    TrafficAccounting
+		path string
+	}{
+		{TrafficAccounting{Enabled: true, Days: 0}, "firewall.traffic.days"},
+		{TrafficAccounting{Enabled: true, Days: 7, MaxDevices: MaxDeviceCap + 1}, "firewall.traffic.maxDevices"},
+	} {
+		tr := tc.t
+		m.Firewall.Traffic = &tr
+		bad := false
+		for _, e := range Validate(m) {
+			bad = bad || e.Path == tc.path
+		}
+		if !bad {
+			t.Errorf("%+v accepted", tc.t)
+		}
 	}
-	if !bad {
-		t.Error("0 days accepted")
+	if (&TrafficAccounting{}).DeviceCap() != DefaultTrafficDevices || (&TrafficAccounting{MaxDevices: 9}).DeviceCap() != 9 {
+		t.Error("traffic's cap")
 	}
 }

@@ -44,7 +44,7 @@ func TestTrafficReadsDeltas(t *testing.T) {
 }
 
 func TestTrafficCapsAndPrunes(t *testing.T) {
-	s := &TrafficStore{}
+	s := &TrafficStore{DeviceCap: MaxDevices}
 	c := map[string]Counter{}
 	for i := 0; i < MaxDevices+5; i++ {
 		c[fmt.Sprintf("10.0.%d.%d", i/250, i%250)] = Counter{Sent: 1}
@@ -91,8 +91,8 @@ func TestTrafficWorstCase(t *testing.T) {
 	var buf bytes.Buffer
 	s.Save(&buf)
 	t.Logf("a worst-case hour: %d bytes", buf.Len())
-	if buf.Len() > WorstTrafficHour {
-		t.Errorf("%d bytes, over WorstTrafficHour", buf.Len())
+	if est := WorstTraffic(1, MaxDevices) / 24; int64(buf.Len()) > est {
+		t.Errorf("%d bytes, over WorstTraffic's %d", buf.Len(), est)
 	}
 }
 
@@ -118,5 +118,20 @@ func TestTrafficFirewallRow(t *testing.T) {
 	s.ForgetDevice(FirewallKey)
 	if sum := s.Summary(day0, 1); sum.Firewall.Total() != 0 || len(sum.Devices) != 1 {
 		t.Errorf("forgotten: %+v", sum)
+	}
+}
+
+// The cap is the setting's: unset, DefaultTrafficDevices.
+func TestTrafficDeviceCap(t *testing.T) {
+	for _, tc := range []struct{ cap, want int }{{0, DefaultTrafficDevices}, {3, 3}} {
+		s := &TrafficStore{DeviceCap: tc.cap}
+		c := map[string]Counter{}
+		for i := 0; i < DefaultTrafficDevices+10; i++ {
+			c[fmt.Sprintf("10.1.%d.%d", i/250, i%250)] = Counter{Sent: 1}
+		}
+		s.Read(day0, c, func(string) string { return "" })
+		if n := len(s.Summary(day0, 1).Devices); n != tc.want+1 {
+			t.Errorf("cap %d: %d devices, want %d and other", tc.cap, n, tc.want)
+		}
 	}
 }

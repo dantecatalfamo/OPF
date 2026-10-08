@@ -691,6 +691,9 @@ func (v *validator) rawLine(path, s string, required bool) {
 func (v *validator) firewall() {
 	if t := v.m.Firewall.Traffic; t != nil && t.Enabled {
 		v.intRange("firewall.traffic.days", t.Days, 1, MaxActivityDays)
+		if t.MaxDevices != 0 {
+			v.intRange("firewall.traffic.maxDevices", t.MaxDevices, 1, MaxDeviceCap)
+		}
 	}
 	fw := v.m.Firewall
 	aliasNames := map[string]bool{}
@@ -996,6 +999,9 @@ func (v *validator) dns() {
 			}
 			if a.DetailDays != 0 {
 				v.intRange("dns.activity.detailDays", a.DetailDays, 1, a.Days)
+			}
+			if a.MaxDevices != 0 {
+				v.intRange("dns.activity.maxDevices", a.MaxDevices, 1, MaxDeviceCap)
 			}
 		}
 		if a.Devices && !a.Enabled {
