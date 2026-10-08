@@ -1029,6 +1029,20 @@ Firewall:
       commit (pf numbers rules, and a reload renumbers them). Keep the
       number-to-label map of each loaded ruleset with its commit, so
       older entries can be matched too.
+- [ ] **Inspect a table's contents** (the bruteforce table, any
+      dynamic table, a downloaded list): today only SSH shows them
+      (`pfctl -t <table> -T show -v`). From Aliases, each table alias
+      opens its addresses as pf has them now: when each was added
+      (`Cleared`), when it will expire (with `expireMinutes`), the
+      packets and bytes it matched (with `counters`), and which rule's
+      overload put it there when that can be told. Search the list,
+      and look up an address across every table ("is 203.0.113.9
+      blocked, and by what?", `pfctl -T test`). Actions, for those who
+      can change things: remove one (`-T delete`), flush the table,
+      add one by hand to a dynamic table; each recorded in the event
+      log. A downloaded list's thousands of entries need paging and a
+      count, not the whole list at once. Protections' "who's blocked
+      now" view is this, for their own table.
 - [ ] pf's per-interface statistics (`pfctl -vv -s Interfaces`), memory
       limits as a meter beside the state table, and the counters in
       `pfctl -s info` (state-mismatch, memory, congestion) on a pf page.
