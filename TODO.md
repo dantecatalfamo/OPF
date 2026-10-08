@@ -340,6 +340,36 @@ In order. Each step's details are in the section it points to.
       queues. Needs the line's speeds (asked, or measured with a test
       the page runs), queues shown live (`pfctl -vsq`), and a graph of
       each queue's drops and backlog.
+- [ ] **Protections:** a rule kind for shapes that need several pf
+      pieces to agree, shown and edited as one item on the Rules page
+      (and one change in the review) instead of loose rules a wizard
+      leaves behind. Brute-force protection first: today it takes a
+      table alias, a quick block rule from it placed before anything
+      that passes the traffic, and the pass rule's
+      `max-src-conn-rate` with `overload <table>` (and `flush global`),
+      each fine on its own and wrong together when one is misplaced or
+      deleted.
+  - Chosen: the service (SSH on the firewall, a port forward), the
+    threshold (new connections per source per seconds), how long an
+    offender stays blocked, whether its open connections close, and
+    addresses never blocked. Generated: the table (`persist`), the
+    block rule always ahead of the pass, the pass rule's limits.
+  - Expiry: pf never takes an address out of an overload table by
+    itself. The collector runs `pfctl -t <table> -T expire <seconds>`
+    each tick; nothing does that today for the rules that already use
+    `overload`, so their offenders stay until a reboot or a flush.
+  - Never lock out the admin: the addresses of signed-in sessions and
+    the anti-lockout rule's sources are kept out of the table (a
+    `pass quick` for them ahead of the block, or never adding them),
+    so a few fast reloads of the web interface can't block its admin.
+  - Live: who's blocked now, since and until when, how many attempts;
+    Unblock (`-T delete`); an event when one is caught.
+  - Later shapes, the same way: a connection cap per source
+    (`max-src-conn`), flood limits (`max-src-states`, a rule's
+    `max`), "known bad" blocking from a URL alias in one step, and
+    scheduled access (Scheduled rules, below).
+  - Plain allow and block rules stay in the rule form; a protection is
+    only for what needs pieces kept in step.
 - [ ] **Scheduled rules:** a rule on only at certain times (a device's
       internet off at night, a guest network only in opening hours).
       pf has no schedules: OPF turns them on and off itself, as table
