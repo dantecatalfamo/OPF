@@ -334,8 +334,10 @@ request after a quiet minute takes a second longer, to measure one.
   `hours` (`{"sent", "received", "sentPackets", "receivedPackets"}`,
   bytes, by the device: sent is what it sent), `unknown` (bytes from
   addresses not in pf's table yet), `devices` (those that moved most
-  first, `{"key", ...bytes}`), `deviceInfo` by key as for DNS activity,
-  and `savedBytes`.
+  first, `{"key", ...bytes}`; the firewall among them as `firewall`),
+  `firewall` (what it started itself: its lookups, updates, downloads;
+  not in `total`), `deviceInfo` by key as for DNS activity, and
+  `savedBytes`.
 - `GET /api/traffic/device?device=key&days=N` (admin): one device's
   `total` and `hours`, with its `kind`, `name` and `mac`.
 - `DELETE /api/traffic[?device=key]` (admin): deletes one device's

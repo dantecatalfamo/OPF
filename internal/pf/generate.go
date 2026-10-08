@@ -533,7 +533,12 @@ const (
 	// addresses that aren't in it yet.
 	LabelTraffic        = "traffic"
 	LabelTrafficUnknown = "traffic-unknown"
+	// What the firewall starts itself (its id is TrafficSelfID).
+	LabelTrafficSelf = "traffic-self"
 )
+
+// TrafficSelfID is the firewall's own traffic's label id.
+const TrafficSelfID = "firewall"
 
 const labelPrefix = "opf:"
 
@@ -553,7 +558,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf:
 	default:
 		return "", "", false
 	}
@@ -969,6 +974,10 @@ func GeneratePfRuleset(m *Model) []PfLine {
 				fmt.Sprintf("match out on $%s to <%s>%s", i.ID, TrafficTable, label(LabelTraffic, i.ID)),
 				fmt.Sprintf("match in on $%s from ! <%s>%s", i.ID, TrafficTable, label(LabelTrafficUnknown, i.ID)))
 		}
+		// What the firewall starts itself, on any interface: before the
+		// NAT rules, so a device's connection leaving with the WAN's
+		// address isn't the firewall's. Its replies count with it.
+		described("This firewall", trafficOrigin, "match out from (self)"+label(LabelTrafficSelf, TrafficSelfID))
 		blank()
 	}
 

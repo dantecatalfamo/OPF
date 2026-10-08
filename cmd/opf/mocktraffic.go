@@ -53,8 +53,12 @@ func mockTrafficTable(start, now time.Time) string {
 // mockTrafficLabels is pfctl -s labels' unknown traffic: a little, from
 // a device that hasn't been seen yet.
 func mockTrafficLabels(start, now time.Time) string {
-	n := uint64(now.Sub(start).Seconds() * 2_000)
-	return fmt.Sprintf("opf:traffic-unknown:lan 120 %d %d %d %d 0 0 1\n", n/600, n, n/600, n)
+	secs := now.Sub(start).Seconds()
+	n := uint64(secs * 2_000)
+	// The firewall's own: lookups and downloads, mostly replies.
+	sent, recv := uint64(secs*3_500), uint64(secs*21_000)
+	return fmt.Sprintf("opf:traffic-unknown:lan 120 %d %d %d %d 0 0 1\nopf:traffic-self:firewall 900 %d %d %d %d %d %d 40\n",
+		n/600, n, n/600, n, (sent+recv)/800, sent+recv, sent/200, sent, recv/1200, recv)
 }
 
 // seedTraffic writes three days of traffic to the state directory, as
@@ -80,6 +84,7 @@ func seedTraffic(path string, now time.Time) error {
 			h.Total.ReceivedPackets += b.ReceivedPackets
 		}
 		h.Unknown = 7_200_000
+		h.Firewall = activity.Bytes{Sent: int64(mockRate(3_500, t) * 3600), Received: int64(mockRate(21_000, t) * 3600)}
 		s.Hours = append(s.Hours, h)
 	}
 	f, err := os.Create(path)

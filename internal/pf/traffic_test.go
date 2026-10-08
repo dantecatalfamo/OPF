@@ -28,6 +28,9 @@ func TestTrafficRules(t *testing.T) {
 			}
 		}
 	}
+	if at := strings.Index(conf, "match out from (self) label \"opf:traffic-self:firewall\"\n"); at < 0 || at > strings.Index(conf, "nat-to") {
+		t.Errorf("the firewall's own traffic isn't counted, or only after NAT:\n%s", conf)
+	}
 	for _, i := range m.Interfaces {
 		if i.Role == RoleWAN && strings.Contains(conf, "on $"+i.ID+" from <opf_hosts>") {
 			t.Error("the WAN's devices counted")

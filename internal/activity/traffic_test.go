@@ -95,3 +95,28 @@ func TestTrafficWorstCase(t *testing.T) {
 		t.Errorf("%d bytes, over WorstTrafficHour", buf.Len())
 	}
 }
+
+// The firewall's own traffic: its own row, not in the devices' total.
+func TestTrafficFirewallRow(t *testing.T) {
+	s := &TrafficStore{}
+	s.Read(day0, map[string]Counter{"192.168.1.5": {Sent: 100, Received: 200}}, func(string) string { return "mac:aa" })
+	s.ReadSelf(day0, Counter{Sent: 1000, Received: 9000})
+	s.ReadSelf(day0.Add(10*time.Second), Counter{Sent: 1500, Received: 9500})
+	// A commit reloaded the rules: the counters start again.
+	s.ReadSelf(day0.Add(20*time.Second), Counter{Sent: 50, Received: 70})
+	sum := s.Summary(day0, 1)
+	if sum.Total.Sent != 100 || sum.Firewall.Sent != 1550 || sum.Firewall.Received != 9570 {
+		t.Errorf("total %+v, firewall %+v", sum.Total, sum.Firewall)
+	}
+	// Among the devices, by how much it moved.
+	if len(sum.Devices) != 2 || sum.Devices[0].Key != FirewallKey {
+		t.Errorf("devices %+v", sum.Devices)
+	}
+	if d, ok := s.Device(FirewallKey, day0, 1); !ok || d.Total.Received != 9570 {
+		t.Errorf("its hours %+v %v", d, ok)
+	}
+	s.ForgetDevice(FirewallKey)
+	if sum := s.Summary(day0, 1); sum.Firewall.Total() != 0 || len(sum.Devices) != 1 {
+		t.Errorf("forgotten: %+v", sum)
+	}
+}

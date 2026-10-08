@@ -119,7 +119,10 @@ function HoursChart({ hours, days }: { hours: (TrafficBytes & { start: string })
 }
 
 const deviceLabel = (key: string, info?: ActivityDeviceInfo) => info?.name || info?.mac || key.replace(/^(ip|mac|vpn):/, '');
-const kindWords: Record<ActivityDeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', firewall: 'OPF itself', address: 'Address only', other: 'Past the day’s 128 devices' };
+const kindWords: Record<ActivityDeviceInfo['kind'], string> = {
+  device: 'Device', vpn: 'VPN device', address: 'Address only', other: 'Past the day’s 128 devices',
+  firewall: 'What it starts itself: DNS lookups for your devices, updates, downloads, time',
+};
 
 function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: string; info?: ActivityDeviceInfo; days: number; onClose: () => void; onForgot: () => void }) {
   const [data, setData] = useState<TrafficDeviceResource>();
@@ -208,9 +211,10 @@ export function Traffic() {
             {error && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {error}</Alert>}
             {total && (total.sent + total.received ? (
               <>
-                <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
                   <Stat label="Received" value={formatBytes(total.received)} detail="by your devices" />
                   <Stat label="Sent" value={formatBytes(total.sent)} detail="by your devices" />
+                  <Stat label="This firewall" value={formatBytes((data?.firewall?.received ?? 0) + (data?.firewall?.sent ?? 0))} detail="what it starts itself, both ways" />
                   <Stat label="Not attributed" value={formatBytes(data?.unknown ?? 0)} detail="from addresses OPF hadn’t seen yet" />
                 </SimpleGrid>
                 <HoursChart hours={data?.hours ?? []} days={n} />

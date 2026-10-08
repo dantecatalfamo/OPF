@@ -1381,8 +1381,20 @@ its setting on Firewall › Settings), and tried on 7.9:
 - [ ] Traffic per destination (country, port, the names DNS activity
       saw), top talkers as an event when one moves far more than its
       usual, and per-device retention apart from the network's.
-- [ ] The firewall's own traffic as a row (the interfaces' graphs have
-      its total).
+- [x] The firewall's own traffic as a row: what it starts itself (its
+      lookups for devices, updates, downloads, time), from `match out
+      from (self)`'s counters, before the NAT rules so a device's
+      connection leaving with the WAN's address isn't the firewall's;
+      apart from the devices' total. Tried on the VM: its own 2 MB
+      download on its row, a device's 1 MB out through NAT and 1 MB in
+      through a forward not.
+  - [ ] Its counters start again when a commit reloads the rules: up
+        to a collector tick (10 s) of it is lost then. A table with
+        counters, as the devices', would keep it.
+  - [ ] Connections to it from the internet (SSH from the WAN, a VPN
+        device's tunnel) aren't on its row: pf sees a port forward's
+        connection as one to the WAN's address at that point. A VPN
+        device's traffic is on its own row anyway.
 - [ ] IPv6, once OPF forwards it.
 
 - [ ] **Storage.** Not the graphs' rings: they're capped at 256 series,

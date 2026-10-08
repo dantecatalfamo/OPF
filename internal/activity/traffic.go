@@ -39,6 +39,10 @@ type TrafficHour struct {
 	Total   Bytes            `json:"total"`
 	Unknown int64            `json:"unknown,omitempty"`
 	Devices map[string]Bytes `json:"devices,omitempty"`
+	// Firewall is what the firewall started itself, apart from Total:
+	// a device's lookup it passes on is the device's and then the
+	// firewall's.
+	Firewall Bytes `json:"firewall,omitzero"`
 }
 
 // Counter is a cumulative count pf keeps, as last read.
@@ -56,6 +60,22 @@ type TrafficStore struct {
 	// bytes, when they were last read.
 	Last        map[string]Counter `json:"last,omitempty"`
 	LastUnknown map[string]uint64  `json:"lastUnknown,omitempty"`
+	LastSelf    Counter            `json:"lastSelf,omitzero"`
+}
+
+// FirewallKey is the firewall's own row's key, as in the DNS activity.
+const FirewallKey = "firewall"
+
+// ReadSelf takes the firewall's own counters (its rule's: they start
+// again when the ruleset reloads).
+func (s *TrafficStore) ReadSelf(now time.Time, c Counter) {
+	h := s.hour(now)
+	before := s.LastSelf
+	h.Firewall.add(Bytes{
+		Sent: delta(c.Sent, before.Sent), Received: delta(c.Received, before.Received),
+		SentPackets: delta(c.SentPackets, before.SentPackets), ReceivedPackets: delta(c.ReceivedPackets, before.ReceivedPackets),
+	})
+	s.LastSelf = c
 }
 
 // delta is what a cumulative counter gained since it was last read. A
@@ -164,6 +184,12 @@ func (s *TrafficStore) ForgetDevice(key string) {
 		s.Hours = nil
 		return
 	}
+	if key == FirewallKey {
+		for _, h := range s.Hours {
+			h.Firewall = Bytes{}
+		}
+		return
+	}
 	for _, h := range s.Hours {
 		if b, ok := h.Devices[key]; ok {
 			h.Total.Sent -= b.Sent
@@ -194,8 +220,11 @@ type TrafficSummary struct {
 	Total   Bytes               `json:"total"`
 	Unknown int64               `json:"unknown"`
 	Hours   []TrafficHourCounts `json:"hours"`
-	// Devices, those that moved most first.
+	// Devices, those that moved most first; the firewall among them
+	// (FirewallKey), when it moved anything, but not in Total.
 	Devices []TrafficDevice `json:"devices"`
+	// Firewall is what it started itself.
+	Firewall Bytes `json:"firewall"`
 }
 
 // Summary is the last days days (today counts as one).
@@ -210,6 +239,7 @@ func (s *TrafficStore) Summary(now time.Time, days int) TrafficSummary {
 		out.Total.add(h.Total)
 		out.Unknown += h.Unknown
 		out.Hours = append(out.Hours, TrafficHourCounts{Start: time.Unix(h.Start, 0), Unknown: h.Unknown, Bytes: h.Total})
+		out.Firewall.add(h.Firewall)
 		for k, b := range h.Devices {
 			d := devs[k]
 			if d == nil {
@@ -221,6 +251,9 @@ func (s *TrafficStore) Summary(now time.Time, days int) TrafficSummary {
 	}
 	for k, b := range devs {
 		out.Devices = append(out.Devices, TrafficDevice{Key: k, Bytes: *b})
+	}
+	if out.Firewall.Total() > 0 {
+		out.Devices = append(out.Devices, TrafficDevice{Key: FirewallKey, Bytes: out.Firewall})
 	}
 	sort.Slice(out.Devices, func(i, j int) bool {
 		a, b := out.Devices[i], out.Devices[j]
@@ -247,6 +280,9 @@ func (s *TrafficStore) Device(key string, now time.Time, days int) (TrafficDevic
 	found := false
 	for _, h := range s.Hours {
 		b, ok := h.Devices[key]
+		if key == FirewallKey {
+			b, ok = h.Firewall, h.Firewall.Total() > 0
+		}
 		if h.Start < since.Unix() || !ok {
 			continue
 		}

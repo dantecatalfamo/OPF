@@ -62,9 +62,12 @@ func ParsePfTableCounters(out string) map[string]TableCounters {
 }
 
 // LabelCounters are a label's counters from `pfctl -s labels`, every
-// rule with it together; a ruleset reload starts them again.
+// rule with it together; a ruleset reload starts them again. In is the
+// way its connections were opened, Out their replies.
 type LabelCounters struct {
-	Packets, Bytes uint64
+	Packets, Bytes       uint64
+	InPackets, InBytes   uint64
+	OutPackets, OutBytes uint64
 }
 
 // ParsePfLabels reads `pfctl -s labels`: label evaluations packets bytes
@@ -77,14 +80,23 @@ func ParsePfLabels(out string) map[string]LabelCounters {
 		if len(f) != 9 {
 			continue
 		}
-		p, err1 := strconv.ParseUint(f[2], 10, 64)
-		b, err2 := strconv.ParseUint(f[3], 10, 64)
-		if err1 != nil || err2 != nil {
+		var n [6]uint64
+		ok := true
+		for i := range n {
+			v, err := strconv.ParseUint(f[2+i], 10, 64)
+			ok = ok && err == nil
+			n[i] = v
+		}
+		if !ok {
 			continue
 		}
 		c := res[f[0]]
-		c.Packets += p
-		c.Bytes += b
+		c.Packets += n[0]
+		c.Bytes += n[1]
+		c.InPackets += n[2]
+		c.InBytes += n[3]
+		c.OutPackets += n[4]
+		c.OutBytes += n[5]
 		res[f[0]] = c
 	}
 	return res

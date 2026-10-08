@@ -135,8 +135,15 @@ func (m *Manager) readTraffic(model *pf.Model, now time.Time) {
 	if out, err := m.read("pfctl", "-s", "labels"); err == nil {
 		unknown := map[string]uint64{}
 		for l, c := range sysinfo.ParsePfLabels(out) {
-			if kind, _, ok := pf.ParseLabel(l); ok && kind == pf.LabelTrafficUnknown {
+			kind, _, ok := pf.ParseLabel(l)
+			switch {
+			case !ok:
+			case kind == pf.LabelTrafficUnknown:
 				unknown[l] = c.Bytes
+			case kind == pf.LabelTrafficSelf:
+				// Its connections are opened by the firewall: In is what
+				// it sent, Out the replies it got.
+				s.ReadSelf(now, activity.Counter{Sent: c.InBytes, Received: c.OutBytes, SentPackets: c.InPackets, ReceivedPackets: c.OutPackets})
 			}
 		}
 		s.ReadUnknown(now, unknown)

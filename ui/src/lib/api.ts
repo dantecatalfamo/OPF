@@ -161,8 +161,10 @@ export interface TrafficResource {
   /** From addresses not in pf's table yet, counted apart. */
   unknown?: number;
   hours?: (TrafficBytes & { start: string; unknown?: number })[];
-  /** Those that moved most first. */
+  /** Those that moved most first; the firewall among them (key "firewall"), though not in total. */
   devices?: (TrafficBytes & { key: string })[];
+  /** What the firewall started itself: its lookups, updates, downloads. */
+  firewall?: TrafficBytes;
   deviceInfo?: Record<string, ActivityDeviceInfo>;
   savedBytes?: number;
 }

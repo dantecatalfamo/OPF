@@ -10,17 +10,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/activity"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
 // fakePfTable is pf's traffic table: OPF's adds and deletes change it,
 // and show -v reports each address's counters.
 type fakePfTable struct {
-	mu       sync.Mutex
-	entries  map[string][2]uint64 // sent, received
-	unknown  uint64
-	commands []string
-	exists   bool
+	mu      sync.Mutex
+	entries map[string][2]uint64 // sent, received
+	unknown uint64
+	// The firewall's own rule's bytes: those it sent, the replies.
+	selfSent, selfReceived uint64
+	commands               []string
+	exists                 bool
 }
 
 func (f *fakePfTable) Run(_ context.Context, argv ...string) ([]byte, error) {
@@ -56,7 +59,8 @@ func (f *fakePfTable) Run(_ context.Context, argv ...string) ([]byte, error) {
 	case cmd == "pfctl -t opf_hosts -T kill":
 		f.entries, f.exists = map[string][2]uint64{}, false
 	case cmd == "pfctl -s labels":
-		return []byte(fmt.Sprintf("opf:traffic-unknown:lan 5 3 %d 2 %d 1 0 1\n", f.unknown, f.unknown)), nil
+		return []byte(fmt.Sprintf("opf:traffic-unknown:lan 5 3 %d 2 %d 1 0 1\nopf:traffic-self:firewall 9 20 %d 10 %d 10 %d 4\n",
+			f.unknown, f.unknown, f.selfSent+f.selfReceived, f.selfSent, f.selfReceived)), nil
 	case cmd == "pfctl -s Tables":
 		if f.exists {
 			return []byte("opf_hosts\n"), nil
@@ -78,6 +82,8 @@ func (f *fakePfTable) count(a string, sent, received uint64) {
 	c := f.entries[a]
 	f.entries[a] = [2]uint64{c[0] + sent, c[1] + received}
 }
+
+const FirewallKeyForTest = "firewall"
 
 func TestTrafficPerDevice(t *testing.T) {
 	e := newEnv(t, time.Minute)
@@ -101,6 +107,7 @@ func TestTrafficPerDevice(t *testing.T) {
 	fake.count("192.168.1.112", 1000, 50_000)
 	fake.count("192.168.20.101", 200, 300)
 	fake.unknown = 4096
+	fake.selfSent, fake.selfReceived = 700, 70_000
 	e.m.readTraffic(model, now.Add(10*time.Second))
 	tr, err := e.m.Traffic(DNSActivityRequest{Days: 1})
 	if err != nil || !tr.Enabled {
@@ -109,8 +116,17 @@ func TestTrafficPerDevice(t *testing.T) {
 	if tr.Total.Sent != 1200 || tr.Total.Received != 50_300 || tr.Unknown != 4096 {
 		t.Errorf("total %+v, unknown %d", tr.Total, tr.Unknown)
 	}
-	top := tr.Devices[0]
-	if top.Key != "mac:3c:22:fb:91:04:7d" || top.Received != 50_000 || tr.DeviceInfo[top.Key].Kind != "device" {
+	// The firewall's own row: apart from the devices' total.
+	if tr.Firewall.Sent != 700 || tr.Firewall.Received != 70_000 || tr.DeviceInfo[FirewallKeyForTest].Kind != "firewall" {
+		t.Errorf("firewall %+v %+v", tr.Firewall, tr.DeviceInfo[FirewallKeyForTest])
+	}
+	var top activity.TrafficDevice
+	for _, d := range tr.Devices {
+		if d.Key == "mac:3c:22:fb:91:04:7d" {
+			top = d
+		}
+	}
+	if top.Received != 50_000 || tr.DeviceInfo[top.Key].Kind != "device" {
 		t.Errorf("top device %+v %+v", top, tr.DeviceInfo[top.Key])
 	}
 	d, err := e.m.TrafficDevice(DNSActivityRequest{Days: 1, Device: top.Key})
