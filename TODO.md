@@ -1041,6 +1041,10 @@ Firewall:
       each. A downloaded list can't be changed (its next download would
       undo it). Only the configuration's table and URL aliases are
       read, never pf's other tables.
+  - [ ] Try on the VM: an alias's "Used by" list (a rule, a floating
+        rule, a port forward, an outbound NAT rule) and each opening its
+        editor on the right tab, and the table drawer's and finder's rule
+        links; only the mock has shown them.
   - [ ] Packets and bytes each address matched: the aliases' tables
         aren't declared `counters`; declaring them would cost memory
         per entry (a downloaded list's thousands).
