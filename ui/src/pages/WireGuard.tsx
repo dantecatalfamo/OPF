@@ -403,14 +403,32 @@ function TrafficFlow({ tunnel }: { tunnel: Tunnel }) {
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Internet access</Text>}>
+          {/* Who sends the internet's traffic through the tunnel, and how it
+              leaves: said of the devices that do, or, when none does, of
+              one that would. */}
           <Text size="sm" c="dimmed">
-            {fullPeers.length ? `${fullPeers.map((p) => p.name).join(', ')} send${fullPeers.length === 1 ? 's' : ''} all traffic through OPF. ` : 'No device sends all its traffic through OPF. '}
-            {natAuto ? (
-              <>It leaves through {natOut.join(' or ')}, taking {natOut.length === 1 ? 'its' : 'that interface’s'} address, by <Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>.</>
+            {fullPeers.length ? (
+              <>
+                {fullPeers.map((p) => p.name).join(', ')} send{fullPeers.length === 1 ? 's' : ''} all {fullPeers.length === 1 ? 'its' : 'their'} traffic through OPF.{' '}
+                {natAuto ? (
+                  <>It goes on to the internet through {natOut.join(' or ')}, with {natOut.length === 1 ? `${natOut[0]}’s` : 'that interface’s'} address, by <Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>.</>
+                ) : (
+                  <Text span c="red" size="sm">
+                    But no <Anchor component={Link} to="/firewall/nat/outbound" size="sm">outbound NAT</Anchor> rule covers the tunnel’s network, so it can’t reach the internet.
+                  </Text>
+                )}
+              </>
             ) : (
-              <Text span c={fullPeers.length ? 'red' : 'dimmed'} size="sm">
-                No <Anchor component={Link} to="/firewall/nat/outbound" size="sm">outbound NAT</Anchor> rule covers the tunnel network, so it can’t reach the internet.
-              </Text>
+              <>
+                {wg.peers.length
+                  ? 'No device sends its internet traffic through OPF: they use the tunnel only for your networks, and reach the internet directly. '
+                  : 'No devices yet. '}
+                {natAuto ? (
+                  <>A device set to send all its traffic through OPF would go on to the internet through {natOut.join(' or ')}, with {natOut.length === 1 ? `${natOut[0]}’s` : 'that interface’s'} address (<Anchor component={Link} to="/firewall/nat/outbound" size="sm">automatic outbound NAT</Anchor>).</>
+                ) : (
+                  <>A device set to send all its traffic through OPF couldn’t reach the internet: no <Anchor component={Link} to="/firewall/nat/outbound" size="sm">outbound NAT</Anchor> rule covers the tunnel’s network.</>
+                )}
+              </>
             )}
           </Text>
         </Timeline.Item>
