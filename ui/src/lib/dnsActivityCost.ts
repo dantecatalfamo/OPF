@@ -72,9 +72,13 @@ export function costAdvice(cost: ActivityCost, sys?: SystemResource): CostAdvice
     reasons.push(`${varDisk.mount} has little room left for it (it’s saved there every few minutes, beside the last copy).`);
   }
   const model = `${sys?.cpuModel ?? ''} ${sys?.machine ?? ''}`;
-  if (sys && (sys.cpus <= 2 || lowPowerCPU.test(model))) {
+  const work = 'the resolver writes a line for every answer and OPF reads each one, which on a busy network can slow the resolver down. Watch the DNS page’s lookup times after turning it on.';
+  if (sys && lowPowerCPU.test(model)) {
     raise('note');
-    reasons.push(`This looks like a low-power machine (${sys.cpus} CPU${sys.cpus === 1 ? '' : 's'}${sys.cpuModel ? `, ${sys.cpuModel}` : ''}): the resolver writes a line for every answer and OPF reads each one, which on a busy network can slow the resolver down. Watch the DNS page’s lookup times after turning it on.`);
+    reasons.push(`This looks like a low-power machine (${sys.cpuModel || sys.machine}, ${sys.cpus} CPU${sys.cpus === 1 ? '' : 's'}): ${work}`);
+  } else if (sys && sys.cpus <= 2) {
+    raise('note');
+    reasons.push(`This machine has ${sys.cpus === 1 ? 'one CPU' : 'two CPUs'}, which the resolver, OPF and the firewall share: ${work}`);
   }
   return { level, reasons };
 }

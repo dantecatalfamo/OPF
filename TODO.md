@@ -649,6 +649,10 @@ Types, roughly in order of usefulness:
       hands out OPF as the resolver on a network it doesn't answer on is
       refused, and VPN devices' configurations name OPF's DNS only when
       it answers on their tunnel.
+- [ ] The firewall can't look up its own name: from 127.0.0.1,
+      `opfvm.home.arpa` is NXDOMAIN (seen on the VM), since its address
+      records are only in the networks' views (firewallViewLines) and
+      loopback has none. Answer loopback with the LAN's, or every one.
 - [ ] Check on the VM that a reload takes a new `interface:` (DNS
       resolver › Answer on): unbound binds as root before it chroots and
       drops to _unbound, so a reload may not be able to bind a new
@@ -1231,7 +1235,13 @@ setting under Settings), and tried on 7.9 with the real unbound:
         (`RestartIf` in the registry), on commits and reverts.
   - [ ] Whether `log-replies` is cheap enough on an APU-class box with a
         busy network; the 4 MB truncation has been tried with a test
-        file, not under real load.
+        file, not under real load. On the VM (one vCPU, under 110
+        answers a second on loopback, so the VM is the limit) it made
+        no difference beyond the noise, OPF's reader using under 1% of
+        the CPU, and every answer was logged (unbound's own query count
+        against the lines). A load generator must send raw packets: Go's
+        resolver answers some names itself and merges identical
+        lookups in flight.
   - [ ] The other lines unbound logs go to OPF's log at most 50 a tick;
         say so when some were dropped.
 - [x] **Who a device is.** A MAC address from the DHCP leases or the ARP
