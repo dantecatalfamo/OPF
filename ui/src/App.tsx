@@ -30,6 +30,7 @@ import { Device, Devices } from './pages/Devices';
 import { FirewallLog } from './pages/FirewallLog';
 import { ARP } from './pages/ARP';
 import { Authpf } from './pages/Authpf';
+import { ServicesPage } from './pages/Services';
 
 const preview = import.meta.env.MODE === 'preview';
 
@@ -90,6 +91,7 @@ function AppRoutes() {
         <Route path="firewall/ruleset" element={<Ruleset />} />
         <Route path="firewall/settings" element={<FirewallSettings />} />
         <Route path="firewall/aliases" element={<Aliases />} />
+        <Route path="services" element={<ServicesPage />} />
         <Route path="services/dhcp" element={<Dhcp />} />
         <Route path="services/dns" element={<Dns />} />
         <Route path="services/wireguard" element={<WireGuardPage />} />

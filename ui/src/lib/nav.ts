@@ -48,6 +48,7 @@ export const nav: NavGroup[] = [
   },
   {
     label: 'Services', icon: IconServer2, items: [
+      { label: 'All services', to: '/services', keywords: 'daemons rcctl rc.d rc.conf start stop restart reload boot sshd ntpd smtpd' },
       { label: 'DHCP server', to: '/services/dhcp', keywords: 'dhcpd leases address pool range' },
       { label: 'DNS resolver', to: '/services/dns', keywords: 'unbound name server dns' },
       { label: 'WireGuard VPN', to: '/services/wireguard', keywords: 'vpn tunnels peers remote access wg' },

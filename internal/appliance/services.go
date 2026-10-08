@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/pf"
@@ -46,6 +47,66 @@ type ServiceDetail struct {
 	ServiceStatus
 	Vars map[string]string `json:"vars"`
 	Log  []LogLine         `json:"log"`
+	// LogName is the log those lines are from.
+	LogName string `json:"logName"`
+}
+
+// serviceLog is the log a service writes to: syslog.conf sends sshd's
+// to authlog and smtpd's to maillog; the rest go to daemon.
+func serviceLog(name string) string {
+	switch name {
+	case "sshd":
+		return "authlog"
+	case "smtpd":
+		return "maillog"
+	}
+	return "daemon"
+}
+
+// rcctl ls on and ls started check every service, seconds each on a
+// small machine (6 s on the test VM): they run side by side, and what
+// they said is kept a few seconds for every page and poll that asks.
+const (
+	serviceListsTimeout = 45 * time.Second
+	serviceListsKeep    = 10 * time.Second
+)
+
+type serviceListsCache struct {
+	mu          sync.Mutex
+	at          time.Time
+	on, started map[string]bool
+	err         error
+}
+
+func (c *serviceListsCache) forget() {
+	c.mu.Lock()
+	c.at = time.Time{}
+	c.mu.Unlock()
+}
+
+// serviceLists are which services start at boot and which run now.
+func (m *Manager) serviceLists() (on, started map[string]bool, err error) {
+	c := &m.svcLists
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if time.Since(c.at) < serviceListsKeep {
+		return c.on, c.started, c.err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), serviceListsTimeout)
+	defer cancel()
+	var onOut, startedOut []byte
+	var onErr error
+	var wg sync.WaitGroup
+	wg.Go(func() { onOut, onErr = m.runner().Run(ctx, "rcctl", "ls", "on") })
+	// rcctl ls started exits 1 when nothing is; its list is still right.
+	wg.Go(func() { startedOut, _ = m.runner().Run(ctx, "rcctl", "ls", "started") })
+	wg.Wait()
+	c.on, c.started, c.err = lsLines(string(onOut)), lsLines(string(startedOut)), nil
+	if onErr != nil {
+		c.err = fmt.Errorf("rcctl ls on: %v", onErr)
+	}
+	c.at = time.Now()
+	return c.on, c.started, c.err
 }
 
 var serviceNameRE = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -71,15 +132,9 @@ func (m *Manager) Services() (*Services, error) {
 	if err != nil {
 		return nil, errorf(CodeInternal, "rcctl ls all: %v", err)
 	}
-	on, started := map[string]bool{}, map[string]bool{}
-	if o, err := m.read("rcctl", "ls", "on"); err == nil {
-		on = lsLines(o)
-	} else {
-		out.Errors = append(out.Errors, "rcctl ls on: "+err.Error())
-	}
-	// rcctl ls started exits 1 when nothing is; its list is still right.
-	if o, _ := m.read("rcctl", "ls", "started"); o != "" {
-		started = lsLines(o)
+	on, started, err := m.serviceLists()
+	if err != nil {
+		out.Errors = append(out.Errors, err.Error())
 	}
 	names := []string{}
 	for n := range lsLines(all) {
@@ -128,8 +183,8 @@ func (m *Manager) Service(name string) (*ServiceDetail, error) {
 		return nil, apiError(err)
 	}
 	on, started := false, false
-	if o, err := m.read("rcctl", "ls", "on"); err == nil {
-		on = lsLines(o)[name]
+	if o, _, err := m.serviceLists(); err == nil {
+		on = o[name]
 	}
 	if _, err := m.read("rcctl", "check", name); err == nil {
 		started = true
@@ -142,8 +197,8 @@ func (m *Manager) Service(name string) (*ServiceDetail, error) {
 			}
 		}
 	}
-	if l, err := m.SystemLog(SystemLogRequest{Log: "daemon", Program: name, Limit: 30}); err == nil {
-		d.Log = l.Lines
+	if l, err := m.SystemLog(SystemLogRequest{Log: serviceLog(name), Program: name, Limit: 30}); err == nil {
+		d.Log, d.LogName = l.Lines, serviceLog(name)
 	}
 	return d, nil
 }
@@ -202,6 +257,7 @@ func (m *Manager) ServiceAction(req ServiceActionRequest) (*ServiceActionResult,
 		run = m.runner().Run // only looks
 	}
 	out, err := run(ctx, "rcctl", req.Action, req.Name)
+	m.svcLists.forget()
 	res := &ServiceActionResult{OK: err == nil, Output: strings.TrimSpace(string(out))}
 	if req.Action != "check" {
 		who := req.By

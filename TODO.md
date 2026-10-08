@@ -960,15 +960,36 @@ lines, all through the commit engine.
       changeable later. They order the navigation and dashboard and
       suggest what to set up, and never turn a feature off: any page
       stays reachable.
-- [ ] **A Services page** listing every base daemon, grouped by
-      category, with name, description, enabled and running, quick
-      actions (start, stop, restart, enable, disable) and links to the
-      services that have their own pages (dhcpd, unbound, pf already
-      do). Needs `rcctl ls all`, `rcctl ls on`/`started`, `rcctl get`,
-      and start/stop/enable/disable endpoints.
-- [ ] A detail view per service: status, uptime, resource use, recent
-      log entries, its rc.d settings (`rcctl get`: flags, user, rtable,
-      timeout) and its configuration.
+- [x] **A Services page** (Services › All services): every service rcctl
+      knows, by category with what it is, whether it's running, whether
+      it starts at boot, and the page that sets it up when OPF does
+      (dhcpd, unbound, pf, OPF). Start, stop, restart and reload for
+      operators: OPF itself and pf never stopped (rcctl stop pf turns the
+      packet filter off), a boot setting never started, a service set up
+      on its own page only restarted or reloaded; stop asks first (sshd
+      with why); each is an event naming who. Boot settings (on at boot,
+      a daemon's flags, routing table and stop timeout) are model
+      settings (`system.services`), reviewed and applied like any other,
+      written into rc.conf.local as lines marked "# set by OPF".
+  - Tried on the VM: rcctl enable and set sort the whole of
+    rc.conf.local, moving OPF's block, so OPF never uses them; marked
+    lines are found wherever the sort put them, and rc(8) reads a
+    value up to its comment. A commit set lpd on at boot with -s and
+    a 45 s timeout (rcctl get read both), an admin's rcctl set then
+    sorted the file, and taking the setting out caused no outside
+    change, kept the admin's line and put OPF's block back at the end.
+  - [ ] rcctl ls on and ls started check every service: 6 s each on the
+        VM, 12 s together on one CPU (kept 10 s for every page). Read
+        rc.conf and rc.conf.local, and each rc.d script's daemon, OPF's
+        own way, to be fast.
+- [x] A detail view per service: its state, its rc.d variables (rcctl
+      get) and its recent lines in its log (authlog for sshd, maillog
+      for smtpd, daemon for the rest).
+  - [ ] Uptime and resource use (its processes' start, CPU and memory).
+  - [ ] After turning one on at boot, offer to start it now (and to stop
+        one turned off).
+  - [ ] Packages' services (pkg_scripts) are listed but not described,
+        and have no boot settings here.
 - [ ] Dependencies between services (dhcpd needs its interfaces up):
       warn when disabling something another service needs.
 - [ ] Boot order: show and set rc.d(8) order where it matters.

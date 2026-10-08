@@ -466,6 +466,17 @@ export interface SystemSettings {
   graphs?: GraphLimits;
   /** Where the firewall's own lookups go; unset, the WAN's servers. */
   dns?: SystemDns;
+  /** Boot settings for base services, written into rc.conf.local; one not here is as the system has it. */
+  services?: ServiceSetting[];
+}
+
+/** A base service's boot settings: whether it starts at boot, and a daemon's flags (unset: rc.d's defaults), routing table and stop timeout. */
+export interface ServiceSetting {
+  name: string;
+  enabled: boolean;
+  flags?: string;
+  rtable?: number;
+  timeout?: number;
 }
 
 export type SystemDnsMode = 'wan' | 'self' | 'servers';

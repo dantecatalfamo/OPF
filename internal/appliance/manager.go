@@ -81,6 +81,8 @@ type Manager struct {
 	tablesExpired time.Time
 	// authpf is sign-in access's accounts and sessions (authpf.go).
 	authpf authpfState
+	// svcLists is rcctl's lists, kept a few seconds (services.go).
+	svcLists serviceListsCache
 
 	// Earlier readings, for rates (status.go).
 	cpu         rate[sysinfo.CPUTicks]

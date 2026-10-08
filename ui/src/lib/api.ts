@@ -790,6 +790,26 @@ export interface AuthpfSessionsResource {
   sessions: { user: string; address: string; pid: number; since: string; rules: boolean }[];
 }
 
+/** GET /api/services: every service rcctl knows. */
+export interface ServiceStatus {
+  name: string;
+  kind: 'daemon' | 'boot';
+  category: string;
+  description: string;
+  /** The page that sets it up, for one OPF manages itself. */
+  managedAt?: string;
+  known: boolean;
+  /** Starts at boot. */
+  enabled: boolean;
+  running: boolean;
+  /** Starts at boot but isn't running. */
+  failed: boolean;
+  /** OPF's boot setting, as applied. */
+  setting?: import('../model/types').ServiceSetting;
+}
+export interface ServicesResource { services: ServiceStatus[]; errors: string[] }
+export interface ServiceDetailResource extends ServiceStatus { vars: Record<string, string>; log: LogLine[]; logName: string }
+
 export interface TableStatus {
   name: string;
   url: string;
@@ -1032,6 +1052,10 @@ export const api = {
     request<TableEntriesResource>('GET', `/firewall/tables/${enc(table)}/entries?q=${enc(q)}&offset=${offset}&limit=${limit}`),
   tableChange: (table: string, op: 'add' | 'delete' | 'flush', addresses: string[] = []) =>
     request<void>('POST', `/firewall/tables/${enc(table)}/entries`, { op, addresses }),
+  services: () => request<ServicesResource>('GET', '/services'),
+  service: (name: string) => request<ServiceDetailResource>('GET', `/services/${enc(name)}`),
+  serviceAction: (name: string, action: 'start' | 'stop' | 'restart' | 'reload' | 'check') =>
+    request<{ ok: boolean; output: string }>('POST', `/services/${enc(name)}/${action}`),
   authpfSessions: () => request<AuthpfSessionsResource>('GET', '/firewall/authpf/sessions'),
   authpfEnd: (pid: number) => request<void>('POST', `/firewall/authpf/sessions/${pid}/end`),
   tableFind: (address: string) => request<TableFindResource>('GET', `/firewall/tables/find?address=${enc(address)}`),
