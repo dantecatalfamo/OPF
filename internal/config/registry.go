@@ -144,12 +144,36 @@ func substPart(argv []string, part string) []string {
 // together with the files generated from it.
 const ModelPath = "/var/opf/config.json"
 
-// DefaultFiles are the files managed on a stock OpenBSD system, in the
-// order they are applied during a commit.
 // unboundOwnLog is in unbound.conf while unbound logs to a file of its
 // own rather than syslog.
 const unboundOwnLog = "\tuse-syslog: no\n"
 
+// unboundRestarts says whether a change to unbound.conf needs a restart.
+// A reload rereads the file but keeps the sockets it has: it neither
+// binds an address added to "interface:" (it dropped root when it
+// chrooted) nor lets go of one taken away, and it never goes back to
+// syslog from a file of its own.
+func unboundRestarts(before, after []byte) bool {
+	if strings.Contains(string(before), unboundOwnLog) != strings.Contains(string(after), unboundOwnLog) {
+		return true
+	}
+	return !slices.Equal(unboundListens(before), unboundListens(after))
+}
+
+// unboundListens is what unbound.conf has it listen on, in order.
+func unboundListens(conf []byte) []string {
+	var out []string
+	for _, l := range strings.Split(string(conf), "\n") {
+		if f := strings.Fields(l); len(f) > 0 && (f[0] == "interface:" || f[0] == "port:" || f[0] == "ip-transparent:") {
+			out = append(out, strings.Join(f, " "))
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// DefaultFiles are the files managed on a stock OpenBSD system, in the
+// order they are applied during a commit.
 func DefaultFiles() []File {
 	return []File{
 		{
@@ -231,11 +255,10 @@ func DefaultFiles() []File {
 			Desc:    "Recursive DNS resolver",
 			Check:   []string{"sh", "-c", UnboundCheck, "sh", "{}", "{staged}", "{root}"},
 			Service: "unbound", ServiceAction: "reload",
-			// Logging to its own file or to syslog (DNS activity).
-			RestartIf: func(before, after []byte) bool {
-				return strings.Contains(string(before), unboundOwnLog) != strings.Contains(string(after), unboundOwnLog)
-			},
-			Mode: 0644,
+			// Where it listens (DNS resolver › Answer on), and logging
+			// to its own file or to syslog (DNS activity).
+			RestartIf: unboundRestarts,
+			Mode:      0644,
 		},
 		{
 			Name: "ntpd.conf", Path: "/etc/ntpd.conf",

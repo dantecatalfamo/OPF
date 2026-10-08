@@ -662,10 +662,12 @@ Types, roughly in order of usefulness:
         "# set by OPF", every other line kept, merged like sysctl.conf),
         which "lookup file bind" reads first, even with unbound down.
         Tried on the VM: getent and ping find it.
-- [ ] Check on the VM that a reload takes a new `interface:` (DNS
-      resolver › Answer on): unbound binds as root before it chroots and
-      drops to _unbound, so a reload may not be able to bind a new
-      address on port 53, as it can't go back to syslog (RestartIf).
+- [x] A change to where unbound listens (DNS resolver › Answer on)
+      restarts it. Tried on the VM: a reload kept the sockets it had,
+      never binding an address added (the VPN's devices got no answers)
+      and holding one taken away (access-control refused it, so only
+      the socket was left). unbound.conf's RestartIf now restarts it
+      when its `interface:` lines change; other changes still reload.
 - [ ] The resolver can't answer on a DHCP-addressed inside interface
       (the LAN-only layout with its LAN by DHCP from the router): unbound
       needs the address to listen on and the network to allow, and 7.9's
