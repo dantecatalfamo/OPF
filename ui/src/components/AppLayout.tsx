@@ -70,6 +70,7 @@ const nav: NavGroup[] = [
       { label: 'Graphs', to: '/diagnostics/graphs' },
       { label: 'Events', to: '/diagnostics/events' },
       { label: 'Tools', to: '/diagnostics/tools' },
+      { label: 'Devices', to: '/diagnostics/devices' },
       { label: 'Connections', to: '/diagnostics/connections' },
       { label: 'Traffic', to: '/diagnostics/traffic' },
       { label: 'ARP table', to: '/diagnostics/arp' },

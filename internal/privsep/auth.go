@@ -35,6 +35,8 @@ var methodRoles = map[string]auth.Role{
 	"FirewallLog": auth.RoleView, "Tables": auth.RoleView, "DNSLists": auth.RoleView,
 	"Webhooks": auth.RoleView, "SystemLog": auth.RoleView, "Events": auth.RoleView,
 	"Metrics": auth.RoleView, "DNSStats": auth.RoleView, "DNSBlocked": auth.RoleView, "Storage": auth.RoleView,
+	// Who each device is: what the DHCP and ARP pages show already.
+	"Devices": auth.RoleView, "Device": auth.RoleView,
 	// The names a network and each device look up: the most personal
 	// data OPF keeps.
 	"DNSActivity": auth.RoleAdmin, "DNSDeviceActivity": auth.RoleAdmin, "DNSNameActivity": auth.RoleAdmin,

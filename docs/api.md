@@ -328,6 +328,18 @@ request after a quiet minute takes a second longer, to measure one.
   "unused"}`: `from` is the interface resolvd learned it on, `lo0`
   being OPF's own (`system.dns`); `unused` past the three the C library
   reads) and `lookup`.
+- `GET /api/devices`: every device OPF knows of, `{"devices",
+  "errors"}`, from DHCP leases and reservations, the ARP table (inside
+  networks only) and VPN tunnels: `{"key", "kind", "name", "mac",
+  "addresses", "networks", "lease", "reservation", "arp", "vpn",
+  "firstSeen"}`. `key` is what DNS activity and traffic are kept under
+  (`mac:…`, `vpn:<peer id>`, `ip:…`, `firewall`); `kind` is `device`
+  or `vpn`.
+- `GET /api/devices/device?key=…`: one device, with its VPN tunnel's
+  state now (`endpoint`, `handshakeAgo`, `rxBytes`, `txBytes`) for a
+  VPN device. A key DNS activity or traffic counted but nothing else
+  knows (`ip:…`, a MAC not seen now, `firewall`) is a device too, with
+  `kind` `address` or `firewall`; anything else is `not_found`.
 - `GET /api/traffic?days=N` (admin): what each device sent and
   received over the last `N` days (`firewall.traffic`). Only `enabled`
   and `days` while it isn't counted. Otherwise `maxDevices` (devices

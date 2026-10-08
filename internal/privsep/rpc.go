@@ -205,6 +205,14 @@ type (
 		Result
 		Device *appliance.TrafficDeviceView
 	}
+	DevicesReply struct {
+		Result
+		Devices *appliance.Devices
+	}
+	DeviceReply struct {
+		Result
+		Device *appliance.DeviceInfo
+	}
 	StorageReply struct {
 		Result
 		Storage *appliance.Storage
@@ -633,6 +641,26 @@ func (s *Service) ForgetTraffic(c Call[appliance.TrafficRequest], r *EmptyReply)
 		return nil
 	}
 	r.set("ForgetTraffic", s.api.ForgetTraffic(c.Args))
+	return nil
+}
+
+func (s *Service) Devices(c Call[None], r *DevicesReply) error {
+	if s.allow("Devices", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Devices, err = s.api.Devices()
+	r.set("Devices", err)
+	return nil
+}
+
+func (s *Service) Device(c Call[IDArgs], r *DeviceReply) error {
+	if s.allow("Device", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Device, err = s.api.Device(c.Args.ID)
+	r.set("Device", err)
 	return nil
 }
 
@@ -1226,6 +1254,31 @@ func (c *Client) TrafficDevice(req appliance.TrafficRequest) (*appliance.Traffic
 
 func (c *Client) ForgetTraffic(req appliance.TrafficRequest) error {
 	return c.call("ForgetTraffic", req, &EmptyReply{})
+}
+
+func normalizeDevice(d *appliance.DeviceInfo) {
+	d.Addresses, d.Networks = nonNil(d.Addresses), nonNil(d.Networks)
+}
+
+func (c *Client) Devices() (*appliance.Devices, error) {
+	var r DevicesReply
+	err := c.call("Devices", None{}, &r)
+	if d := r.Devices; d != nil {
+		d.Devices, d.Errors = nonNil(d.Devices), nonNil(d.Errors)
+		for i := range d.Devices {
+			normalizeDevice(&d.Devices[i])
+		}
+	}
+	return r.Devices, err
+}
+
+func (c *Client) Device(key string) (*appliance.DeviceInfo, error) {
+	var r DeviceReply
+	err := c.call("Device", IDArgs{ID: key}, &r)
+	if r.Device != nil {
+		normalizeDevice(r.Device)
+	}
+	return r.Device, err
 }
 
 func (c *Client) Storage() (*appliance.Storage, error) {

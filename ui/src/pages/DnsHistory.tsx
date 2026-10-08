@@ -16,6 +16,7 @@ import { useRole } from '../lib/session';
 import { formatBytes, formatCount, formatLogTime } from '../lib/format';
 import { useLive } from '../lib/live';
 import { activityCost, costAdvice } from '../lib/dnsActivityCost';
+import { DeviceLink } from '../components/DeviceLink';
 import { Empty, Mono, SectionTitle } from '../components/ui';
 
 const listName = (m: Model, id?: string) => (!id ? 'your own names' : (m.dns.blocklists ?? []).find((l) => l.id === id)?.name ?? id);
@@ -336,7 +337,10 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
                 <Button color="red" size="compact-sm" onClick={() => backend.forgetDnsActivity(device).then(onForgot, (e) => setError(errorText(e)))}>Delete</Button>
               </>
             ) : (
-              <Button variant="subtle" color="red" size="compact-sm" onClick={() => setConfirm(true)}>Forget this device</Button>
+              <>
+                <DeviceLink deviceKey={device!}>Everything about this device</DeviceLink>
+                <Button variant="subtle" color="red" size="compact-sm" onClick={() => setConfirm(true)}>Forget this device</Button>
+              </>
             )}
           </Group>
         </Stack>

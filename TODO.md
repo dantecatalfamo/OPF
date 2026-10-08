@@ -1342,8 +1342,18 @@ setting under Settings), and tried on 7.9 with the real unbound:
       "Delete what's kept" deletes it now.
 - [x] **API and roles.** `GET /api/dns/activity`, `/device`, `DELETE`,
       admin only (the overall top names too), never in webhooks.
-- [ ] A device's activity from where the device is shown: DHCP leases,
-      the ARP table, a VPN device's page.
+- [x] A device's page (Diagnostics › Devices, and one device's page):
+      who it is (its DHCP lease and reservation, ARP entries, the
+      network it's on, its VPN tunnel and its state now, when it was
+      first seen), its traffic and DNS activity where kept (admins),
+      its connections now, its events and its firewall log, together.
+      Linked from the Traffic and DNS activity device views, the DHCP
+      leases and the ARP table. Tried on the VM: a LAN device by ARP,
+      VPN devices with their tunnel's state.
+  - [ ] Graphs for a VPN device (its series are there), and a device's
+        rules (those naming its address or reservation).
+  - [ ] A device's name from the device itself (a lease's asked-for
+        name) shows like a reservation's; say where it came from.
 - [ ] "Never block" from the Activity tab's blocked names, as Blocking's
       list has.
 - [ ] A rising NXDOMAIN rate on one device as an event (often malware);

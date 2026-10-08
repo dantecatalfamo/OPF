@@ -3,6 +3,7 @@ import { Alert, Badge, Card, Stack, Table, Text, TextInput } from '@mantine/core
 import { IconAlertCircle, IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { deviceName } from '../lib/labels';
+import { DeviceLink, macKey } from '../components/DeviceLink';
 import { Mono, PageHeader } from '../components/ui';
 import type { ARPTableResource } from '../lib/api';
 
@@ -104,7 +105,7 @@ export function ARP() {
                   entries.map((e, i) => (
                     <Table.Tr key={`${e.ip}-${i}`}>
                       <Table.Td><Mono>{e.ip}</Mono></Table.Td>
-                      <Table.Td><Mono>{e.mac}</Mono></Table.Td>
+                      <Table.Td>{/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(e.mac) ? <DeviceLink deviceKey={macKey(e.mac)}><Mono>{e.mac}</Mono></DeviceLink> : <Mono>{e.mac}</Mono>}</Table.Td>
                       <Table.Td>
                         <Text size="sm">{deviceName(applied, e.iface)}</Text>
                       </Table.Td>

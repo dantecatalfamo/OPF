@@ -144,6 +144,32 @@ export interface SystemResource {
   errors: string[];
 }
 
+/** A device, with everything OPF knows of who it is (GET /api/devices, /api/devices/device?key=). */
+export interface DeviceInfo {
+  /** As DNS activity and traffic are kept under: mac:…, vpn:…, ip:…, firewall. */
+  key: string;
+  kind: 'device' | 'vpn' | 'address' | 'firewall';
+  name?: string;
+  mac?: string;
+  addresses: string[];
+  /** The inside networks it's on. */
+  networks: { id: string; name: string; device: string }[];
+  lease?: DhcpLeasesResource['leases'][number];
+  reservation?: { id: string; hostname: string; ip: string; network: string };
+  arp?: ARPTableResource['entries'];
+  vpn?: {
+    tunnel: string; tunnelName: string; peer: string; address: string; clientRoutes: string;
+    endpoint?: string; handshakeAgo?: number; rxBytes: number; txBytes: number;
+    lastSeen?: string; lastFrom?: string;
+  };
+  firstSeen?: string;
+}
+
+export interface DevicesResource {
+  devices: DeviceInfo[];
+  errors: string[];
+}
+
 /** Traffic: what a device sent and received (package activity's Bytes). */
 export interface TrafficBytes {
   sent: number;
@@ -988,6 +1014,8 @@ export const api = {
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
   storage: () => request<StorageResource>('GET', '/diagnostics/storage'),
+  devices: () => request<DevicesResource>('GET', '/devices'),
+  device: (key: string) => request<DeviceInfo>('GET', `/devices/device?key=${enc(key)}`),
   traffic: (days: number) => request<TrafficResource>('GET', `/traffic?days=${days}`),
   trafficDevice: (device: string, days: number) => request<TrafficDeviceResource>('GET', `/traffic/device?device=${enc(device)}&days=${days}`),
   /** Deletes one device's traffic, or with none all of it. */

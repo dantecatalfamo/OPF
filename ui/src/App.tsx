@@ -26,6 +26,7 @@ import { SystemLogs } from './pages/SystemLogs';
 import { ConfigFiles } from './pages/ConfigFiles';
 import { Storage } from './pages/Storage';
 import { Traffic } from './pages/Traffic';
+import { Device, Devices } from './pages/Devices';
 import { FirewallLog } from './pages/FirewallLog';
 import { ARP } from './pages/ARP';
 
@@ -82,6 +83,8 @@ function AppRoutes() {
         <Route path="diagnostics/files" element={<ConfigFiles />} />
         <Route path="diagnostics/storage" element={<Storage />} />
         <Route path="diagnostics/traffic" element={<Traffic />} />
+        <Route path="diagnostics/devices" element={<Devices />} />
+        <Route path="diagnostics/devices/:key" element={<Device />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

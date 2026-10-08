@@ -12,6 +12,7 @@ import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { poolSize } from '../lib/ip';
 import { HistoryCard } from '../components/HistoryChart';
 import { FileLink } from './ConfigFiles';
+import { DeviceLink, macKey } from '../components/DeviceLink';
 
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
@@ -288,7 +289,7 @@ export function Dhcp() {
                             <Table.Td>
                               {/* The name is the device's own choice; shown as text, never markup. */}
                               {l.hostname ? <Text size="sm" fw={500}>{l.hostname}</Text> : <Text size="sm" c="dimmed">Unnamed device</Text>}
-                              {l.mac && <Mono c="dimmed">{l.mac}</Mono>}
+                              {l.mac && <DeviceLink deviceKey={macKey(l.mac)} size="sm" c="dimmed"><Mono c="dimmed">{l.mac}</Mono></DeviceLink>}
                               {l.dnsName && <Text size="xs" c="dimmed">In DNS as <Mono>{l.dnsName}</Mono></Text>}
                               {l.dnsRefused && <Text size="xs" c="dimmed">Not in DNS: {l.dnsRefused}</Text>}
                             </Table.Td>

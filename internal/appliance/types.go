@@ -60,6 +60,8 @@ type API interface {
 	DNSStats() (*DNSStats, error)
 	DNSBlocked() (*DNSBlocked, error)
 	Storage() (*Storage, error)
+	Devices() (*Devices, error)
+	Device(key string) (*DeviceInfo, error)
 	DNSActivity(DNSActivityRequest) (*DNSActivity, error)
 	DNSDeviceActivity(DNSActivityRequest) (*DNSDeviceActivity, error)
 	DNSNameActivity(DNSActivityRequest) (*DNSNameActivity, error)

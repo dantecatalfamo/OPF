@@ -13,6 +13,7 @@ import { DEFAULT_TRAFFIC_DEVICES, MAX_ACTIVITY_DAYS, MAX_DEVICE_CAP } from '../m
 import { useRole } from '../lib/session';
 import { useLive } from '../lib/live';
 import { formatBytes } from '../lib/format';
+import { DeviceLink } from '../components/DeviceLink';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 
 // An hour at most, saved (activity.WorstTraffic): a little for the hour
@@ -112,7 +113,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail?:
   );
 }
 
-function HoursChart({ hours, days }: { hours: (TrafficBytes & { start: string })[]; days: number }) {
+export function TrafficHoursChart({ hours, days }: { hours: (TrafficBytes & { start: string })[]; days: number }) {
   if (!hours.length) return null;
   const data = hours.map((h) => {
     const t = new Date(h.start);
@@ -163,7 +164,7 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
             <Stat label="Received" value={formatBytes(data.total.received)} />
             <Stat label="Sent" value={formatBytes(data.total.sent)} />
           </SimpleGrid>
-          <HoursChart hours={data.hours} days={days} />
+          <TrafficHoursChart hours={data.hours} days={days} />
           <Group justify="flex-end">
             {confirm ? (
               <>
@@ -172,7 +173,10 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
                 <Button color="red" size="compact-sm" onClick={() => backend.forgetTraffic(device).then(onForgot, (e) => setError(errorText(e)))}>Delete</Button>
               </>
             ) : (
-              <Button variant="subtle" color="red" size="compact-sm" onClick={() => setConfirm(true)}>Forget this device</Button>
+              <>
+                <DeviceLink deviceKey={device!}>Everything about this device</DeviceLink>
+                <Button variant="subtle" color="red" size="compact-sm" onClick={() => setConfirm(true)}>Forget this device</Button>
+              </>
             )}
           </Group>
         </Stack>
@@ -232,7 +236,7 @@ export function Traffic() {
                   <Stat label="This firewall" value={formatBytes((data?.firewall?.received ?? 0) + (data?.firewall?.sent ?? 0))} detail="what it starts itself, both ways" />
                   <Stat label="Not attributed" value={formatBytes(data?.unknown ?? 0)} detail="from addresses OPF hadn’t seen yet" />
                 </SimpleGrid>
-                <HoursChart hours={data?.hours ?? []} days={n} />
+                <TrafficHoursChart hours={data?.hours ?? []} days={n} />
               </>
             ) : <Empty>Nothing yet: pf’s counters are read every few seconds, once the change that turned this on is applied.</Empty>)}
           </Stack>

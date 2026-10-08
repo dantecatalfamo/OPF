@@ -162,6 +162,8 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/activity/device", s.dnsDeviceActivity)
 	s.mux.HandleFunc("GET /api/dns/activity/name", s.dnsNameActivity)
 	s.mux.HandleFunc("DELETE /api/dns/activity", s.forgetDNSActivity)
+	s.mux.HandleFunc("GET /api/devices", getter(s, appliance.API.Devices))
+	s.mux.HandleFunc("GET /api/devices/device", s.device)
 	s.mux.HandleFunc("GET /api/traffic", s.traffic)
 	s.mux.HandleFunc("GET /api/traffic/device", s.trafficDevice)
 	s.mux.HandleFunc("DELETE /api/traffic", s.forgetTraffic)
@@ -714,6 +716,21 @@ func (s *Server) dnsNameActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
+}
+
+// device answers ?key=: one device, everything OPF knows of who it is.
+func (s *Server) device(w http.ResponseWriter, r *http.Request) {
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		badRequest(w, http.StatusBadRequest, "key is required")
+		return
+	}
+	d, err := s.apiFor(r).Device(key)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
 }
 
 func (s *Server) traffic(w http.ResponseWriter, r *http.Request) {
