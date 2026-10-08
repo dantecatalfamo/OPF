@@ -36,6 +36,7 @@ const (
 	EventCommit  = "commit"  // a change was applied, confirmed, reverted or failed
 	EventLogin   = "login"   // someone signed in or out, or was refused
 	EventTable   = "table"   // someone changed what a table holds now
+	EventAuthpf  = "authpf"  // sign-in access: someone signed in or out, an account made or removed
 )
 
 const (
@@ -244,7 +245,7 @@ func (m *Manager) loadEvents() {
 var eventKinds = map[string]bool{
 	EventOPF: true, EventLink: true, EventAddress: true, EventGateway: true, EventDevice: true,
 	EventVPN: true, EventService: true, EventList: true, EventUpdates: true, EventCommit: true,
-	EventLogin: true, EventTable: true,
+	EventLogin: true, EventTable: true, EventAuthpf: true,
 }
 
 func isMAC(s string) bool {

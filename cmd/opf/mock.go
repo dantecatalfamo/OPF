@@ -91,6 +91,13 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if err := write(leases.Path, mockLeases(time.Now()), 0644); err != nil {
 		return err
 	}
+	// The system's own: sign-in access adds to them.
+	if err := write("/etc/passwd", []byte(mockPasswd), 0644); err != nil {
+		return err
+	}
+	if err := write(pf.SshdPath, []byte(mockSshdConfig), 0644); err != nil {
+		return err
+	}
 	// unbound has run before, so its trust anchor is there; the URL
 	// alias's list isn't, so the first commit shows it being downloaded.
 	if err := write(pf.RootKeyPath, []byte(". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n"), 0644); err != nil {
@@ -112,7 +119,7 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if err != nil {
 		return err
 	}
-	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, tables: &mockTableStore{}, dnsNames: func() int {
+	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, tables: &mockTableStore{}, authpf: &mockAuthpf{root: root, start: time.Now()}, dnsNames: func() int {
 		n := 0
 		ls, _ := api.DNSLists()
 		for _, l := range ls {

@@ -278,3 +278,20 @@ func TestTableChangeBy(t *testing.T) {
 		t.Errorf("events %+v %v", ev, err)
 	}
 }
+
+// Seeing who's signed in is anyone's; ending a session needs an
+// operator.
+func TestAuthpfRoles(t *testing.T) {
+	conn := newConn(t, newAPI(t))
+	op, viewer := signIn(t, conn, "op"), signIn(t, conn, "viewer")
+	if _, err := viewer.AuthpfSessions(); err != nil {
+		t.Errorf("a viewer can't see sessions: %v", err)
+	}
+	if err := viewer.AuthpfEnd(appliance.AuthpfEndRequest{PID: 4242}); code(err) != appliance.CodeForbidden {
+		t.Errorf("a viewer ended a session: %v", err)
+	}
+	// Allowed, but there's no such session.
+	if err := op.AuthpfEnd(appliance.AuthpfEndRequest{PID: 4242}); code(err) != appliance.CodeNotFound {
+		t.Errorf("an operator ending no session: %v", err)
+	}
+}

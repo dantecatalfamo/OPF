@@ -225,6 +225,10 @@ type (
 		Result
 		Find *appliance.TableFind
 	}
+	AuthpfSessionsReply struct {
+		Result
+		Sessions *appliance.AuthpfSessions
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -502,6 +506,27 @@ func (s *Service) TableChange(c Call[appliance.TableChangeRequest], r *EmptyRepl
 	a := c.Args
 	a.By = sess.User // whoever the session is, whatever was sent
 	r.set("TableChange", s.api.TableChange(a))
+	return nil
+}
+
+func (s *Service) AuthpfSessions(c Call[None], r *AuthpfSessionsReply) error {
+	if s.allow("AuthpfSessions", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Sessions, err = s.api.AuthpfSessions()
+	r.set("AuthpfSessions", err)
+	return nil
+}
+
+func (s *Service) AuthpfEnd(c Call[appliance.AuthpfEndRequest], r *EmptyReply) error {
+	sess := s.allow("AuthpfEnd", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
+	a.By = sess.User // whoever the session is, whatever was sent
+	r.set("AuthpfEnd", s.api.AuthpfEnd(a))
 	return nil
 }
 
@@ -1180,6 +1205,19 @@ func (c *Client) TableFind(address string) (*appliance.TableFind, error) {
 
 func (c *Client) TableChange(req appliance.TableChangeRequest) error {
 	return c.call("TableChange", req, &EmptyReply{})
+}
+
+func (c *Client) AuthpfSessions() (*appliance.AuthpfSessions, error) {
+	var r AuthpfSessionsReply
+	err := c.call("AuthpfSessions", None{}, &r)
+	if s := r.Sessions; s != nil {
+		s.Sessions = nonNil(s.Sessions)
+	}
+	return r.Sessions, err
+}
+
+func (c *Client) AuthpfEnd(req appliance.AuthpfEndRequest) error {
+	return c.call("AuthpfEnd", req, &EmptyReply{})
 }
 
 func (c *Client) DNSLists() ([]appliance.DNSListStatus, error) {

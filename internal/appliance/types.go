@@ -58,6 +58,8 @@ type API interface {
 	TableEntries(TableEntriesRequest) (*TableEntries, error)
 	TableFind(address string) (*TableFind, error)
 	TableChange(TableChangeRequest) error
+	AuthpfSessions() (*AuthpfSessions, error)
+	AuthpfEnd(AuthpfEndRequest) error
 	DNSLists() ([]DNSListStatus, error)
 	RefreshDNSList(id string) (*DNSListStatus, error)
 	DNSStats() (*DNSStats, error)

@@ -294,6 +294,8 @@ func (m *Manager) sample(now time.Time) {
 	m.readTraffic(model, now)
 	m.applySystemDNS(model) // resolvd forgets it when it restarts
 	m.expireTables(model, now)
+	m.syncAuthpfAccounts(model)
+	m.watchAuthpfSessions(model)
 
 	// Interfaces: bits a second in and out.
 	if b, err := m.read("netstat", "-ibn"); err == nil {

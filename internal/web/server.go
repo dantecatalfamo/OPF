@@ -33,6 +33,8 @@
 //	GET    /api/firewall/tables/{name}/entries  what a table alias holds now, ?q=&offset=&limit=
 //	POST   /api/firewall/tables/{name}/entries  add to, take from or empty a dynamic table
 //	GET    /api/firewall/tables/find      which table aliases hold ?address=
+//	GET    /api/firewall/authpf/sessions  who's signed in (sign-in access)
+//	POST   /api/firewall/authpf/sessions/{pid}/end  end one
 //	GET    /api/dns/blocklists            DNS blocklists' downloads
 //	POST   /api/dns/blocklists/{id}/refresh  download one again and reload it
 //	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
@@ -150,6 +152,8 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/firewall/tables/{name}/entries", s.tableEntries)
 	s.mux.HandleFunc("POST /api/firewall/tables/{name}/entries", s.tableChange)
 	s.mux.HandleFunc("GET /api/firewall/tables/find", s.tableFind)
+	s.mux.HandleFunc("GET /api/firewall/authpf/sessions", getter(s, appliance.API.AuthpfSessions))
+	s.mux.HandleFunc("POST /api/firewall/authpf/sessions/{pid}/end", s.authpfEnd)
 	s.mux.HandleFunc("GET /api/dns/blocklists", getter(s, func(api appliance.API) (dnsListsBody, error) {
 		l, err := api.DNSLists()
 		return dnsListsBody{l}, err
@@ -584,6 +588,19 @@ func (s *Server) tableChange(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Table = r.PathValue("name")
 	if err := s.apiFor(r).TableChange(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) authpfEnd(w http.ResponseWriter, r *http.Request) {
+	pid, err := strconv.Atoi(r.PathValue("pid"))
+	if err != nil || pid <= 1 {
+		badRequest(w, http.StatusBadRequest, "pid is a process number")
+		return
+	}
+	if err := s.apiFor(r).AuthpfEnd(appliance.AuthpfEndRequest{PID: pid}); err != nil {
 		fail(w, err)
 		return
 	}

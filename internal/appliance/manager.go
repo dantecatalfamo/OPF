@@ -79,6 +79,8 @@ type Manager struct {
 	// tablesExpired is when tables' old addresses were last taken out
 	// (expiry.go).
 	tablesExpired time.Time
+	// authpf is sign-in access's accounts and sessions (authpf.go).
+	authpf authpfState
 
 	// Earlier readings, for rates (status.go).
 	cpu         rate[sysinfo.CPUTicks]
@@ -273,6 +275,7 @@ func (m *Manager) OnChange(f func()) { m.onChange = f }
 func (m *Manager) changed() {
 	if model, _, err := m.live(); err == nil {
 		m.applySystemDNS(model)
+		m.syncAuthpfAccounts(model)
 	}
 	if m.onChange != nil {
 		m.onChange()

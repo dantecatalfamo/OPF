@@ -25,6 +25,8 @@ type mockSystem struct {
 	pf    *mockPf
 	// tables are what the table aliases hold (mocktables.go).
 	tables *mockTableStore
+	// authpf is sign-in access's accounts and session (mockauthpf.go).
+	authpf *mockAuthpf
 	// dnsNames is how many names the enabled blocklists have.
 	dnsNames func() int
 	next     run.Runner
@@ -33,6 +35,22 @@ type mockSystem struct {
 func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	cmd := strings.Join(argv, " ")
 	t := time.Since(s.start).Seconds()
+	if s.authpf != nil {
+		if out, ok, err := s.authpf.account(argv); ok {
+			return []byte(out), err
+		}
+		if m, err := s.model(); err == nil {
+			switch {
+			case cmd == "ps -axww -o pid,lstart,command":
+				return []byte(s.authpf.ps(m, time.Now())), nil
+			case cmd == "pfctl -a authpf -s Anchors":
+				return []byte(s.authpf.anchors(m)), nil
+			case len(argv) == 3 && argv[0] == "kill" && argv[1] == "-TERM":
+				o, err := s.authpf.kill(m, argv[2])
+				return []byte(o), err
+			}
+		}
+	}
 	if len(argv) > 2 && argv[0] == "pfctl" && argv[1] == "-t" && s.tables != nil {
 		if m, err := s.model(); err == nil {
 			if out, ok, err := s.tables.handle(m, argv, time.Now()); ok {
