@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconSearch, IconX } from '@tabler/icons-react';
@@ -14,13 +14,14 @@ import { HostName, NamesSwitch } from '../components/HostName';
 import { useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateKinds, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
+import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 
 function Proto({ c }: { c: PfState }) {
   const { applied } = useStore();
   return (
-    <Group gap={6} wrap="nowrap">
-      <Badge color="gray" w={52}>{protoGroup(c.proto).toUpperCase()}</Badge>
-      <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{c.direction === 'in' ? 'In' : 'Out'}{c.iface !== 'all' ? ` on ${deviceName(applied, c.iface)}` : ''}</Text>
+    <Group gap={8} wrap="nowrap">
+      <ProtoBadge proto={protoGroup(c.proto)} />
+      <DirLabel dir={c.direction === 'in' ? 'in' : 'out'}>{c.direction === 'in' ? 'In' : 'Out'}{c.iface !== 'all' ? ` on ${deviceName(applied, c.iface)}` : ''}</DirLabel>
     </Group>
   );
 }
@@ -83,6 +84,7 @@ export function Connections() {
   const [query, setQuery] = useState(''); // q, once typing pauses
   const [proto, setProto] = useState('all');
   const [kind, setKind] = useState<string | null>(null);
+  const [dir, setDir] = useState('both');
   const [limit, setLimit] = useState(PAGE);
   const [data, setData] = useState<PfStatesResource>();
   const [error, setError] = useState<string>();
@@ -92,10 +94,10 @@ export function Connections() {
     const t = setTimeout(() => setQuery(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
-  useEffect(() => setLimit(PAGE), [query, proto, kind]);
+  useEffect(() => setLimit(PAGE), [query, proto, dir, kind]);
   useEffect(() => {
     let live = true;
-    const req: PfStatesRequest = { query: query || undefined, proto: proto === 'all' ? undefined : (proto as PfStatesRequest['proto']), state: (kind ?? undefined) as PfStatesRequest['state'], limit };
+    const req: PfStatesRequest = { query: query || undefined, proto: proto === 'all' ? undefined : (proto as PfStatesRequest['proto']), direction: dir === 'both' ? undefined : (dir as 'in' | 'out'), state: (kind ?? undefined) as PfStatesRequest['state'], limit };
     const load = () => {
       if (document.hidden) return;
       backend.pfStates(req).then(
@@ -106,7 +108,7 @@ export function Connections() {
     load();
     const t = setInterval(load, POLL_MS);
     return () => { live = false; clearInterval(t); };
-  }, [query, proto, kind, limit, tick]);
+  }, [query, proto, dir, kind, limit, tick]);
   const rows = (data?.states ?? []).filter((c) => !closed.has(c.id));
   const [showNames, setShowNames] = useShowNames();
   const names = useReverseNames(rows.flatMap((c) => [c.source, c.destination]), showNames);
@@ -142,6 +144,16 @@ export function Connections() {
           onChange={setProto}
           data={[{ value: 'all', label: 'All' }, { value: 'tcp', label: 'TCP' }, { value: 'udp', label: 'UDP' }, { value: 'icmp', label: 'ICMP' }]}
         />
+        <SegmentedControl
+          value={dir}
+          onChange={setDir}
+          aria-label="Way"
+          data={[
+            { value: 'both', label: 'In and out' },
+            { value: 'in', label: <DirLabel dir="in">In</DirLabel> },
+            { value: 'out', label: <DirLabel dir="out">Out</DirLabel> },
+          ]}
+        />
         <Select
           placeholder="Any state"
           clearable
@@ -167,7 +179,7 @@ export function Connections() {
           <Table highlightOnHover striped>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Protocol</Table.Th>
+                <Table.Th>Protocol and way</Table.Th>
                 <Table.Th>From</Table.Th>
                 <Table.Th>To</Table.Th>
                 <Table.Th>Allowed by</Table.Th>
@@ -216,12 +228,12 @@ export function Connections() {
             ))}
           </Stack>
         )}
-        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{query || proto !== 'all' || kind ? 'No connections match.' : 'No connections.'}</Text>}
+        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{query || proto !== 'all' || dir !== 'both' || kind ? 'No connections match.' : 'No connections.'}</Text>}
       </Card>
       {data && data.total > 0 && (
         <Group justify="space-between" mt="sm">
           <Text size="xs" c="dimmed">
-            Showing {rows.length.toLocaleString()} of {data.total.toLocaleString()}{query || proto !== 'all' || kind ? ' that match' : ''}
+            Showing {rows.length.toLocaleString()} of {data.total.toLocaleString()}{query || proto !== 'all' || dir !== 'both' || kind ? ' that match' : ''}
           </Text>
           {data.total > data.states.length && limit < 1000 && (
             <Button size="compact-sm" variant="subtle" onClick={() => setLimit((n) => Math.min(1000, n + PAGE))}>Show {Math.min(PAGE, data.total - data.states.length)} more</Button>

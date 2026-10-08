@@ -384,6 +384,8 @@ export type StateKind = 'open' | 'opening' | 'closing' | 'active' | 'one-way' | 
 export interface PfStatesRequest {
   query?: string;
   proto?: 'tcp' | 'udp' | 'icmp';
+  /** As pf has the state: arriving on its interface, or leaving by it. */
+  direction?: 'in' | 'out';
   state?: StateKind;
   offset?: number;
   limit?: number;
@@ -1044,6 +1046,7 @@ export const api = {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);
     if (r.proto) q.set('proto', r.proto);
+    if (r.direction) q.set('direction', r.direction);
     if (r.state) q.set('state', r.state);
     if (r.offset) q.set('offset', String(r.offset));
     if (r.limit) q.set('limit', String(r.limit));

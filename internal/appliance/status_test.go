@@ -288,9 +288,26 @@ func TestPfStatesPage(t *testing.T) {
 	if r, _ := m.PfStates(PfStatesRequest{State: "closing", Proto: "udp"}); r.Total != 0 || r.ByKind["active"] != 1 {
 		t.Errorf("closing UDP: %+v", r)
 	}
-	for _, bad := range []PfStatesRequest{{Proto: "gre"}, {State: "ESTABLISHED"}, {Limit: MaxStatesPage + 1}, {Offset: -1}, {Query: strings.Repeat("1", 101)}, {Query: "a\x00b"}} {
+	if in, out := mustStates(t, m, PfStatesRequest{Direction: "in"}), mustStates(t, m, PfStatesRequest{Direction: "out"}); in.Total+out.Total != 7 || in.Total == 0 || out.Total == 0 {
+		t.Errorf("in %d, out %d", in.Total, out.Total)
+	}
+	for _, bad := range []PfStatesRequest{{Proto: "gre"}, {Direction: "both"}, {State: "ESTABLISHED"}, {Limit: MaxStatesPage + 1}, {Offset: -1}, {Query: strings.Repeat("1", 101)}, {Query: "a\x00b"}} {
 		if _, err := m.PfStates(bad); err == nil {
 			t.Errorf("took %+v", bad)
 		}
 	}
+}
+
+func mustStates(t *testing.T, m *Manager, req PfStatesRequest) *PfStates {
+	t.Helper()
+	r, err := m.PfStates(req)
+	if err != nil {
+		t.Fatalf("%+v: %v", req, err)
+	}
+	for _, s := range r.States {
+		if req.Direction != "" && s.Direction != req.Direction {
+			t.Errorf("%+v: a state %s", req, s.Direction)
+		}
+	}
+	return r
 }

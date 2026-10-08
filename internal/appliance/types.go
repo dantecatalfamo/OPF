@@ -380,6 +380,9 @@ type PfStatus struct {
 type PfStatesRequest struct {
 	Query string `json:"query,omitempty"`
 	Proto string `json:"proto,omitempty"`
+	// Direction is in or out, as pf has the state: arriving on its
+	// interface, or leaving by it.
+	Direction string `json:"direction,omitempty"`
 	// State is a kind of state (StateKinds): open, opening, closing...
 	State  string `json:"state,omitempty"`
 	Offset int    `json:"offset,omitempty"`

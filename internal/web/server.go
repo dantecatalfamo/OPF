@@ -732,7 +732,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 // pfStates answers ?q=<part of an address>&proto=tcp|udp|icmp&offset=&limit=.
 func (s *Server) pfStates(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	req := appliance.PfStatesRequest{Query: q.Get("q"), Proto: q.Get("proto"), State: q.Get("state")}
+	req := appliance.PfStatesRequest{Query: q.Get("q"), Proto: q.Get("proto"), Direction: q.Get("direction"), State: q.Get("state")}
 	for name, dst := range map[string]*int{"offset": &req.Offset, "limit": &req.Limit} {
 		if v := q.Get(name); v != "" {
 			n, err := strconv.Atoi(v)

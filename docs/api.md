@@ -427,9 +427,10 @@ never by number: numbers change with every reload.
   answered), `waiting` (nothing sent) or `other`. `state` is pfctl's
   pair, in the order it prints the addresses (for one in, `<-`, the end
   it was opened to first). `?q=` (part of an address), `?proto=` (tcp,
-  udp, icmp) and `?state=` (a kind) filter; `byKind` counts the states
-  that match the address and protocol by kind, whatever `state` asks
-  for. `?offset=` and `?limit=` page.
+  udp, icmp), `?direction=` (in or out, as pf has the state: arriving
+  on its interface or leaving by it) and `?state=` (a kind) filter;
+  `byKind` counts the states that match the other filters by kind,
+  whatever `state` asks for. `?offset=` and `?limit=` page.
 - `POST /api/pf/states/kill`: `{"id": "<16 hex digits>", "creatorId":
   "<8 hex digits>"}` ends a connection (`pfctl -k id`). 204; 422 for
   ids in any other form, which never reach pfctl. A state that has

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
-import { IconAlertTriangle, IconArrowDownLeft, IconArrowUpRight, IconSearch } from '@tabler/icons-react';
+import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
 import { useRole } from '../lib/session';
@@ -21,6 +21,7 @@ import { NamesSwitch, Wrapped } from '../components/HostName';
 import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
+import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -358,7 +359,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
           <Table verticalSpacing={6} highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={110}>Way</Table.Th>
+                <Table.Th w={130}>Way</Table.Th>
                 <Table.Th>Other end</Table.Th>
                 <Table.Th w={100}>State</Table.Th>
                 <Table.Th w={90} ta="right">Data</Table.Th>
@@ -367,15 +368,13 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
             <Table.Tbody>
               {conns.map((c) => {
                 const name = names.get(c.farHost);
-                const Arrow = c.dir === 'out' ? IconArrowUpRight : IconArrowDownLeft;
                 return (
                   <Table.Tr key={c.key}>
                     <Table.Td>
                       <Tooltip label={c.dir === 'out' ? `This device opened it, from ${c.ownEnd}` : `Opened to this device, at ${c.ownEnd}`}>
-                        <Group gap={6} wrap="nowrap">
-                          <Arrow size={16} color={c.dir === 'out' ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-yellow-5)'} />
-                          <Text size="sm">{c.dir === 'out' ? 'To' : 'From'}</Text>
-                          <Badge size="xs" variant="light" color="gray">{c.proto}</Badge>
+                        <Group gap={8} wrap="nowrap">
+                          <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'To' : 'From'}</DirLabel>
+                          <ProtoBadge proto={c.proto} />
                         </Group>
                       </Tooltip>
                     </Table.Td>

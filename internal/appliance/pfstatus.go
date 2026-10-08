@@ -83,6 +83,8 @@ func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
 		return nil, errorf(CodeInvalid, "the filter is an address, or part of one")
 	case req.Proto != "" && req.Proto != "tcp" && req.Proto != "udp" && req.Proto != "icmp":
 		return nil, errorf(CodeInvalid, "proto: tcp, udp or icmp")
+	case req.Direction != "" && req.Direction != "in" && req.Direction != "out":
+		return nil, errorf(CodeInvalid, "direction: in or out")
 	case req.State != "" && !slices.Contains(StateKinds, req.State):
 		return nil, errorf(CodeInvalid, "state: one of %s", strings.Join(StateKinds, ", "))
 	case req.Offset < 0 || req.Offset > MaxStatesRead:
@@ -127,6 +129,9 @@ func (r PfStatesRequest) matches(s sysinfo.PfState) bool {
 		proto = "icmp"
 	}
 	if r.Proto != "" && proto != r.Proto {
+		return false
+	}
+	if r.Direction != "" && s.Direction != r.Direction {
 		return false
 	}
 	return r.Query == "" || strings.Contains(s.Source+" "+s.Destination+" "+s.Translated, r.Query)
