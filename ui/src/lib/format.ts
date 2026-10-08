@@ -39,7 +39,8 @@ export function formatAgo(sec: number): string {
   if (sec < 60) return `${Math.floor(sec)} seconds ago`;
   if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)} h ago`;
-  return `${Math.floor(sec / 86400)} days ago`;
+  const d = Math.floor(sec / 86400);
+  return `${d} ${d === 1 ? 'day' : 'days'} ago`;
 }
 
 /** A log entry's time: just the time today, with the date on other days. */

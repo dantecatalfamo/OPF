@@ -23,6 +23,8 @@ type mockSystem struct {
 	start time.Time
 	model func() (*pf.Model, error)
 	pf    *mockPf
+	// tables are what the table aliases hold (mocktables.go).
+	tables *mockTableStore
 	// dnsNames is how many names the enabled blocklists have.
 	dnsNames func() int
 	next     run.Runner
@@ -31,6 +33,13 @@ type mockSystem struct {
 func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	cmd := strings.Join(argv, " ")
 	t := time.Since(s.start).Seconds()
+	if len(argv) > 2 && argv[0] == "pfctl" && argv[1] == "-t" && s.tables != nil {
+		if m, err := s.model(); err == nil {
+			if out, ok, err := s.tables.handle(m, argv, time.Now()); ok {
+				return []byte(out), err
+			}
+		}
+	}
 	var out string
 	switch {
 	case cmd == "sysctl kern.cp_time":

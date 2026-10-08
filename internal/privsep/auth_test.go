@@ -257,3 +257,24 @@ func TestAccountsAskForThePasswordAgain(t *testing.T) {
 		t.Errorf("after giving it again: %v", err)
 	}
 }
+
+// Changing a table needs an operator, and the event log names the
+// session's user, whatever the request says.
+func TestTableChangeBy(t *testing.T) {
+	conn := newConn(t, newAPI(t))
+	op, viewer := signIn(t, conn, "op"), signIn(t, conn, "viewer")
+	req := appliance.TableChangeRequest{Table: "bruteforce", Op: "add", Addresses: []string{"192.0.2.9"}, By: "someone-else"}
+	if err := viewer.TableChange(req); code(err) != appliance.CodeForbidden {
+		t.Errorf("a viewer changed a table: %v", err)
+	}
+	if _, err := viewer.TableEntries(appliance.TableEntriesRequest{Table: "bruteforce"}); err != nil {
+		t.Errorf("a viewer can't read a table: %v", err)
+	}
+	if err := op.TableChange(req); err != nil {
+		t.Fatal(err)
+	}
+	ev, err := op.Events(appliance.EventsRequest{Kinds: []string{appliance.EventTable}})
+	if err != nil || len(ev.Events) != 1 || !strings.HasPrefix(ev.Events[0].Message, "op added 192.0.2.9") {
+		t.Errorf("events %+v %v", ev, err)
+	}
+}

@@ -709,7 +709,7 @@ export interface SystemLogRequest {
   limit?: number;
 }
 
-export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit' | 'login';
+export type EventKind = 'opf' | 'link' | 'address' | 'gateway' | 'device' | 'vpn' | 'service' | 'list' | 'updates' | 'commit' | 'login' | 'table';
 
 /** Something that happened (GET /api/events). */
 export interface OpfEvent {
@@ -756,6 +756,34 @@ export interface WebhookSecretRequest {
 }
 
 /** A URL alias's downloaded list (GET /api/firewall/tables). */
+/** GET /api/firewall/tables/{name}/entries: a page of what a table alias holds now. */
+export interface TableEntry {
+  address: string;
+  negated?: boolean;
+  /** When it was added (pf's statistics last cleared); dynamic tables only. */
+  added?: string;
+  /** When OPF takes it out, with the table's expiry set. */
+  expires?: string;
+}
+export interface TableRuleRef { id: string; description: string }
+export interface TableEntriesResource {
+  table: string;
+  kind: 'dynamic' | 'list';
+  /** false: pf has no such table yet (not applied). */
+  loaded: boolean;
+  total: number;
+  matching: number;
+  entries: TableEntry[];
+  expireMinutes?: number;
+  filledBy: TableRuleRef[];
+}
+/** GET /api/firewall/tables/find?address=: the table aliases an address is in. */
+export interface TableFindResource {
+  address: string;
+  tables: { table: string; kind: 'dynamic' | 'list'; entry: string; added?: string; expires?: string; usedBy: TableRuleRef[] }[];
+  errors: string[];
+}
+
 export interface TableStatus {
   name: string;
   url: string;
@@ -994,6 +1022,11 @@ export const api = {
   tables: async () => (await request<{ tables: TableStatus[] }>('GET', '/firewall/tables')).tables,
   /** Downloads a URL alias's list again and loads it into pf. */
   refreshAlias: (name: string) => request<TableStatus>('POST', `/firewall/aliases/${enc(name)}/refresh`),
+  tableEntries: (table: string, q: string, offset: number, limit: number) =>
+    request<TableEntriesResource>('GET', `/firewall/tables/${enc(table)}/entries?q=${enc(q)}&offset=${offset}&limit=${limit}`),
+  tableChange: (table: string, op: 'add' | 'delete' | 'flush', addresses: string[] = []) =>
+    request<void>('POST', `/firewall/tables/${enc(table)}/entries`, { op, addresses }),
+  tableFind: (address: string) => request<TableFindResource>('GET', `/firewall/tables/find?address=${enc(address)}`),
   dnsLists: async () => (await request<{ lists: DnsListStatus[] }>('GET', '/dns/blocklists')).lists,
   /** Downloads a DNS blocklist again and reloads it in the resolver. */
   refreshDnsList: (id: string) => request<DnsListStatus>('POST', `/dns/blocklists/${enc(id)}/refresh`),

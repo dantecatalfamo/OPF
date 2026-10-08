@@ -33,6 +33,7 @@ var methodRoles = map[string]auth.Role{
 	"Interfaces": auth.RoleView, "Gateways": auth.RoleView, "Files": auth.RoleView, "File": auth.RoleView, "Updates": auth.RoleView,
 	"PfStatus": auth.RoleView, "PfStates": auth.RoleView, "RuleCounters": auth.RoleView,
 	"FirewallLog": auth.RoleView, "Tables": auth.RoleView, "DNSLists": auth.RoleView,
+	"TableEntries": auth.RoleView, "TableFind": auth.RoleView,
 	"Webhooks": auth.RoleView, "SystemLog": auth.RoleView, "Events": auth.RoleView,
 	"Metrics": auth.RoleView, "DNSStats": auth.RoleView, "DNSBlocked": auth.RoleView, "Storage": auth.RoleView,
 	// Who each device is: what the DHCP and ARP pages show already.
@@ -51,7 +52,10 @@ var methodRoles = map[string]auth.Role{
 	"CheckUpdates": auth.RoleOperator, "KillState": auth.RoleOperator,
 	"StartTool": auth.RoleOperator, "ToolRun": auth.RoleOperator, "CancelTool": auth.RoleOperator,
 	"RefreshAlias": auth.RoleOperator, "RefreshDNSList": auth.RoleOperator, "TestWebhook": auth.RoleOperator,
-	"Confirm": auth.RoleOperator, "Revert": auth.RoleOperator,
+	// What a table holds now, as a rule's overload would change it; the
+	// configuration (which tables there are) needs admin.
+	"TableChange": auth.RoleOperator,
+	"Confirm":     auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
 	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "ImportTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,

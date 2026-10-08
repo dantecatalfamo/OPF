@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Badge, Button, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { ListState } from '../components/ListState';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
-import { IconDots, IconDownload, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconDots, IconDownload, IconList, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
 import type { TableStatus } from '../lib/api';
 import type { Alias, Model } from '../model/types';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { PageHeader } from '../components/ui';
+import { FindInTables, TableDrawer } from '../components/TableContents';
+import { useSearchParams } from 'react-router';
 import { minutesText } from '../lib/format';
 
 type Values = Omit<Alias, 'id'>;
@@ -149,6 +151,11 @@ export function Aliases() {
   const { staged, applied, edit } = useStore();
   const { tables, refreshing, refresh } = useTables(applied);
   const [modal, setModal] = useState<{ open: boolean; alias: Alias | null }>({ open: false, alias: null });
+  // ?table=<name> opens what that table holds (an event links there).
+  const [params, setParams] = useSearchParams();
+  const shown = params.get('table') ?? undefined;
+  const show = (name?: string) => setParams((p) => { const n = new URLSearchParams(p); if (name) n.set('table', name); else n.delete('table'); return n; });
+  const inPf = (a: Alias) => (a.type === 'table' || a.type === 'url') && applied.firewall.aliases.some((x) => x.name === a.name && x.type === a.type);
   const set = (summary: string, fn: (a: Alias[]) => Alias[]) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, aliases: fn(m.firewall.aliases) } }));
 
   return (
@@ -158,6 +165,8 @@ export function Aliases() {
         description="Named groups of addresses, networks or ports. Each address alias becomes a pf table, so large lists stay fast and can change without reloading rules."
         actions={<Button leftSection={<IconPlus size={16} />} onClick={() => setModal({ open: true, alias: null })}>Add alias</Button>}
       />
+      {applied.firewall.aliases.some((a) => a.type === 'table' || a.type === 'url') && <FindInTables onOpen={show} />}
+      <TableDrawer table={shown} onClose={() => show(undefined)} />
       <Card padding={0}>
         <Table.ScrollContainer minWidth={680}>
           <Table highlightOnHover>
@@ -191,7 +200,10 @@ export function Aliases() {
                           })()}
                         </Stack>
                       ) : a.type === 'table' && !a.entries.length ? (
-                        <Text size="xs" c="dimmed">Filled at runtime · {a.expireMinutes ? `each address kept ${minutesText(a.expireMinutes)}` : 'addresses kept until a flush or restart'}</Text>
+                        <Text size="xs" c="dimmed">
+                          {inPf(a) ? <Anchor component="button" type="button" size="xs" onClick={() => show(a.name)}>What’s in it now</Anchor> : 'Filled at runtime'}
+                          {' · '}{a.expireMinutes ? `each address kept ${minutesText(a.expireMinutes)}` : 'addresses kept until a flush or restart'}
+                        </Text>
                       ) : (
                         <Group gap={4}>
                           {a.entries.slice(0, 4).map((e) => <Badge key={e} variant="outline" color="gray" tt="none" className="mono">{e}</Badge>)}
@@ -205,6 +217,7 @@ export function Aliases() {
                         <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label="Actions"><IconDots size={16} /></ActionIcon></Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setModal({ open: true, alias: a })}>Edit</Menu.Item>
+                          {inPf(a) && <Menu.Item leftSection={<IconList size={16} />} onClick={() => show(a.name)}>What’s in it now</Menu.Item>}
                           {a.type === 'url' && tables?.some((t) => t.name === a.name) && (
                             <Menu.Item leftSection={<IconDownload size={16} />} disabled={refreshing === a.name} onClick={() => refresh(a.name)}>
                               {refreshing === a.name ? 'Downloading…' : 'Download again now'}

@@ -55,6 +55,9 @@ type API interface {
 	CancelTool(id string) error
 	Tables() ([]TableStatus, error)
 	RefreshAlias(name string) (*TableStatus, error)
+	TableEntries(TableEntriesRequest) (*TableEntries, error)
+	TableFind(address string) (*TableFind, error)
+	TableChange(TableChangeRequest) error
 	DNSLists() ([]DNSListStatus, error)
 	RefreshDNSList(id string) (*DNSListStatus, error)
 	DNSStats() (*DNSStats, error)

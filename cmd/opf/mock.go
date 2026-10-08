@@ -112,7 +112,7 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if err != nil {
 		return err
 	}
-	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, dnsNames: func() int {
+	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, tables: &mockTableStore{}, dnsNames: func() int {
 		n := 0
 		ls, _ := api.DNSLists()
 		for _, l := range ls {

@@ -437,6 +437,28 @@ never by number: numbers change with every reload.
   `label`. `label` is only set for entries after `rulesSince`, the
   last time OPF may have reloaded the rules, since a rule number only
   means the same rule until then.
+- `GET /api/firewall/tables/{name}/entries?q=&offset=&limit=`: what a
+  table alias (a dynamic table, or a downloaded list) holds in pf now
+  (`pfctl -t <name> -T show`), any role: `{"table", "kind": "dynamic" |
+  "list", "loaded", "total", "matching", "entries": [{"address",
+  "negated", "added", "expires"}], "expireMinutes", "filledBy": [{"id",
+  "description"}]}`. A dynamic table's entries are newest first, each
+  with when it was added (pf's statistics last cleared) and, with
+  `expireMinutes` set, when OPF takes it out; `q` keeps those containing
+  it; `limit` is 100 by default, at most 1000. `loaded` is false when
+  pf has no such table yet. 404 for anything but a table or URL alias
+  of the applied configuration (never pf's other tables).
+- `POST /api/firewall/tables/{name}/entries`: `{"op": "add" | "delete" |
+  "flush", "addresses": ["192.0.2.9", "198.51.100.0/24"]}` changes a
+  dynamic table now, operators and admins: up to 256 addresses or
+  networks, or none to flush. 204; 422 for a downloaded list (its next
+  download would undo it) or anything that isn't an address. Each
+  change is an event of kind `table`, naming who made it.
+- `GET /api/firewall/tables/find?address=203.0.113.9`: every table alias
+  that holds the address, as pf would match it (the longest entry that
+  contains it, unless that entry is negated): `{"address", "tables":
+  [{"table", "kind", "entry", "added", "expires", "usedBy": [{"id",
+  "description"}]}], "errors"}`.
 - `POST /api/dns/reverse`: `{"addresses": ["192.168.1.112",
   "140.82.112.4"]}` (at most 256; any role) answers each address's name
   (its PTR record), `{"names": {"192.168.1.112":

@@ -217,6 +217,14 @@ type (
 		Result
 		Storage *appliance.Storage
 	}
+	TableEntriesReply struct {
+		Result
+		Entries *appliance.TableEntries
+	}
+	TableFindReply struct {
+		Result
+		Find *appliance.TableFind
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -463,6 +471,37 @@ func (s *Service) RefreshAlias(c Call[NameArgs], r *TableReply) error {
 	var err error
 	r.Table, err = s.api.RefreshAlias(a.Name)
 	r.set("RefreshAlias", err)
+	return nil
+}
+
+func (s *Service) TableEntries(c Call[appliance.TableEntriesRequest], r *TableEntriesReply) error {
+	if s.allow("TableEntries", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Entries, err = s.api.TableEntries(c.Args)
+	r.set("TableEntries", err)
+	return nil
+}
+
+func (s *Service) TableFind(c Call[NameArgs], r *TableFindReply) error {
+	if s.allow("TableFind", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Find, err = s.api.TableFind(c.Args.Name)
+	r.set("TableFind", err)
+	return nil
+}
+
+func (s *Service) TableChange(c Call[appliance.TableChangeRequest], r *EmptyReply) error {
+	sess := s.allow("TableChange", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	a := c.Args
+	a.By = sess.User // whoever the session is, whatever was sent
+	r.set("TableChange", s.api.TableChange(a))
 	return nil
 }
 
@@ -1116,6 +1155,31 @@ func (c *Client) RefreshAlias(name string) (*appliance.TableStatus, error) {
 	var r TableReply
 	err := c.call("RefreshAlias", NameArgs{name}, &r)
 	return r.Table, err
+}
+
+func (c *Client) TableEntries(req appliance.TableEntriesRequest) (*appliance.TableEntries, error) {
+	var r TableEntriesReply
+	err := c.call("TableEntries", req, &r)
+	if e := r.Entries; e != nil {
+		e.Entries, e.FilledBy = nonNil(e.Entries), nonNil(e.FilledBy)
+	}
+	return r.Entries, err
+}
+
+func (c *Client) TableFind(address string) (*appliance.TableFind, error) {
+	var r TableFindReply
+	err := c.call("TableFind", NameArgs{address}, &r)
+	if f := r.Find; f != nil {
+		f.Tables, f.Errors = nonNil(f.Tables), nonNil(f.Errors)
+		for i := range f.Tables {
+			f.Tables[i].UsedBy = nonNil(f.Tables[i].UsedBy)
+		}
+	}
+	return r.Find, err
+}
+
+func (c *Client) TableChange(req appliance.TableChangeRequest) error {
+	return c.call("TableChange", req, &EmptyReply{})
 }
 
 func (c *Client) DNSLists() ([]appliance.DNSListStatus, error) {

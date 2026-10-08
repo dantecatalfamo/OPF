@@ -35,6 +35,7 @@ const (
 	EventUpdates = "updates" // security patches became available
 	EventCommit  = "commit"  // a change was applied, confirmed, reverted or failed
 	EventLogin   = "login"   // someone signed in or out, or was refused
+	EventTable   = "table"   // someone changed what a table holds now
 )
 
 const (
@@ -243,7 +244,7 @@ func (m *Manager) loadEvents() {
 var eventKinds = map[string]bool{
 	EventOPF: true, EventLink: true, EventAddress: true, EventGateway: true, EventDevice: true,
 	EventVPN: true, EventService: true, EventList: true, EventUpdates: true, EventCommit: true,
-	EventLogin: true,
+	EventLogin: true, EventTable: true,
 }
 
 func isMAC(s string) bool {

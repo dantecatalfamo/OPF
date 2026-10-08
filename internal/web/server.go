@@ -30,6 +30,9 @@
 //	POST   /api/dns/reverse               the names of addresses (PTR), from the firewall's resolver
 //	GET    /api/firewall/tables           URL aliases' downloaded lists
 //	POST   /api/firewall/aliases/{name}/refresh  download one again and load it
+//	GET    /api/firewall/tables/{name}/entries  what a table alias holds now, ?q=&offset=&limit=
+//	POST   /api/firewall/tables/{name}/entries  add to, take from or empty a dynamic table
+//	GET    /api/firewall/tables/find      which table aliases hold ?address=
 //	GET    /api/dns/blocklists            DNS blocklists' downloads
 //	POST   /api/dns/blocklists/{id}/refresh  download one again and reload it
 //	POST   /api/diagnostics/runs          start a tool (ping, traceroute, dns, port)
@@ -144,6 +147,9 @@ func New(api appliance.API, ui fs.FS) *Server {
 		return tablesBody{t}, err
 	}))
 	s.mux.HandleFunc("POST /api/firewall/aliases/{name}/refresh", s.refreshAlias)
+	s.mux.HandleFunc("GET /api/firewall/tables/{name}/entries", s.tableEntries)
+	s.mux.HandleFunc("POST /api/firewall/tables/{name}/entries", s.tableChange)
+	s.mux.HandleFunc("GET /api/firewall/tables/find", s.tableFind)
 	s.mux.HandleFunc("GET /api/dns/blocklists", getter(s, func(api appliance.API) (dnsListsBody, error) {
 		l, err := api.DNSLists()
 		return dnsListsBody{l}, err
@@ -544,6 +550,53 @@ func (s *Server) refreshAlias(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, t)
+}
+
+// tableEntries answers ?q=<part of an address>&offset=&limit=.
+func (s *Server) tableEntries(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	req := appliance.TableEntriesRequest{Table: r.PathValue("name"), Query: q.Get("q")}
+	for _, f := range []struct {
+		name string
+		to   *int
+	}{{"offset", &req.Offset}, {"limit", &req.Limit}} {
+		if v := q.Get(f.name); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil || n < 0 {
+				badRequest(w, http.StatusBadRequest, "%s is a number", f.name)
+				return
+			}
+			*f.to = n
+		}
+	}
+	e, err := s.apiFor(r).TableEntries(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, e)
+}
+
+func (s *Server) tableChange(w http.ResponseWriter, r *http.Request) {
+	var req appliance.TableChangeRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	req.Table = r.PathValue("name")
+	if err := s.apiFor(r).TableChange(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) tableFind(w http.ResponseWriter, r *http.Request) {
+	f, err := s.apiFor(r).TableFind(r.URL.Query().Get("address"))
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, f)
 }
 
 type webhooksBody struct {
