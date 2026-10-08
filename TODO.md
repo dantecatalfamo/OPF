@@ -649,10 +649,14 @@ Types, roughly in order of usefulness:
       hands out OPF as the resolver on a network it doesn't answer on is
       refused, and VPN devices' configurations name OPF's DNS only when
       it answers on their tunnel.
-- [ ] The firewall can't look up its own name: from 127.0.0.1,
-      `opfvm.home.arpa` is NXDOMAIN (seen on the VM), since its address
-      records are only in the networks' views (firewallViewLines) and
-      loopback has none. Answer loopback with the LAN's, or every one.
+- [x] The resolver didn't know the firewall's own name when the firewall
+      asked (from 127.0.0.1, `opfvm.home.arpa` was NXDOMAIN): its
+      records were only in the networks' views. Loopback has a view of
+      its own now, with the firewall's address on every network it
+      answers. Tried on the VM.
+  - [ ] The firewall's own programs still don't find it: resolv.conf
+        sends them to the WAN's DHCP DNS (resolvd), which says no such
+        name for home.arpa (see resolv.conf below).
 - [ ] Check on the VM that a reload takes a new `interface:` (DNS
       resolver › Answer on): unbound binds as root before it chroots and
       drops to _unbound, so a reload may not be able to bind a new

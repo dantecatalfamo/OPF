@@ -443,6 +443,12 @@ func (v *validator) dnsAlias(p string, r DNSRecord, local map[string][]string, t
 // firewallView is the view for an inside interface's network.
 func firewallView(i Iface) string { return "opf-net-" + i.ID }
 
+// selfView is the firewall's own questions' view, from loopback: its
+// name with its address on every inside network, as one record would
+// without views. Without it, the firewall's name didn't exist on the
+// firewall (the name is only in the networks' views).
+const selfView = "opf-self"
+
 // firewallName is the firewall's name, fully qualified without the
 // final dot, or "" when it has none.
 func firewallName(m *Model) string {
@@ -462,6 +468,9 @@ func firewallViewLines(m *Model, inside []Iface) []string {
 	for _, i := range inside {
 		lines = append(lines, fmt.Sprintf("\taccess-control-view: %s/%d %s", networkAddr(i.IPv4.Address, *i.IPv4.Prefix), *i.IPv4.Prefix, firewallView(i)))
 	}
+	if len(inside) > 0 {
+		lines = append(lines, "\taccess-control-view: 127.0.0.0/8 "+selfView)
+	}
 	return lines
 }
 
@@ -477,6 +486,12 @@ func firewallViews(m *Model, inside []Iface) []string {
 			fmt.Sprintf("\tname: \"%s\"", firewallView(i)),
 			"\tview-first: yes",
 			fmt.Sprintf("\tlocal-data: \"%s. IN A %s\"", name, i.IPv4.Address))
+	}
+	if len(inside) > 0 {
+		lines = append(lines, "", "view:", fmt.Sprintf("\tname: \"%s\"", selfView), "\tview-first: yes")
+		for _, i := range inside {
+			lines = append(lines, fmt.Sprintf("\tlocal-data: \"%s. IN A %s\"", name, i.IPv4.Address))
+		}
 	}
 	return lines
 }

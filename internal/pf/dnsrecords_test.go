@@ -1,6 +1,7 @@
 package pf
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -169,6 +170,16 @@ func TestFirewallNameAndReverse(t *testing.T) {
 		if !strings.Contains(conf, want) {
 			t.Errorf("missing %q in\n%s", want, conf)
 		}
+	}
+	// The firewall asking itself, from loopback, gets its address on
+	// every network it answers: it had no view, and its own name didn't
+	// exist on it (seen on the VM).
+	self := "\nview:\n\tname: \"opf-self\"\n\tview-first: yes\n"
+	for _, i := range DNSServed(m) {
+		self += fmt.Sprintf("\tlocal-data: \"gw.office.arpa. IN A %s\"\n", i.IPv4.Address)
+	}
+	if !strings.Contains(conf, "\taccess-control-view: 127.0.0.0/8 opf-self\n") || !strings.Contains(conf, self) || len(DNSServed(m)) < 2 {
+		t.Errorf("no loopback view %q in\n%s", self, conf)
 	}
 	if strings.Contains(conf, "opf-net-wan") || strings.Count(conf, "192.168.1.25 ") != 1 || strings.Count(conf, "local-data-ptr: \"192.168.1.20 ") != 1 {
 		t.Errorf("a WAN view, or an address with two reverse names:\n%s", conf)
