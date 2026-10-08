@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Anchor, Badge, Button, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Popover, Card, Group, Menu, Modal, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
 import { ListState } from '../components/ListState';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
@@ -10,7 +10,8 @@ import type { Alias, Model } from '../model/types';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { PageHeader } from '../components/ui';
 import { FindInTables, TableDrawer } from '../components/TableContents';
-import { useSearchParams } from 'react-router';
+import { aliasUsers, type AliasUser } from '../lib/aliasUsers';
+import { Link, useSearchParams } from 'react-router';
 import { minutesText } from '../lib/format';
 
 type Values = Omit<Alias, 'id'>;
@@ -31,14 +32,34 @@ const typeHelp: Record<Alias['type'], string> = {
   url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it, again on the schedule below, and from its menu whenever you want the latest.',
 };
 
-function usedBy(m: Model, name: string): number {
-  return m.firewall.rules.filter((r) => {
-    if (r.kind === 'raw') return r.text.includes(`<${name}>`);
-    return (r.source.type === 'alias' && r.source.alias === name) || (r.destination.type === 'alias' && r.destination.alias === name) || r.port === `alias:${name}` || r.sourcePort === `alias:${name}` || r.state?.overload === name;
-  }).length;
-}
 
 const blank: Values = { name: '', type: 'hosts', entries: [], description: '' };
+
+const kindWord: Record<AliasUser['kind'], [string, string]> = { rule: ['rule', 'rules'], forward: ['port forward', 'port forwards'], nat: ['NAT rule', 'NAT rules'] };
+
+// How many use an alias, as a button listing them, each opening it.
+function UsedBy({ users }: { users: AliasUser[] }) {
+  if (!users.length) return <Text size="sm" c="dimmed">Unused</Text>;
+  const kinds = [...new Set(users.map((u) => u.kind))];
+  const text = kinds.length === 1 ? `${users.length} ${kindWord[kinds[0]][users.length === 1 ? 0 : 1]}` : `${users.length} uses`;
+  return (
+    <Popover position="bottom-start" shadow="md" width={340} withinPortal>
+      <Popover.Target>
+        <Button variant="subtle" size="compact-sm" color="gray">{text}</Button>
+      </Popover.Target>
+      <Popover.Dropdown p={6}>
+        <Stack gap={0}>
+          {users.map((u) => (
+            <UnstyledButton key={`${u.kind}-${u.id}`} component={Link} to={u.to} px="sm" py={6} className="opf-hover-row" style={{ borderRadius: 6 }}>
+              <Text size="sm">{u.label}</Text>
+              <Text size="xs" c="dimmed">{u.where} · as its {u.how.join(' and ')}</Text>
+            </UnstyledButton>
+          ))}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
 
 const units = [{ value: '1', label: 'minutes' }, { value: '60', label: 'hours' }, { value: '1440', label: 'days' }];
 const MAX_MINUTES = 525600; // a year, as the server allows
@@ -181,7 +202,8 @@ export function Aliases() {
             </Table.Thead>
             <Table.Tbody>
               {staged.firewall.aliases.map((a) => {
-                const n = usedBy(staged, a.name);
+                const users = aliasUsers(staged, a.name);
+                const n = users.length;
                 return (
                   <Table.Tr key={a.id}>
                     <Table.Td>
@@ -211,7 +233,7 @@ export function Aliases() {
                         </Group>
                       )}
                     </Table.Td>
-                    <Table.Td><Text size="sm" c="dimmed">{n ? `${n} rule${n === 1 ? '' : 's'}` : 'Unused'}</Text></Table.Td>
+                    <Table.Td><UsedBy users={users} /></Table.Td>
                     <Table.Td w={44}>
                       <Menu position="bottom-end">
                         <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label="Actions"><IconDots size={16} /></ActionIcon></Menu.Target>
@@ -223,7 +245,7 @@ export function Aliases() {
                               {refreshing === a.name ? 'Downloading…' : 'Download again now'}
                             </Menu.Item>
                           )}
-                          <Tooltip label="Remove it from rules first" disabled={n === 0} position="left">
+                          <Tooltip label="Stop using it first (Used by)" disabled={n === 0} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={n > 0} onClick={() => set(`Deleted alias ${a.name}`, (all) => all.filter((x) => x.id !== a.id))}>Delete</Menu.Item>
                           </Tooltip>
                         </Menu.Dropdown>

@@ -22,6 +22,7 @@ import { useHistory } from '../lib/history';
 import type { MetricsResource } from '../lib/api';
 import { RuleDrawer } from './RuleDrawer';
 import { usePref } from '../lib/prefs';
+import { useOpenFromLink } from '../lib/openFromLink';
 
 const FLOATING = 'floating';
 
@@ -215,6 +216,7 @@ export function FirewallRules() {
   const { data: history } = useHistory([...builtins, ...rules.filter((r) => r.enabled).map((r) => `pf.rule.${r.id}`)], SPARK_RANGE, SPARK_STEP);
   const tabName = floating ? 'floating' : current!.name;
   const [drawer, setDrawer] = useState<{ open: boolean; rule: Rule | null }>({ open: false, rule: null });
+  useOpenFromLink(staged.firewall.rules, (rule) => setDrawer({ open: true, rule }));
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const setRules = (summary: string, fn: (rules: Rule[]) => Rule[]) =>

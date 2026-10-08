@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import { useOpenFromLink } from '../lib/openFromLink';
 import {
   ActionIcon, Alert, Anchor, Autocomplete, Badge, Button, Card, Code, Drawer, Group, Menu, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Tabs, Text, TextInput, Tooltip,
 } from '@mantine/core';
@@ -95,6 +96,7 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
 function Forwards() {
   const { staged, edit } = useStore();
   const [drawer, setDrawer] = useState<{ open: boolean; forward: PortForward | null }>({ open: false, forward: null });
+  useOpenFromLink(staged.firewall.forwards, (forward) => setDrawer({ open: true, forward }));
   const forwards = staged.firewall.forwards;
   const set = (summary: string, fn: (f: PortForward[]) => PortForward[]) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, forwards: fn(m.firewall.forwards) } }));
 
@@ -251,6 +253,7 @@ function Outbound() {
   const nat = staged.firewall.outboundNat;
   const auto = useDerived(staged).data?.automaticNat ?? [];
   const [drawer, setDrawer] = useState<{ open: boolean; rule: NatRule | null }>({ open: false, rule: null });
+  useOpenFromLink(nat.rules, (rule) => setDrawer({ open: true, rule }));
   const set = (summary: string, fn: (n: typeof nat) => typeof nat) => edit('firewall', summary, (m) => ({ ...m, firewall: { ...m.firewall, outboundNat: fn(m.firewall.outboundNat) } }));
   const modeLabel = { auto: 'Automatic', hybrid: 'Automatic plus manual rules', manual: 'Manual only' };
   // Tunnels with devices sending everything through OPF, and no

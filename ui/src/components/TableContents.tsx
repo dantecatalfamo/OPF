@@ -6,7 +6,8 @@ import { Link } from 'react-router';
 import { ActionIcon, Alert, Anchor, Badge, Button, Card, Drawer, Group, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react';
-import { backend } from '../model/store';
+import { backend, useStore } from '../model/store';
+import { ruleLink } from '../lib/aliasUsers';
 import { useRole } from '../lib/session';
 import { formatAgo, formatDuration, formatLogTime, minutesText } from '../lib/format';
 import { isCIDR, isIPv4 } from '../lib/ip';
@@ -31,12 +32,13 @@ function Added({ at, expires }: { at?: string; expires?: string }) {
 }
 
 function RuleLinks({ rules }: { rules: TableRuleRef[] }) {
+  const { staged } = useStore();
   return (
     <>
       {rules.map((r, i) => (
         <span key={r.id}>
           {i > 0 && ', '}
-          <Anchor component={Link} to="/firewall/rules" size="xs">{r.description || r.id}</Anchor>
+          <Anchor component={Link} to={ruleLink(staged, r.id)} size="xs">{r.description || r.id}</Anchor>
         </span>
       ))}
     </>

@@ -79,3 +79,9 @@ body {
 .spark-bottom .recharts-surface {
   clip-path: inset(0 round 0 0 var(--mantine-radius-md) var(--mantine-radius-md));
 }
+
+/* A clickable row in a short list (a popover's): lit on hover and focus. */
+.opf-hover-row:hover,
+.opf-hover-row:focus-visible {
+  background: var(--mantine-color-default-hover);
+}
