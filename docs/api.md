@@ -328,6 +328,17 @@ request after a quiet minute takes a second longer, to measure one.
   "unused"}`: `from` is the interface resolvd learned it on, `lo0`
   being OPF's own (`system.dns`); `unused` past the three the C library
   reads) and `lookup`.
+- `GET /api/diagnostics/storage`: everything that fills up as the
+  firewall runs: `items`, each `{"id", "group", "name", "desc", "unit",
+  "where", "current", "max", "unbounded", "note", "off", "link"}`.
+  `group` is `opf` (its own records: graphs, the event log, DNS
+  activity, the change history, downloaded lists), `pf` (the state
+  table, tables and their entries against pf's hard limits), `logs`
+  (the logs it reads, with their old copies, against what newsyslog
+  lets them reach) or `disk` (OPF's memory, the disk its state is on).
+  `unit` is `bytes` or `entries`; `current` is absent when it couldn't
+  be read, `max` when nothing limits it (`unbounded` says what then).
+  `errors` lists what couldn't be read.
 - `GET /api/system/updates`: `{"checkedAt", "checking", "patches",
   "error"}`. `patches` are syspatch's names for what's available. The
   check (`syspatch -c`, slow: it asks a mirror about every patch) runs

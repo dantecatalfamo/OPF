@@ -75,6 +75,7 @@ const nav: NavGroup[] = [
       { label: 'Firewall log', to: '/diagnostics/log' },
       { label: 'System logs', to: '/diagnostics/system-logs' },
       { label: 'Configuration files', to: '/diagnostics/files' },
+      { label: 'Storage', to: '/diagnostics/storage' },
     ],
   },
 ];

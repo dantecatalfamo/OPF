@@ -301,7 +301,8 @@ In order. Each step's details are in the section it points to.
 - [ ] When the UI loads a model someone else staged, it lists the
       changes by section only ("Changed firewall settings"); the edit
       descriptions aren't stored with the staged model.
-- [ ] History is never pruned.
+- [ ] History is never pruned. Diagnostics › Storage shows it growing
+      (48 commits, 880 KB on the VM after a week of testing).
 - [ ] Newly created parent directories get 0755; check what each managed
       path expects.
 - [ ] Graceful shutdown: SIGTERM reverts an unconfirmed commit (seen on
@@ -1049,6 +1050,21 @@ pf:
       entries (dynamic tables only) and counters (`-z`).
 - [ ] The loaded ruleset against OPF's (`pfctl -s rules` vs the
       generated pf.conf), to spot something loaded by hand.
+
+Storage:
+
+- [x] Diagnostics › Storage: everything that fills up as the firewall
+      runs, what it holds now and the most it can, with a bar each:
+      pf's state table, tables and table entries against its hard
+      limits; OPF's graphs (memory and saved), event log, DNS activity
+      and its unread log, change history and downloaded lists; the
+      logs OPF reads with their old copies against newsyslog's sizes;
+      OPF's memory and the disk its state is on. Tried on the VM, under
+      the sandbox.
+- [ ] Warn somewhere people look (the dashboard, an event) when one is
+      near its limit, pf's state table above all.
+- [ ] pf's source nodes and fragments: their limits are there, their
+      counts aren't read yet.
 
 Network state:
 

@@ -91,6 +91,13 @@ func (m *Manager) eventLog() *eventLog {
 	return m.events
 }
 
+// count is how many events the log holds.
+func (l *eventLog) count() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.events)
+}
+
 // record adds an event, keeping the log within its bounds.
 func (l *eventLog) record(e Event) {
 	e.Message = printable(e.Message, maxMessageRunes)

@@ -594,3 +594,22 @@ func (s *Store) Name(list, name string, now time.Time, days int) (NameActivity, 
 	})
 	return out, found
 }
+
+// A worst-case day's size, as saved (TestStoreWorstDaySize; memory is
+// about the same, TestStoreWorstDayMemory): every list full, every name
+// asked for in every hour by its full ten devices. The setting's
+// estimate (ui/src/lib/dnsActivityCost.ts) uses the same.
+const (
+	WorstNetworkDay = 65 * 1024  // counts and the network's top names
+	WorstDetailDay  = 307 * 1024 // their when and who
+	WorstDeviceDay  = 5705       // each device's counts and top names
+)
+
+// WorstCase is the most a retention can take, with devices devices.
+func WorstCase(r Retention, devices int) int64 {
+	n := int64(WorstNetworkDay)*int64(r.Days) + int64(WorstDetailDay)*int64(min(r.DetailDays, r.Days))
+	if r.Devices {
+		n += int64(WorstDeviceDay) * int64(min(max(devices, 1), MaxDevices)) * int64(min(r.DeviceDays, r.Days))
+	}
+	return n
+}

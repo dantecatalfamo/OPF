@@ -103,6 +103,16 @@ peer
 		out = mockList(argv[len(argv)-1])
 	case len(argv) == 7 && argv[0] == "pfctl" && argv[1] == "-t" && argv[3] == "-T" && argv[4] == "replace":
 		out = "40 addresses added.\n"
+	case cmd == "pfctl -vvs Tables":
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		out = mockTables(m)
+	case cmd == "cat /etc/newsyslog.conf":
+		out = mockNewsyslog
+	case strings.HasPrefix(cmd, "ls -ln /var/log/"):
+		out = mockLogSizes(argv[2:])
 	case cmd == "pfctl -s memory":
 		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\ntables        hard limit     1000\ntable-entries hard limit   200000\n"
 	case len(argv) == 5 && strings.HasPrefix(cmd, "pfctl -k id -k "):

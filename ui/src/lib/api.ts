@@ -144,6 +144,29 @@ export interface SystemResource {
   errors: string[];
 }
 
+/** Something that fills up as the firewall runs (GET /api/diagnostics/storage). */
+export interface StorageItem {
+  id: string;
+  group: 'opf' | 'pf' | 'logs' | 'disk';
+  name: string;
+  desc: string;
+  unit: 'bytes' | 'entries';
+  where: string;
+  /** Missing when it couldn't be read, or it's off. */
+  current?: number;
+  /** Missing when nothing limits it; unbounded says what then. */
+  max?: number;
+  unbounded?: string;
+  note?: string;
+  off?: boolean;
+  link?: string;
+}
+
+export interface StorageResource {
+  items: StorageItem[];
+  errors: string[];
+}
+
 /** One of the files the configuration manages (GET /api/files). */
 export interface ConfigFile {
   path: string;
@@ -928,6 +951,7 @@ export const api = {
   metrics: (series: string[], range: number, step?: number) =>
     request<MetricsResource>('GET', `/metrics?series=${series.map(enc).join(',')}&range=${range}${step ? `&step=${step}` : ''}`),
   dnsBlocked: () => request<DnsBlockedResource>('GET', '/dns/blocked'),
+  storage: () => request<StorageResource>('GET', '/diagnostics/storage'),
   dnsActivity: (days: number) => request<DnsActivityResource>('GET', `/dns/activity?days=${days}`),
   dnsNameActivity: (list: ActivityList, name: string, days: number) =>
     request<DnsNameActivityResource>('GET', `/dns/activity/name?list=${list}&name=${enc(name)}&days=${days}`),

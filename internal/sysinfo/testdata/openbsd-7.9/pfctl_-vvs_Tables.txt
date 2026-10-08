@@ -1,0 +1,26 @@
+-pa-r--	bruteforce
+	Addresses:   0
+	Cleared:     Wed Dec 31 19:00:00 1969
+	References:  [ Anchors: 0                  Rules: 2                  ]
+	Evaluations: [ NoMatch: 4                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	opf_local
+	Addresses:   3
+	Cleared:     Wed Oct  7 14:58:42 2026
+	References:  [ Anchors: 0                  Rules: 1                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]

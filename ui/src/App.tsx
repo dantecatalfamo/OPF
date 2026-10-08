@@ -24,6 +24,7 @@ import { Events } from './pages/Events';
 import { Notifications } from './pages/Notifications';
 import { SystemLogs } from './pages/SystemLogs';
 import { ConfigFiles } from './pages/ConfigFiles';
+import { Storage } from './pages/Storage';
 import { FirewallLog } from './pages/FirewallLog';
 import { ARP } from './pages/ARP';
 
@@ -78,6 +79,7 @@ function AppRoutes() {
         <Route path="diagnostics/log" element={<FirewallLog />} />
         <Route path="diagnostics/system-logs" element={<SystemLogs />} />
         <Route path="diagnostics/files" element={<ConfigFiles />} />
+        <Route path="diagnostics/storage" element={<Storage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

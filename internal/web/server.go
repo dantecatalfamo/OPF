@@ -157,6 +157,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("PUT /api/webhooks/{id}/secret", s.setWebhookSecret)
 	s.mux.HandleFunc("POST /api/webhooks/{id}/test", s.testWebhook)
 	s.mux.HandleFunc("GET /api/dns/blocked", getter(s, appliance.API.DNSBlocked))
+	s.mux.HandleFunc("GET /api/diagnostics/storage", getter(s, appliance.API.Storage))
 	s.mux.HandleFunc("GET /api/dns/activity", s.dnsActivity)
 	s.mux.HandleFunc("GET /api/dns/activity/device", s.dnsDeviceActivity)
 	s.mux.HandleFunc("GET /api/dns/activity/name", s.dnsNameActivity)

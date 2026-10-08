@@ -197,6 +197,10 @@ type (
 		Result
 		Activity *appliance.DNSNameActivity
 	}
+	StorageReply struct {
+		Result
+		Storage *appliance.Storage
+	}
 	DNSBlockedReply struct {
 		Result
 		Blocked *appliance.DNSBlocked
@@ -593,6 +597,16 @@ func (s *Service) ForgetDNSActivity(c Call[appliance.DNSActivityRequest], r *Emp
 		return nil
 	}
 	r.set("ForgetDNSActivity", s.api.ForgetDNSActivity(c.Args))
+	return nil
+}
+
+func (s *Service) Storage(c Call[None], r *StorageReply) error {
+	if s.allow("Storage", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Storage, err = s.api.Storage()
+	r.set("Storage", err)
 	return nil
 }
 
@@ -1154,6 +1168,15 @@ func (c *Client) DNSNameActivity(req appliance.DNSActivityRequest) (*appliance.D
 
 func (c *Client) ForgetDNSActivity(req appliance.DNSActivityRequest) error {
 	return c.call("ForgetDNSActivity", req, &EmptyReply{})
+}
+
+func (c *Client) Storage() (*appliance.Storage, error) {
+	var r StorageReply
+	err := c.call("Storage", None{}, &r)
+	if s := r.Storage; s != nil {
+		s.Items, s.Errors = nonNil(s.Items), nonNil(s.Errors)
+	}
+	return r.Storage, err
 }
 
 func (c *Client) DNSBlocked() (*appliance.DNSBlocked, error) {
