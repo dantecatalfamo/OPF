@@ -264,6 +264,13 @@ func DefaultFiles() []File {
 			// /etc/rc applies the file at boot. Gone (a revert of the
 			// commit that made it), forwarding is off, OpenBSD's
 			// default.
+			// The firewall's own name, for its own programs; read at
+			// every lookup, so nothing to apply.
+			Name: "hosts", Path: "/etc/hosts",
+			Desc: "The firewall's own name, for its own programs",
+			Mode: 0644,
+		},
+		{
 			Name: "sysctl.conf", Path: "/etc/sysctl.conf",
 			Desc:             "Kernel settings: forwarding packets between interfaces",
 			Apply:            []string{"sh", "-c", `v=$(sed -n 's/^[[:space:]]*net\.inet\.ip\.forwarding[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$1" 2>/dev/null | tail -n 1); sysctl net.inet.ip.forwarding="${v:-0}" >/dev/null`, "sh", "{}"},

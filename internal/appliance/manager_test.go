@@ -719,3 +719,48 @@ func TestFreshInstallHasNoModel(t *testing.T) {
 		t.Error("RefreshAlias found an alias in no model")
 	}
 }
+
+// /etc/hosts is shared: OPF adds the firewall's own name, keeps every
+// other line, and only its own lines count as changed outside OPF. A
+// system's hosts file OPF has never written (every install has one) is
+// taken as it is, not as changed.
+func TestHostsKeepsOtherLines(t *testing.T) {
+	e := newEnv(t, time.Minute)
+	path := filepath.Join(e.root, pf.HostsPath)
+	stock := "127.0.0.1\tlocalhost\n::1\t\tlocalhost\n192.168.1.1 gw.office.arpa gw\n"
+	if err := os.WriteFile(path, []byte(stock), 0644); err != nil {
+		t.Fatal(err)
+	}
+	stage := func() (*Staged, error) {
+		live := e.live()
+		m := live.Model
+		m.System.NTPServers = []string{fmt.Sprint(time.Now().UnixNano(), ".example")}
+		return e.m.Stage(StageRequest{Base: live.Version, Model: m})
+	}
+	st, err := stage()
+	if err != nil {
+		t.Fatalf("a hosts file OPF never wrote: %v %+v", err, AsError(err).Details)
+	}
+	c, err := e.m.Commit(CommitRequest{Staged: st.Version, Message: "add its name"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Status == StatusPending {
+		e.m.Confirm(c.ID)
+	}
+	got, _ := os.ReadFile(path)
+	if !strings.HasPrefix(string(got), stock) || !strings.Contains(string(got), "192.168.1.1\tgw.office.arpa gw\t# set by OPF\n") {
+		t.Fatalf("hosts:\n%s", got)
+	}
+
+	// An admin's own line isn't a change outside OPF; editing OPF's is.
+	os.WriteFile(path, append(got, "192.0.2.7 nas\n"...), 0644)
+	if _, err := stage(); err != nil {
+		t.Errorf("an admin's line: %v", err)
+	}
+	e.m.Discard()
+	os.WriteFile(path, []byte(strings.Replace(string(got), "192.168.1.1\tgw", "10.9.9.9\tgw", 1)), 0644)
+	if _, err := stage(); code(err) != CodeModifiedOutside {
+		t.Errorf("OPF's line edited by hand: %v", err)
+	}
+}

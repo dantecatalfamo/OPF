@@ -70,6 +70,9 @@ func (m *Manager) fileState() (*fileState, error) {
 		if sc, _, err := m.store.Live(mustLookupPath(m.store, pf.SysctlPath).Name); err == nil {
 			st.liveGen[pf.SysctlPath] = pf.MergeSysctlConf(string(sc), liveModel)
 		}
+		if h, _, err := m.store.Live(mustLookupPath(m.store, pf.HostsPath).Name); err == nil {
+			st.liveGen[pf.HostsPath] = pf.MergeHosts(string(h), liveModel)
+		}
 		if data, err := EncodeModel(liveModel); err == nil {
 			st.liveGen[config.ModelPath] = string(data)
 		}

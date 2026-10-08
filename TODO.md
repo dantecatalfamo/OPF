@@ -654,9 +654,13 @@ Types, roughly in order of usefulness:
       records were only in the networks' views. Loopback has a view of
       its own now, with the firewall's address on every network it
       answers. Tried on the VM.
-  - [ ] The firewall's own programs still don't find it: resolv.conf
+  - [x] The firewall's own programs didn't find it either: resolv.conf
         sends them to the WAN's DHCP DNS (resolvd), which says no such
-        name for home.arpa (see resolv.conf below).
+        name for home.arpa. OPF now adds the name, with the firewall's
+        address on each inside network, to /etc/hosts (each line marked
+        "# set by OPF", every other line kept, merged like sysctl.conf),
+        which "lookup file bind" reads first, even with unbound down.
+        Tried on the VM: getent and ping find it.
 - [ ] Check on the VM that a reload takes a new `interface:` (DNS
       resolver › Answer on): unbound binds as root before it chroots and
       drops to _unbound, so a reload may not be able to bind a new
@@ -724,7 +728,12 @@ Types, roughly in order of usefulness:
       timeout's revert then changed under its reader; it returns a copy
       now.)
 - [ ] `resolv.conf` isn't managed: OPF's own DNS client configuration
-      (OpenBSD uses `resolv.conf.tail` with resolvd).
+      (OpenBSD uses `resolv.conf.tail` with resolvd). Pointing the
+      firewall at its own resolver would give it its blocklists and
+      local names, but make its own lookups (updates, downloads) depend
+      on unbound; its own name is in /etc/hosts instead. resolvd puts
+      127.0.0.1 first only for unwind; lines added by hand go after the
+      learned servers, which answer NXDOMAIN for OPF's domain.
 
 DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
 in 7.9 has RPZ, response policy zones, through its respip module):

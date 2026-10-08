@@ -1486,6 +1486,7 @@ func GenerateFiles(m *Model) []GeneratedFile {
 		{Path: "/var/unbound/etc/unbound.conf", Content: GenerateUnboundConf(m)},
 		{Path: "/etc/rc.conf.local", Content: GenerateRcConfLocal(m)},
 		{Path: SysctlPath, Content: GenerateSysctlConf(m)},
+		{Path: HostsPath, Content: GenerateHosts(m)},
 	}
 
 	// Your own blocked and allowed names; the downloaded lists' zones

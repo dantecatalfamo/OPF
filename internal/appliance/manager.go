@@ -502,6 +502,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 	if liveModel != nil {
 		liveGen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), liveModel)
 	}
+	// And /etc/hosts.
+	hostsDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.HostsPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	gen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), req.Model)
+	if liveModel != nil {
+		liveGen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), liveModel)
+	}
 	// What OPF last left in each file, from history; a file no commit
 	// has touched yet is judged against what the applied model
 	// generates, the best there is.
@@ -647,7 +656,7 @@ func (m *Manager) lastWritten() (map[string]writtenFile, error) {
 // for a file no commit has touched yet, what the applied model generates
 // (liveGen), the best there is. Not what OPF would write now: after an
 // upgrade that changes a generator, that differs from every file it
-// wrote before. Of a shared file (rc.conf.local, sysctl.conf) only OPF's
+// wrote before. Of a shared file (rc.conf.local, sysctl.conf, hosts) only OPF's
 // own lines count.
 func outsideChange(path string, disk []byte, onDisk bool, written map[string]writtenFile, liveGen map[string]string) (prev []byte, wrote, outside bool) {
 	if w, ok := written[path]; ok {
@@ -663,6 +672,13 @@ func outsideChange(path string, disk []byte, onDisk bool, written map[string]wri
 		outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
 	case pf.SysctlPath:
 		outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
+	case pf.HostsPath:
+		outside = wrote && !slices.Equal(pf.HostsValues(string(disk)), pf.HostsValues(string(prev)))
+		// Every system has one; until OPF has written its lines there,
+		// nobody can have changed them.
+		if _, ever := written[path]; !ever {
+			outside = false
+		}
 	}
 	if _, ever := written[path]; !ever && !onDisk {
 		// A file OPF has never written and that isn't there has no one's
