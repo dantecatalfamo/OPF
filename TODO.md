@@ -978,6 +978,11 @@ lines, all through the commit engine.
     a 45 s timeout (rcctl get read both), an admin's rcctl set then
     sorted the file, and taking the setting out caused no outside
     change, kept the admin's line and put OPF's block back at the end.
+  - [ ] Try the page itself on the VM (only its API has been): the list
+        and its filters while rcctl takes its seconds, a start, stop and
+        restart from a menu, stopping sshd's warning, "At boot…" staged
+        and applied, the detail drawer's settings and log (sshd's
+        authlog), and the not-running warning with a daemon that died.
   - [ ] rcctl ls on and ls started check every service: 6 s each on the
         VM, 12 s together on one CPU (kept 10 s for every page). Read
         rc.conf and rc.conf.local, and each rc.d script's daemon, OPF's
