@@ -378,8 +378,10 @@ type PfStatus struct {
 // addresses contain Query, of one protocol (tcp, udp, icmp; empty for
 // all), busiest first, from Offset, at most Limit (StatesPage if 0).
 type PfStatesRequest struct {
-	Query  string `json:"query,omitempty"`
-	Proto  string `json:"proto,omitempty"`
+	Query string `json:"query,omitempty"`
+	Proto string `json:"proto,omitempty"`
+	// State is a kind of state (StateKinds): open, opening, closing...
+	State  string `json:"state,omitempty"`
 	Offset int    `json:"offset,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 }
@@ -394,12 +396,17 @@ type PfStates struct {
 	Read      int            `json:"read"`
 	Truncated bool           `json:"truncated,omitempty"`
 	Error     string         `json:"error,omitempty"`
+	// ByKind counts the states read that match the address and
+	// protocol, by kind of state, whatever State asks for.
+	ByKind map[string]int `json:"byKind"`
 }
 
 // PfStateEntry is a state and the label of the rule that created it.
 type PfStateEntry struct {
 	sysinfo.PfState
 	Label string `json:"label,omitempty"`
+	// Kind is its state in a word (StateKind).
+	Kind string `json:"kind"`
 }
 
 // KillStateRequest names a state by the ids pfctl -vv -s states prints.

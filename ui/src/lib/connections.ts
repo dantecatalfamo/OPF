@@ -1,3 +1,4 @@
+import type { StateKind } from './api';
 // pf's connections (states) as pages show them.
 
 export const protoGroup = (p: string) => (p === 'ipv6-icmp' ? 'icmp' : p);
@@ -7,7 +8,7 @@ export const protoGroup = (p: string) => (p === 'ipv6-icmp' ? 'icmp' : p);
 export function stateLabel(state: string): string {
   const sides = state.split(':');
   if (sides.every((x) => x === 'ESTABLISHED')) return 'Open';
-  if (sides.some((x) => /FIN_WAIT|CLOSING|TIME_WAIT|CLOSED/.test(x))) return 'Closing';
+  if (sides.some((x) => /FIN_WAIT|CLOSING|CLOSE_WAIT|LAST_ACK|TIME_WAIT|CLOSED/.test(x))) return 'Closing';
   if (sides.some((x) => /SYN_SENT|SYN_RCVD|LISTEN/.test(x))) return 'Opening';
   if (sides.some((x) => x === 'MULTIPLE')) return 'Active';
   if (sides.some((x) => x === 'SINGLE')) return 'One-way';
@@ -60,4 +61,20 @@ export function stateExplain(state: string, direction: 'in' | 'out', opener = 'T
   const phrase = (s: string) => sidePhrase[s] ?? `is ${s}`;
   const summary = pairSummary(a, b);
   return `${summary ? summary + ' ' : ''}${opener} ${phrase(a)}; ${other} ${phrase(b)}.`;
+}
+
+/** The kinds of state, in the filter's order, as pages name them. */
+export const stateKinds: { value: StateKind; label: string; help: string }[] = [
+  { value: 'open', label: 'Open', help: 'TCP, open both ways' },
+  { value: 'active', label: 'Active', help: 'Without a connection (UDP), traffic both ways' },
+  { value: 'opening', label: 'Opening', help: 'TCP, the handshake not finished' },
+  { value: 'closing', label: 'Closing', help: 'TCP, either end closing, or closed and about to go' },
+  { value: 'one-way', label: 'One-way', help: 'Sent, with no answer' },
+  { value: 'waiting', label: 'Waiting', help: 'Nothing sent yet' },
+  { value: 'other', label: 'Other', help: 'ICMP and the like' },
+];
+
+/** A state's word: the server's kind when it sent one. */
+export function stateWord(state: string, kind?: string): string {
+  return stateKinds.find((k) => k.value === kind)?.label ?? stateLabel(state);
 }

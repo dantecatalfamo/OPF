@@ -3,6 +3,7 @@ package appliance
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -277,7 +278,17 @@ func TestPfStatesPage(t *testing.T) {
 			t.Errorf("%+v: %d (%v)", f.req, r.Total, err)
 		}
 	}
-	for _, bad := range []PfStatesRequest{{Proto: "gre"}, {Limit: MaxStatesPage + 1}, {Offset: -1}, {Query: strings.Repeat("1", 101)}, {Query: "a\x00b"}} {
+	// By kind of state: counted whatever State asks for, and filtered.
+	if want := map[string]int{"open": 3, "closing": 1, "active": 1, "waiting": 1, "other": 1}; !maps.Equal(all.ByKind, want) {
+		t.Errorf("by kind %v, want %v", all.ByKind, want)
+	}
+	if r, _ := m.PfStates(PfStatesRequest{State: "open"}); r.Total != 3 || len(r.States) != 3 || r.States[0].Kind != "open" || r.ByKind["closing"] != 1 {
+		t.Errorf("open: %+v", r)
+	}
+	if r, _ := m.PfStates(PfStatesRequest{State: "closing", Proto: "udp"}); r.Total != 0 || r.ByKind["active"] != 1 {
+		t.Errorf("closing UDP: %+v", r)
+	}
+	for _, bad := range []PfStatesRequest{{Proto: "gre"}, {State: "ESTABLISHED"}, {Limit: MaxStatesPage + 1}, {Offset: -1}, {Query: strings.Repeat("1", 101)}, {Query: "a\x00b"}} {
 		if _, err := m.PfStates(bad); err == nil {
 			t.Errorf("took %+v", bad)
 		}

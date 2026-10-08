@@ -353,6 +353,8 @@ export interface PfState {
   rule: number;
   /** The label of the rule that created it. */
   label?: string;
+  /** Its state in a word, as the server classifies it (StateKind). */
+  kind?: StateKind;
 }
 
 /** POST /api/dns/reverse: each address's name ("" for none), and those the firewall's resolver couldn't look up. */
@@ -371,12 +373,18 @@ export interface PfStatesResource {
   read: number;
   truncated?: boolean;
   error?: string;
+  /** The states read that match the address and protocol, by kind, whatever state was asked for. */
+  byKind?: Partial<Record<StateKind, number>>;
 }
+
+/** A connection's state in a word: the filter on Connections. */
+export type StateKind = 'open' | 'opening' | 'closing' | 'active' | 'one-way' | 'waiting' | 'other';
 
 /** Which states to ask for: part of an address, a protocol, and a page. */
 export interface PfStatesRequest {
   query?: string;
   proto?: 'tcp' | 'udp' | 'icmp';
+  state?: StateKind;
   offset?: number;
   limit?: number;
 }
@@ -1036,6 +1044,7 @@ export const api = {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);
     if (r.proto) q.set('proto', r.proto);
+    if (r.state) q.set('state', r.state);
     if (r.offset) q.set('offset', String(r.offset));
     if (r.limit) q.set('limit', String(r.limit));
     return request<PfStatesResource>('GET', `/pf/states${q.size ? `?${q}` : ''}`);

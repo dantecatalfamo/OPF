@@ -3,6 +3,7 @@ package appliance
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -82,6 +83,8 @@ func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
 		return nil, errorf(CodeInvalid, "the filter is an address, or part of one")
 	case req.Proto != "" && req.Proto != "tcp" && req.Proto != "udp" && req.Proto != "icmp":
 		return nil, errorf(CodeInvalid, "proto: tcp, udp or icmp")
+	case req.State != "" && !slices.Contains(StateKinds, req.State):
+		return nil, errorf(CodeInvalid, "state: one of %s", strings.Join(StateKinds, ", "))
 	case req.Offset < 0 || req.Offset > MaxStatesRead:
 		return nil, errorf(CodeInvalid, "offset: 0 to %d", MaxStatesRead)
 	case req.Limit < 0 || req.Limit > MaxStatesPage:
@@ -90,7 +93,7 @@ func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
 	if req.Limit == 0 {
 		req.Limit = StatesPage
 	}
-	res := &PfStates{States: []PfStateEntry{}}
+	res := &PfStates{States: []PfStateEntry{}, ByKind: map[string]int{}}
 	out, err := m.read("pfctl", "-vv", "-s", "states")
 	if err != nil && out == "" {
 		res.Error = "couldn't read the state table (pfctl -s states)"
@@ -100,7 +103,12 @@ func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
 	res.Read, res.Truncated = len(states), truncated
 	var match []sysinfo.PfState
 	for _, s := range states {
-		if req.matches(s) {
+		if !req.matches(s) {
+			continue
+		}
+		kind := StateKind(s.State)
+		res.ByKind[kind]++
+		if req.State == "" || kind == req.State {
 			match = append(match, s)
 		}
 	}
@@ -108,7 +116,7 @@ func (m *Manager) PfStates(req PfStatesRequest) (*PfStates, error) {
 	sort.SliceStable(match, func(i, j int) bool { return match[i].Bytes > match[j].Bytes })
 	labels := m.ruleLabels()
 	for _, s := range match[min(req.Offset, len(match)):min(req.Offset+req.Limit, len(match))] {
-		res.States = append(res.States, PfStateEntry{PfState: s, Label: labels[s.Rule]})
+		res.States = append(res.States, PfStateEntry{PfState: s, Label: labels[s.Rule], Kind: StateKind(s.State)})
 	}
 	return res, nil
 }
@@ -122,6 +130,43 @@ func (r PfStatesRequest) matches(s sysinfo.PfState) bool {
 		return false
 	}
 	return r.Query == "" || strings.Contains(s.Source+" "+s.Destination+" "+s.Translated, r.Query)
+}
+
+// StateKinds are the kinds of state, as pages name them.
+var StateKinds = []string{"open", "opening", "closing", "active", "one-way", "waiting", "other"}
+
+// StateKind is a state's pair of pf state names ("ESTABLISHED:FIN_WAIT_2",
+// one for each end) in a word: open (TCP, both ends established),
+// closing (either end closing), opening (the handshake not done),
+// active (traffic both ways, without a connection, as UDP), one-way
+// (sent, not answered), waiting (nothing sent yet), or other.
+func StateKind(state string) string {
+	sides := strings.Split(state, ":")
+	has := func(names ...string) bool {
+		for _, s := range sides {
+			for _, n := range names {
+				if strings.HasPrefix(s, n) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	switch {
+	case !slices.ContainsFunc(sides, func(s string) bool { return s != "ESTABLISHED" }):
+		return "open"
+	case has("FIN_WAIT", "CLOSING", "CLOSE_WAIT", "LAST_ACK", "TIME_WAIT", "CLOSED"):
+		return "closing"
+	case has("SYN_SENT", "SYN_RCVD", "LISTEN"):
+		return "opening"
+	case has("MULTIPLE"):
+		return "active"
+	case has("SINGLE"):
+		return "one-way"
+	case has("NO_TRAFFIC"):
+		return "waiting"
+	}
+	return "other"
 }
 
 // ruleLabels maps the loaded rules' numbers to their labels.

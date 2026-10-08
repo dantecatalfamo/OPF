@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, SegmentedControl, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconSearch, IconX } from '@tabler/icons-react';
@@ -12,7 +12,7 @@ import type { PfState, PfStatesRequest, PfStatesResource } from '../lib/api';
 import { Mono, PageHeader } from '../components/ui';
 import { HostName, NamesSwitch } from '../components/HostName';
 import { useReverseNames, useShowNames } from '../lib/reverseNames';
-import { protoGroup, stateLabel } from '../lib/connections';
+import { protoGroup, stateKinds, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 
 function Proto({ c }: { c: PfState }) {
@@ -55,7 +55,7 @@ function AllowedBy({ c }: { c: PfState }) {
 function State({ c }: { c: PfState }) {
   return (
     <StateTip state={c.state} direction={c.direction === 'in' ? 'in' : 'out'}>
-      <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{stateLabel(c.state)}</Text>
+      <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{stateWord(c.state, c.kind)}</Text>
     </StateTip>
   );
 }
@@ -82,6 +82,7 @@ export function Connections() {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState(''); // q, once typing pauses
   const [proto, setProto] = useState('all');
+  const [kind, setKind] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [data, setData] = useState<PfStatesResource>();
   const [error, setError] = useState<string>();
@@ -91,10 +92,10 @@ export function Connections() {
     const t = setTimeout(() => setQuery(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
-  useEffect(() => setLimit(PAGE), [query, proto]);
+  useEffect(() => setLimit(PAGE), [query, proto, kind]);
   useEffect(() => {
     let live = true;
-    const req: PfStatesRequest = { query: query || undefined, proto: proto === 'all' ? undefined : (proto as PfStatesRequest['proto']), limit };
+    const req: PfStatesRequest = { query: query || undefined, proto: proto === 'all' ? undefined : (proto as PfStatesRequest['proto']), state: (kind ?? undefined) as PfStatesRequest['state'], limit };
     const load = () => {
       if (document.hidden) return;
       backend.pfStates(req).then(
@@ -105,7 +106,7 @@ export function Connections() {
     load();
     const t = setInterval(load, POLL_MS);
     return () => { live = false; clearInterval(t); };
-  }, [query, proto, limit, tick]);
+  }, [query, proto, kind, limit, tick]);
   const rows = (data?.states ?? []).filter((c) => !closed.has(c.id));
   const [showNames, setShowNames] = useShowNames();
   const names = useReverseNames(rows.flatMap((c) => [c.source, c.destination]), showNames);
@@ -140,6 +141,24 @@ export function Connections() {
           value={proto}
           onChange={setProto}
           data={[{ value: 'all', label: 'All' }, { value: 'tcp', label: 'TCP' }, { value: 'udp', label: 'UDP' }, { value: 'icmp', label: 'ICMP' }]}
+        />
+        <Select
+          placeholder="Any state"
+          clearable
+          w={190}
+          value={kind}
+          onChange={setKind}
+          aria-label="State"
+          data={stateKinds.map((k) => ({ value: k.value, label: `${k.label} · ${(data?.byKind?.[k.value] ?? 0).toLocaleString()}` }))}
+          renderOption={({ option }) => {
+            const k = stateKinds.find((x) => x.value === option.value)!;
+            return (
+              <Stack gap={0}>
+                <Text size="sm">{option.label}</Text>
+                <Text size="xs" c="dimmed">{k.help}</Text>
+              </Stack>
+            );
+          }}
         />
         <NamesSwitch checked={showNames} onChange={setShowNames} />
       </Group>
@@ -197,12 +216,12 @@ export function Connections() {
             ))}
           </Stack>
         )}
-        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{query || proto !== 'all' ? 'No connections match.' : 'No connections.'}</Text>}
+        {data && rows.length === 0 && <Text size="sm" c="dimmed" ta="center" py="xl">{query || proto !== 'all' || kind ? 'No connections match.' : 'No connections.'}</Text>}
       </Card>
       {data && data.total > 0 && (
         <Group justify="space-between" mt="sm">
           <Text size="xs" c="dimmed">
-            Showing {rows.length.toLocaleString()} of {data.total.toLocaleString()}{query || proto !== 'all' ? ' that match' : ''}
+            Showing {rows.length.toLocaleString()} of {data.total.toLocaleString()}{query || proto !== 'all' || kind ? ' that match' : ''}
           </Text>
           {data.total > data.states.length && limit < 1000 && (
             <Button size="compact-sm" variant="subtle" onClick={() => setLimit((n) => Math.min(1000, n + PAGE))}>Show {Math.min(PAGE, data.total - data.states.length)} more</Button>

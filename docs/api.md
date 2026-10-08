@@ -420,8 +420,16 @@ never by number: numbers change with every reload.
   `direction`, `source` and `destination` as the device that opened
   the connection sees them, `translated` (the NAT address it leaves
   with, or the address it was sent to before a port forward), `state`,
-  `ageSec`, `expiresSec`, `packets`, `bytes`, `rule` (pf's number) and
-  `label` (the rule's).
+  `ageSec`, `expiresSec`, `packets`, `bytes`, `rule` (pf's number),
+  `label` (the rule's) and `kind`: the state in a word, `open` (TCP,
+  both ends established), `opening`, `closing`, `active` (no
+  connection, as UDP, traffic both ways), `one-way` (sent, not
+  answered), `waiting` (nothing sent) or `other`. `state` is pfctl's
+  pair, in the order it prints the addresses (for one in, `<-`, the end
+  it was opened to first). `?q=` (part of an address), `?proto=` (tcp,
+  udp, icmp) and `?state=` (a kind) filter; `byKind` counts the states
+  that match the address and protocol by kind, whatever `state` asks
+  for. `?offset=` and `?limit=` page.
 - `POST /api/pf/states/kill`: `{"id": "<16 hex digits>", "creatorId":
   "<8 hex digits>"}` ends a connection (`pfctl -k id`). 204; 422 for
   ids in any other form, which never reach pfctl. A state that has
