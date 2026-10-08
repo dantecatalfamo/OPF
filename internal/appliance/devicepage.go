@@ -22,7 +22,12 @@ type DeviceInfo struct {
 	Key  string `json:"key"`
 	Kind string `json:"kind"` // device, vpn
 	Name string `json:"name,omitempty"`
-	MAC  string `json:"mac,omitempty"`
+	// NameFrom is where the name came from: "reservation" (the admin's),
+	// "dns" (the name its lease has in DNS), "asked" (what the device
+	// calls itself, which DNS refused or isn't asked to give it), or
+	// "vpn" (the VPN device's).
+	NameFrom string `json:"nameFrom,omitempty"`
+	MAC      string `json:"mac,omitempty"`
 	// Addresses are those it has now, or last had.
 	Addresses []string `json:"addresses"`
 	// Networks are the inside networks its addresses are on.
@@ -191,7 +196,7 @@ func (m *Manager) allDevices(live bool) (*Devices, error) {
 		}
 		for _, p := range i.WireGuard.Peers {
 			d := get(deviceVPN+p.ID, "vpn")
-			d.Name = p.Name
+			d.Name, d.NameFrom = p.Name, "vpn"
 			addr := strings.TrimSuffix(p.Address, "/32")
 			addAddr(d, addr)
 			v := &DeviceVPN{Tunnel: i.ID, TunnelName: i.Name, Peer: p.ID, Address: p.Address, ClientRoutes: string(p.ClientRoutes)}
@@ -207,15 +212,17 @@ func (m *Manager) allDevices(live bool) (*Devices, error) {
 		}
 	}
 
-	names := m.deviceNames(model)
 	for _, d := range byKey {
 		if d.Kind == "device" {
-			// A reservation's name, else the lease's in DNS or asked for.
+			// A reservation's name, else the lease's in DNS, else the
+			// one the device asked for.
 			switch {
 			case d.Reservation != nil && d.Reservation.Hostname != "":
-				d.Name = d.Reservation.Hostname
-			default:
-				d.Name = names[d.MAC]
+				d.Name, d.NameFrom = d.Reservation.Hostname, "reservation"
+			case d.Lease != nil && d.Lease.DNSName != "":
+				d.Name, d.NameFrom = d.Lease.DNSName, "dns"
+			case d.Lease != nil && d.Lease.Hostname != "":
+				d.Name, d.NameFrom = d.Lease.Hostname, "asked"
 			}
 			if t, ok := m.eventLog().knownSince(d.MAC); ok {
 				d.FirstSeen = &t

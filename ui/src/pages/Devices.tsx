@@ -10,9 +10,11 @@ import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
 import { useRole } from '../lib/session';
-import { formatAgo, formatBytes, formatDuration, formatLogTime } from '../lib/format';
+import { formatAgo, formatBits, formatBytes, formatDuration, formatLogTime } from '../lib/format';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { TrafficHoursChart } from './Traffic';
+import { HistoryCard } from '../components/HistoryChart';
+import { rulesFor } from '../lib/deviceRules';
 import { DeviceLink } from '../components/DeviceLink';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -20,6 +22,13 @@ const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: '
 
 
 const label = (d: DeviceInfo) => d.name || d.mac || d.addresses[0] || d.key;
+
+const nameFromWords: Record<NonNullable<DeviceInfo['nameFrom']>, string> = {
+  reservation: 'from its DHCP reservation',
+  dns: 'its name in DNS, from its lease',
+  asked: 'what it calls itself: it isn’t in DNS',
+  vpn: 'the VPN device’s name',
+};
 
 function Sources({ d }: { d: DeviceInfo }) {
   return (
@@ -67,7 +76,9 @@ export function Devices() {
                     <Table.Tr key={d.key}>
                       <Table.Td>
                         <DeviceLink deviceKey={d.key}>{label(d)}</DeviceLink>
-                        <Text size="xs" c="dimmed">{kindWords[d.kind]}{d.mac && d.name ? <> · <Mono>{d.mac}</Mono></> : ''}</Text>
+                        <Text size="xs" c="dimmed">
+                          {kindWords[d.kind]}{d.nameFrom === 'asked' ? ' · its own name' : ''}{d.mac && d.name ? <> · <Mono>{d.mac}</Mono></> : ''}
+                        </Text>
                       </Table.Td>
                       <Table.Td><Text size="sm" className="mono">{d.addresses.join(', ') || '—'}</Text></Table.Td>
                       <Table.Td><Text size="sm">{d.networks.map((n) => n.name).join(', ') || '—'}</Text></Table.Td>
@@ -99,6 +110,7 @@ function Identity({ d }: { d: DeviceInfo }) {
     <Card h="100%">
       <SectionTitle>Who it is</SectionTitle>
       <Stack gap={6}>
+        {d.name && <Row k="Name">{d.name}{d.nameFrom && <Text span size="xs" c={d.nameFrom === 'asked' ? 'yellow' : 'dimmed'}> · {nameFromWords[d.nameFrom]}</Text>}</Row>}
         <Row k="Kind">{kindWords[d.kind]}</Row>
         {d.mac && <Row k="MAC address"><Mono>{d.mac}</Mono></Row>}
         <Row k="Addresses">{d.addresses.length ? d.addresses.map((a, i) => <span key={a}>{i > 0 && ', '}<Mono>{a}</Mono></span>) : 'None now'}</Row>
@@ -140,6 +152,30 @@ function VPN({ v }: { v: NonNullable<DeviceInfo['vpn']> }) {
         </Row>
         {(v.rxBytes > 0 || v.txBytes > 0) && <Row k="Since the tunnel came up">{formatBytes(v.rxBytes)} from it, {formatBytes(v.txBytes)} to it</Row>}
       </Stack>
+    </Card>
+  );
+}
+
+function Rules({ addresses }: { addresses: string[] }) {
+  const { applied } = useStore();
+  const rules = rulesFor(applied, addresses);
+  return (
+    <Card h="100%">
+      <SectionTitle right={<Anchor component={Link} to="/firewall/rules" size="xs">Rules</Anchor>}>Firewall rules</SectionTitle>
+      {rules.length ? (
+        <Stack gap={8}>
+          {rules.map((r) => (
+            <Stack key={r.kind + r.id} gap={0}>
+              <Group gap={6}>
+                <Anchor component={Link} to={r.to} size="sm" c={r.enabled ? undefined : 'dimmed'}>{r.description}</Anchor>
+                {!r.enabled && <Badge size="xs" variant="light" color="gray">Off</Badge>}
+                {r.kind === 'forward' && <Badge size="xs" variant="light">Port forward</Badge>}
+              </Group>
+              <Text size="xs" c="dimmed">{r.how}</Text>
+            </Stack>
+          ))}
+        </Stack>
+      ) : <Empty>No rule or port forward names it.</Empty>}
     </Card>
   );
 }
@@ -345,6 +381,15 @@ export function Device() {
             <Grid.Col span={{ base: 12, md: d.vpn ? 7 : 12 }}><Identity d={d} /></Grid.Col>
             {d.vpn && <Grid.Col span={{ base: 12, md: 5 }}><VPN v={d.vpn} /></Grid.Col>}
           </Grid>
+          {d.vpn && (
+            <Card>
+              <HistoryCard
+                title="Through its tunnel"
+                series={[{ key: `wg.${d.vpn.peer}.rx`, label: 'From the device', color: 'harbor.6' }, { key: `wg.${d.vpn.peer}.tx`, label: 'To the device', color: 'amber.6' }]}
+                format={formatBits} h={150} empty="Nothing recorded for this device yet." markSubjects={[d.vpn.peer]}
+              />
+            </Card>
+          )}
           {traffic && <TrafficCard deviceKey={d.key} days={n} />}
           {dns && <DnsCard deviceKey={d.key} days={n} />}
           {!canEdit && (applied.firewall.traffic?.enabled || applied.dns.activity?.enabled) && (
@@ -352,6 +397,7 @@ export function Device() {
           )}
           {d.addresses.length > 0 && <Connections addresses={d.addresses} />}
           <Grid gutter="md">
+            {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><Rules addresses={[...new Set([...d.addresses, ...(d.reservation ? [d.reservation.ip] : [])])]} /></Grid.Col>}
             <Grid.Col span={{ base: 12, md: 6 }}><Events terms={terms} /></Grid.Col>
             {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><FirewallLog addresses={d.addresses} /></Grid.Col>}
           </Grid>

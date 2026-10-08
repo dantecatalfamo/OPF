@@ -330,11 +330,14 @@ request after a quiet minute takes a second longer, to measure one.
   reads) and `lookup`.
 - `GET /api/devices`: every device OPF knows of, `{"devices",
   "errors"}`, from DHCP leases and reservations, the ARP table (inside
-  networks only) and VPN tunnels: `{"key", "kind", "name", "mac",
+  networks only) and VPN tunnels: `{"key", "kind", "name", "nameFrom",
+  "mac",
   "addresses", "networks", "lease", "reservation", "arp", "vpn",
   "firstSeen"}`. `key` is what DNS activity and traffic are kept under
   (`mac:…`, `vpn:<peer id>`, `ip:…`, `firewall`); `kind` is `device`
-  or `vpn`.
+  or `vpn`; `nameFrom` is where the name came from: `reservation`,
+  `dns` (its lease's name in DNS), `asked` (what the device calls
+  itself, with no name in DNS) or `vpn`.
 - `GET /api/devices/device?key=…`: one device, with its VPN tunnel's
   state now (`endpoint`, `handshakeAgo`, `rxBytes`, `txBytes`) for a
   VPN device. A key DNS activity or traffic counted but nothing else

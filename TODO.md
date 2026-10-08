@@ -1350,10 +1350,13 @@ setting under Settings), and tried on 7.9 with the real unbound:
       Linked from the Traffic and DNS activity device views, the DHCP
       leases and the ARP table. Tried on the VM: a LAN device by ARP,
       VPN devices with their tunnel's state.
-  - [ ] Graphs for a VPN device (its series are there), and a device's
-        rules (those naming its address or reservation).
-  - [ ] A device's name from the device itself (a lease's asked-for
-        name) shows like a reservation's; say where it came from.
+  - [x] A VPN device's graph through its tunnel; the firewall rules and
+        port forwards that name a device (by its address or its
+        reservation's, a network it's in, or an alias holding either,
+        those naming it exactly first); and where its name came from
+        (its reservation, its lease's name in DNS, what it calls itself
+        when DNS has no name for it, the VPN device's), the list marking
+        a device's own name.
 - [ ] "Never block" from the Activity tab's blocked names, as Blocking's
       list has.
 - [ ] A rising NXDOMAIN rate on one device as an event (often malware);

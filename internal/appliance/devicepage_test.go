@@ -21,7 +21,11 @@ func TestDevices(t *testing.T) {
 		t.Errorf("laptop %+v", laptop)
 	}
 	// A reservation names its device.
-	if files := by["mac:00:1b:21:3a:4f:10"]; files.Reservation == nil || files.Name != "files" {
+	// Where each name came from: the device's own choice says so.
+	if laptop.NameFrom != "asked" {
+		t.Errorf("the lease's name: from %q", laptop.NameFrom)
+	}
+	if files := by["mac:00:1b:21:3a:4f:10"]; files.Reservation == nil || files.Name != "files" || files.NameFrom != "reservation" {
 		t.Errorf("reserved device %+v", files)
 	}
 	// VPN devices from the model, on their tunnel.

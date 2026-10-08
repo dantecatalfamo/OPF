@@ -150,6 +150,8 @@ export interface DeviceInfo {
   key: string;
   kind: 'device' | 'vpn' | 'address' | 'firewall';
   name?: string;
+  /** Where the name came from: a reservation, its lease's name in DNS, what the device calls itself, a VPN device's. */
+  nameFrom?: 'reservation' | 'dns' | 'asked' | 'vpn';
   mac?: string;
   addresses: string[];
   /** The inside networks it's on. */
