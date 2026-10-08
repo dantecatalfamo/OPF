@@ -1066,8 +1066,8 @@ Storage:
       DNS's, the system's, then each capped kind), and each row says
       where its limit is set, linking to the card (#id; the layout
       scrolls to it), or why there's no setting.
-  - [ ] Try the graphs' rows and the settings links on the VM: only the
-        mock has shown them (the rest of the page was tried there).
+  - [x] Tried on the VM: the graphs' rows with the VM's own sizes, and
+        every "Set under" link lands on its page and on its card.
 - [ ] Warn somewhere people look (the dashboard, an event) when one is
       near its limit, pf's state table above all.
 - [ ] pf's source nodes and fragments: their limits are there, their
@@ -1316,7 +1316,10 @@ setting under Settings), and tried on 7.9 with the real unbound:
       an hour), at most 31 days.
   - [ ] Try the device caps on the VM: a low cap (2, say) with more
         devices than that, for DNS activity and traffic, to see the
-        rest pooled as other devices; only tests and the mock have. In `dns-activity.json` in the state
+        rest pooled as other devices; only tests and the mock have. The
+        VM's LAN has one client, so this needs more addresses on the
+        host's side of the LAN (aliases on its tap), which is a change
+        to the host to ask for first. In `dns-activity.json` in the state
       directory, with the place in unbound's file so a restart doesn't
       count lines twice. DNSBlocked reads from it while it's on.
 - [x] **The pages.** Activity: counts, an hourly chart, the names looked
@@ -1359,10 +1362,17 @@ setting under Settings), and tried on 7.9 with the real unbound:
         (its reservation, its lease's name in DNS, what it calls itself
         when DNS has no name for it, the VPN device's), the list marking
         a device's own name.
-  - [ ] Try on the VM: the rules card, a VPN device's graph and the
-        name's source on a device's page, and the links to it from the
-        WireGuard, DHCP, DNS and Events pages (by address too); only the
-        mock has shown them.
+  - [x] Tried on the VM: the rules card (the port forward to the LAN
+        device), a VPN device's tunnel graph and handshake, and the
+        links from WireGuard, Events, ARP and the DNS activity drawer.
+        Found and fixed there: ARP linked the firewall's own addresses
+        and the WAN's neighbours, which aren't devices; a MAC OPF
+        doesn't count as a device (the WAN's gateway, which an event
+        links) said "None now" though ARP had it; and the firewall log
+        card broke addresses across lines.
+  - [ ] Still to see on the VM: a name's source, and DHCP's links,
+        which need a device with a lease (the VM's LAN client has a
+        fixed address).
 - [ ] "Never block" from the Activity tab's blocked names, as Blocking's
       list has.
 - [ ] A rising NXDOMAIN rate on one device as an event (often malware);
