@@ -185,6 +185,8 @@ export interface Alias {
   entries: string[];
   url?: string;
   refreshHours?: number;
+  /** table: how long an address stays after it's added (OPF takes it out); unset, until the table is flushed or pf restarts. */
+  expireMinutes?: number;
   description: string;
 }
 

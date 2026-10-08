@@ -9,6 +9,7 @@ import type { TableStatus } from '../lib/api';
 import type { Alias, Model } from '../model/types';
 import { isCIDR, isIPv4, isPortSpec } from '../lib/ip';
 import { PageHeader } from '../components/ui';
+import { minutesText } from '../lib/format';
 
 type Values = Omit<Alias, 'id'>;
 
@@ -24,7 +25,7 @@ const typeHelp: Record<Alias['type'], string> = {
   hosts: 'A fixed list of addresses.',
   networks: 'A fixed list of networks in CIDR form.',
   ports: 'A fixed list of ports, for the port field of rules.',
-  table: 'Starts empty (or with the entries below) and is filled at runtime, for example by a rule’s connection limits. Entries survive rule reloads.',
+  table: 'Starts empty (or with the entries below) and is filled at runtime, for example by a rule’s connection limits. Entries survive rule reloads, and stay until they expire (below), the table is flushed or the firewall restarts.',
   url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it, again on the schedule below, and from its menu whenever you want the latest.',
 };
 
@@ -36,6 +37,33 @@ function usedBy(m: Model, name: string): number {
 }
 
 const blank: Values = { name: '', type: 'hosts', entries: [], description: '' };
+
+const units = [{ value: '1', label: 'minutes' }, { value: '60', label: 'hours' }, { value: '1440', label: 'days' }];
+const MAX_MINUTES = 525600; // a year, as the server allows
+
+// How long a table keeps each address: a number and a unit, or nothing
+// for until it's flushed.
+function ExpiryInput({ value, onChange }: { value?: number; onChange: (n: number | undefined) => void }) {
+  const fit = (n: number) => (n % 1440 === 0 ? '1440' : n % 60 === 0 ? '60' : '1');
+  const [unit, setUnit] = useState(() => (value ? fit(value) : '60'));
+  const amount = value ? value / Number(unit) : '';
+  const set = (a: number | string, u = unit) => onChange(typeof a === 'number' && a > 0 ? Math.min(MAX_MINUTES, Math.round(a * Number(u))) : undefined);
+  return (
+    <Group grow align="flex-start" gap="xs">
+      <NumberInput
+        label="Take each address out after"
+        description={value ? `OPF removes it ${minutesText(value)} after it was added` : 'Empty: it stays until the table is flushed or the firewall restarts'}
+        inputWrapperOrder={['label', 'input', 'description']}
+        placeholder="Never"
+        min={1}
+        allowDecimal={false}
+        value={amount}
+        onChange={(a) => set(a)}
+      />
+      <Select label="&nbsp;" data={units} value={unit} allowDeselect={false} onChange={(u) => { if (u) { setUnit(u); if (typeof amount === 'number') set(amount, u); } }} />
+    </Group>
+  );
+}
 
 function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClose: () => void; alias: Alias | null; onSave: (v: Values) => void }) {
   const { staged } = useStore();
@@ -68,7 +96,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
       <form onSubmit={form.onSubmit((v) => {
         // An emptied number field is ''; unset is every 24 hours.
         const hours = v.refreshHours as number | string | undefined;
-        onSave({ ...v, refreshHours: v.type === 'url' && typeof hours === 'number' ? hours : undefined });
+        onSave({ ...v, refreshHours: v.type === 'url' && typeof hours === 'number' ? hours : undefined, expireMinutes: v.type === 'table' ? v.expireMinutes : undefined });
         onClose();
       })}>
         <Stack>
@@ -83,6 +111,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
           ) : (
             <TagsInput label={t === 'table' ? 'Initial entries' : 'Entries'} description="Press Enter after each one" placeholder={placeholder} {...form.getInputProps('entries')} />
           )}
+          {t === 'table' && <ExpiryInput value={form.values.expireMinutes} onChange={(n) => form.setFieldValue('expireMinutes', n)} />}
           <TextInput label="Description" {...form.getInputProps('description')} />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
@@ -162,7 +191,7 @@ export function Aliases() {
                           })()}
                         </Stack>
                       ) : a.type === 'table' && !a.entries.length ? (
-                        <Text size="xs" c="dimmed">Filled at runtime</Text>
+                        <Text size="xs" c="dimmed">Filled at runtime · {a.expireMinutes ? `each address kept ${minutesText(a.expireMinutes)}` : 'addresses kept until a flush or restart'}</Text>
                       ) : (
                         <Group gap={4}>
                           {a.entries.slice(0, 4).map((e) => <Badge key={e} variant="outline" color="gray" tt="none" className="mono">{e}</Badge>)}

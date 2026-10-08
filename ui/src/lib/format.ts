@@ -50,3 +50,9 @@ export function formatLogTime(iso: string, now = new Date()): string {
   const date = t.toLocaleDateString([], { month: 'short', day: 'numeric', ...(t.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
   return `${date}, ${time}`;
 }
+
+/** Minutes as people say them: "90 minutes", "2 hours", "1 day". */
+export function minutesText(n: number): string {
+  const [k, unit] = n % 1440 === 0 ? [n / 1440, 'day'] : n % 60 === 0 ? [n / 60, 'hour'] : [n, 'minute'];
+  return `${k} ${unit}${k === 1 ? '' : 's'}`;
+}

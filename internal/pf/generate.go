@@ -848,7 +848,11 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		origin := &Origin{Label: fmt.Sprintf("Alias %s", a.Name), To: "/firewall/aliases"}
 		switch a.Type {
 		case AliasTable:
-			add(fmt.Sprintf("table <%s> persist", a.Name), origin)
+			if a.ExpireMinutes != nil {
+				add(fmt.Sprintf("table <%s> persist\t# OPF removes each address %s after it's added", a.Name, minutesText(*a.ExpireMinutes)), origin)
+			} else {
+				add(fmt.Sprintf("table <%s> persist", a.Name), origin)
+			}
 		case AliasURL:
 			// OPF downloads the list the first time it commits the alias,
 			// and again when asked (appliance.RefreshAlias).
@@ -1817,4 +1821,22 @@ func scrubOptions(sc ScrubOptions) []string {
 		out = append(out, "reassemble tcp")
 	}
 	return out
+}
+
+// minutesText is a number of minutes as people say it: "90 minutes",
+// "2 hours", "1 day".
+func minutesText(n int) string {
+	plural := func(n int, unit string) string {
+		if n == 1 {
+			return "1 " + unit
+		}
+		return fmt.Sprintf("%d %ss", n, unit)
+	}
+	switch {
+	case n%1440 == 0:
+		return plural(n/1440, "day")
+	case n%60 == 0:
+		return plural(n/60, "hour")
+	}
+	return plural(n, "minute")
 }

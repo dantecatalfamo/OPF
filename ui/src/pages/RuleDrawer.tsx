@@ -6,6 +6,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconCode, IconForms, IconInfoCircle, IconWand } from '@tabler/icons-react';
 import type { BlockReturn, FormRule, Model, Rule, RuleInput, StateOptions } from '../model/types';
+import { minutesText } from '../lib/format';
 import { formRule } from '../model/sample';
 import { isCIDR, isIPv4, isPfPortExpr } from '../lib/ip';
 import { commonPorts } from '../lib/labels';
@@ -21,6 +22,14 @@ type Values = Omit<FormRule, 'id' | 'kind'> & { mode: 'form' | 'raw'; rawText: s
 const mono = { input: { fontFamily: 'var(--mantine-font-family-monospace)' } };
 const hasPorts = (p: FormRule['protocol']) => p === 'tcp' || p === 'udp' || p === 'tcp/udp';
 const isTcp = (p: FormRule['protocol']) => p === 'tcp' || p === 'tcp/udp';
+
+// How long the overload table keeps a source, said under the choice:
+// one that never expires blocks it until a flush or a restart.
+function overloadKept(m: Model, table?: string): string | undefined {
+  const a = table ? m.firewall.aliases.find((x) => x.name === table && x.type === 'table') : undefined;
+  if (!a) return undefined;
+  return a.expireMinutes ? `Each is taken out ${minutesText(a.expireMinutes)} later.` : `It stays there until <${a.name}> is flushed or the firewall restarts; set how long under Aliases.`;
+}
 
 function toValues(rule: Rule | null, iface: string | null): Values {
   const base = formRule({ id: 'new', interfaces: iface ? [iface] : [], description: '', protocol: 'tcp' });
@@ -402,6 +411,8 @@ export function RuleDrawer({
                           clearable
                           value={state.overload ?? null}
                           error={form.errors['state.overload']}
+                          description={overloadKept(model, state.overload)}
+                          inputWrapperOrder={['label', 'input', 'description', 'error']}
                           onChange={(t) => setState({ overload: t ?? undefined })}
                         />
                         <Switch mt={30} label="…and close its existing connections" checked={!!state.flushGlobal} disabled={!state.overload} onChange={(e) => setState({ flushGlobal: e.currentTarget.checked })} />

@@ -293,6 +293,7 @@ func (m *Manager) sample(now time.Time) {
 	m.readDNSActivity(model, now)
 	m.readTraffic(model, now)
 	m.applySystemDNS(model) // resolvd forgets it when it restarts
+	m.expireTables(model, now)
 
 	// Interfaces: bits a second in and out.
 	if b, err := m.read("netstat", "-ibn"); err == nil {

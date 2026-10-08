@@ -196,3 +196,43 @@ func TestValidateDNSBlocklists(t *testing.T) {
 		}
 	}
 }
+
+func setExpiry(m *Model, alias string, minutes int) {
+	for i := range m.Firewall.Aliases {
+		if m.Firewall.Aliases[i].Name == alias {
+			m.Firewall.Aliases[i].ExpireMinutes = &minutes
+		}
+	}
+}
+
+func TestTableExpiry(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	setExpiry(m, "bruteforce", 1440)
+	if errs := Validate(m); len(errs) != 0 {
+		t.Fatalf("a day: %v", errs)
+	}
+	conf := GeneratePfConf(m)
+	if !strings.Contains(conf, "table <bruteforce> persist\t# OPF removes each address 1 day after it's added\n") {
+		t.Errorf("pf.conf doesn't say the table expires:\n%s", conf)
+	}
+	for _, tc := range []struct {
+		name, alias string
+		minutes     int
+		path        string
+	}{
+		{"at once", "bruteforce", 0, "firewall.aliases[1].expireMinutes"},
+		{"after a year", "bruteforce", MaxExpireMinutes + 1, "firewall.aliases[1].expireMinutes"},
+		{"a fixed list", "internal", 60, "firewall.aliases[2].expireMinutes"},
+	} {
+		m, _ := loadSampleModel(t)
+		setExpiry(m, tc.alias, tc.minutes)
+		if errs := Validate(m); len(errs) != 1 || errs[0].Path != tc.path {
+			t.Errorf("%s: want an error at %s, got %v", tc.name, tc.path, errs)
+		}
+	}
+	for n, want := range map[int]string{1: "1 minute", 90: "90 minutes", 60: "1 hour", 120: "2 hours", 1440: "1 day", 4320: "3 days", 1500: "25 hours"} {
+		if got := minutesText(n); got != want {
+			t.Errorf("minutesText(%d) = %q, want %q", n, got, want)
+		}
+	}
+}

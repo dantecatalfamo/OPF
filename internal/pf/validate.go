@@ -721,12 +721,18 @@ func (v *validator) firewall() {
 				v.fail(ep, "a downloaded list has no fixed entries")
 			}
 		}
+		if a.ExpireMinutes != nil && a.Type != AliasTable {
+			v.fail(p+".expireMinutes", "only a table's addresses expire")
+		}
 		switch a.Type {
 		case AliasHosts, AliasNetworks, AliasPorts:
 			if len(a.Entries) == 0 {
 				v.fail(p+".entries", "needs at least one entry")
 			}
 		case AliasTable:
+			if a.ExpireMinutes != nil {
+				v.intRange(p+".expireMinutes", *a.ExpireMinutes, 1, MaxExpireMinutes)
+			}
 		case AliasURL:
 			// Written into a pf.conf comment and fetched by the parent.
 			v.httpsURL(p+".url", a.URL)

@@ -354,10 +354,18 @@ In order. Each step's details are in the section it points to.
     offender stays blocked, whether its open connections close, and
     addresses never blocked. Generated: the table (`persist`), the
     block rule always ahead of the pass, the pass rule's limits.
-  - Expiry: pf never takes an address out of an overload table by
-    itself. The collector runs `pfctl -t <table> -T expire <seconds>`
-    each tick; nothing does that today for the rules that already use
-    `overload`, so their offenders stay until a reboot or a flush.
+  - [x] Expiry, for any table alias (`expireMinutes`, set under
+    Aliases; the rule form says how long its overload table keeps a
+    source): once a minute the collector runs `pfctl -t <table> -T
+    expire <seconds>`, which takes out addresses added longer ago.
+    Tried on the VM: a LAN client caught by a rule's overload at
+    19:39:59 with 2 minutes set was out at 19:42:59 and got through
+    again; a fresh address in the same table stayed. A protection
+    will set it for its own table.
+  - [ ] A table alias's "Initial entries" never reach pf: the generator
+    writes `table <x> persist` without them. Load them (knowing a
+    commit's reload then puts them back if they expired or were
+    flushed), or stop offering them.
   - Never lock out the admin: the addresses of signed-in sessions and
     the anti-lockout rule's sources are kept out of the table (a
     `pass quick` for them ahead of the block, or never adding them),

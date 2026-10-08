@@ -76,6 +76,9 @@ type Manager struct {
 	traffic trafficState
 	// The firewall's own DNS servers (systemdns.go).
 	systemDNS systemDNSState
+	// tablesExpired is when tables' old addresses were last taken out
+	// (expiry.go).
+	tablesExpired time.Time
 
 	// Earlier readings, for rates (status.go).
 	cpu         rate[sysinfo.CPUTicks]

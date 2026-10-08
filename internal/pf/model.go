@@ -448,8 +448,15 @@ type Alias struct {
 	Entries      []string  `json:"entries"`
 	URL          string    `json:"url,omitempty"`
 	RefreshHours *int      `json:"refreshHours,omitempty"`
-	Description  string    `json:"description"`
+	// ExpireMinutes, for a table, is how long an address stays in it
+	// after it's added (by a rule's overload, say); OPF takes it out
+	// then. Unset, it stays until the table is flushed or pf restarts.
+	ExpireMinutes *int   `json:"expireMinutes,omitempty"`
+	Description   string `json:"description"`
 }
+
+// MaxExpireMinutes is the longest a table may keep an address: a year.
+const MaxExpireMinutes = 525600
 
 type BlockPolicy string
 
