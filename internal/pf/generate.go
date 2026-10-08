@@ -528,6 +528,11 @@ const (
 	LabelVPNIn     = "vpn-in"       // NAT into a tunnel from networks that may reach it, by tunnel id
 	LabelExit      = "exit"         // a way out through a VPN provider, by tunnel id
 	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
+	// Counting each device's traffic (TrafficAccounting), by interface
+	// id: the devices in the table, and what came from or went to
+	// addresses that aren't in it yet.
+	LabelTraffic        = "traffic"
+	LabelTrafficUnknown = "traffic-unknown"
 )
 
 const labelPrefix = "opf:"
@@ -548,7 +553,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown:
 	default:
 		return "", "", false
 	}
@@ -859,6 +864,11 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		add(fmt.Sprintf("table <%s> const { %s }", LocalTable, strings.Join(LocalNetworks(m, true), " ")),
 			&Origin{Label: "WireGuard: your networks", To: "/services/wireguard"})
 	}
+	// Declared empty: OPF adds the devices as it sees them, and a reload
+	// keeps them and their counters.
+	if KeepsTraffic(m) {
+		add(fmt.Sprintf("table <%s> persist counters", TrafficTable), trafficOrigin)
+	}
 	blank()
 
 	// Options, in pf.conf(5)'s order; each links to its setting.
@@ -946,6 +956,21 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		opt("Packet normalization", fmt.Sprintf("match in all scrub (%s)", strings.Join(sc, " ")))
 	}
 	blank()
+
+	// Each device's traffic: match rules count every packet of a
+	// connection against the device in the table, both ways, and change
+	// nothing else; before any quick rule, so every connection meets
+	// them.
+	if KeepsTraffic(m) {
+		add("# Traffic per device", nil)
+		for _, i := range TrafficIfaces(m) {
+			described(i.Name, trafficOrigin,
+				fmt.Sprintf("match in on $%s from <%s>%s", i.ID, TrafficTable, label(LabelTraffic, i.ID)),
+				fmt.Sprintf("match out on $%s to <%s>%s", i.ID, TrafficTable, label(LabelTraffic, i.ID)),
+				fmt.Sprintf("match in on $%s from ! <%s>%s", i.ID, TrafficTable, label(LabelTrafficUnknown, i.ID)))
+		}
+		blank()
+	}
 
 	// Outbound NAT
 	add("# Outbound NAT", nil)
@@ -1544,6 +1569,8 @@ func netmask(prefix int) string {
 	mask := net.CIDRMask(prefix, 32)
 	return net.IP(mask).String()
 }
+
+var trafficOrigin = &Origin{Label: "Traffic per device", To: "/firewall/settings#traffic"}
 
 // LocalTable is the pf table of LocalNetworks, generated when a tunnel
 // has split-tunnel peers.

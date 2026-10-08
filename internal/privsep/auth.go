@@ -37,7 +37,9 @@ var methodRoles = map[string]auth.Role{
 	"Metrics": auth.RoleView, "DNSStats": auth.RoleView, "DNSBlocked": auth.RoleView, "Storage": auth.RoleView,
 	// The names a network and each device look up: the most personal
 	// data OPF keeps.
-	"DNSActivity": auth.RoleAdmin, "DNSDeviceActivity": auth.RoleAdmin, "DNSNameActivity": auth.RoleAdmin, "ForgetDNSActivity": auth.RoleAdmin,
+	"DNSActivity": auth.RoleAdmin, "DNSDeviceActivity": auth.RoleAdmin, "DNSNameActivity": auth.RoleAdmin,
+	// What each device sends and receives: personal too.
+	"Traffic": auth.RoleAdmin, "TrafficDevice": auth.RoleAdmin, "ForgetTraffic": auth.RoleAdmin, "ForgetDNSActivity": auth.RoleAdmin,
 	"Live": auth.RoleView, "Staged": auth.RoleView, "Commits": auth.RoleView,
 	"GetCommit": auth.RoleView, "CommitConfig": auth.RoleView,
 	"DNSTool": auth.RoleView, // forgetting cached answers needs operator (DNSTool)

@@ -70,6 +70,10 @@ type Manager struct {
 	// pf.DNSLogPath. The mock's is in its scratch directory.
 	DNSLog   string
 	activity dnsActivity
+	// Who each address is (devices.go), and the traffic each device
+	// moves (traffic.go).
+	devices deviceDirectory
+	traffic trafficState
 	// The firewall's own DNS servers (systemdns.go).
 	systemDNS systemDNSState
 

@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/activity"
-	"github.com/dantecatalfamo/OPF/internal/leases"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
@@ -36,24 +34,12 @@ const (
 	// relayMax is how many of unbound's other lines (warnings, errors)
 	// a tick passes on to OPF's log, which goes to syslog.
 	relayMax = 50
-	// devicesEvery is how often the addresses' devices are looked up
-	// again (leases, ARP); an address not found is looked up again
-	// sooner, at most every missEvery, so a device that has only just
-	// asked isn't kept under its address.
-	devicesEvery = time.Minute
-	missEvery    = 10 * time.Second
 )
 
 type dnsActivity struct {
 	mu     sync.Mutex
 	loaded bool
 	store  *activity.Store
-	// devices maps an address to who it is, from the last look.
-	devices   map[netip.Addr]string
-	devicesAt time.Time
-	// The model and time of the read under way, for looking again.
-	model *pf.Model
-	now   time.Time
 }
 
 // dnsLogPath is unbound's log file: DNSLog, or where unbound writes it.
@@ -186,9 +172,9 @@ func (m *Manager) readDNSLog(model *pf.Model, s *activity.Store, devices bool, n
 	if _, err := f.Seek(pos.Offset, io.SeekStart); err != nil {
 		return err
 	}
+	who := func(string) string { return "" }
 	if devices {
-		m.activity.model, m.activity.now = model, now
-		m.lookUpDevices(model, now, devicesEvery)
+		who = m.deviceResolver(model, now)
 	}
 	r := bufio.NewReaderSize(io.LimitReader(f, readMax), 64<<10)
 	// A block's own answer comes right after it: it's counted as a
@@ -211,7 +197,7 @@ func (m *Manager) readDNSLog(model *pf.Model, s *activity.Store, devices bool, n
 				blocked[key]--
 			}
 			s.AddAnswer(activity.Answer{
-				Time: u.Time, Device: m.deviceOf(u.Reply.Client, devices), Address: u.Reply.Client,
+				Time: u.Time, Device: who(u.Reply.Client), Address: u.Reply.Client,
 				Name: strings.ToLower(u.Reply.Name), Rcode: u.Reply.Rcode, Cached: u.Reply.Cached,
 			}, wasBlocked)
 		case u.RPZ != nil:
@@ -229,7 +215,7 @@ func (m *Manager) readDNSLog(model *pf.Model, s *activity.Store, devices bool, n
 				blocked[u.RPZ.Client+" "+name]++
 			}
 			s.AddBlock(activity.Block{
-				Time: u.Time, Device: m.deviceOf(u.RPZ.Client, devices), Address: u.RPZ.Client,
+				Time: u.Time, Device: who(u.RPZ.Client), Address: u.RPZ.Client,
 				Name: name, List: list, Entry: displayable(u.RPZ.Trigger), Pass: pass,
 			})
 		case relayed < relayMax:
@@ -256,84 +242,6 @@ func (m *Manager) readDNSLog(model *pf.Model, s *activity.Store, devices bool, n
 		}
 	}
 	return nil
-}
-
-// Who an address is, as a key the counts are kept under: a MAC address
-// from the DHCP leases or the ARP table ("mac:..."), a VPN device
-// ("vpn:<peer id>"), the firewall itself, or else the address.
-const (
-	deviceMAC      = "mac:"
-	deviceVPN      = "vpn:"
-	deviceAddress  = "ip:"
-	deviceFirewall = "firewall"
-)
-
-func (m *Manager) deviceOf(client string, devices bool) string {
-	if !devices {
-		return ""
-	}
-	addr, err := netip.ParseAddr(client)
-	if err != nil {
-		return deviceAddress + client
-	}
-	addr = addr.Unmap()
-	if addr.IsLoopback() {
-		return deviceFirewall
-	}
-	a := &m.activity
-	if k, ok := a.devices[addr]; ok {
-		return k
-	}
-	if a.model != nil && m.lookUpDevices(a.model, a.now, missEvery) {
-		if k, ok := a.devices[addr]; ok {
-			return k
-		}
-	}
-	return deviceAddress + addr.String()
-}
-
-// lookUpDevices refreshes who each address is unless it was looked up
-// less than every ago, and says whether it did. Call it with a.mu held.
-func (m *Manager) lookUpDevices(model *pf.Model, now time.Time, every time.Duration) bool {
-	a := &m.activity
-	if a.devices != nil && now.Sub(a.devicesAt) < every {
-		return false
-	}
-	a.devicesAt = now
-	a.devices = map[netip.Addr]string{}
-	// The ARP table first: the leases' say who has an address now, so
-	// they win.
-	if t, err := m.ARPTable(); err == nil {
-		for _, e := range t.Entries {
-			addr, err1 := netip.ParseAddr(e.IP)
-			if err1 == nil && validMAC(e.MAC) {
-				a.devices[addr] = deviceMAC + strings.ToLower(e.MAC)
-			}
-		}
-	}
-	if m.leases != nil {
-		if all, err := leases.Read(m.leases.File); err == nil {
-			for _, l := range leases.Current(all, now) {
-				if l.MAC != "" {
-					a.devices[l.IP] = deviceMAC + strings.ToLower(l.MAC)
-				}
-			}
-		}
-	}
-	for _, i := range model.Interfaces {
-		if i.WireGuard == nil {
-			continue
-		}
-		for _, p := range i.WireGuard.Peers {
-			// A tunnel address is the device's own: 10.8.0.2/32.
-			if pre, err := netip.ParsePrefix(p.Address); err == nil {
-				a.devices[pre.Addr()] = deviceVPN + p.ID
-			} else if addr, err := netip.ParseAddr(p.Address); err == nil {
-				a.devices[addr] = deviceVPN + p.ID
-			}
-		}
-	}
-	return true
 }
 
 func validMAC(s string) bool {

@@ -264,6 +264,9 @@ func (m *Manager) SaveMetrics() error {
 	if err := m.SaveDNSActivity(); err != nil {
 		log.Printf("saving the DNS activity: %v", err)
 	}
+	if err := m.SaveTraffic(); err != nil {
+		log.Printf("saving the traffic: %v", err)
+	}
 	path := m.store.StatePath(metricsFile)
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+metricsFile+".*")
 	if err != nil {
@@ -288,6 +291,7 @@ func (m *Manager) sample(now time.Time) {
 	model, _, _ := m.live()
 	m.applyGraphLimits(model) // a commit may have changed them
 	m.readDNSActivity(model, now)
+	m.readTraffic(model, now)
 	m.applySystemDNS(model) // resolvd forgets it when it restarts
 
 	// Interfaces: bits a second in and out.

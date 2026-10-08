@@ -1,0 +1,16 @@
+   192.168.50.2
+	Cleared:     Wed Oct  7 15:44:41 2026
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 2957               Bytes: 4348092            ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 2106               Bytes: 125920             ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+   192.168.60.2
+	Cleared:     Wed Oct  7 15:44:41 2026
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 1034               Bytes: 53780              ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 1472               Bytes: 2173708            ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]

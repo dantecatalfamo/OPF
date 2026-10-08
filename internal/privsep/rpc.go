@@ -197,6 +197,14 @@ type (
 		Result
 		Activity *appliance.DNSNameActivity
 	}
+	TrafficReply struct {
+		Result
+		Traffic *appliance.Traffic
+	}
+	TrafficDeviceReply struct {
+		Result
+		Device *appliance.TrafficDeviceView
+	}
 	StorageReply struct {
 		Result
 		Storage *appliance.Storage
@@ -597,6 +605,34 @@ func (s *Service) ForgetDNSActivity(c Call[appliance.DNSActivityRequest], r *Emp
 		return nil
 	}
 	r.set("ForgetDNSActivity", s.api.ForgetDNSActivity(c.Args))
+	return nil
+}
+
+func (s *Service) Traffic(c Call[appliance.TrafficRequest], r *TrafficReply) error {
+	if s.allow("Traffic", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Traffic, err = s.api.Traffic(c.Args)
+	r.set("Traffic", err)
+	return nil
+}
+
+func (s *Service) TrafficDevice(c Call[appliance.TrafficRequest], r *TrafficDeviceReply) error {
+	if s.allow("TrafficDevice", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Device, err = s.api.TrafficDevice(c.Args)
+	r.set("TrafficDevice", err)
+	return nil
+}
+
+func (s *Service) ForgetTraffic(c Call[appliance.TrafficRequest], r *EmptyReply) error {
+	if s.allow("ForgetTraffic", c, &r.Result) == nil {
+		return nil
+	}
+	r.set("ForgetTraffic", s.api.ForgetTraffic(c.Args))
 	return nil
 }
 
@@ -1168,6 +1204,28 @@ func (c *Client) DNSNameActivity(req appliance.DNSActivityRequest) (*appliance.D
 
 func (c *Client) ForgetDNSActivity(req appliance.DNSActivityRequest) error {
 	return c.call("ForgetDNSActivity", req, &EmptyReply{})
+}
+
+func (c *Client) Traffic(req appliance.TrafficRequest) (*appliance.Traffic, error) {
+	var r TrafficReply
+	err := c.call("Traffic", req, &r)
+	if t := r.Traffic; t != nil && t.TrafficSummary != nil {
+		t.Hours, t.Devices = nonNil(t.Hours), nonNil(t.Devices)
+	}
+	return r.Traffic, err
+}
+
+func (c *Client) TrafficDevice(req appliance.TrafficRequest) (*appliance.TrafficDeviceView, error) {
+	var r TrafficDeviceReply
+	err := c.call("TrafficDevice", req, &r)
+	if d := r.Device; d != nil && d.TrafficDeviceHours != nil {
+		d.Hours = nonNil(d.Hours)
+	}
+	return r.Device, err
+}
+
+func (c *Client) ForgetTraffic(req appliance.TrafficRequest) error {
+	return c.call("ForgetTraffic", req, &EmptyReply{})
 }
 
 func (c *Client) Storage() (*appliance.Storage, error) {

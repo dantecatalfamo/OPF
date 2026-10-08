@@ -689,6 +689,9 @@ func (v *validator) rawLine(path, s string, required bool) {
 }
 
 func (v *validator) firewall() {
+	if t := v.m.Firewall.Traffic; t != nil && t.Enabled {
+		v.intRange("firewall.traffic.days", t.Days, 1, MaxActivityDays)
+	}
 	fw := v.m.Firewall
 	aliasNames := map[string]bool{}
 	for i, a := range fw.Aliases {

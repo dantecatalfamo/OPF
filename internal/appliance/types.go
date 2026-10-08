@@ -64,6 +64,9 @@ type API interface {
 	DNSDeviceActivity(DNSActivityRequest) (*DNSDeviceActivity, error)
 	DNSNameActivity(DNSActivityRequest) (*DNSNameActivity, error)
 	ForgetDNSActivity(DNSActivityRequest) error
+	Traffic(TrafficRequest) (*Traffic, error)
+	TrafficDevice(TrafficRequest) (*TrafficDeviceView, error)
+	ForgetTraffic(TrafficRequest) error
 	Metrics(MetricsRequest) (*Metrics, error)
 	Events(EventsRequest) (*Events, error)
 	SystemLog(SystemLogRequest) (*SystemLog, error)

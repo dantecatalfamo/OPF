@@ -53,6 +53,7 @@ type StorageLink struct {
 // Where the settings are.
 var (
 	setGraphs      = StorageLink{"System › General › Graphs", "/system/general#graphs"}
+	setTraffic     = StorageLink{"Firewall › Settings › Traffic per device", "/firewall/settings#traffic"}
 	setActivity    = StorageLink{"DNS resolver › Settings › Activity", "/services/dns?tab=settings#activity"}
 	setBlocklists  = StorageLink{"DNS resolver › Blocking", "/services/dns?tab=blocking"}
 	setAliases     = StorageLink{"Firewall › Aliases", "/firewall/aliases"}
@@ -134,6 +135,18 @@ func (m *Manager) Storage() (*Storage, error) {
 	} else {
 		add(StorageItem{ID: "dns-activity", Group: StorageOPF, Name: "DNS activity", Desc: "Counts and top names, for the network and each device",
 			Unit: "bytes", Where: "memory and disk", Off: true, Note: "Not kept.", Settings: []StorageLink{setActivity}})
+	}
+	if pf.KeepsTraffic(model) {
+		var saved int64
+		if n := fileSize(m.store.StatePath(trafficFile)); n != nil {
+			saved = *n
+		}
+		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
+			Unit: "bytes", Where: "memory and disk", Current: ptr(saved), Max: ptr(activity.WorstTraffic(model.Firewall.Traffic.Days)), Link: "/diagnostics/traffic",
+			Note: "As last saved. The most is " + strconv.Itoa(activity.MaxDevices) + " devices every hour.", Settings: []StorageLink{setTraffic}})
+	} else {
+		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
+			Unit: "bytes", Where: "memory and disk", Off: true, Note: "Not kept.", Settings: []StorageLink{setTraffic}})
 	}
 	entries, _ := m.store.History()
 	hist, _ := treeSize(m.store.StatePath("history"))

@@ -328,6 +328,18 @@ request after a quiet minute takes a second longer, to measure one.
   "unused"}`: `from` is the interface resolvd learned it on, `lo0`
   being OPF's own (`system.dns`); `unused` past the three the C library
   reads) and `lookup`.
+- `GET /api/traffic?days=N` (admin): what each device sent and
+  received over the last `N` days (`firewall.traffic`). Only `enabled`
+  and `days` while it isn't counted. Otherwise `since`, `total` and
+  `hours` (`{"sent", "received", "sentPackets", "receivedPackets"}`,
+  bytes, by the device: sent is what it sent), `unknown` (bytes from
+  addresses not in pf's table yet), `devices` (those that moved most
+  first, `{"key", ...bytes}`), `deviceInfo` by key as for DNS activity,
+  and `savedBytes`.
+- `GET /api/traffic/device?device=key&days=N` (admin): one device's
+  `total` and `hours`, with its `kind`, `name` and `mac`.
+- `DELETE /api/traffic[?device=key]` (admin): deletes one device's
+  traffic, or all of it.
 - `GET /api/diagnostics/storage`: everything that fills up as the
   firewall runs: `items`, each `{"id", "group", "name", "desc", "unit",
   "where", "current", "max", "unbounded", "note", "off", "link",

@@ -162,6 +162,9 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/dns/activity/device", s.dnsDeviceActivity)
 	s.mux.HandleFunc("GET /api/dns/activity/name", s.dnsNameActivity)
 	s.mux.HandleFunc("DELETE /api/dns/activity", s.forgetDNSActivity)
+	s.mux.HandleFunc("GET /api/traffic", s.traffic)
+	s.mux.HandleFunc("GET /api/traffic/device", s.trafficDevice)
+	s.mux.HandleFunc("DELETE /api/traffic", s.forgetTraffic)
 	s.mux.HandleFunc("POST /api/diagnostics/runs", s.startTool)
 	s.mux.HandleFunc("GET /api/diagnostics/runs/{id}", s.toolRun)
 	s.mux.HandleFunc("POST /api/diagnostics/runs/{id}/cancel", s.cancelTool)
@@ -711,6 +714,49 @@ func (s *Server) dnsNameActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
+}
+
+func (s *Server) traffic(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	t, err := s.apiFor(r).Traffic(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, t)
+}
+
+func (s *Server) trafficDevice(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	if req.Device == "" {
+		badRequest(w, http.StatusBadRequest, "device is required")
+		return
+	}
+	d, err := s.apiFor(r).TrafficDevice(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
+}
+
+// forgetTraffic deletes ?device=key's traffic, or all of it.
+func (s *Server) forgetTraffic(w http.ResponseWriter, r *http.Request) {
+	req, ok := activityRequest(w, r)
+	if !ok {
+		return
+	}
+	if err := s.apiFor(r).ForgetTraffic(req); err != nil {
+		fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // forgetDNSActivity deletes ?device=key's activity, or everything.

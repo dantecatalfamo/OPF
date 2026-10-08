@@ -113,6 +113,12 @@ peer
 		out = mockNewsyslog
 	case strings.HasPrefix(cmd, "ls -ln /var/log/"):
 		out = mockLogSizes(argv[2:])
+	case cmd == "pfctl -t opf_hosts -T show -v":
+		out = mockTrafficTable(s.start, time.Now())
+	case cmd == "pfctl -s labels":
+		out = mockTrafficLabels(s.start, time.Now())
+	case cmd == "pfctl -s Tables":
+		out = "bruteforce\nopf_hosts\n"
 	case cmd == "pfctl -s memory":
 		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\ntables        hard limit     1000\ntable-entries hard limit   200000\n"
 	case len(argv) == 5 && strings.HasPrefix(cmd, "pfctl -k id -k "):

@@ -1,0 +1,23 @@
+ ID      USE/LIMIT     RATE/SECS     ADMIT  HARDLIM  RATELIM
+ ID      USE/ADDRS    LIMIT  RATE/SECS     ADMIT  ADDRLIM  HARDLIM  RATELIM
+opf:auto-nat:lan 68 0 0 0 0 0 0 0
+opf:auto-nat:wg 66 0 0 0 0 0 0 0
+opf:vpn-in:wg 68 0 0 0 0 0 0 0
+opf:builtin:default-block 68 0 0 0 0 0 0 0
+opf:builtin:self-out 68 128 7616 64 3584 64 4032 64
+opf:builtin:self-out 68 0 0 0 0 0 0 0
+opf:builtin:anti-lockout 68 0 0 0 0 0 0 0
+opf:builtin:anti-lockout 0 0 0 0 0 0 0 0
+opf:split-tunnel:wg 68 0 0 0 0 0 0 0
+opf:vpn-only:wg 0 0 0 0 0 0 0 0
+opf:vpn-only:wg 0 0 0 0 0 0 0 0
+opf:vpn-only:wg 0 0 0 0 0 0 0 0
+opf:forward:f1 66 0 0 0 0 0 0 0
+opf:forward:f1 0 0 0 0 0 0 0 0
+opf:forward:f1 68 0 0 0 0 0 0 0
+opf:rule:r10 64 0 0 0 0 0 0 0
+opf:rule:r9 0 0 0 0 0 0 0 0
+opf:rule:r1 0 0 0 0 0 0 0 0
+opf:rule:r20 0 0 0 0 0 0 0 0
+opf:rule:r3 0 0 0 0 0 0 0 0
+opf:rule:r13 0 0 0 0 0 0 0 0

@@ -51,6 +51,11 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if errs := pf.Validate(&model); len(errs) > 0 {
 		return fmt.Errorf("seed model %s is invalid: %v", seedPath, errs)
 	}
+	// Traffic per device on, with a few days kept (seedTraffic), so its
+	// pages have something to show.
+	if model.Firewall.Traffic == nil {
+		model.Firewall.Traffic = &pf.TrafficAccounting{Enabled: true, Days: 7}
+	}
 
 	// Addresses the UI's sample status data reports, so generated
 	// route-to lines match what the pages show.
@@ -145,6 +150,10 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 		}
 		seedHistory(api.MetricsStore(), m, leases, time.Now())
 		seedEvents(api, m, time.Now())
+	}
+	// Three days of traffic per device, as if it had been kept.
+	if err := seedTraffic(store.StatePath("traffic.json"), time.Now()); err != nil {
+		return err
 	}
 	// unbound's log, while DNS activity is on, and an unbound writing it.
 	api.DNSLog = filepath.Join(root, pf.DNSLogPath)

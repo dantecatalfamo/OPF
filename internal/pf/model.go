@@ -572,6 +572,44 @@ type Firewall struct {
 	Aliases     []Alias         `json:"aliases"`
 	Options     FirewallOptions `json:"options"`
 	Custom      CustomPf        `json:"custom"`
+	// Traffic counts what each device sends and receives; nil, or not
+	// Enabled, nothing.
+	Traffic *TrafficAccounting `json:"traffic,omitempty"`
+}
+
+// TrafficAccounting keeps each device's traffic, opt in like DNS
+// activity: what a device does is personal. pf counts it in a table
+// with per-address counters (TrafficTable), which a match rule on each
+// inside interface fills for every packet of a connection, both ways;
+// OPF puts the network's devices in the table as it sees them and reads
+// the counters every collector tick (tried on 7.9: every packet,
+// outgoing and incoming, between inside networks counted once each,
+// and the counters survive ruleset reloads).
+type TrafficAccounting struct {
+	Enabled bool `json:"enabled"`
+	// Days is how long it's kept, 1 to MaxActivityDays.
+	Days int `json:"days"`
+}
+
+// TrafficTable is pf's table of the devices whose traffic is counted.
+const TrafficTable = "opf_hosts"
+
+// KeepsTraffic says whether pf counts each device's traffic.
+func KeepsTraffic(m *Model) bool {
+	return m.Firewall.Traffic != nil && m.Firewall.Traffic.Enabled && len(TrafficIfaces(m)) > 0
+}
+
+// TrafficIfaces are the interfaces whose devices are counted: every
+// enabled inside one, VPN tunnels included, but not the WAN or a way
+// out through a provider.
+func TrafficIfaces(m *Model) []Iface {
+	var out []Iface
+	for _, i := range m.Interfaces {
+		if i.Enabled && i.Role != RoleWAN && (i.WireGuard == nil || i.WireGuard.Exit == nil) {
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 // ---------- Routing ----------
