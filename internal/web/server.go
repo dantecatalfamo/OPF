@@ -27,6 +27,7 @@
 //	POST   /api/pf/states/kill            end a connection
 //	GET    /api/pf/rules/counters         each labelled rule's counters
 //	GET    /api/logs/firewall             packets pf logged, newest first
+//	POST   /api/dns/reverse               the names of addresses (PTR), from the firewall's resolver
 //	GET    /api/firewall/tables           URL aliases' downloaded lists
 //	POST   /api/firewall/aliases/{name}/refresh  download one again and load it
 //	GET    /api/dns/blocklists            DNS blocklists' downloads
@@ -73,12 +74,15 @@ type Server struct {
 
 	auth           Auth // session.go
 	tlsFingerprint string
+
+	reverse *reverser // reverse.go
 }
 
 // New returns a Server for the API and, unless ui is nil, the built web
 // interface (package ui) at every other path.
 func New(api appliance.API, ui fs.FS) *Server {
-	s := &Server{api: api, ui: ui, mux: http.NewServeMux()}
+	s := &Server{api: api, ui: ui, mux: http.NewServeMux(), reverse: newReverser(unboundLookup())}
+	s.mux.HandleFunc("POST /api/dns/reverse", s.reverseNames)
 	s.mux.HandleFunc("POST /api/wireguard/keys", s.newTunnelKey)
 	s.mux.HandleFunc("POST /api/wireguard/keys/import", s.importTunnelKey)
 	s.mux.HandleFunc("POST /api/wireguard/device-keys", s.newDeviceKey)

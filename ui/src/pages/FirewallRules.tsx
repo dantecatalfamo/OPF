@@ -21,27 +21,9 @@ import { CellSpark } from '../components/HistoryChart';
 import { useHistory } from '../lib/history';
 import type { MetricsResource } from '../lib/api';
 import { RuleDrawer } from './RuleDrawer';
+import { usePref } from '../lib/prefs';
 
 const FLOATING = 'floating';
-
-function usePref(key: string, initial: boolean): [boolean, (v: boolean) => void] {
-  const [v, setV] = useState(() => {
-    try {
-      const s = localStorage.getItem(key);
-      return s === null ? initial : s === '1';
-    } catch {
-      return initial;
-    }
-  });
-  return [v, (nv) => {
-    setV(nv);
-    try {
-      localStorage.setItem(key, nv ? '1' : '0');
-    } catch {
-      /* per-browser convenience only */
-    }
-  }];
-}
 
 function Markers({ rule, model }: { rule: Rule; model: Model }) {
   if (rule.kind === 'raw') {

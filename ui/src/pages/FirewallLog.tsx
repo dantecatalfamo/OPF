@@ -10,6 +10,8 @@ import { labelOwner } from '../lib/pfLabels';
 import type { FirewallLogEntry } from '../lib/api';
 import type { Model } from '../model/types';
 import { Mono, PageHeader } from '../components/ui';
+import { HostName, NamesSwitch } from '../components/HostName';
+import { useReverseNames, useShowNames } from '../lib/reverseNames';
 
 const actionColor: Record<string, string> = { block: 'red', pass: 'teal', match: 'gray' };
 const actionText: Record<string, string> = { block: 'Blocked', pass: 'Allowed', match: 'Matched' };
@@ -49,6 +51,8 @@ export function FirewallLog() {
     const rule = labelOwner(applied, e.label)?.text ?? '';
     return `${e.source ?? ''} ${e.destination ?? ''} ${rule}`.toLowerCase().includes(q.toLowerCase());
   });
+  const [showNames, setShowNames] = useShowNames();
+  const names = useReverseNames(rows.flatMap((e) => [e.source, e.destination]), showNames);
 
   return (
     <>
@@ -64,6 +68,7 @@ export function FirewallLog() {
           data={applied.interfaces.map((i) => ({ value: i.device, label: i.name }))}
           w={180}
         />
+        <NamesSwitch checked={showNames} onChange={setShowNames} />
       </Group>
       <Card padding={0}>
         <Table.ScrollContainer minWidth={860}>
@@ -88,9 +93,10 @@ export function FirewallLog() {
                   </Table.Td>
                   <Table.Td><Badge color={actionColor[e.action] ?? 'gray'}>{actionText[e.action] ?? e.action}</Badge></Table.Td>
                   <Table.Td><Text size="sm">{deviceName(applied, e.iface)} <Text span size="xs" c="dimmed">{e.direction}</Text></Text></Table.Td>
-                  <Table.Td><Mono>{e.source ?? '—'}</Mono></Table.Td>
+                  <Table.Td><Mono>{e.source ?? '—'}</Mono><HostName addr={e.source} names={names} /></Table.Td>
                   <Table.Td>
                     <Mono>{e.destination ?? '—'}</Mono> {e.proto && <Text span size="xs" c="dimmed">{e.proto.toUpperCase()}</Text>}
+                    <HostName addr={e.destination} names={names} />
                     {e.reason !== 'match' && <Text size="xs" c="yellow">{e.reason}: {e.info}</Text>}
                   </Table.Td>
                   <Table.Td><LogRule e={e} model={applied} /></Table.Td>

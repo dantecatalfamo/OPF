@@ -355,6 +355,12 @@ export interface PfState {
   label?: string;
 }
 
+/** POST /api/dns/reverse: each address's name ("" for none), and those the firewall's resolver couldn't look up. */
+export interface ReverseNamesResource {
+  names: Record<string, string>;
+  failed: string[];
+}
+
 /** GET /api/pf/states */
 /** A page of the state table (GET /api/pf/states): the matching states, busiest first. */
 export interface PfStatesResource {
@@ -984,6 +990,7 @@ export const api = {
   killState: (s: Pick<PfState, 'id' | 'creatorId'>) => request<void>('POST', '/pf/states/kill', { id: s.id, creatorId: s.creatorId }),
   ruleCounters: () => request<RuleCountersResource>('GET', '/pf/rules/counters'),
   firewallLog: () => request<FirewallLogResource>('GET', '/logs/firewall'),
+  reverseNames: (addresses: string[]) => request<ReverseNamesResource>('POST', '/dns/reverse', { addresses }),
   tables: async () => (await request<{ tables: TableStatus[] }>('GET', '/firewall/tables')).tables,
   /** Downloads a URL alias's list again and loads it into pf. */
   refreshAlias: (name: string) => request<TableStatus>('POST', `/firewall/aliases/${enc(name)}/refresh`),

@@ -17,6 +17,8 @@ import { HistoryCard } from '../components/HistoryChart';
 import { rulesFor } from '../lib/deviceRules';
 import { DeviceLink } from '../components/DeviceLink';
 import { listName } from './DnsHistory';
+import { NamesSwitch, Wrapped } from '../components/HostName';
+import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -289,7 +291,17 @@ function DnsCard({ deviceKey, days }: { deviceKey: string; days: number }) {
   );
 }
 
-function Connections({ addresses }: { addresses: string[] }) {
+// The name of the end of a connection that isn't this device, under it,
+// when it has one.
+function Names({ names, own, from, to }: { names: Map<string, string>; own: string[]; from?: string; to?: string }) {
+  const fromOwn = own.includes(hostOf(from) ?? '');
+  const far = fromOwn ? to : from;
+  const n = names.get(hostOf(far) ?? '');
+  if (!n) return null;
+  return <Text size="xs" c="dimmed" className="mono">{fromOwn ? 'to ' : 'from '}<Wrapped name={n} /></Text>;
+}
+
+function Connections({ addresses, showNames }: { addresses: string[]; showNames: boolean }) {
   const [states, setStates] = useState<PfState[]>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -298,6 +310,7 @@ function Connections({ addresses }: { addresses: string[] }) {
       .then((rs) => live && setStates(rs.flatMap((r) => r.states)), (e) => live && setError(errorText(e)));
     return () => { live = false; };
   }, [addresses.join()]);
+  const names = useReverseNames((states ?? []).slice(0, 25).flatMap((s) => [s.source, s.destination]), showNames);
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
@@ -308,7 +321,7 @@ function Connections({ addresses }: { addresses: string[] }) {
               {states.slice(0, 25).map((s) => (
                 <Table.Tr key={s.id + s.creatorId}>
                   <Table.Td><Text size="xs" c="dimmed">{s.proto}</Text></Table.Td>
-                  <Table.Td><Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{s.source} → {s.destination}</Text>{s.translated && <Text size="xs" c="dimmed" className="mono">via {s.translated}</Text>}</Table.Td>
+                  <Table.Td><Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{s.source} → {s.destination}</Text><Names names={names} own={addresses} from={s.source} to={s.destination} />{s.translated && <Text size="xs" c="dimmed" className="mono">via {s.translated}</Text>}</Table.Td>
                   <Table.Td><Text size="xs" c="dimmed">{s.state}</Text></Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num">{formatBytes(s.bytes)}</Text><Text size="xs" c="dimmed">{formatDuration(s.ageSec)}</Text></Table.Td>
                 </Table.Tr>
@@ -351,13 +364,14 @@ function Events({ terms }: { terms: string[] }) {
 // port: 192.168.1.5:443, [fd00::5]:53.
 const hasAddr = (field: string | undefined, a: string) => !!field && (field === a || field.startsWith(a + ':') || field.startsWith(a + '.') || field.startsWith(`[${a}]`));
 
-function FirewallLog({ addresses }: { addresses: string[] }) {
+function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames: boolean }) {
   const [entries, setEntries] = useState<FirewallLogEntry[]>();
   useEffect(() => {
     let live = true;
     backend.firewallLog().then((r) => live && setEntries(r.entries.filter((e) => addresses.some((a) => hasAddr(e.source, a) || hasAddr(e.destination, a)))), () => live && setEntries([]));
     return () => { live = false; };
   }, [addresses.join()]);
+  const names = useReverseNames((entries ?? []).slice(0, 15).flatMap((e) => [e.source, e.destination]), showNames);
   return (
     <Card h="100%">
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
@@ -372,6 +386,7 @@ function FirewallLog({ addresses }: { addresses: string[] }) {
               <Text size="sm" className="mono">
                 {e.proto && <><span style={{ whiteSpace: 'nowrap' }}>{e.proto}</span> </>}
                 <span style={{ whiteSpace: 'nowrap' }}>{e.source}</span> → <span style={{ whiteSpace: 'nowrap' }}>{e.destination}</span>
+                <Names names={names} own={addresses} from={e.source} to={e.destination} />
               </Text>
             </Group>
           ))}
@@ -402,6 +417,7 @@ export function Device() {
   const n = Math.min(Number(days), kept);
   const ranges = [{ value: '1', label: 'Today' }, ...[7, 31].filter((x) => x <= kept).map((x) => ({ value: String(x), label: x === 31 ? 'Month' : `${x} days` }))];
   const terms = d ? [...(d.mac ? [d.mac] : []), ...d.addresses] : [];
+  const [showNames, setShowNames] = useShowNames();
 
   return (
     <>
@@ -409,7 +425,12 @@ export function Device() {
       <PageHeader
         title={d ? label(d) : 'Device'}
         description={d ? `${kindWords[d.kind]}${d.networks.length ? ` on ${d.networks.map((x) => x.name).join(' and ')}` : ''}${d.addresses.length ? ` · ${d.addresses.join(', ')}` : ''}` : undefined}
-        actions={(traffic || dns) && ranges.length > 1 ? <SegmentedControl size="xs" data={ranges} value={days} onChange={setDays} /> : undefined}
+        actions={
+          <Group gap="md">
+            {d && d.addresses.length > 0 && <NamesSwitch checked={showNames} onChange={setShowNames} />}
+            {(traffic || dns) && ranges.length > 1 && <SegmentedControl size="xs" data={ranges} value={days} onChange={setDays} />}
+          </Group>
+        }
       />
       {error && <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>{error}</Alert>}
       {!d && !error && <Text size="sm" c="dimmed">Reading…</Text>}
@@ -433,11 +454,11 @@ export function Device() {
           {!canEdit && (applied.firewall.traffic?.enabled || applied.dns.activity?.enabled) && (
             <Text size="xs" c="dimmed">Its traffic and DNS activity are kept, but only admins can see them.</Text>
           )}
-          {d.addresses.length > 0 && <Connections addresses={d.addresses} />}
+          {d.addresses.length > 0 && <Connections addresses={d.addresses} showNames={showNames} />}
           <Grid gutter="md">
             {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><Rules addresses={[...new Set([...d.addresses, ...(d.reservation ? [d.reservation.ip] : [])])]} /></Grid.Col>}
             <Grid.Col span={{ base: 12, md: 6 }}><Events terms={terms} /></Grid.Col>
-            {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><FirewallLog addresses={d.addresses} /></Grid.Col>}
+            {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><FirewallLog addresses={d.addresses} showNames={showNames} /></Grid.Col>}
           </Grid>
         </Stack>
       )}

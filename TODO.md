@@ -929,13 +929,21 @@ Firewall:
       menu. One at a time from Connections is done.
 - [ ] Record each state killed in the event log (who, when, which
       connection) once there's one.
-- [ ] Reverse DNS for the addresses on Connections (and the firewall
-      log, a device's connections): a button or toggle that looks up
-      each address's PTR name through the firewall's own resolver and
-      shows it beside the address. Asked for, not by default: a lookup
-      for every address on a busy table is a lot of queries, and they
-      go out to the address's owner. Cache the answers for a while,
-      in the web child's memory only.
+- [x] Reverse DNS for the addresses on Connections, the firewall log
+      and a device's page (their connections and log), with a Names
+      switch each page shares, off until turned on (lookups for
+      internet addresses go to whoever runs them). `POST
+      /api/dns/reverse`, answered by the web process, which asks
+      unbound on 127.0.0.1 itself: it may open sockets but not read
+      resolv.conf, and unbound has the network's own names. Answers
+      kept in its memory (names 10 minutes, none 5, failures 30 s),
+      at most 4096; 8 lookups at once; a name that isn't a host name
+      dropped.
+  - [ ] When the resolver is off, every lookup fails: say so on the
+        switch instead of showing no names.
+  - [ ] Try it on the VM: the sandboxed web process reaching unbound on
+        127.0.0.1, the LAN's and VPN's own names, and an address with
+        none; only tests and the mock have.
 - [ ] The firewall log: follow pflog0 live (`tcpdump -l -i pflog0`,
       over a WebSocket) instead of rereading the file, and read the
       rotated `pflog.0.gz` for older entries.

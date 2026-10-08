@@ -14,7 +14,7 @@ import {
   ApiError, type ConfigFile, type ConfigFileView, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type DnsActivityResource, type StorageResource, type DevicesResource, type DeviceInfo, type TrafficResource, type TrafficDeviceResource, type DnsDeviceActivityResource, type DnsNameActivityResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type DnsActivityResource, type StorageResource, type DevicesResource, type DeviceInfo, type ReverseNamesResource, type TrafficResource, type TrafficDeviceResource, type DnsDeviceActivityResource, type DnsNameActivityResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -302,6 +302,7 @@ export const localApi = {
   // The preview has no system to measure.
   storage: async (): Promise<StorageResource> => ({ items: [], errors: ['The preview has no firewall to measure.'] }),
   // The preview has no leases or ARP table of its own.
+  reverseNames: async (addresses: string[]): Promise<ReverseNamesResource> => ({ names: {}, failed: addresses }),
   devices: async (): Promise<DevicesResource> => ({ devices: [], errors: ['The preview has no devices: on a firewall, every device it knows of is here.'] }),
   device: async (): Promise<DeviceInfo> => { throw new Error('The preview has no devices.'); },
   // The preview has no pf to count with.

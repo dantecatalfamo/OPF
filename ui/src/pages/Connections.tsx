@@ -10,6 +10,8 @@ import { deviceName } from '../lib/labels';
 import { labelOwner } from '../lib/pfLabels';
 import type { PfState, PfStatesRequest, PfStatesResource } from '../lib/api';
 import { Mono, PageHeader } from '../components/ui';
+import { HostName, NamesSwitch } from '../components/HostName';
+import { useReverseNames, useShowNames } from '../lib/reverseNames';
 
 const protoGroup = (p: string) => (p === 'ipv6-icmp' ? 'icmp' : p);
 
@@ -36,19 +38,21 @@ function Proto({ c }: { c: PfState }) {
   );
 }
 
-function From({ c }: { c: PfState }) {
+function From({ c, names }: { c: PfState; names: Map<string, string> }) {
   return (
     <div>
       <Mono>{c.source}</Mono>
+      <HostName addr={c.source} names={names} />
       {c.translated && c.direction === 'out' && <Text size="xs" c="dimmed">leaves as <Mono c="dimmed">{c.translated}</Mono></Text>}
     </div>
   );
 }
 
-function To({ c }: { c: PfState }) {
+function To({ c, names }: { c: PfState; names: Map<string, string> }) {
   return (
     <div>
       <Mono>{c.destination}</Mono>
+      <HostName addr={c.destination} names={names} />
       {c.translated && c.direction === 'in' && <Text size="xs" c="dimmed">sent to <Mono c="dimmed">{c.translated}</Mono></Text>}
     </div>
   );
@@ -116,6 +120,8 @@ export function Connections() {
     return () => { live = false; clearInterval(t); };
   }, [query, proto, limit, tick]);
   const rows = (data?.states ?? []).filter((c) => !closed.has(c.id));
+  const [showNames, setShowNames] = useShowNames();
+  const names = useReverseNames(rows.flatMap((c) => [c.source, c.destination]), showNames);
 
   const close = async (c: PfState) => {
     try {
@@ -148,6 +154,7 @@ export function Connections() {
           onChange={setProto}
           data={[{ value: 'all', label: 'All' }, { value: 'tcp', label: 'TCP' }, { value: 'udp', label: 'UDP' }, { value: 'icmp', label: 'ICMP' }]}
         />
+        <NamesSwitch checked={showNames} onChange={setShowNames} />
       </Group>
       <Card padding={0}>
         {wide ? (
@@ -167,8 +174,8 @@ export function Connections() {
               {rows.map((c) => (
                 <Table.Tr key={c.id}>
                   <Table.Td><Proto c={c} /></Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><From c={c} /></Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><To c={c} /></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><From c={c} names={names} /></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><To c={c} names={names} /></Table.Td>
                   <Table.Td miw={150}><AllowedBy c={c} /></Table.Td>
                   <Table.Td ta="right">
                     <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatDuration(c.ageSec)}</Text>
@@ -188,9 +195,9 @@ export function Connections() {
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                   <Group gap={8} wrap="wrap" align="flex-start" style={{ rowGap: 2 }}>
                     <Proto c={c} />
-                    <From c={c} />
+                    <From c={c} names={names} />
                     <Text size="sm" c="dimmed">→</Text>
-                    <To c={c} />
+                    <To c={c} names={names} />
                   </Group>
                   <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
                     <AllowedBy c={c} />

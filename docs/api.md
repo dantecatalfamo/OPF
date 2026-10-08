@@ -437,6 +437,17 @@ never by number: numbers change with every reload.
   `label`. `label` is only set for entries after `rulesSince`, the
   last time OPF may have reloaded the rules, since a rule number only
   means the same rule until then.
+- `POST /api/dns/reverse`: `{"addresses": ["192.168.1.112",
+  "140.82.112.4"]}` (at most 256; any role) answers each address's name
+  (its PTR record), `{"names": {"192.168.1.112":
+  "priya-mbp.office.arpa", "140.82.112.4": ""}, "failed": []}`: `""`
+  for none, and `failed` for those the resolver couldn't answer for.
+  The web process asks the firewall's own resolver (unbound on
+  127.0.0.1) itself, so the network's own names come from its leases
+  and reservations, and keeps the answers in memory: names for 10
+  minutes, no name for 5, a failure for 30 seconds. A name that isn't
+  a host name is dropped, since it comes from whoever runs the
+  address's reverse zone. 400 for anything that isn't an address.
 
 ### Downloaded lists
 

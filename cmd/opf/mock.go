@@ -130,6 +130,7 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 			return err
 		}
 	}
+	srv.SetReverseLookup(mockReverse(api))
 
 	watcher := &leases.Watcher{
 		File:     filepath.Join(root, leases.Path),
