@@ -329,6 +329,28 @@ In order. Each step's details are in the section it points to.
       by gateway health; relayd or ifstated could drive it), and
       `route-to` on a DHCP gateway, which the generator resolves to the
       address it has at generation time.
+- [ ] **Traffic shaping**, guided rather than raw-only (above): pf's
+      queues (queue(5) in pf.conf). Most people want one thing first:
+      `flows` (fair queuing, FQ-CoDel) on the WAN with its `bandwidth`
+      set a little under the line's, which ends bufferbloat (a big
+      download or upload no longer slows everyone's calls and games).
+      Then: bandwidth limits and guaranteed shares per network or
+      device (HFSC: `min`, `max`, `burst`), and a rule's `set queue`;
+      `set prio` for simple priority (VoIP, SSH, ACKs first) without
+      queues. Needs the line's speeds (asked, or measured with a test
+      the page runs), queues shown live (`pfctl -vsq`), and a graph of
+      each queue's drops and backlog.
+- [ ] **Scheduled rules:** a rule on only at certain times (a device's
+      internet off at night, a guest network only in opening hours).
+      pf has no schedules: OPF turns them on and off itself, as table
+      entries or an anchor it reloads from the collector at each
+      boundary (never a whole commit), with the schedule in the model
+      and the time zone the system's. Show on the rule when it's next
+      on or off, and record each change in the event log.
+- [ ] **ftp-proxy and tftp-proxy** (ftp-proxy(8), tftp-proxy(8)): FTP
+      and TFTP through NAT, with their `anchor "ftp-proxy/*"` and
+      `divert-to` rules generated. TFTP matters for PXE boot and for
+      phones and switches fetching their configuration.
 - [ ] **authpf** (authpf(8)): network access that opens when someone
       logs in over SSH and closes when they log out, for contractors,
       guests or anything that should need a person present. authpf is
@@ -542,6 +564,9 @@ Types, roughly in order of usefulness:
 - [ ] `gre`, `etherip`, `vxlan` tunnels: endpoints, and pf and routing
       like WireGuard.
 - [ ] Niche: `tpmr`, `svlan`, `tap`.
+- [ ] **Port mirroring:** a `span` port on a `veb` or `bridge`
+      (`ifconfig veb0 span em3`), copying a network's traffic to an
+      interface for an outside IDS, a capture box or a monitor.
 - [ ] Live status for each type (members, link state, carp state) on the
       interface pages.
 
@@ -797,6 +822,17 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       lists and a machine with less memory, and warn from unbound's own
       size once it's running rather than only from the estimate.
 
+- [ ] **DHCP relay** (dhcrelay(8), dhcrelay6(8)): pass a network's DHCP
+      requests to a server elsewhere (a Windows domain's, a central
+      one) instead of serving them, per interface, exclusive of OPF's
+      own DHCP server on it.
+- [ ] **Time for the network:** ntpd can serve time to the inside
+      networks (`listen on` their addresses, a pf rule letting them
+      in), and DHCP can tell devices to use it (option 42,
+      `ntp-servers`), as it does for DNS. A switch per network, like
+      DNS resolver › Answer on, refusing to serve until ntpd is
+      synced.
+
 ## Services
 
 OpenBSD's own daemons, controlled with rcctl. Every service must be
@@ -857,6 +893,10 @@ Daemons, by how much an appliance needs them:
       (802.1X, VPN auth), ldapd, ftpd and ftpproxy, isakmpd (legacy IKEv1;
       prefer iked), sasyncd (IPsec failover with carp), ldpd (MPLS),
       dvmrpd and mrouted (multicast), hostapd (Wi-Fi access point), lpd.
+- [ ] **unwind** (unwind(8)): a validating resolver for the firewall's
+      own lookups when unbound isn't running (no DNS service for the
+      network), as System › General › DNS for the firewall itself's
+      fourth choice.
 - [ ] **vmd** (virtual machines, with vmm(4) and vmctl), off unless
       asked for, for a few small services kept apart from the host. A
       deliberate trade-off: a vmm bug or a compromised guest sits on the
@@ -1459,6 +1499,14 @@ its setting on Firewall › Settings), and tried on 7.9:
       talkers. DNS names per device are the most personal data OPF
       holds: admin only, or a role of its own, and never in webhooks.
 
+- [ ] **NetFlow export** (pflow(4)): send flow records to a collector
+      the admin runs (ntopng, Elastiflow, nfdump), NetFlow v5 or IPFIX,
+      from a `pflow0` interface (`flowsrc`, `flowdst`) and `set
+      state-defaults pflow` or rules marked `pflow`. A setting on
+      Firewall › Settings with the collector's address and which
+      traffic; the page says what pflow sends and when (each flow once
+      it ends, as checked above), and that it leaves the box.
+
 ## UI
 
 - [ ] **The DNS page's layout** is out of line with the other service
@@ -1558,6 +1606,13 @@ Still to do:
 - [ ] No HSTS: with a self-signed certificate it would stop anyone
       clicking through the browser's warning, and so lock them out.
       Send it once the certificate is one they put there (or ACME).
+- [ ] **A real certificate for the web interface** with acme-client(1)
+      (Let's Encrypt), when it has a public name: httpd answers the
+      HTTP challenge on port 80 of the WAN only while one runs (a pf
+      rule opened for it), cron renews it, OPF reloads it without a
+      restart and warns before it expires. Or the admin uploads their
+      own certificate and key. Either ends the browser's warning and
+      lets HSTS be sent.
 - [x] Sign-ins and account changes go to authlog too, through
       logger(1) on stdin (the parent's pledge has no "unix" for
       /dev/log, and Go can't make OpenBSD's sendsyslog(2) call); -dry
