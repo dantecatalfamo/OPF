@@ -1064,6 +1064,8 @@ Storage:
       DNS's, the system's, then each capped kind), and each row says
       where its limit is set, linking to the card (#id; the layout
       scrolls to it), or why there's no setting.
+  - [ ] Try the graphs' rows and the settings links on the VM: only the
+        mock has shown them (the rest of the page was tried there).
 - [ ] Warn somewhere people look (the dashboard, an event) when one is
       near its limit, pf's state table above all.
 - [ ] pf's source nodes and fragments: their limits are there, their
