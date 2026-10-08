@@ -59,6 +59,43 @@ type SystemSettings struct {
 	// Graphs caps how many of each thing the graphs keep a history of;
 	// unset, OPF's defaults (appliance.GraphDefaults).
 	Graphs *GraphLimits `json:"graphs,omitempty"`
+	// DNS is where the firewall's own lookups go (updates, list
+	// downloads, its tools); nil is the WAN's servers.
+	DNS *SystemDNS `json:"dns,omitempty"`
+}
+
+// SystemDNS is the firewall's own DNS client: /etc/resolv.conf.
+type SystemDNS struct {
+	Mode SystemDNSMode `json:"mode"`
+	// Servers are SystemDNSServers' servers, or SystemDNSSelf's to fall
+	// back on while the resolver doesn't answer. IP addresses.
+	Servers []string `json:"servers,omitempty"`
+}
+
+type SystemDNSMode string
+
+const (
+	// SystemDNSWAN is what OpenBSD does: resolvd writes resolv.conf
+	// from what the WAN learns (its DHCP lease).
+	SystemDNSWAN SystemDNSMode = "wan"
+	// SystemDNSSelf asks the firewall's own resolver, so its lookups
+	// get its local names and blocklists too.
+	SystemDNSSelf SystemDNSMode = "self"
+	// SystemDNSServers asks the servers given, for a WAN with a fixed
+	// address (no lease to learn them from) or a provider's own.
+	SystemDNSServers SystemDNSMode = "servers"
+)
+
+// MaxNameservers is how many nameserver lines the C library reads from
+// resolv.conf (MAXNS); any more are ignored.
+const MaxNameservers = 3
+
+// SystemDNSOf is the firewall's DNS client setting, nil read as the WAN.
+func SystemDNSOf(m *Model) SystemDNS {
+	if m.System.DNS == nil || m.System.DNS.Mode == "" {
+		return SystemDNS{Mode: SystemDNSWAN}
+	}
+	return *m.System.DNS
 }
 
 // GraphLimits are how many interfaces, gateways, VPN devices, DHCP

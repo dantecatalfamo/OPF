@@ -322,8 +322,12 @@ request after a quiet minute takes a second longer, to measure one.
   `interrupt`, `idle`), `memory` and `swap` (bytes; in use is total
   minus free), `disks` (local filesystems, bytes), `sensors` (as
   `sysctl hw.sensors` reports them, with `number` and `unit` when the
-  value is a number) and `time` (OpenNTPD's state; absent when ntpd
-  isn't running).
+  value is a number), `time` (OpenNTPD's state; absent when ntpd
+  isn't running) and `dns`, the servers the firewall's own lookups go
+  to, from /etc/resolv.conf: `servers` in order (`{"address", "from",
+  "unused"}`: `from` is the interface resolvd learned it on, `lo0`
+  being OPF's own (`system.dns`); `unused` past the three the C library
+  reads) and `lookup`.
 - `GET /api/system/updates`: `{"checkedAt", "checking", "patches",
   "error"}`. `patches` are syspatch's names for what's available. The
   check (`syspatch -c`, slow: it asks a mirror about every patch) runs

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dantecatalfamo/OPF/internal/appliance"
 	"github.com/dantecatalfamo/OPF/internal/pf"
 	"github.com/dantecatalfamo/OPF/internal/run"
 )
@@ -61,6 +62,19 @@ peer
 		out = "Device      1K-blocks     Used    Avail Capacity  Priority\n/dev/sd0b     4194304        0  4194304     0%    0\n"
 	case cmd == "df -kPl":
 		out = mockDf
+	case cmd == "cat /etc/resolv.conf":
+		// resolvd's: OPF's proposal (as if it took at once), then the
+		// WAN's lease's.
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		var b strings.Builder
+		for _, ns := range appliance.SystemDNSWants(m) {
+			fmt.Fprintf(&b, "nameserver %s # resolvd: lo0\n", ns)
+		}
+		b.WriteString("nameserver 203.0.113.53 # resolvd: em0\nnameserver 203.0.113.54 # resolvd: em0\nlookup file bind\n")
+		out = b.String()
 	case cmd == "pfctl -v -s info", cmd == "pfctl -vv -s states", cmd == "pfctl -vv -s rules", strings.HasPrefix(cmd, "tcpdump -n -e -ttt -r "):
 		m, err := s.model()
 		if err != nil {

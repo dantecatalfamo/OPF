@@ -286,7 +286,9 @@ func TestOwnNamesReloadOnlyTheirZone(t *testing.T) {
 	if err := stageCommit(t, e, m); err != nil {
 		t.Fatal(err)
 	}
-	cmds := e.run.commands()
+	// What changed the system, not what read it after (the firewall's
+	// own DNS servers, systemdns.go).
+	cmds := slicesFilter(e.run.commands(), func(c string) bool { return c != "cat /etc/resolv.conf" })
 	if full() != 1 || cmds[len(cmds)-1] != "unbound-control -c /var/unbound/etc/unbound.conf auth_zone_reload opf-own." {
 		t.Errorf("own names alone: %q", cmds)
 	}

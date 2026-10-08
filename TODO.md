@@ -727,13 +727,24 @@ Types, roughly in order of usefulness:
       the way: Commit returned the pending entry itself, which the
       timeout's revert then changed under its reader; it returns a copy
       now.)
-- [ ] `resolv.conf` isn't managed: OPF's own DNS client configuration
-      (OpenBSD uses `resolv.conf.tail` with resolvd). Pointing the
-      firewall at its own resolver would give it its blocklists and
-      local names, but make its own lookups (updates, downloads) depend
-      on unbound; its own name is in /etc/hosts instead. resolvd puts
-      127.0.0.1 first only for unwind; lines added by hand go after the
-      learned servers, which answer NXDOMAIN for OPF's domain.
+- [x] The firewall's own DNS servers (`system.dns`, System › General):
+      the WAN's (OpenBSD's default), its own resolver first with
+      fallbacks, or servers given. resolvd keeps resolv.conf; OPF sends
+      it a proposal on lo0 (`route nameserver lo0 ...`), which resolvd
+      puts ahead of the WAN's lease's and keeps them after it. Seen on
+      7.9: a proposal on the WAN's interface replaces its lease's, and
+      withdrawing it leaves none until the lease renews, so OPF never
+      sends one there; resolvd forgets a proposal when it restarts and
+      none survives a boot, so OPF puts it back whenever resolv.conf
+      lacks it (every collector tick and after every change). The page
+      shows the servers asked now, and warns when there are none (a WAN
+      with a fixed address learns none). Tried on the VM: each mode, a
+      resolvd restart, a reboot, and back.
+  - [ ] It isn't a file, so a commit's review shows no diff for it and
+        a revert puts it back only through the model (a tick later).
+  - [ ] With the WAN's servers after OPF's while there's room, "these
+        servers" doesn't keep lookups off the ISP's servers when fewer
+        than three are given; say so, or offer "only these".
 
 DNS blocklists (ad and tracker blocking in the resolver; unbound 1.26.1
 in 7.9 has RPZ, response policy zones, through its respip module):

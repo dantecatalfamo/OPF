@@ -137,6 +137,8 @@ export interface SystemResource {
   swap?: { total: number; used: number };
   disks: { device: string; mount: string; total: number; used: number; available: number }[];
   sensors: { device: string; type: string; index: number; value: string; number?: number; unit?: string; description?: string; status?: string }[];
+  /** /etc/resolv.conf: the servers the firewall's own lookups go to; from is where resolvd learned one (lo0 is OPF's). */
+  dns?: { servers: { address: string; from?: string; unused?: boolean }[]; lookup: string[] };
   /** OpenNTPD's state; missing when ntpd isn't running. */
   time?: { synced: boolean; stratum?: number; status: string; source?: string; offsetMs?: number };
   errors: string[];

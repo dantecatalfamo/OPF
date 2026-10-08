@@ -365,6 +365,43 @@ func (v *validator) system() {
 	for i, n := range s.NTPServers {
 		v.host(at("system.ntpServers", i), n)
 	}
+	if d := s.DNS; d != nil {
+		v.oneOf("system.dns.mode", string(d.Mode), string(SystemDNSWAN), string(SystemDNSSelf), string(SystemDNSServers))
+		max := MaxNameservers
+		switch d.Mode {
+		case SystemDNSWAN:
+			if len(d.Servers) > 0 {
+				v.fail("system.dns.servers", "the WAN's servers are learned, not given")
+			}
+		case SystemDNSSelf:
+			// 127.0.0.1 is the first.
+			max--
+			if !v.m.DNS.Enabled {
+				v.fail("system.dns.mode", "the firewall can't ask its own resolver while the resolver is off")
+			}
+		case SystemDNSServers:
+			if len(d.Servers) == 0 {
+				v.fail("system.dns.servers", "needs at least one server")
+			}
+		}
+		if len(d.Servers) > max {
+			v.fail("system.dns.servers", "at most %d: the system reads no more than %d nameservers", max, MaxNameservers)
+		}
+		seen := map[string]bool{}
+		for i, srv := range d.Servers {
+			p := at("system.dns.servers", i)
+			a, err := netip.ParseAddr(srv)
+			switch {
+			case err != nil || a.Zone() != "":
+				v.fail(p, "%q isn't an IP address", srv)
+			case a.IsLoopback() || a.IsUnspecified() || a.IsMulticast():
+				v.fail(p, "%s can't be a DNS server here", srv)
+			case seen[a.String()]:
+				v.fail(p, "%s is listed twice", srv)
+			}
+			seen[a.String()] = true
+		}
+	}
 	if g := s.Graphs; g != nil {
 		for _, f := range []struct {
 			name string

@@ -302,8 +302,11 @@ type SystemStatus struct {
 	Disks   []sysinfo.Disk    `json:"disks"`
 	Sensors []sysinfo.Sensor  `json:"sensors"`
 	// Time is nil when ntpd isn't running.
-	Time   *sysinfo.TimeSync `json:"time,omitempty"`
-	Errors []string          `json:"errors"`
+	Time *sysinfo.TimeSync `json:"time,omitempty"`
+	// DNS is the servers the firewall's own lookups go to
+	// (/etc/resolv.conf); nil when it couldn't be read.
+	DNS    *sysinfo.ResolvConf `json:"dns,omitempty"`
+	Errors []string            `json:"errors"`
 }
 
 // InterfacesStatus is every interface on the system, configured by OPF

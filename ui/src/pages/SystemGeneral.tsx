@@ -6,6 +6,7 @@ import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { refreshLive, useLive } from '../lib/live';
 import { PageHeader, SectionTitle } from '../components/ui';
+import { FirewallDns } from './SystemDns';
 import { GraphSettings } from './GraphSettings';
 import { useSession } from '../lib/session';
 import { ApiError, type Role, type SessionInfo } from '../lib/api';
@@ -197,6 +198,7 @@ export function SystemGeneral() {
               </Stack>
             </form>
           </Card>
+          <FirewallDns />
           <GraphSettings />
           </Stack>
         </Grid.Col>

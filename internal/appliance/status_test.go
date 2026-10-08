@@ -46,11 +46,12 @@ func (c *captured) Run(_ context.Context, argv ...string) ([]byte, error) {
 
 func TestSystemFromCapturedOutput(t *testing.T) {
 	c := &captured{files: map[string]string{
-		"sysctl kern.cp_time": "sysctl_kern_cp_time.txt",
-		"vmstat -s":           "vmstat_-s.txt",
-		"swapctl -lk":         "swapctl_-lk.txt",
-		"df -kPl":             "df_-kP.txt",
-		"sysctl hw.sensors":   "sysctl_hw_sensors.txt",
+		"sysctl kern.cp_time":  "sysctl_kern_cp_time.txt",
+		"vmstat -s":            "vmstat_-s.txt",
+		"swapctl -lk":          "swapctl_-lk.txt",
+		"df -kPl":              "df_-kP.txt",
+		"sysctl hw.sensors":    "sysctl_hw_sensors.txt",
+		"cat /etc/resolv.conf": "resolv.conf.txt",
 	}}
 	m := &Manager{Runner: c}
 	s, err := m.System()
@@ -61,6 +62,9 @@ func TestSystemFromCapturedOutput(t *testing.T) {
 	// missing and says so; the rest is there.
 	if len(s.Errors) != 1 || !strings.Contains(s.Errors[0], "sysctl") {
 		t.Errorf("errors = %q", s.Errors)
+	}
+	if s.DNS == nil || len(s.DNS.Servers) != 1 || s.DNS.Servers[0].Address != "100.64.1.2" || s.DNS.Servers[0].From != "vio0" {
+		t.Errorf("dns = %+v", s.DNS)
 	}
 	if s.Memory == nil || s.Memory.Free != 668420*4096 {
 		t.Errorf("memory = %+v", s.Memory)

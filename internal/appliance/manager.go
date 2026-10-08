@@ -70,6 +70,8 @@ type Manager struct {
 	// pf.DNSLogPath. The mock's is in its scratch directory.
 	DNSLog   string
 	activity dnsActivity
+	// The firewall's own DNS servers (systemdns.go).
+	systemDNS systemDNSState
 
 	// Earlier readings, for rates (status.go).
 	cpu         rate[sysinfo.CPUTicks]
@@ -262,6 +264,9 @@ func printable(s string, max int) string {
 func (m *Manager) OnChange(f func()) { m.onChange = f }
 
 func (m *Manager) changed() {
+	if model, _, err := m.live(); err == nil {
+		m.applySystemDNS(model)
+	}
 	if m.onChange != nil {
 		m.onChange()
 	}

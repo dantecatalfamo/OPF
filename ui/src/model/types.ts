@@ -415,6 +415,16 @@ export interface SystemSettings {
   ntpServers: string[];
   /** How many of each thing the graphs keep a history of; unset, OPF's default, and 0 keeps none. */
   graphs?: GraphLimits;
+  /** Where the firewall's own lookups go; unset, the WAN's servers. */
+  dns?: SystemDns;
+}
+
+export type SystemDnsMode = 'wan' | 'self' | 'servers';
+
+export interface SystemDns {
+  mode: SystemDnsMode;
+  /** For 'servers', the servers; for 'self', ones to fall back on. */
+  servers?: string[];
 }
 
 export interface GraphLimits {

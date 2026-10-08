@@ -143,6 +143,17 @@ func (m *Manager) System() (*SystemStatus, error) {
 	if ts, ok := sysinfo.ParseNtpctl(out); ok {
 		s.Time = &ts
 	}
+	// Where the firewall's own lookups go. A missing file is no servers:
+	// the C library then asks 127.0.0.1.
+	if out, err := m.read("cat", "/etc/resolv.conf"); err == nil {
+		rc := sysinfo.ParseResolvConf(out)
+		s.DNS = &rc
+	} else if strings.Contains(err.Error(), "No such file") {
+		rc := sysinfo.ParseResolvConf("")
+		s.DNS = &rc
+	} else {
+		fail("couldn't read /etc/resolv.conf")
+	}
 	return s, nil
 }
 

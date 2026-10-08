@@ -1,0 +1,2 @@
+nameserver 100.64.1.2 # resolvd: vio0
+lookup file bind
