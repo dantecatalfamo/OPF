@@ -5,7 +5,7 @@
 // kept, its traffic and DNS activity.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { Alert, Anchor, Badge, Card, Grid, Group, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
 import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
@@ -16,6 +16,7 @@ import { TrafficHoursChart } from './Traffic';
 import { HistoryCard } from '../components/HistoryChart';
 import { rulesFor } from '../lib/deviceRules';
 import { DeviceLink } from '../components/DeviceLink';
+import { listName } from './DnsHistory';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -213,16 +214,52 @@ function Stat({ label, value, detail }: { label: string; value: string; detail?:
   );
 }
 
-function Names({ title, items }: { title: string; items: { name: string; count: number }[] }) {
+type TopList = 'names' | 'blocked' | 'missing';
+const topLists: { value: TopList; label: string; empty: string }[] = [
+  { value: 'names', label: 'Looked up', empty: 'Nothing looked up.' },
+  { value: 'blocked', label: 'Blocked', empty: 'Nothing blocked.' },
+  { value: 'missing', label: 'Not found', empty: 'Every name it asked for was found.' },
+];
+
+// One of the device's top names lists at a time, each name with its
+// count beside it and a bar for its share of the list's first.
+function TopNames({ data }: { data: DnsDeviceActivityResource }) {
+  const { applied } = useStore();
+  const [list, setList] = useState<TopList>('names');
+  const items = data[list];
+  const top = Math.max(1, ...items.map((n) => n.count));
+  const current = topLists.find((l) => l.value === list)!;
   return (
-    <Stack gap={2}>
-      <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.6}>{title}</Text>
-      {items.length ? items.slice(0, 8).map((n) => (
-        <Group key={n.name} justify="space-between" wrap="nowrap" gap="xs">
-          <Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{n.name}</Text>
-          <Text size="sm" className="num">{n.count.toLocaleString()}</Text>
-        </Group>
-      )) : <Text size="sm" c="dimmed">None</Text>}
+    <Stack gap="xs">
+      <SegmentedControl
+        size="xs"
+        style={{ alignSelf: 'flex-start' }}
+        value={list}
+        onChange={(v) => setList(v as TopList)}
+        data={topLists.map((l) => ({ value: l.value, label: `${l.label} · ${data[l.value].length}` }))}
+      />
+      {items.length ? (
+        <Table verticalSpacing={4} horizontalSpacing="xs">
+          <Table.Tbody>
+            {items.slice(0, 10).map((n) => (
+              <Table.Tr key={n.name}>
+                <Table.Td w="40%">
+                  {/* Asked for by a device on the network: text, never markup. */}
+                  <Text size="sm" className="mono" style={{ wordBreak: 'break-all' }}>{n.name}</Text>
+                  {list === 'blocked' && <Text size="xs" c="dimmed">by {listName(applied, n.list)}{n.entry && n.entry !== n.name ? `, as ${n.entry}` : ''}</Text>}
+                </Table.Td>
+                <Table.Td>
+                  <Progress size="sm" value={(n.count / top) * 100} color={list === 'blocked' ? 'red' : list === 'missing' ? 'yellow' : undefined} aria-hidden />
+                </Table.Td>
+                <Table.Td ta="right" w={70} style={{ whiteSpace: 'nowrap' }}>
+                  <Text size="sm" className="num">{n.err ? '≈' : ''}{n.count.toLocaleString()}</Text>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      ) : <Text size="sm" c="dimmed" py="xs">{current.empty}</Text>}
+      {items.length > 10 && <Text size="xs" c="dimmed">The first 10 of {items.length}; the rest are on <Anchor component={Link} to="/services/dns?tab=activity" size="xs">DNS activity</Anchor>.</Text>}
     </Stack>
   );
 }
@@ -245,11 +282,7 @@ function DnsCard({ deviceKey, days }: { deviceKey: string; days: number }) {
             <Stat label="No such name" value={(data.total.nxdomain ?? 0).toLocaleString()} />
             <Stat label="Failed" value={(data.total.servfail ?? 0).toLocaleString()} />
           </SimpleGrid>
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-            <Names title="Looked up most" items={data.names} />
-            <Names title="Blocked most" items={data.blocked} />
-            <Names title="Not found most" items={data.missing} />
-          </SimpleGrid>
+          <TopNames data={data} />
         </Stack>
       )}
     </Card>

@@ -19,7 +19,7 @@ import { activityCost, costAdvice } from '../lib/dnsActivityCost';
 import { DeviceLink } from '../components/DeviceLink';
 import { Empty, Mono, SectionTitle } from '../components/ui';
 
-const listName = (m: Model, id?: string) => (!id ? 'your own names' : (m.dns.blocklists ?? []).find((l) => l.id === id)?.name ?? id);
+export const listName = (m: Model, id?: string) => (!id ? 'your own names' : (m.dns.blocklists ?? []).find((l) => l.id === id)?.name ?? id);
 const pct = (n: number, of: number) => (of ? `${((n / of) * 100).toFixed(n / of < 0.1 ? 1 : 0)}%` : '—');
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 

@@ -1484,13 +1484,12 @@ its setting on Firewall › Settings), and tried on 7.9:
       by its name and section, and things by name (an interface, a
       tunnel, a VPN device, a device, an alias, a rule), opening the
       page that has them. Mantine has Spotlight for it.
-- [ ] A device page's DNS card: the "Looked up most", "Blocked most"
-      and "Not found most" lists are hard to read. Three columns of a
-      name and a count each run together, the counts sit far from
-      their names, and "None" sits where a list would be. Give each a
-      clear heading and a small table (name, count, close together), or
-      a single list with tabs; and say "Nothing blocked" rather than
-      "None".
+- [x] A device page's DNS card shows one of its top-name lists at a
+      time (Looked up, Blocked, Not found, each tab with how many), as
+      a table: the name, a bar for its share of the first, and the
+      count close by; blocked names say which list blocked them, and
+      an empty list says what that means ("Nothing blocked."). The
+      three side-by-side columns ran together.
 - [ ] Responsive design: usable from phones to large monitors, since
       admins may need to check status or make an urgent change from a
       phone. Test at phone (375px), tablet (768px), laptop (1024px) and
