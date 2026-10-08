@@ -523,6 +523,20 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 	if liveModel != nil {
 		liveGen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), liveModel)
 	}
+	// And sshd_config, for sign-in access's block. OPF never makes one:
+	// without it there's no sshd to sign in to.
+	sshdDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SshdPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(string(sshdDisk)) != "" {
+		gen[pf.SshdPath] = pf.MergeSshdConfig(string(sshdDisk), req.Model)
+		if liveModel != nil {
+			liveGen[pf.SshdPath] = pf.MergeSshdConfig(string(sshdDisk), liveModel)
+		}
+	} else if pf.AuthpfOn(req.Model) {
+		return nil, &Error{Code: CodeUnsupported, Message: "sign-in access needs sshd", Details: []Detail{{Path: pf.SshdPath, Message: "there's no sshd_config to add the sign-in accounts' settings to"}}}
+	}
 	// What OPF last left in each file, from history; a file no commit
 	// has touched yet is judged against what the applied model
 	// generates, the best there is.
@@ -684,6 +698,12 @@ func outsideChange(path string, disk []byte, onDisk bool, written map[string]wri
 		outside = wrote && !maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev)))
 	case pf.SysctlPath:
 		outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
+	case pf.SshdPath:
+		// The admin's file; only OPF's block is OPF's.
+		outside = wrote && !slices.Equal(pf.SshdValues(string(disk)), pf.SshdValues(string(prev)))
+		if _, ever := written[path]; !ever {
+			outside = false
+		}
 	case pf.HostsPath:
 		outside = wrote && !slices.Equal(pf.HostsValues(string(disk)), pf.HostsValues(string(prev)))
 		// Every system has one; until OPF has written its lines there,

@@ -230,6 +230,12 @@ const (
 	EndpointHost    EndpointType = "host"
 	EndpointNetwork EndpointType = "network"
 	EndpointAlias   EndpointType = "alias"
+	// EndpointAuthpfUser is the signed-in user's address ($user_ip), in
+	// a rule for signed-in users only.
+	EndpointAuthpfUser EndpointType = "authpfUser"
+	// EndpointAuthpfUsers is every signed-in user's address
+	// (<authpf_users>), in any other rule.
+	EndpointAuthpfUsers EndpointType = "authpfUsers"
 )
 
 // IfacePart is the interface modifier: which of an interface's
@@ -359,6 +365,10 @@ type Rule struct {
 	BlockReturn    BlockReturn   `json:"blockReturn,omitempty"`
 	ReturnRstTTL   *int          `json:"returnRstTtl,omitempty"`
 	ReturnICMPCode string        `json:"returnIcmpCode,omitempty"`
+
+	// Authpf, set, makes it a rule for signed-in users (authpf.go):
+	// loaded when one signs in, never from pf.conf.
+	Authpf *RuleAuthpf `json:"authpf,omitempty"`
 }
 
 // IsForm returns true if this is a FormRule.
@@ -582,6 +592,8 @@ type Firewall struct {
 	// Traffic counts what each device sends and receives; nil, or not
 	// Enabled, nothing.
 	Traffic *TrafficAccounting `json:"traffic,omitempty"`
+	// Authpf is sign-in access (authpf.go); nil, or not Enabled, none.
+	Authpf *Authpf `json:"authpf,omitempty"`
 }
 
 // TrafficAccounting keeps each device's traffic, opt in like DNS

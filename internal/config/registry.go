@@ -304,6 +304,49 @@ func DefaultFiles() []File {
 			Desc: "The firewall's own name, for its own programs",
 			Mode: 0644,
 		},
+		// Sign-in access (pf.Authpf). authpf reads these when someone
+		// signs in, so nothing is applied: a session already open keeps
+		// the rules it loaded. A session's rules are checked as pf would
+		// load them, with its macros given.
+		{
+			Name: "authpf.conf", Path: "/etc/authpf/authpf.conf",
+			Desc: "Sign-in access: authpf runs only while this exists",
+			Mode: 0644,
+		},
+		{
+			Name: "authpf.rules", Path: "/etc/authpf/authpf.rules",
+			Desc:  "Sign-in access: everyone's rules while signed in",
+			Check: AuthpfRulesCheck,
+			Mode:  0644,
+		},
+		{
+			Name: "authpf/users/*/authpf.rules", Path: "/etc/authpf/users/*/authpf.rules", Match: authpfNameMatch,
+			Desc:  "Sign-in access: one user's rules while signed in",
+			Check: AuthpfRulesCheck,
+			Mode:  0644,
+		},
+		{
+			Name: "authpf.allow", Path: "/etc/authpf/authpf.allow",
+			Desc: "Sign-in access: who may sign in",
+			Mode: 0644,
+		},
+		{
+			Name: "authpf.message", Path: "/etc/authpf/authpf.message",
+			Desc: "Sign-in access: the message shown once signed in",
+			Mode: 0644,
+		},
+		{
+			Name: "authpf/banned/*", Path: "/etc/authpf/banned/*", Match: authpfNameMatch,
+			Desc: "Sign-in access: why a user may not sign in",
+			Mode: 0644,
+		},
+		{
+			// Root's, so no user can change their own keys; sshd reads
+			// them for the authpf group (sshd_config's OPF block).
+			Name: "authpf/keys/*", Path: "/etc/authpf/keys/*", Match: authpfNameMatch,
+			Desc: "Sign-in access: a user's SSH public keys",
+			Mode: 0644,
+		},
 		{
 			Name: "sysctl.conf", Path: "/etc/sysctl.conf",
 			Desc:             "Kernel settings: forwarding packets between interfaces",
@@ -347,6 +390,13 @@ if cmp -s "$conf" "$tmp"; then
 	exec unbound-checkconf "$conf"
 fi
 unbound-checkconf "$tmp"`
+
+// authpfNameMatch is a sign-in login (pf.AuthpfNameRE).
+const authpfNameMatch = `[a-z][a-z0-9-]{0,30}`
+
+// AuthpfRulesCheck checks a session's rules as authpf loads them: into
+// an anchor of their own, with $user_ip and $user_id defined.
+var AuthpfRulesCheck = []string{"pfctl", "-n", "-a", "authpf/opfcheck", "-D", "user_ip=192.0.2.1", "-D", "user_id=opfcheck", "-f", "{}"}
 
 // netstartOrder is when netstart brings an interface up at boot, so a
 // commit applies them the same way: physical ports first, then the

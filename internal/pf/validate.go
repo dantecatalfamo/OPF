@@ -39,6 +39,7 @@ func Validate(m *Model) []FieldError {
 	v.firewall()
 	v.dhcp()
 	v.dns()
+	v.authpf()
 	v.wireguard()
 	v.notifications()
 	return v.errs
@@ -74,6 +75,9 @@ func (v *validator) notifications() {
 type validator struct {
 	m    *Model
 	errs []FieldError
+	// inAuthpfRule: the endpoints being checked are a rule for
+	// signed-in users', where the signed-in user ($user_ip) is one.
+	inAuthpfRule bool
 }
 
 func (v *validator) fail(path, format string, args ...any) {
@@ -616,6 +620,14 @@ func (v *validator) endpoint(path string, e Endpoint) {
 		case a.Type == AliasPorts:
 			v.fail(path+".alias", "%q is a port alias, not addresses", e.Alias)
 		}
+	case EndpointAuthpfUser:
+		if !v.inAuthpfRule {
+			v.fail(path+".type", "the signed-in user is only in a rule for signed-in users (Sign-in access)")
+		}
+	case EndpointAuthpfUsers:
+		if !AuthpfOn(v.m) {
+			v.fail(path+".type", "signed-in users are only there with sign-in access on")
+		}
 	default:
 		v.fail(path+".type", "unknown endpoint type %q", e.Type)
 	}
@@ -702,7 +714,7 @@ func (v *validator) firewall() {
 		v.re(p+".id", a.ID, idRE, "id")
 		v.re(p+".name", a.Name, tableRE, "alias name (letters, digits, _; up to 31)")
 		v.unique(p+".name", aliasNames, a.Name, "alias")
-		if a.Name == "private" || a.Name == "bogons" || strings.HasPrefix(a.Name, "opf_") {
+		if a.Name == "private" || a.Name == "bogons" || a.Name == AuthpfUsersTable || strings.HasPrefix(a.Name, "opf_") {
 			v.fail(p+".name", "%q is a table OPF makes itself", a.Name)
 		}
 		v.text(p+".description", a.Description, 200, false)
@@ -758,11 +770,16 @@ func (v *validator) firewall() {
 			}
 		}
 		v.note(p+".description", r.Description)
+		if r.IsAuthpf() {
+			v.authpfRule(p, r)
+		}
 		switch r.Kind {
 		case "raw":
 			v.rawLine(p+".text", r.Text, true)
 		case "form":
+			v.inAuthpfRule = r.IsAuthpf()
 			v.formRule(p, r)
+			v.inAuthpfRule = false
 		default:
 			v.fail(p+".kind", "must be form or raw, not %q", r.Kind)
 		}
@@ -1396,4 +1413,85 @@ func validEndpoint(s string) bool {
 		}
 	}
 	return true
+}
+
+// authpf checks sign-in access.
+func (v *validator) authpf() {
+	a := v.m.Firewall.Authpf
+	if a == nil {
+		return
+	}
+	p := "firewall.authpf"
+	seen := map[string]bool{}
+	for j, id := range a.SignIn {
+		jp := at(p+".signIn", j)
+		v.ifaceRef(jp, id)
+		v.unique(jp, seen, id, "interface")
+	}
+	if a.Enabled && len(a.SignIn) == 0 {
+		v.fail(p+".signIn", "choose the networks users sign in from")
+	}
+	v.message(p+".message", a.Message, 2000)
+	if len(a.Users) > 500 {
+		v.fail(p+".users", "at most 500")
+	}
+	ids, names := map[string]bool{}, map[string]bool{}
+	for i, u := range a.Users {
+		up := at(p+".users", i)
+		v.re(up+".id", u.ID, idRE, "id")
+		v.unique(up+".id", ids, u.ID, "user id")
+		switch {
+		case !AuthpfNameRE.MatchString(u.Name):
+			v.fail(up+".name", "a login is lowercase letters, digits and -, starting with a letter, up to 31")
+		case slices.Contains(authpfReserved, u.Name):
+			v.fail(up+".name", "%q is the system's", u.Name)
+		}
+		v.unique(up+".name", names, u.Name, "login")
+		v.note(up+".description", u.Description)
+		if len(u.Keys) == 0 && u.Banned == "" {
+			v.fail(up+".keys", "add an SSH public key: signing in takes one")
+		}
+		if len(u.Keys) > 20 {
+			v.fail(up+".keys", "at most 20")
+		}
+		for k, key := range u.Keys {
+			if len(key) > 16384 {
+				v.fail(at(up+".keys", k), "is %d bytes; the most is 16384", len(key))
+			} else if msg := checkSSHKey(key); msg != "" {
+				v.fail(at(up+".keys", k), "%s", msg)
+			}
+		}
+		v.message(up+".banned", u.Banned, 1000)
+	}
+}
+
+// authpfRule checks what makes a rule one for signed-in users.
+func (v *validator) authpfRule(p string, r Rule) {
+	if !AuthpfOn(v.m) {
+		v.fail(p+".authpf", "turn sign-in access on for its rules to be used")
+	}
+	if r.Kind != "form" {
+		v.fail(p+".kind", "a rule for signed-in users is a guided rule")
+		return
+	}
+	if r.Source.Type != EndpointAuthpfUser && r.Destination.Type != EndpointAuthpfUser {
+		v.fail(p+".source", "a rule for signed-in users is about the signed-in user: from or to them")
+	}
+	for j, id := range r.Authpf.Users {
+		if a := v.m.Firewall.Authpf; a == nil || !slices.ContainsFunc(a.Users, func(u AuthpfUser) bool { return u.ID == id }) {
+			v.fail(at(p+".authpf.users", j), "no sign-in user %q", id)
+		}
+	}
+}
+
+// message is text shown to someone, which may run over several lines.
+func (v *validator) message(path, s string, max int) {
+	switch {
+	case !utf8.ValidString(s):
+		v.fail(path, "isn't valid UTF-8")
+	case len(s) > max:
+		v.fail(path, "is %d bytes; the most is %d", len(s), max)
+	case strings.ContainsFunc(s, func(r rune) bool { return unicode.IsControl(r) && r != '\n' && r != '\t' }):
+		v.fail(path, "can't contain control characters")
+	}
 }

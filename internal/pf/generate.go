@@ -359,6 +359,10 @@ func endpoint(e Endpoint, m *Model) string {
 		// Address aliases are pf tables. Writing a bare name instead
 		// would turn a table lookup into a hostname lookup.
 		return fmt.Sprintf("%s<%s>", not, e.Alias)
+	case EndpointAuthpfUser:
+		return not + "$user_ip"
+	case EndpointAuthpfUsers:
+		return fmt.Sprintf("%s<%s>", not, AuthpfUsersTable)
 	default:
 		return "any"
 	}
@@ -535,6 +539,8 @@ const (
 	LabelTrafficUnknown = "traffic-unknown"
 	// What the firewall starts itself (its id is TrafficSelfID).
 	LabelTrafficSelf = "traffic-self"
+	// SSH in for sign-in access (Authpf), by interface id.
+	LabelAuthpf = "authpf"
 )
 
 // TrafficSelfID is the firewall's own traffic's label id.
@@ -558,7 +564,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf, LabelAuthpf:
 	default:
 		return "", "", false
 	}
@@ -861,6 +867,9 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			add(fmt.Sprintf("table <%s> const { %s }", a.Name, strings.Join(a.Entries, " ")), origin)
 		}
 	}
+	if t, _ := authpfPf(m); t != "" {
+		add(t, &Origin{Label: "Sign-in access: who's signed in", To: "/firewall/authpf"})
+	}
 	if wan != nil && wan.BlockBogons {
 		add("table <bogons> const { 0.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 192.0.0.0/24 198.18.0.0/15 224.0.0.0/3 }", &Origin{Label: "WAN protection", To: fmt.Sprintf("/interfaces/%s", wan.ID)})
 	}
@@ -1162,6 +1171,13 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			}
 		}
 	}
+	if _, ls := authpfPf(m); len(ls) > 0 {
+		add("# Sign-in access (authpf): SSH in, and each signed-in user's rules", nil)
+		for _, l := range ls {
+			add(l, &Origin{Label: "Sign-in access", To: "/firewall/authpf"})
+		}
+		blank()
+	}
 	if len(forwards) > 0 {
 		add("# Port forwards", nil)
 		for i := range forwards {
@@ -1183,7 +1199,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	// Floating rules
 	var floating []Rule
 	for i := range fw.Rules {
-		if fw.Rules[i].Enabled && isFloating(&fw.Rules[i]) {
+		if fw.Rules[i].Enabled && !fw.Rules[i].IsAuthpf() && isFloating(&fw.Rules[i]) {
 			floating = append(floating, fw.Rules[i])
 		}
 	}
@@ -1200,7 +1216,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 		var ifaceRules []Rule
 		for i := range fw.Rules {
 			r := &fw.Rules[i]
-			if r.Enabled && !isFloating(r) && r.Interfaces[0] == iface.ID {
+			if r.Enabled && !r.IsAuthpf() && !isFloating(r) && r.Interfaces[0] == iface.ID {
 				ifaceRules = append(ifaceRules, *r)
 			}
 		}
@@ -1536,6 +1552,7 @@ func GenerateFiles(m *Model) []GeneratedFile {
 	if IgnoresLeaseDNS(m) {
 		files = append(files, GeneratedFile{Path: DhcpleasedPath, Content: GenerateDhcpleasedConf(m)})
 	}
+	files = append(files, authpfFiles(m)...)
 
 	// Default gateway
 	for _, g := range m.Routing.Gateways {
