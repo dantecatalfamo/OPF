@@ -433,6 +433,43 @@ In order. Each step's details are in the section it points to.
           that asked; the page checks again and says so.
   - [ ] The firewall log, rule counters and the packet tester don't
         follow anchors yet; sign-in rules don't show up in them.
+  - More depth, roughly in order of use:
+    - [ ] **Accounts that expire**: access until a date, for a
+          contractor (`usermod -e`; the account stops working by
+          itself), shown on the user and in the event log when it ends.
+    - [ ] **A longest session**: authpf has none; OPF ends sessions
+          older than a set time (per user or for everyone) the way End
+          session does.
+    - [ ] **Hours**: sign-in only at set times, by banning outside them
+          and ending open sessions (with Scheduled rules).
+    - [ ] **Per-session traffic and connections**: each session's rule
+          counters (`pfctl -a 'authpf/<user>(<pid>)' -vsr`) and its
+          address's states on Signed in now.
+    - [ ] **Groups**: user groups in the model, rules for a group
+          (`/etc/authpf/groups/<group>/authpf.rules`, between everyone's
+          and a user's own), "For" choosing groups, `%group` in
+          authpf.allow.
+    - [ ] **Where each user may sign in from**: sshd's `Match User …
+          Address …`, so a contractor signs in only from the guest
+          network.
+    - [ ] **Brute-force protection on the sign-in SSH rule**
+          (Protections).
+    - [ ] **Other ways to sign in**, from the base system: a password
+          (secret handling, as the admin accounts have), a YubiKey
+          one-time password as a second step (login_yubikey(8),
+          AuthenticationMethods publickey,keyboard-interactive), or a
+          RADIUS server (login_radius(8), or radiusd).
+    - [ ] **Accountability by user**: `$user_id` in a session's rules
+          (logging under the user's name), and traffic accounting by
+          user rather than address on shared networks.
+    - [ ] **A sign-in page for those not signed in**: their web traffic
+          sent to a page on the firewall saying how to sign in (httpd,
+          the captive portal in Services).
+    - [ ] **authpf.problem**: what users see when authpf itself fails
+          (who to call).
+    - [ ] **authpf-noip**, for users sharing one address (NAT, several
+          users on one host): no $user_ip, so rules by user only; weaker,
+          only if someone needs it.
   - [ ] The SSH port is 22, and the anti-lockout's; take both from
         sshd_config.
   - [ ] Removing a user leaves their empty /etc/authpf/users/<name>/.
