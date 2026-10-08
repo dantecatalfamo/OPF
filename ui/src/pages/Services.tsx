@@ -9,7 +9,7 @@ import {
   ActionIcon, Alert, Anchor, Badge, Button, Card, Code, Drawer, Group, Menu, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Text, TextInput, Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconAlertTriangle, IconDots, IconPlayerPlay, IconPlayerStop, IconRefresh, IconRotateClockwise, IconSearch, IconSettings } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCheck, IconDots, IconPlayerPlay, IconPlayerStop, IconRefresh, IconRotateClockwise, IconSearch, IconSettings } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { ServiceSetting } from '../model/types';
 import type { LogLine, ServiceDetailResource, ServicesResource, ServiceStatus } from '../lib/api';
@@ -42,7 +42,9 @@ function State({ s }: { s: ServiceStatus }) {
 function Boot({ s }: { s: ServiceStatus }) {
   return (
     <Group gap={6} wrap="nowrap">
-      <Text size="sm" c={s.enabled ? undefined : 'dimmed'}>{s.enabled ? 'Yes' : 'No'}</Text>
+      {s.enabled
+        ? <Badge color="blue" variant="filled" leftSection={<IconCheck size={12} stroke={3} />}>Yes</Badge>
+        : <Text size="sm" c="dimmed">No</Text>}
       {s.setting && <Tooltip label="OPF’s setting, in rc.conf.local"><Badge size="xs" variant="outline" color="gray">set here</Badge></Tooltip>}
       {s.kind === 'daemon' && s.running && !s.enabled && <Tooltip label="Running now, but won’t start at the next boot"><IconAlertTriangle size={14} color="var(--mantine-color-yellow-6)" /></Tooltip>}
     </Group>
