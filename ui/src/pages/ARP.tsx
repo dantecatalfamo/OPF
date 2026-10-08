@@ -30,6 +30,11 @@ function useArpTable() {
 
 export function ARP() {
   const { applied } = useStore();
+  // Those OPF counts as devices have a page: on an inside network, and
+  // not the firewall's own addresses (as on the server, devicepage.go).
+  const insideDevices = new Set(applied.interfaces.filter((i) => i.role !== 'wan').map((i) => i.device));
+  const isDevice = (e: { mac: string; iface: string; flags?: string }) =>
+    /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(e.mac) && !e.flags?.split(/[\s,]+/).includes('local') && insideDevices.has(e.iface);
   const { data, error } = useArpTable();
   const [q, setQ] = useState('');
 
@@ -105,7 +110,7 @@ export function ARP() {
                   entries.map((e, i) => (
                     <Table.Tr key={`${e.ip}-${i}`}>
                       <Table.Td><Mono>{e.ip}</Mono></Table.Td>
-                      <Table.Td>{/^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(e.mac) ? <DeviceLink deviceKey={macKey(e.mac)}><Mono>{e.mac}</Mono></DeviceLink> : <Mono>{e.mac}</Mono>}</Table.Td>
+                      <Table.Td>{isDevice(e) ? <DeviceLink deviceKey={macKey(e.mac)}><Mono>{e.mac}</Mono></DeviceLink> : <Mono>{e.mac}</Mono>}</Table.Td>
                       <Table.Td>
                         <Text size="sm">{deviceName(applied, e.iface)}</Text>
                       </Table.Td>
