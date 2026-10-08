@@ -301,7 +301,7 @@ In order. Each step's details are in the section it points to.
 - [ ] When the UI loads a model someone else staged, it lists the
       changes by section only ("Changed firewall settings"); the edit
       descriptions aren't stored with the staged model.
-- [ ] History is never pruned. Diagnostics › Storage shows it growing
+- [ ] History is never pruned. System › Storage shows it growing
       (48 commits, 880 KB on the VM after a week of testing).
 - [ ] Newly created parent directories get 0755; check what each managed
       path expects.
@@ -967,7 +967,7 @@ Network, VPN and logs:
       (dpinger-like, in the collector) would keep loss and latency over
       time and could drive gateway-group failover (Models and
       generators › Multi-WAN).
-- [x] System logs (Diagnostics › System logs, `GET /api/logs/system/{log}`):
+- [x] System logs (System › System logs, `GET /api/logs/system/{log}`):
       messages, daemon, authlog, maillog and dmesg, the last 5,000
       lines read as root, filtered by text and program on the firewall,
       cleaned, newest first (the kernel's in its order), with follow.
@@ -980,7 +980,7 @@ Network, VPN and logs:
 Diagnostics tools (everything in the base system that helps someone
 work out what's wrong, each with a form rather than a command line):
 
-- How they run is built (`internal/diag`, Diagnostics › Tools): the
+- How they run is built (`internal/diag`, Monitoring › Tools): the
   parent builds a fixed argv from checked fields, with `--` before the
   host, a time limit, at most four at once, output capped and cleaned
   and fetched by the page as it arrives. New tools go in
@@ -1053,7 +1053,7 @@ pf:
 
 Storage:
 
-- [x] Diagnostics › Storage: everything that fills up as the firewall
+- [x] System › Storage: everything that fills up as the firewall
       runs, what it holds now and the most it can, with a bar each:
       pf's state table, tables and table entries against its hard
       limits; OPF's graphs (memory and saved), event log, DNS activity
@@ -1144,7 +1144,7 @@ them, so they can be graphed and compared):
   and cache hits, gateway latency and loss, WireGuard peers' traffic
   and handshake age, packets per labelled rule, DHCP leases in use per
   network and the clock's offset (the slower ones every 30 s).
-  `GET /api/metrics`, Diagnostics › Graphs, the dashboard's traffic
+  `GET /api/metrics`, Monitoring › Graphs, the dashboard's traffic
   chart, and a graph where each number is shown (the DNS page,
   Routing's gateways, an interface, a DHCP network, a rule, a VPN
   device), with peaks dashed for traffic and latency. It ran on 7.9
@@ -1219,7 +1219,7 @@ them, so they can be graphed and compared):
         interrupts per device (`vmstat -i`), sensors (temperatures,
         fans, voltages from `sysctl hw.sensors`), uptime and reboots.
 - The event log is built (`internal/appliance/events.go`,
-  `eventwatch.go`, Diagnostics › Events): links going down and up, a
+  `eventwatch.go`, Monitoring › Events): links going down and up, a
   DHCP address changing, gateways stopping and answering again, a
   device seen for the first time (by MAC, named from its lease), a VPN
   device connecting from a new address, dhcpd, unbound and ntpd
@@ -1303,7 +1303,7 @@ setting under Settings), and tried on 7.9 with the real unbound:
       reservations, then the lease's name in DNS or the one it asked
       for. Found the ARP table's parser didn't read OpenBSD's table
       format (it expected other BSDs' `? (addr) at` lines), so
-      Diagnostics › ARP table was empty on a real firewall; fixed.
+      Devices › ARP table was empty on a real firewall; fixed.
 - [x] **What's kept.** By hour: queries, blocked, allowed, NXDOMAIN (not
       counting blocks), SERVFAIL and cached, for the network and each
       device, and blocks by list. By day: the names looked up, blocked
@@ -1342,7 +1342,7 @@ setting under Settings), and tried on 7.9 with the real unbound:
       "Delete what's kept" deletes it now.
 - [x] **API and roles.** `GET /api/dns/activity`, `/device`, `DELETE`,
       admin only (the overall top names too), never in webhooks.
-- [x] A device's page (Diagnostics › Devices, and one device's page):
+- [x] A device's page (Devices, and one device's page):
       who it is (its DHCP lease and reservation, ARP entries, the
       network it's on, its VPN tunnel and its state now, when it was
       first seen), its traffic and DNS activity where kept (admins),
@@ -1369,7 +1369,7 @@ setting under Settings), and tried on 7.9 with the real unbound:
       "today" is since midnight, not the last 24 hours.
 
 Traffic per device is built (`firewall.traffic`: `internal/activity/
-traffic.go`, `internal/appliance/traffic.go`, Diagnostics › Traffic,
+traffic.go`, `internal/appliance/traffic.go`, Devices › Traffic,
 its setting on Firewall › Settings), and tried on 7.9:
 
 - [x] **Collecting it.** pf's table counters (`table <opf_hosts>
@@ -1455,6 +1455,12 @@ its setting on Firewall › Settings), and tried on 7.9:
   settings would push them down as devices connect, and an admin would
   have to hunt for them. Lists only the admin adds to (reservations,
   host names, blocklists) can sit beside the settings.
+- The sidebar is grouped by what a page is about, not by whether it
+  shows state or settings: Devices (all devices, their traffic, ARP),
+  Network, Firewall (with its connections and log), Services,
+  Monitoring (graphs, events, tools), System (with its logs, files and
+  storage). Diagnostics held eleven pages and grew with every feature.
+  The old /diagnostics/... addresses redirect.
 - [ ] Responsive design: usable from phones to large monitors, since
       admins may need to check status or make an urgent change from a
       phone. Test at phone (375px), tablet (768px), laptop (1024px) and
@@ -2054,7 +2060,7 @@ Commit engine:
 
 Configuration files:
 
-- [x] Diagnostics › Configuration files: every file the configuration
+- [x] System › Configuration files: every file the configuration
       manages, grouped by what it's for, as it is on the firewall (with
       line numbers and a copy button), with the staged change to it and,
       for one changed by hand, a diff from what OPF last wrote, the same
@@ -2118,7 +2124,7 @@ Live data:
       pf. ftp runs as the unprivileged user, and only the lines that are
       addresses are kept. A commit with DNSSEC on runs unbound-anchor
       first when there's no root.key. Checked on 7.9.
-- [x] Diagnostics › Tools: ping (with don't-fragment sizes for the
+- [x] Monitoring › Tools: ping (with don't-fragment sizes for the
       path MTU), traceroute (UDP or ICMP, AS numbers), DNS lookups (any
       type, another server, +trace, DNSSEC, reverse) and port tests,
       run by the parent from checked fields, output streamed to the

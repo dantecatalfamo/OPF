@@ -176,7 +176,7 @@ export function Dashboard() {
             ) : (
               <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No WAN, and no default gateway to reach the internet through.</Text>
             )}
-            <Anchor component={Link} to="/diagnostics/graphs" size="xs" c="dimmed">More graphs</Anchor>
+            <Anchor component={Link} to="/monitoring/graphs" size="xs" c="dimmed">More graphs</Anchor>
           </Card>
         </Grid.Col>
 
@@ -256,7 +256,7 @@ export function Dashboard() {
 
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card h="100%">
-            <SectionTitle right={<Anchor component={Link} to="/diagnostics/log" size="sm">View log</Anchor>}>
+            <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="sm">View log</Anchor>}>
               Recently blocked
             </SectionTitle>
             <Table verticalSpacing={6} horizontalSpacing={0} fz="sm">

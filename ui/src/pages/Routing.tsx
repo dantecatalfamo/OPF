@@ -167,7 +167,7 @@ function Gateways() {
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconPencil size={16} />} onClick={() => setModal({ open: true, gateway: g })}>Edit</Menu.Item>
                           {(s?.address ?? address) && (
-                            <Menu.Item leftSection={<IconActivity size={16} />} component={Link} to={`/diagnostics/tools?tool=ping&host=${encodeURIComponent(s?.address ?? address ?? '')}`}>Ping</Menu.Item>
+                            <Menu.Item leftSection={<IconActivity size={16} />} component={Link} to={`/monitoring/tools?tool=ping&host=${encodeURIComponent(s?.address ?? address ?? '')}`}>Ping</Menu.Item>
                           )}
                           <Tooltip label="Still used by a route, rule or as the default" disabled={!inUse(g.id)} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={inUse(g.id)} onClick={() => edit('routing', `Deleted gateway ${g.name}`, (m) => ({ ...m, routing: { ...m.routing, gateways: m.routing.gateways.filter((x) => x.id !== g.id) } }))}>

@@ -6,7 +6,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconActivity, IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconGauge, IconLogout, IconMoon, IconNetwork,
+  IconActivity, IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconDevices, IconGauge, IconLogout, IconMoon, IconNetwork,
   IconServer2, IconSettings, IconShieldHalf, IconSun, IconUser,
 } from '@tabler/icons-react';
 import { Brand } from './Brand';
@@ -36,6 +36,13 @@ interface NavGroup {
 const nav: NavGroup[] = [
   { label: 'Dashboard', icon: IconGauge, to: '/' },
   {
+    label: 'Devices', icon: IconDevices, items: [
+      { label: 'All devices', to: '/devices' },
+      { label: 'Traffic', to: '/devices/traffic' },
+      { label: 'ARP table', to: '/devices/arp' },
+    ],
+  },
+  {
     label: 'Network', icon: IconNetwork, items: [
       { label: 'Interfaces', to: '/interfaces' },
       { label: 'Routing', to: '/network/routing' },
@@ -46,6 +53,8 @@ const nav: NavGroup[] = [
       { label: 'Rules', to: '/firewall/rules' },
       { label: 'NAT', to: '/firewall/nat' },
       { label: 'Aliases', to: '/firewall/aliases' },
+      { label: 'Connections', to: '/firewall/connections' },
+      { label: 'Firewall log', to: '/firewall/log' },
       { label: 'Ruleset', to: '/firewall/ruleset' },
       { label: 'Settings', to: '/firewall/settings' },
     ],
@@ -58,35 +67,38 @@ const nav: NavGroup[] = [
     ],
   },
   {
+    label: 'Monitoring', icon: IconActivity, items: [
+      { label: 'Graphs', to: '/monitoring/graphs' },
+      { label: 'Events', to: '/monitoring/events' },
+      { label: 'Tools', to: '/monitoring/tools' },
+    ],
+  },
+  {
     label: 'System', icon: IconSettings, items: [
       { label: 'General', to: '/system/general' },
       { label: 'Users', to: '/system/users', admin: true },
       { label: 'Notifications', to: '/system/notifications' },
       { label: 'Change history', to: '/system/history' },
-    ],
-  },
-  {
-    label: 'Diagnostics', icon: IconActivity, items: [
-      { label: 'Graphs', to: '/diagnostics/graphs' },
-      { label: 'Events', to: '/diagnostics/events' },
-      { label: 'Tools', to: '/diagnostics/tools' },
-      { label: 'Devices', to: '/diagnostics/devices' },
-      { label: 'Connections', to: '/diagnostics/connections' },
-      { label: 'Traffic', to: '/diagnostics/traffic' },
-      { label: 'ARP table', to: '/diagnostics/arp' },
-      { label: 'Firewall log', to: '/diagnostics/log' },
-      { label: 'System logs', to: '/diagnostics/system-logs' },
-      { label: 'Configuration files', to: '/diagnostics/files' },
-      { label: 'Storage', to: '/diagnostics/storage' },
+      { label: 'System logs', to: '/system/logs' },
+      { label: 'Configuration files', to: '/system/files' },
+      { label: 'Storage', to: '/system/storage' },
     ],
   },
 ];
 
-const isActive = (path: string, to: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'));
+const matches = (path: string, to: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'));
+
+// The page's item is the one whose path matches most of it: on
+// /devices/traffic that's Traffic, not All devices; on a device's page,
+// All devices.
+const allPaths = nav.flatMap((g) => (g.to ? [g.to] : g.items!.map((i) => i.to)));
+const activePath = (path: string) =>
+  allPaths.filter((to) => matches(path, to)).sort((a, b) => b.length - a.length)[0];
 
 function Navigation({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
   const { canEdit } = useRole();
+  const active = activePath(pathname);
   return (
     <>
       {nav.map((g) =>
@@ -97,7 +109,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
             to={g.to}
             label={g.label}
             leftSection={<g.icon size={18} stroke={1.6} />}
-            active={isActive(pathname, g.to)}
+            active={active === g.to}
             onClick={onNavigate}
             variant="light"
             fw={500}
@@ -117,7 +129,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
                 component={Link}
                 to={i.to}
                 label={i.label}
-                active={isActive(pathname, i.to)}
+                active={active === i.to}
                 onClick={onNavigate}
                 variant="light"
               />

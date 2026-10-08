@@ -73,7 +73,7 @@ export function DnsTools() {
                   <Output result={lookup.result} empty="Nothing cached for this name: the next lookup asks the internet." />
                 </>
               )}
-              <Text size="xs" c="dimmed">To see the answer a device gets, use Diagnostics › Tools › DNS lookup.</Text>
+              <Text size="xs" c="dimmed">To see the answer a device gets, use Monitoring › Tools › DNS lookup.</Text>
             </Stack>
           </Card>
           <Card>

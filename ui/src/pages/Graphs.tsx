@@ -1,4 +1,4 @@
-// Diagnostics › Graphs: what the collector kept, over an hour to a
+// Monitoring › Graphs: what the collector kept, over an hour to a
 // month: traffic on each interface, the system, pf, DNS and the
 // gateways.
 import { Card, Grid, SegmentedControl, SimpleGrid, Text } from '@mantine/core';

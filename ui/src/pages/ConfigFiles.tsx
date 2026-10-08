@@ -1,4 +1,4 @@
-// Diagnostics › Configuration files: every file the configuration
+// System › Configuration files: every file the configuration
 // manages, as it is on the firewall, with the staged change to it and
 // anything changed outside OPF. The other pages link here for their own
 // files (?file=); pf.conf is richer under Firewall › Ruleset.
@@ -14,7 +14,7 @@ import { UnifiedDiff } from '../components/UnifiedDiff';
 /** A link to a file on this page, for the pages it belongs to. */
 export function FileLink({ path, label }: { path: string; label?: string }) {
   return (
-    <Anchor component={Link} to={`/diagnostics/files?file=${encodeURIComponent(path)}`} size="xs">
+    <Anchor component={Link} to={`/system/files?file=${encodeURIComponent(path)}`} size="xs">
       {label ?? `Show ${path.split('/').pop()}`}
     </Anchor>
   );

@@ -1,4 +1,4 @@
-// Diagnostics › System logs: what syslogd writes, a tab each, and the
+// System › System logs: what syslogd writes, a tab each, and the
 // kernel's messages. The firewall reads the end of the log and filters
 // it; this shows the newest first.
 import { useEffect, useState } from 'react';

@@ -1,5 +1,5 @@
 // Traffic per device (firewall.traffic): the setting, on Firewall ›
-// Settings, and Diagnostics › Traffic, which shows what each device
+// Settings, and Devices › Traffic, which shows what each device
 // sent and received.
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -59,7 +59,7 @@ export function TrafficSettingsCard() {
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             pf counts every packet each device on your networks sends and receives, through the firewall or to it, and OPF keeps the totals by hour, shown under{' '}
-            <Anchor component={Link} to="/diagnostics/traffic" size="sm">Diagnostics › Traffic</Anchor>. Only how much, never what or where to.
+            <Anchor component={Link} to="/devices/traffic" size="sm">Devices › Traffic</Anchor>. Only how much, never what or where to.
           </Text>
           <Alert color="gray" variant="light" p="sm" icon={<IconLock size={16} />}>
             <Text size="sm">How much each device moves, and when, says when people are home and what they do. Only admins can see it, and nothing of it goes to webhooks.</Text>
@@ -185,7 +185,7 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
   );
 }
 
-/** Diagnostics › Traffic: what each device sent and received over the days chosen. */
+/** Devices › Traffic: what each device sent and received over the days chosen. */
 export function Traffic() {
   const { applied } = useStore();
   const { canEdit } = useRole();

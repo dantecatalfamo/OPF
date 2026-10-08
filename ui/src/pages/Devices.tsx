@@ -1,4 +1,4 @@
-// Diagnostics › Devices: every device OPF knows of, and one device's
+// Devices: every device OPF knows of, and one device's
 // page with everything about it together: who it is (its lease,
 // reservation, ARP entries, VPN tunnel), the network it's on, its
 // connections now, its events and firewall log, and, where they're
@@ -41,7 +41,7 @@ function Sources({ d }: { d: DeviceInfo }) {
   );
 }
 
-/** Diagnostics › Devices: every device OPF knows of. */
+/** Devices: every device OPF knows of. */
 export function Devices() {
   const [data, setData] = useState<DevicesResource>();
   const [error, setError] = useState<string>();
@@ -189,7 +189,7 @@ function TrafficCard({ deviceKey, days }: { deviceKey: string; days: number }) {
   }, [deviceKey, days]);
   return (
     <Card>
-      <SectionTitle right={<Anchor component={Link} to="/diagnostics/traffic" size="xs">Traffic</Anchor>}>Traffic</SectionTitle>
+      <SectionTitle right={<Anchor component={Link} to="/devices/traffic" size="xs">Traffic</Anchor>}>Traffic</SectionTitle>
       {data === undefined ? <Text size="sm" c="dimmed">Reading…</Text> : data === null ? <Empty>None counted for it over these days.</Empty> : (
         <Stack gap="sm">
           <SimpleGrid cols={2}>
@@ -267,7 +267,7 @@ function Connections({ addresses }: { addresses: string[] }) {
   }, [addresses.join()]);
   return (
     <Card>
-      <SectionTitle right={<Anchor component={Link} to="/diagnostics/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
+      <SectionTitle right={<Anchor component={Link} to="/firewall/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
       {error ? <Alert color="red" variant="light" p="sm">{error}</Alert> : !states ? <Text size="sm" c="dimmed">Reading…</Text> : states.length ? (
         <Table.ScrollContainer minWidth={560}>
           <Table verticalSpacing={4}>
@@ -299,7 +299,7 @@ function Events({ terms }: { terms: string[] }) {
   }, [terms.join()]);
   return (
     <Card h="100%">
-      <SectionTitle right={<Anchor component={Link} to="/diagnostics/events" size="xs">Events</Anchor>}>Events</SectionTitle>
+      <SectionTitle right={<Anchor component={Link} to="/monitoring/events" size="xs">Events</Anchor>}>Events</SectionTitle>
       {!events ? <Text size="sm" c="dimmed">Reading…</Text> : events.length ? (
         <Stack gap={4}>
           {events.slice(0, 15).map((e) => (
@@ -327,7 +327,7 @@ function FirewallLog({ addresses }: { addresses: string[] }) {
   }, [addresses.join()]);
   return (
     <Card h="100%">
-      <SectionTitle right={<Anchor component={Link} to="/diagnostics/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
+      <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
       {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : entries.length ? (
         <Stack gap={4}>
           {entries.slice(0, 15).map((e, i) => (
@@ -343,7 +343,7 @@ function FirewallLog({ addresses }: { addresses: string[] }) {
   );
 }
 
-/** Diagnostics › Devices › one device: everything about it together. */
+/** Devices › one device: everything about it together. */
 export function Device() {
   const { key = '' } = useParams();
   const { applied } = useStore();
@@ -367,7 +367,7 @@ export function Device() {
 
   return (
     <>
-      <Group gap="xs" mb={4}><Anchor component={Link} to="/diagnostics/devices" size="sm">Devices</Anchor></Group>
+      <Group gap="xs" mb={4}><Anchor component={Link} to="/devices" size="sm">Devices</Anchor></Group>
       <PageHeader
         title={d ? label(d) : 'Device'}
         description={d ? `${kindWords[d.kind]}${d.networks.length ? ` on ${d.networks.map((x) => x.name).join(' and ')}` : ''}${d.addresses.length ? ` · ${d.addresses.join(', ')}` : ''}` : undefined}

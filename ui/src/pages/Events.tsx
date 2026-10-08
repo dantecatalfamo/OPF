@@ -1,4 +1,4 @@
-// Diagnostics › Events: what happened, newest first. Links going down,
+// Monitoring › Events: what happened, newest first. Links going down,
 // the WAN address changing, gateways not answering, new devices, VPN
 // devices roaming, daemons stopping, list downloads failing, patches,
 // and every change applied. Filter by kind, search, and read further
@@ -40,10 +40,10 @@ function linkOf(m: Model, e: OpfEvent): string | undefined {
       return '/network/routing';
     case 'vpn':
       // A VPN device's own page; it links to its tunnel.
-      return tunnels(m).some((x) => x.wireguard.peers.some((p) => p.id === s)) ? `/diagnostics/devices/${encodeURIComponent(`vpn:${s}`)}` : undefined;
+      return tunnels(m).some((x) => x.wireguard.peers.some((p) => p.id === s)) ? `/devices/${encodeURIComponent(`vpn:${s}`)}` : undefined;
     case 'device':
       // Its subject is its MAC address.
-      return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(s) ? `/diagnostics/devices/${encodeURIComponent(`mac:${s.toLowerCase()}`)}` : '/diagnostics/arp';
+      return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(s) ? `/devices/${encodeURIComponent(`mac:${s.toLowerCase()}`)}` : '/devices/arp';
     case 'service':
       return { dhcpd: '/services/dhcp', unbound: '/services/dns', ntpd: '/system/general' }[s];
     case 'list':

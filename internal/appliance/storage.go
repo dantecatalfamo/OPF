@@ -12,7 +12,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
 
-// Diagnostics › Storage: everything that fills up as the firewall runs,
+// System › Storage: everything that fills up as the firewall runs,
 // what it holds now and the most it can: OPF's own records, pf's tables
 // in the kernel, the logs OPF reads, and the disk they're on.
 
@@ -113,14 +113,14 @@ func (m *Manager) Storage() (*Storage, error) {
 	// OPF's own records.
 	memMax := m.graphStorage(add)
 	saved := StorageItem{ID: "graphs-saved", Group: StorageOPF, Name: "Graphs, saved", Desc: "The same, saved every few minutes and when OPF stops",
-		Unit: "bytes", Where: "disk", Current: fileSize(m.store.StatePath(metricsFile)), Max: ptr(memMax), Link: "/diagnostics/graphs", Settings: []StorageLink{setGraphs}}
+		Unit: "bytes", Where: "disk", Current: fileSize(m.store.StatePath(metricsFile)), Max: ptr(memMax), Link: "/monitoring/graphs", Settings: []StorageLink{setGraphs}}
 	if saved.Current == nil {
 		saved.Note = "Not saved yet."
 	}
 	add(saved)
 	events := int64(m.eventLog().count())
 	add(StorageItem{ID: "events", Group: StorageOPF, Name: "Event log", Desc: "Links, addresses, gateways, devices and commits as they happen",
-		Unit: "entries", Where: "memory", Current: ptr(events), Max: ptr(MaxEvents), Link: "/diagnostics/events",
+		Unit: "entries", Where: "memory", Current: ptr(events), Max: ptr(MaxEvents), Link: "/monitoring/events",
 		Note: "The newest are kept, none older than 90 days.", Fixed: "Fixed in OPF."})
 	if model.DNS.Activity != nil && pf.KeepsDNSActivity(model) {
 		set := model.DNS.Activity
@@ -142,7 +142,7 @@ func (m *Manager) Storage() (*Storage, error) {
 			saved = *n
 		}
 		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
-			Unit: "bytes", Where: "memory and disk", Current: ptr(saved), Max: ptr(activity.WorstTraffic(model.Firewall.Traffic.Days, model.Firewall.Traffic.DeviceCap())), Link: "/diagnostics/traffic",
+			Unit: "bytes", Where: "memory and disk", Current: ptr(saved), Max: ptr(activity.WorstTraffic(model.Firewall.Traffic.Days, model.Firewall.Traffic.DeviceCap())), Link: "/devices/traffic",
 			Note: "As last saved. The most is " + strconv.Itoa(model.Firewall.Traffic.DeviceCap()) + " devices, the most it keeps apart, every hour.", Settings: []StorageLink{setTraffic}})
 	} else {
 		add(StorageItem{ID: "traffic", Group: StorageOPF, Name: "Traffic per device", Desc: "What each device sent and received, by hour",
@@ -198,7 +198,7 @@ func (m *Manager) Storage() (*Storage, error) {
 		}
 	}
 	add(StorageItem{ID: "pf-states", Group: StoragePf, Name: "Connections", Desc: "pf's state table: one entry for each connection through or to the firewall",
-		Unit: "entries", Where: "kernel", Current: states, Max: limit("states"), Link: "/diagnostics/connections",
+		Unit: "entries", Where: "kernel", Current: states, Max: limit("states"), Link: "/firewall/connections",
 		Note: "Full, new connections are refused until old ones end.", Settings: []StorageLink{setMaxStates}})
 	var tableCount, addrs *int64
 	if out, err := m.read("pfctl", "-vvs", "Tables"); err == nil {
@@ -270,9 +270,9 @@ func (m *Manager) graphStorage(add func(StorageItem)) int64 {
 		id, name, desc, link string
 		series               []string
 	}{
-		{"graphs-firewall", "Firewall", "Connections (pf’s states) and blocked packets", "/diagnostics/graphs", []string{SeriesPfStates, SeriesPfBlocked}},
+		{"graphs-firewall", "Firewall", "Connections (pf’s states) and blocked packets", "/monitoring/graphs", []string{SeriesPfStates, SeriesPfBlocked}},
 		{"graphs-dns", "DNS", "Queries, blocks and cache hits, a second", "/services/dns", []string{SeriesDNSQueries, SeriesDNSBlocked, SeriesDNSCacheHit}},
-		{"graphs-system", "System", "CPU, memory, load and the clock’s offset", "/diagnostics/graphs", []string{SeriesCPU, SeriesMemory, SeriesLoad, SeriesTimeOffset}},
+		{"graphs-system", "System", "CPU, memory, load and the clock’s offset", "/monitoring/graphs", []string{SeriesCPU, SeriesMemory, SeriesLoad, SeriesTimeOffset}},
 	}
 	names := map[string]string{
 		GroupInterfaces: "Interfaces", GroupGateways: "Gateways", GroupVPN: "VPN devices", GroupDHCP: "DHCP networks", GroupRules: "Firewall rules",
@@ -307,7 +307,7 @@ func (m *Manager) graphStorage(add func(StorageItem)) int64 {
 			note += " It’s full: more aren’t recorded."
 		}
 		add(StorageItem{ID: "graphs-" + g.Name, Group: StorageGraphs, Name: names[g.Name], Desc: descs[g.Name], Unit: "bytes", Where: "memory",
-			Link: "/diagnostics/graphs", Current: ptr(int64(g.Series * g.SeriesBytes)), Max: ptr(max), Note: note, Settings: []StorageLink{setGraphs}})
+			Link: "/monitoring/graphs", Current: ptr(int64(g.Series * g.SeriesBytes)), Max: ptr(max), Note: note, Settings: []StorageLink{setGraphs}})
 	}
 	return total
 }
@@ -323,10 +323,10 @@ func (m *Manager) logSizes(res *Storage, add func(StorageItem)) {
 	}
 	rot := sysinfo.ParseNewsyslog(conf)
 	logs := []struct{ path, name, desc, link string }{
-		{pflogPath, "Firewall log", "Packets pf logged: blocked ones, and rules set to log", "/diagnostics/log"},
-		{"/var/log/daemon", "Daemon log", "unbound, dhcpd, ntpd and OPF's own messages", "/diagnostics/system-logs"},
-		{"/var/log/messages", "System log", "The kernel and most of the system", "/diagnostics/system-logs"},
-		{"/var/log/authlog", "Logins", "SSH and other logins", "/diagnostics/system-logs"},
+		{pflogPath, "Firewall log", "Packets pf logged: blocked ones, and rules set to log", "/firewall/log"},
+		{"/var/log/daemon", "Daemon log", "unbound, dhcpd, ntpd and OPF's own messages", "/system/logs"},
+		{"/var/log/messages", "System log", "The kernel and most of the system", "/system/logs"},
+		{"/var/log/authlog", "Logins", "SSH and other logins", "/system/logs"},
 	}
 	var paths []string
 	for _, l := range logs {

@@ -7,7 +7,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
-// What the mock answers for Diagnostics › Storage.
+// What the mock answers for System › Storage.
 
 // mockNewsyslog is the VM's newsyslog.conf, the logs OPF reads.
 const mockNewsyslog = `/var/log/authlog	root:wheel	640  7     *    168   Z

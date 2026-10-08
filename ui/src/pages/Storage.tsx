@@ -1,4 +1,4 @@
-// Diagnostics › Storage: everything that fills up as the firewall runs,
+// System › Storage: everything that fills up as the firewall runs,
 // what it holds now and the most it can (GET /api/diagnostics/storage).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';

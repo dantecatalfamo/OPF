@@ -118,7 +118,7 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
             </Text>
           ))}
           {shown.length > 3 && (
-            <Anchor component={Link} to="/diagnostics/events" size="xs" c="dimmed">and {shown.length - 3} more</Anchor>
+            <Anchor component={Link} to="/monitoring/events" size="xs" c="dimmed">and {shown.length - 3} more</Anchor>
           )}
         </Stack>
       )}
@@ -146,7 +146,7 @@ export function HistoryCard({ title, series, format, area, peaks, empty, h = 170
     <>
       <SectionTitle right={<Group gap="sm"><SegmentedControl size="xs" value={range} onChange={setRange} data={ranges} /></Group>}>{title}</SectionTitle>
       <HistoryChart data={data} series={series} range={Number(range)} format={format} area={area} peaks={peaks} h={h} empty={empty} marks={marks} />
-      <Anchor component={Link} to={`/diagnostics/graphs${range === '86400' ? '' : `?range=${range}`}`} size="xs" c="dimmed" mt={6} display="inline-block">More graphs</Anchor>
+      <Anchor component={Link} to={`/monitoring/graphs${range === '86400' ? '' : `?range=${range}`}`} size="xs" c="dimmed" mt={6} display="inline-block">More graphs</Anchor>
     </>
   );
 }

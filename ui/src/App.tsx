@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router';
 import { useMantineColorScheme } from '@mantine/core';
 import { AppLayout } from './components/AppLayout';
 import { Dashboard } from './pages/Dashboard';
@@ -49,6 +49,30 @@ function useHostTheme() {
   }, [setColorScheme]);
 }
 
+// Where the pages once under Diagnostics are now, for links and bookmarks
+// made before they moved.
+const moved: [string, string][] = [
+  ['graphs', '/monitoring/graphs'],
+  ['events', '/monitoring/events'],
+  ['tools', '/monitoring/tools'],
+  ['devices', '/devices'],
+  ['traffic', '/devices/traffic'],
+  ['arp', '/devices/arp'],
+  ['connections', '/firewall/connections'],
+  ['log', '/firewall/log'],
+  ['system-logs', '/system/logs'],
+  ['files', '/system/files'],
+  ['storage', '/system/storage'],
+];
+
+function MovedFromDiagnostics() {
+  const { pathname, search, hash } = useLocation();
+  const [page, ...rest] = pathname.replace(/^\/diagnostics\/?/, '').split('/');
+  const to = moved.find(([from]) => from === page)?.[1];
+  if (!to) return <Navigate to="/" replace />;
+  return <Navigate to={[to, ...rest].join('/') + search + hash} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -73,18 +97,19 @@ function AppRoutes() {
         <Route path="system/users" element={<Users />} />
         <Route path="system/history" element={<History />} />
         <Route path="system/notifications" element={<Notifications />} />
-        <Route path="diagnostics/graphs" element={<Graphs />} />
-        <Route path="diagnostics/events" element={<Events />} />
-        <Route path="diagnostics/tools" element={<Tools />} />
-        <Route path="diagnostics/connections" element={<Connections />} />
-        <Route path="diagnostics/arp" element={<ARP />} />
-        <Route path="diagnostics/log" element={<FirewallLog />} />
-        <Route path="diagnostics/system-logs" element={<SystemLogs />} />
-        <Route path="diagnostics/files" element={<ConfigFiles />} />
-        <Route path="diagnostics/storage" element={<Storage />} />
-        <Route path="diagnostics/traffic" element={<Traffic />} />
-        <Route path="diagnostics/devices" element={<Devices />} />
-        <Route path="diagnostics/devices/:key" element={<Device />} />
+        <Route path="devices" element={<Devices />} />
+        <Route path="devices/traffic" element={<Traffic />} />
+        <Route path="devices/arp" element={<ARP />} />
+        <Route path="devices/:key" element={<Device />} />
+        <Route path="firewall/connections" element={<Connections />} />
+        <Route path="firewall/log" element={<FirewallLog />} />
+        <Route path="monitoring/graphs" element={<Graphs />} />
+        <Route path="monitoring/events" element={<Events />} />
+        <Route path="monitoring/tools" element={<Tools />} />
+        <Route path="system/logs" element={<SystemLogs />} />
+        <Route path="system/files" element={<ConfigFiles />} />
+        <Route path="system/storage" element={<Storage />} />
+        <Route path="diagnostics/*" element={<MovedFromDiagnostics />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
