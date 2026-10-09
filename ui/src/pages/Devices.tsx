@@ -24,6 +24,7 @@ import { protoGroup, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 import { LogRule } from './FirewallLog';
+import { AllowedBy } from './Connections';
 import { deviceName } from '../lib/labels';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -317,6 +318,9 @@ interface DeviceConn {
   pfDir: 'in' | 'out';
   bytes: number;
   ageSec: number;
+  /** The state whose rule let it through: the one made where it came
+   *  in, since a state going out is pf's own pass out rule's. */
+  allowedBy: PfState;
 }
 
 const splitEnd = (end: string) => {
@@ -337,6 +341,7 @@ function deviceConns(states: PfState[], own: string[]): DeviceConn[] {
     const c: DeviceConn = {
       key, proto: protoGroup(s.proto), dir: fromOwn ? 'out' : 'in', farHost: far.host, farPort: far.port, ownEnd: fromOwn ? s.source : s.destination,
       via: s.translated ? splitEnd(s.translated).host : prev?.via, state: s.state, kind: s.kind, pfDir: s.direction === 'in' ? 'in' : 'out', bytes: Math.max(s.bytes, prev?.bytes ?? 0), ageSec: Math.max(s.ageSec, prev?.ageSec ?? 0),
+      allowedBy: prev && prev.allowedBy.direction === 'in' ? prev.allowedBy : s,
     };
     byKey.set(key, c);
   }
@@ -354,6 +359,8 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
   }, [addresses.join()]);
   const conns = useMemo(() => deviceConns(states ?? [], addresses).slice(0, 25), [states, addresses.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const names = useReverseNames(conns.map((c) => c.farHost), showNames);
+  // The rule that let each in, when there's room for it.
+  const wide = useMediaQuery('(min-width: 75em)') ?? true;
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
@@ -364,6 +371,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
               <Table.Tr>
                 <Table.Th w={160}>Direction</Table.Th>
                 <Table.Th>Other end</Table.Th>
+                {wide && <Table.Th>Allowed by</Table.Th>}
                 <Table.Th w={100}>State</Table.Th>
                 <Table.Th w={90} ta="right">Data</Table.Th>
               </Table.Tr>
@@ -383,7 +391,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" className="mono" fw={500}>
-                        {c.farHost}{c.farPort && <Text span size="sm" c="dimmed" className="mono" fw={400}> port {c.farPort}</Text>}
+                        <span style={{ whiteSpace: 'nowrap' }}>{c.farHost}</span>{c.farPort && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {c.farPort}</Text>}
                       </Text>
                       {(name || c.via) && (
                         <Text size="xs" c="dimmed">
@@ -393,6 +401,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                         </Text>
                       )}
                     </Table.Td>
+                    {wide && <Table.Td><AllowedBy c={c.allowedBy} /></Table.Td>}
                     <Table.Td>
                       <StateTip state={c.state} direction={c.pfDir} opener={c.dir === 'out' ? 'This device' : 'The other end'} other={c.dir === 'out' ? 'the other end' : 'this device'}>
                         <Text size="sm" c="dimmed">{stateWord(c.state, c.kind)}</Text>

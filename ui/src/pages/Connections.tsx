@@ -49,7 +49,8 @@ function To({ c, names, devices }: Ends) {
   );
 }
 
-function AllowedBy({ c }: { c: PfState }) {
+/** The rule that let a state in, linked to it. */
+export function AllowedBy({ c }: { c: PfState }) {
   const { applied } = useStore();
   const owner = labelOwner(applied, c.label);
   if (!owner) return <Text size="sm" c="dimmed">{c.rule >= 0 ? `pf rule ${c.rule}` : '—'}</Text>;
