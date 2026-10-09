@@ -189,7 +189,7 @@ export function sampleSystem(): SystemResource {
   };
 }
 
-export const sampleUpdates = (): UpdatesResource => ({ checkedAt: new Date(started).toISOString(), checking: false, patches: ['001_unbound', '002_libcrypto'] });
+export const sampleUpdates = (): UpdatesResource => ({ checkedAt: new Date(started).toISOString(), checking: false, patches: ['001_xserver', '002_smtpd'] });
 
 const traffic = (i: Iface): [number, number] =>
   i.role === 'wan' ? [6e6, 0.8e6] : i.role === 'vpn' ? [0.05e6, 0.15e6] : i.vlan ? [0.03e6, 0.06e6] : [0.7e6, 5.8e6];

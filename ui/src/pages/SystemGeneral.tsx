@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, Table, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { Anchor, Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, Table, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
@@ -15,6 +15,15 @@ import { FileLink } from './ConfigFiles';
 import { TimeSettings } from './SystemTime';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
+
+// OpenBSD's errata page for a release ("7.9" → errata79.html), and a
+// patch's entry on it: each is anchored as p plus syspatch's name for it
+// (#p001_xserver).
+function errataUrl(release?: string, patch?: string): string | undefined {
+  const m = release?.match(/^(\d+)\.(\d+)$/);
+  if (!m) return undefined;
+  return `https://www.openbsd.org/errata${m[1]}${m[2]}.html${patch ? `#p${encodeURIComponent(patch)}` : ''}`;
+}
 
 // Security patches for the running release, from syspatch -c. Installing
 // them from here isn't built yet (TODO.md › Diagnostics tools › Updates).
@@ -41,8 +50,22 @@ function Updates() {
           {upd.patches.length} security {upd.patches.length === 1 ? 'patch is' : 'patches are'} available for {release}.
         </Text>
         <List size="sm" spacing={6} icon={<ThemeIcon size={18} radius="xl" color="amber" variant="light"><IconShieldCheck size={12} /></ThemeIcon>}>
-          {upd.patches.map((p) => <List.Item key={p}><Text span className="mono" size="sm">{p}</Text></List.Item>)}
+          {upd.patches.map((p) => {
+            const url = errataUrl(sys?.release, p);
+            return (
+              <List.Item key={p}>
+                {url
+                  ? <Anchor href={url} target="_blank" rel="noreferrer" className="mono" size="sm">{p}</Anchor>
+                  : <Text span className="mono" size="sm">{p}</Text>}
+              </List.Item>
+            );
+          })}
         </List>
+        {errataUrl(sys?.release) && (
+          <Text size="xs" c="dimmed">
+            Each patch links to its entry on <Anchor href={errataUrl(sys?.release)} target="_blank" rel="noreferrer" size="xs">OpenBSD’s errata page for {sys!.release}</Anchor>, which says what it fixes.
+          </Text>
+        )}
         <Text size="xs" c="dimmed">
           You can’t install them from here yet. For now, run <Text span className="mono" size="xs">syspatch</Text> as root on the firewall. Some patches need a reboot afterwards.
         </Text>

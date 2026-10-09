@@ -235,7 +235,7 @@ peer
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
-		out = "001_unbound\n002_libcrypto\n"
+		out = "001_xserver\n002_smtpd\n" // 7.9's first two (errata79.html)
 	default:
 		return s.next.Run(ctx, argv...)
 	}
