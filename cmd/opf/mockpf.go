@@ -208,12 +208,101 @@ State Table                          Total             Rate
   current entries                  %6d
   half-open tcp                          2
   searches                      %10d          646.3/s
+  inserts                         %8d           20.5/s
+  removals                        %8d           20.5/s
+Source Tracking Table
+  current entries                        3
+  searches                          %6d            0.4/s
+  inserts                             %4d            0.0/s
+  removals                            %4d            0.0/s
+Fragments
+  current entries                        0
+  searches                            1840            0.0/s
+  inserts                              920            0.0/s
+  removals                             920            0.0/s
 Counters
   match                           %8d           20.5/s
-  state-mismatch                       207            0.0/s
+  bad-offset                             0            0.0/s
+  fragment                               4            0.0/s
+  short                                 31            0.0/s
+  normalize                             12            0.0/s
+  memory                                 0            0.0/s
+  bad-timestamp                          0            0.0/s
+  congestion                             0            0.0/s
+  ip-option                            118            0.0/s
+  proto-cksum                            9            0.0/s
+  state-mismatch                    %6d            0.0/s
+  state-insert                           0            0.0/s
+  state-limit                            0            0.0/s
+  src-limit                            %3d            0.0/s
+  synproxy                               0            0.0/s
+  translate                              0            0.0/s
+  no-route                               0            0.0/s
+Limit Counters
+  max states per rule                    0            0.0/s
+  max-src-states                         0            0.0/s
+  max-src-nodes                          0            0.0/s
+  max-src-conn                           0            0.0/s
+  max-src-conn-rate                    %3d            0.0/s
+  overload table insertion             %3d            0.0/s
+  overload flush states                  0            0.0/s
+  synfloods detected                     0            0.0/s
+  syncookies sent                        0            0.0/s
+  syncookies validated                   0            0.0/s
+Adaptive Syncookies Watermarks
+  start                              25000 states
+  end                                12500 states
 `, up/86400, hms(up%86400), wan, int64(wander(wan+" rx", 6e6, t)), int64(wander(wan+" tx", 0.8e6, t)),
 		int64(wander("passed", 900, t))+576012345, blocked, int64(wander("out", 700, t))+76802102,
-		states, int64(wander("searches", 646, t))+1296523460, int64(wander("match", 20, t))+41203311)
+		states, int64(wander("searches", 646, t))+1296523460, int64(wander("match", 20, t))+41203311, int64(wander("match", 20, t))+41203311-int64(states),
+		int64(wander("src", 0.4, t))+80412, int64(wander("srcins", 0.02, t))+3110, int64(wander("srcins", 0.02, t))+3107,
+		int64(wander("match", 20, t))+41203311, int64(wander("mismatch", 0.01, t))+207,
+		int64(wander("srclimit", 0.002, t))+14, int64(wander("srclimit", 0.002, t))+14, int64(wander("srclimit", 0.002, t))+14)
+}
+
+// interfaces is pfctl -vv -s Interfaces: the groups pf makes, then each
+// interface, its counters since boot.
+func (p *mockPf) interfaces(m *pf.Model, t float64) string {
+	var b strings.Builder
+	cleared := time.Now().Add(-time.Duration(t)*time.Second - (23*24+5)*time.Hour).Format("Mon Jan _2 15:04:05 2006")
+	row := func(name, flag string, rules int, rx, tx, blocked float64) {
+		fmt.Fprintf(&b, "%s%s\n\tCleared:     %s\n\tReferences:  [ States:  %-18d Rules: %-18d ]\n", name, flag, cleared, 0, rules)
+		c := func(k string, rate float64, size float64) (int64, int64) {
+			if rate == 0 {
+				return 0, 0
+			}
+			n := int64(wander(name+k, rate, t)) + int64(rate*2e6)
+			return n, int64(float64(n) * size)
+		}
+		for _, v := range []string{"4", "6"} {
+			share := 1.0
+			if v == "6" {
+				share = 0.05
+			}
+			for _, k := range []struct {
+				dir, act    string
+				rate, bytes float64
+			}{{"In", "Pass", rx * share, 900}, {"In", "Block", blocked * share, 60}, {"Out", "Pass", tx * share, 300}, {"Out", "Block", 0, 0}} {
+				pk, by := c(k.dir+v+k.act, k.rate, k.bytes)
+				fmt.Fprintf(&b, "\t%-12s [ Packets: %-18d Bytes: %-18d ]\n", k.dir+v+"/"+k.act+":", pk, by)
+			}
+		}
+	}
+	row("all", "", 0, 0, 0, 0)
+	row("egress", "", 0, 0, 0, 0)
+	row("lo", " (skip)", 0, 0, 0, 0)
+	row("lo0", " (skip)", 0, 0, 0, 0)
+	for n, i := range m.Interfaces {
+		if i.Device == "" {
+			continue
+		}
+		rx, tx, blocked := 120.0/float64(n+1), 90.0/float64(n+1), 0.5/float64(n+1)
+		if i.Role == pf.RoleWAN {
+			rx, tx, blocked = 900, 700, 2.5
+		}
+		row(i.Device, "", 6+2*n, rx, tx, blocked)
+	}
+	return b.String()
 }
 
 var mockAttackers = []string{"198.51.100.23", "198.51.100.201", "185.220.101.4", "45.95.147.10", "162.142.125.9", "192.0.2.66"}
@@ -287,3 +376,25 @@ func (p *mockPf) pflog(m *pf.Model, now time.Time) string {
 	}
 	return b.String()
 }
+
+const mockTimeouts = `tcp.first                   120s
+tcp.opening                  30s
+tcp.established           86400s
+tcp.closing                 900s
+tcp.finwait                  45s
+tcp.closed                   90s
+tcp.tsdiff                   30s
+udp.first                    60s
+udp.single                   30s
+udp.multiple                 60s
+icmp.first                   20s
+icmp.error                   10s
+other.first                  60s
+other.single                 30s
+other.multiple               60s
+frag                         60s
+interval                     10s
+adaptive.start            60000 states
+adaptive.end             120000 states
+src.track                     0s
+`

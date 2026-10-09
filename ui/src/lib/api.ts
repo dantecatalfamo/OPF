@@ -332,6 +332,41 @@ export interface PfStatusResource {
   errors: string[];
 }
 
+/** A pfctl -s info table's totals since pf was enabled. */
+export interface PfTableStats { current: number; searches: number; inserts: number; removals: number }
+
+export interface PfCount { packets: number; bytes: number }
+
+/** One interface or group as pf counts it, IPv4 and IPv6 together. */
+export interface PfInterfaceStats {
+  name: string;
+  /** An interface group (egress, all), not one interface. */
+  group: boolean;
+  /** set skip on it: pf doesn't filter it. */
+  skip: boolean;
+  cleared?: string;
+  /** States bound to it (if-bound); floating states count under "all". */
+  states: number;
+  rules: number;
+  inPass: PfCount;
+  inBlock: PfCount;
+  outPass: PfCount;
+  outBlock: PfCount;
+}
+
+/** GET /api/pf/stats: everything pf counts. Totals are since pf was
+ *  enabled; a page works out rates between two answers by `at`. */
+export interface PfStatsResource {
+  at: string;
+  info?: NonNullable<PfStatusResource['info']> & { tables: Record<'states' | 'srcNodes' | 'fragments', PfTableStats | undefined> };
+  /** Memory pools' hard limits (pfctl -s memory), and what's used of those OPF can count. */
+  limits: Record<string, number>;
+  used: Record<string, number>;
+  timeouts: { name: string; value: number; unit: 's' | 'states' }[];
+  interfaces: PfInterfaceStats[];
+  errors: string[];
+}
+
 /** One entry of pf's state table. */
 export interface PfState {
   id: string;
@@ -1042,6 +1077,7 @@ export const api = {
   interfaces: () => request<InterfacesResource>('GET', '/network/interfaces'),
   gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
   pfStatus: () => request<PfStatusResource>('GET', '/pf/status'),
+  pfStats: () => request<PfStatsResource>('GET', '/pf/stats'),
   pfStates: (r: PfStatesRequest = {}) => {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);

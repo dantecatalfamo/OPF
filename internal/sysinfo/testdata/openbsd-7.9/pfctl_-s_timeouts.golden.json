@@ -1,0 +1,102 @@
+[
+  {
+    "name": "tcp.first",
+    "value": 120,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.opening",
+    "value": 30,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.established",
+    "value": 86400,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.closing",
+    "value": 900,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.finwait",
+    "value": 45,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.closed",
+    "value": 90,
+    "unit": "s"
+  },
+  {
+    "name": "tcp.tsdiff",
+    "value": 30,
+    "unit": "s"
+  },
+  {
+    "name": "udp.first",
+    "value": 60,
+    "unit": "s"
+  },
+  {
+    "name": "udp.single",
+    "value": 30,
+    "unit": "s"
+  },
+  {
+    "name": "udp.multiple",
+    "value": 60,
+    "unit": "s"
+  },
+  {
+    "name": "icmp.first",
+    "value": 20,
+    "unit": "s"
+  },
+  {
+    "name": "icmp.error",
+    "value": 10,
+    "unit": "s"
+  },
+  {
+    "name": "other.first",
+    "value": 60,
+    "unit": "s"
+  },
+  {
+    "name": "other.single",
+    "value": 30,
+    "unit": "s"
+  },
+  {
+    "name": "other.multiple",
+    "value": 60,
+    "unit": "s"
+  },
+  {
+    "name": "frag",
+    "value": 60,
+    "unit": "s"
+  },
+  {
+    "name": "interval",
+    "value": 10,
+    "unit": "s"
+  },
+  {
+    "name": "adaptive.start",
+    "value": 60000,
+    "unit": "states"
+  },
+  {
+    "name": "adaptive.end",
+    "value": 120000,
+    "unit": "states"
+  },
+  {
+    "name": "src.track",
+    "value": 0,
+    "unit": "s"
+  }
+]

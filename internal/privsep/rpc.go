@@ -11,6 +11,7 @@ import (
 	"github.com/dantecatalfamo/OPF/internal/auth"
 	"github.com/dantecatalfamo/OPF/internal/diag"
 	"github.com/dantecatalfamo/OPF/internal/metrics"
+	"github.com/dantecatalfamo/OPF/internal/sysinfo"
 )
 
 // The web process can only call these methods: whole models in,
@@ -120,6 +121,10 @@ type (
 	PfStatesReply struct {
 		Result
 		States *appliance.PfStates
+	}
+	PfStatsReply struct {
+		Result
+		Stats *appliance.PfStats
 	}
 	RuleCountersReply struct {
 		Result
@@ -385,6 +390,16 @@ func (s *Service) CheckUpdates(c Call[None], r *UpdatesReply) error {
 	var err error
 	r.Updates, err = s.api.CheckUpdates()
 	r.set("CheckUpdates", err)
+	return nil
+}
+
+func (s *Service) PfStats(c Call[None], r *PfStatsReply) error {
+	if s.allow("PfStats", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Stats, err = s.api.PfStats()
+	r.set("PfStats", err)
 	return nil
 }
 
@@ -1148,6 +1163,27 @@ func (c *Client) CheckUpdates() (*appliance.UpdatesStatus, error) {
 		s.Patches = nonNil(s.Patches)
 	}
 	return r.Updates, err
+}
+
+func (c *Client) PfStats() (*appliance.PfStats, error) {
+	var r PfStatsReply
+	err := c.call("PfStats", None{}, &r)
+	if s := r.Stats; s != nil {
+		s.Errors, s.Timeouts, s.Interfaces = nonNil(s.Errors), nonNil(s.Timeouts), nonNil(s.Interfaces)
+		if s.Limits == nil {
+			s.Limits = map[string]uint64{}
+		}
+		if s.Used == nil {
+			s.Used = map[string]uint64{}
+		}
+		if s.Info != nil && s.Info.Counters == nil {
+			s.Info.Counters = map[string]uint64{}
+		}
+		if s.Info != nil && s.Info.Tables == nil {
+			s.Info.Tables = map[string]sysinfo.PfTableStats{}
+		}
+	}
+	return r.Stats, err
 }
 
 func (c *Client) PfStatus() (*appliance.PfStatus, error) {

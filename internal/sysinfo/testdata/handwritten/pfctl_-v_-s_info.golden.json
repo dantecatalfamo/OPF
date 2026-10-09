@@ -33,6 +33,20 @@
     "synproxy": 0,
     "translate": 0
   },
+  "tables": {
+    "srcNodes": {
+      "current": 0,
+      "searches": 0,
+      "inserts": 0,
+      "removals": 0
+    },
+    "states": {
+      "current": 318,
+      "searches": 1296523460,
+      "inserts": 4012344,
+      "removals": 4012026
+    }
+  },
   "iface": {
     "name": "em0",
     "bytesIn": 518431014829,

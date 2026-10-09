@@ -156,7 +156,15 @@ peer
 	case cmd == "pfctl -s Tables":
 		out = "bruteforce\nopf_hosts\n"
 	case cmd == "pfctl -s memory":
-		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\ntables        hard limit     1000\ntable-entries hard limit   200000\n"
+		out = "states        hard limit   100000\nsrc-nodes     hard limit    10000\nfrags         hard limit    16384\ntables        hard limit     1000\ntable-entries hard limit   200000\npktdelay-pkts hard limit    10000\nanchors       hard limit      512\n"
+	case cmd == "pfctl -s timeouts":
+		out = mockTimeouts
+	case cmd == "pfctl -vv -s Interfaces":
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		out = s.pf.interfaces(m, t)
 	case len(argv) == 5 && strings.HasPrefix(cmd, "pfctl -k id -k "):
 		o, err := s.pf.kill(argv[4])
 		return []byte(o), err

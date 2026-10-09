@@ -23,6 +23,7 @@
 //	GET    /api/system                    the machine: release, uptime, CPU, memory, disks, sensors
 //	GET    /api/system/updates            security patches available
 //	GET    /api/pf/status                 pf on or off, its state table, blocked traffic
+//	GET    /api/pf/stats                  everything pf counts: counters, limits, timeouts, interfaces
 //	GET    /api/pf/states                 the state table, a page: ?q=&proto=&offset=&limit=
 //	POST   /api/pf/states/kill            end a connection
 //	GET    /api/pf/rules/counters         each labelled rule's counters
@@ -143,6 +144,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/system/updates", getter(s, appliance.API.Updates))
 	s.mux.HandleFunc("POST /api/system/updates/check", getter(s, appliance.API.CheckUpdates))
 	s.mux.HandleFunc("GET /api/pf/status", getter(s, appliance.API.PfStatus))
+	s.mux.HandleFunc("GET /api/pf/stats", getter(s, appliance.API.PfStats))
 	s.mux.HandleFunc("GET /api/pf/states", s.pfStates)
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
 	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s, appliance.API.RuleCounters))

@@ -46,6 +46,7 @@ type API interface {
 	Updates() (*UpdatesStatus, error)
 	CheckUpdates() (*UpdatesStatus, error)
 	PfStatus() (*PfStatus, error)
+	PfStats() (*PfStats, error)
 	PfStates(PfStatesRequest) (*PfStates, error)
 	KillState(KillStateRequest) error
 	RuleCounters() (*RuleCounters, error)
@@ -372,6 +373,24 @@ type PfStatus struct {
 	// interface over the last few seconds.
 	BlockedPerSec *float64 `json:"blockedPerSec,omitempty"`
 	Errors        []string `json:"errors"`
+}
+
+// PfStats is everything pf counts: pfctl -s info's tables and counters,
+// its memory limits and what's used of them, its timeouts, and each
+// interface's traffic. Totals are since pf was enabled (or an
+// interface's counters cleared); a page works out rates between two.
+type PfStats struct {
+	// At is when it was read.
+	At   time.Time       `json:"at"`
+	Info *sysinfo.PfInfo `json:"info,omitempty"`
+	// Limits are the memory pools' hard limits (pfctl -s memory), and
+	// Used what's in the ones OPF can count: states, src-nodes, tables,
+	// table-entries.
+	Limits     map[string]uint64     `json:"limits"`
+	Used       map[string]uint64     `json:"used"`
+	Timeouts   []sysinfo.PfTimeout   `json:"timeouts"`
+	Interfaces []sysinfo.PfInterface `json:"interfaces"`
+	Errors     []string              `json:"errors"`
 }
 
 // PfStatesRequest asks for a page of the state table: the states whose

@@ -1140,9 +1140,13 @@ Firewall:
         per entry (a downloaded list's thousands).
   - [ ] Protections' "who's blocked now" view is this drawer, for their
         own table.
-- [ ] pf's per-interface statistics (`pfctl -vv -s Interfaces`), memory
+- [x] pf's per-interface statistics (`pfctl -vv -s Interfaces`), memory
       limits as a meter beside the state table, and the counters in
-      `pfctl -s info` (state-mismatch, memory, congestion) on a pf page.
+      `pfctl -s info` (state-mismatch, memory, congestion) on a pf page:
+      Firewall › Statistics, with rates between polls and pf's timeouts.
+  - [ ] Graph the trouble counters (memory, congestion, state-limit,
+        translate) over time, and say so on the dashboard when one is
+        rising.
 - [ ] The Rules page shows counters for form rules and the built-in
       rows; show them for port forwards and outbound NAT too, and for
       raw rules (which only have a label if their text has one).

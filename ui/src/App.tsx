@@ -28,6 +28,7 @@ import { Storage } from './pages/Storage';
 import { Traffic } from './pages/Traffic';
 import { Device, Devices } from './pages/Devices';
 import { FirewallLog } from './pages/FirewallLog';
+import { FirewallStats } from './pages/FirewallStats';
 import { ARP } from './pages/ARP';
 import { Authpf } from './pages/Authpf';
 import { ServicesPage } from './pages/Services';
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="devices/:key" element={<Device />} />
         <Route path="firewall/connections" element={<Connections />} />
         <Route path="firewall/log" element={<FirewallLog />} />
+        <Route path="firewall/stats" element={<FirewallStats />} />
         <Route path="firewall/authpf" element={<Authpf />} />
         <Route path="monitoring/graphs" element={<Graphs />} />
         <Route path="monitoring/events" element={<Events />} />

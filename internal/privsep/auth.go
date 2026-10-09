@@ -31,7 +31,7 @@ var methodRoles = map[string]auth.Role{
 	"Status": auth.RoleView, "LeaseNames": auth.RoleView, "DHCPLeases": auth.RoleView,
 	"ARPTable": auth.RoleView, "RoutingTable": auth.RoleView, "System": auth.RoleView,
 	"Interfaces": auth.RoleView, "Gateways": auth.RoleView, "Files": auth.RoleView, "File": auth.RoleView, "Updates": auth.RoleView,
-	"PfStatus": auth.RoleView, "PfStates": auth.RoleView, "RuleCounters": auth.RoleView,
+	"PfStatus": auth.RoleView, "PfStats": auth.RoleView, "PfStates": auth.RoleView, "RuleCounters": auth.RoleView,
 	"FirewallLog": auth.RoleView, "Tables": auth.RoleView, "DNSLists": auth.RoleView,
 	"TableEntries": auth.RoleView, "TableFind": auth.RoleView, "AuthpfSessions": auth.RoleView,
 	"Services": auth.RoleView, "Service": auth.RoleView,

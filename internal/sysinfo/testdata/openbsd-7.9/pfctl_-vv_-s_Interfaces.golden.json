@@ -1,0 +1,314 @@
+[
+  {
+    "name": "all",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 81,
+    "rules": 1,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "carp",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "egress",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-07T14:57:35Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "enc",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "enc0",
+    "group": false,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "lo",
+    "group": true,
+    "skip": true,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "lo0",
+    "group": false,
+    "skip": true,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "pflog",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-07T14:58:44Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "pflog0",
+    "group": false,
+    "skip": false,
+    "cleared": "2026-10-07T14:58:44Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "vio0",
+    "group": false,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 10,
+    "inPass": {
+      "packets": 342775,
+      "bytes": 412869865
+    },
+    "inBlock": {
+      "packets": 36,
+      "bytes": 3356
+    },
+    "outPass": {
+      "packets": 215218,
+      "bytes": 36237083
+    },
+    "outBlock": {
+      "packets": 30,
+      "bytes": 4976
+    }
+  },
+  {
+    "name": "vio1",
+    "group": false,
+    "skip": false,
+    "cleared": "2026-10-08T03:13:03Z",
+    "states": 0,
+    "rules": 15,
+    "inPass": {
+      "packets": 22050,
+      "bytes": 23292641
+    },
+    "inBlock": {
+      "packets": 69,
+      "bytes": 8448
+    },
+    "outPass": {
+      "packets": 18558,
+      "bytes": 11061156
+    },
+    "outBlock": {
+      "packets": 64,
+      "bytes": 12822
+    }
+  },
+  {
+    "name": "wg",
+    "group": true,
+    "skip": false,
+    "cleared": "2026-10-07T14:57:31Z",
+    "states": 0,
+    "rules": 0,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  },
+  {
+    "name": "wg0",
+    "group": false,
+    "skip": false,
+    "cleared": "2026-10-07T14:57:31Z",
+    "states": 0,
+    "rules": 13,
+    "inPass": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "inBlock": {
+      "packets": 0,
+      "bytes": 0
+    },
+    "outPass": {
+      "packets": 3711,
+      "bytes": 311724
+    },
+    "outBlock": {
+      "packets": 0,
+      "bytes": 0
+    }
+  }
+]

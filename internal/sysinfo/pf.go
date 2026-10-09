@@ -20,9 +20,24 @@ type PfInfo struct {
 	// (match, state-mismatch, synfloods detected...): totals since pf
 	// was enabled.
 	Counters map[string]uint64 `json:"counters"`
+	// Tables are its tables' activity, totals since pf was enabled:
+	// "states" (State Table), "srcNodes" (Source Tracking Table) and
+	// "fragments", each when pfctl printed it.
+	Tables map[string]PfTableStats `json:"tables"`
 	// Iface is the statistics interface's traffic, when one is set.
 	Iface *PfIfaceStats `json:"iface,omitempty"`
 }
+
+// PfTableStats is one of pfctl -s info's tables: its entries now, and
+// how often it was searched, added to and taken from.
+type PfTableStats struct {
+	Current  uint64 `json:"current"`
+	Searches uint64 `json:"searches"`
+	Inserts  uint64 `json:"inserts"`
+	Removals uint64 `json:"removals"`
+}
+
+var pfInfoTables = map[string]string{"State Table": "states", "Source Tracking Table": "srcNodes", "Fragments": "fragments"}
 
 // PfIfaceStats is the "Interface Stats for" section, IPv4 and IPv6
 // added together.
@@ -41,7 +56,7 @@ type PfIfaceStats struct {
 // name, a total and sometimes a rate, and names can have spaces, so
 // the numbers are read from the right.
 func ParsePfInfo(out string) (PfInfo, bool) {
-	p := PfInfo{Counters: map[string]uint64{}}
+	p := PfInfo{Counters: map[string]uint64{}, Tables: map[string]PfTableStats{}}
 	found := false
 	section := ""
 	sub := "" // Packets In / Packets Out, inside Interface Stats
@@ -109,18 +124,39 @@ func ParsePfInfo(out string) (PfInfo, bool) {
 					p.Iface.PacketsOutBlocked = sum
 				}
 			}
-		case strings.HasPrefix(section, "State Table") && len(nums) > 0:
+		case pfInfoTables[tableSection(section)] != "" && len(nums) > 0:
+			key := pfInfoTables[tableSection(section)]
+			t := p.Tables[key]
 			switch name {
 			case "current entries":
-				p.States = nums[0]
+				t.Current = nums[0]
+				if key == "states" {
+					p.States = nums[0]
+				}
 			case "half-open tcp":
 				p.HalfOpen = nums[0]
+			case "searches":
+				t.Searches = nums[0]
+			case "inserts":
+				t.Inserts = nums[0]
+			case "removals":
+				t.Removals = nums[0]
 			}
+			p.Tables[key] = t
 		case (section == "Counters" || section == "Limit Counters") && len(nums) > 0:
 			p.Counters[name] = nums[0]
 		}
 	}
 	return p, found
+}
+
+// tableSection is a section's name without its column heads: "State
+// Table                          Total             Rate".
+func tableSection(section string) string {
+	if i := strings.Index(section, "  "); i >= 0 {
+		return section[:i]
+	}
+	return strings.TrimSpace(section)
 }
 
 // splitRow splits "  state-mismatch   207   0.0/s" into its name and
@@ -169,6 +205,133 @@ func ParsePfMemory(out string) map[string]uint64 {
 		if len(f) == 4 && f[1] == "hard" && f[2] == "limit" {
 			if n, err := strconv.ParseUint(f[3], 10, 64); err == nil {
 				m[f[0]] = n
+			}
+		}
+	}
+	return m
+}
+
+// PfTimeout is one of `pfctl -s timeouts`: a timeout in seconds, or
+// one of the adaptive timeouts' thresholds in states.
+type PfTimeout struct {
+	Name  string `json:"name"`
+	Value uint64 `json:"value"`
+	// Unit is "s" or "states".
+	Unit string `json:"unit"`
+}
+
+// ParsePfTimeouts reads `pfctl -s timeouts`, in its order:
+// "tcp.first                   120s", "adaptive.start   60000 states".
+func ParsePfTimeouts(out string) []PfTimeout {
+	res := []PfTimeout{}
+	for _, l := range lines(out) {
+		f := strings.Fields(l)
+		switch {
+		case len(f) == 2 && strings.HasSuffix(f[1], "s"):
+			if n, err := strconv.ParseUint(strings.TrimSuffix(f[1], "s"), 10, 64); err == nil {
+				res = append(res, PfTimeout{Name: f[0], Value: n, Unit: "s"})
+			}
+		case len(f) == 3 && f[2] == "states":
+			if n, err := strconv.ParseUint(f[1], 10, 64); err == nil {
+				res = append(res, PfTimeout{Name: f[0], Value: n, Unit: "states"})
+			}
+		}
+	}
+	return res
+}
+
+// PfCount is packets and bytes.
+type PfCount struct {
+	Packets uint64 `json:"packets"`
+	Bytes   uint64 `json:"bytes"`
+}
+
+// PfInterface is one interface or interface group as pf counts it
+// (`pfctl -vv -s Interfaces`): IPv4 and IPv6 added together, since its
+// counters were cleared.
+type PfInterface struct {
+	Name string `json:"name"`
+	// Group: an interface group (egress, all, wg), not one interface.
+	// ifconfig(8) refuses a group name ending in a digit, and every
+	// interface's ends in one.
+	Group bool `json:"group"`
+	// Skip: set skip on it, so pf doesn't filter it.
+	Skip     bool       `json:"skip"`
+	Cleared  *time.Time `json:"cleared,omitempty"`
+	States   uint64     `json:"states"`
+	Rules    uint64     `json:"rules"`
+	InPass   PfCount    `json:"inPass"`
+	InBlock  PfCount    `json:"inBlock"`
+	OutPass  PfCount    `json:"outPass"`
+	OutBlock PfCount    `json:"outBlock"`
+}
+
+// ParsePfInterfaces reads `pfctl -vv -s Interfaces`: a name line ("lo0
+// (skip)"), then tab-indented rows, "In4/Pass:    [ Packets: 0   Bytes:
+// 0   ]", with times in loc.
+func ParsePfInterfaces(out string, loc *time.Location) []PfInterface {
+	res := []PfInterface{}
+	var cur *PfInterface
+	for _, l := range lines(out) {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		if l[0] != '\t' && l[0] != ' ' {
+			f := strings.Fields(l)
+			name := f[0]
+			if name == "" || strings.ContainsAny(name, "[]:") {
+				cur = nil
+				continue
+			}
+			last := name[len(name)-1]
+			res = append(res, PfInterface{Name: name, Group: last < '0' || last > '9', Skip: len(f) > 1 && f[1] == "(skip)"})
+			cur = &res[len(res)-1]
+			continue
+		}
+		if cur == nil {
+			continue
+		}
+		key, rest, ok := strings.Cut(strings.TrimSpace(l), ":")
+		if !ok {
+			continue
+		}
+		if key == "Cleared" {
+			if t, err := time.ParseInLocation("Mon Jan 2 15:04:05 2006", strings.Join(strings.Fields(rest), " "), loc); err == nil {
+				cur.Cleared = &t
+			}
+			continue
+		}
+		vals := bracketValues(rest)
+		var add *PfCount
+		switch key {
+		case "References":
+			cur.States, cur.Rules = vals["States"], vals["Rules"]
+			continue
+		case "In4/Pass", "In6/Pass":
+			add = &cur.InPass
+		case "In4/Block", "In6/Block":
+			add = &cur.InBlock
+		case "Out4/Pass", "Out6/Pass":
+			add = &cur.OutPass
+		case "Out4/Block", "Out6/Block":
+			add = &cur.OutBlock
+		default:
+			continue
+		}
+		add.Packets += vals["Packets"]
+		add.Bytes += vals["Bytes"]
+	}
+	return res
+}
+
+// bracketValues reads "[ Packets: 12   Bytes: 3400   ]" by name.
+func bracketValues(s string) map[string]uint64 {
+	m := map[string]uint64{}
+	f := strings.Fields(strings.Trim(strings.TrimSpace(s), "[]"))
+	for i := 0; i+1 < len(f); i++ {
+		if name, ok := strings.CutSuffix(f[i], ":"); ok {
+			if n, err := strconv.ParseUint(f[i+1], 10, 64); err == nil {
+				m[name] = n
 			}
 		}
 	}

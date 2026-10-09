@@ -72,6 +72,49 @@ func (m *Manager) PfStatus() (*PfStatus, error) {
 	return res, nil
 }
 
+// PfStats reads everything pf counts. A read that fails leaves its part
+// out and says so; the rest is still answered.
+func (m *Manager) PfStats() (*PfStats, error) {
+	res := &PfStats{At: time.Now(), Limits: map[string]uint64{}, Used: map[string]uint64{}, Timeouts: []sysinfo.PfTimeout{}, Interfaces: []sysinfo.PfInterface{}, Errors: []string{}}
+	fail := func(what string) { res.Errors = append(res.Errors, "couldn't read "+what) }
+	if out, err := m.read("pfctl", "-v", "-s", "info"); err != nil {
+		fail("pf's status (pfctl -s info)")
+	} else if info, ok := sysinfo.ParsePfInfo(out); !ok {
+		fail("pf's status (pfctl -s info)")
+	} else {
+		res.Info = &info
+		res.Used["states"] = info.States
+		if t, ok := info.Tables["srcNodes"]; ok {
+			res.Used["src-nodes"] = t.Current
+		}
+	}
+	if out, err := m.read("pfctl", "-s", "memory"); err == nil {
+		res.Limits = sysinfo.ParsePfMemory(out)
+	}
+	if len(res.Limits) == 0 {
+		fail("pf's limits (pfctl -s memory)")
+	}
+	if out, err := m.read("pfctl", "-vvs", "Tables"); err == nil {
+		n, a := sysinfo.ParsePfTables(out)
+		res.Used["tables"], res.Used["table-entries"] = uint64(n), uint64(a)
+	} else {
+		fail("pf's tables (pfctl -s Tables)")
+	}
+	if out, err := m.read("pfctl", "-s", "timeouts"); err == nil {
+		res.Timeouts = sysinfo.ParsePfTimeouts(out)
+	}
+	if len(res.Timeouts) == 0 {
+		fail("pf's timeouts (pfctl -s timeouts)")
+	}
+	if out, err := m.read("pfctl", "-vv", "-s", "Interfaces"); err == nil {
+		res.Interfaces = sysinfo.ParsePfInterfaces(out, time.Local)
+	}
+	if len(res.Interfaces) == 0 {
+		fail("pf's interfaces (pfctl -s Interfaces)")
+	}
+	return res, nil
+}
+
 // PfStates returns a page of the state table: the states matching the
 // request, busiest first, each with the label of the rule that created
 // it. Filtering and paging are done here, so a table of tens of

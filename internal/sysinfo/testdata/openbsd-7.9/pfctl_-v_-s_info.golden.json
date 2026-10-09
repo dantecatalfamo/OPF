@@ -32,5 +32,25 @@
     "synfloods detected": 0,
     "synproxy": 0,
     "translate": 0
+  },
+  "tables": {
+    "fragments": {
+      "current": 0,
+      "searches": 0,
+      "inserts": 0,
+      "removals": 0
+    },
+    "srcNodes": {
+      "current": 0,
+      "searches": 0,
+      "inserts": 0,
+      "removals": 0
+    },
+    "states": {
+      "current": 6,
+      "searches": 2961,
+      "inserts": 46,
+      "removals": 40
+    }
   }
 }

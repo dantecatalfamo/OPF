@@ -246,6 +246,8 @@ func FuzzParsers(f *testing.F) {
 		ParseSyspatch(s)
 		ParsePfInfo(s)
 		ParsePfMemory(s)
+		ParsePfTimeouts(s)
+		ParsePfInterfaces(s, time.UTC)
 		ParsePfStates(s, 10)
 		ParsePfRules(s)
 		ParsePflog(s, time.Now(), 10)
@@ -305,6 +307,39 @@ func TestParsePfInfo(t *testing.T) {
 	}
 	if m := ParsePfMemory(fixtureOr(t, "pfctl_-s_memory.txt")); m["states"] != 100000 || m["table-entries"] != 200000 {
 		t.Errorf("memory: %v", m)
+	}
+}
+
+func TestParsePfTimeoutsAndInterfaces(t *testing.T) {
+	eachFixture(t, "pfctl_-s_timeouts.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "pfctl_-s_timeouts", ParsePfTimeouts(out))
+	})
+	eachFixture(t, "pfctl_-vv_-s_Interfaces.txt", func(t *testing.T, dir, out string) {
+		golden(t, dir, "pfctl_-vv_-s_Interfaces", ParsePfInterfaces(out, time.UTC))
+	})
+	ifs := ParsePfInterfaces(fixtureOr(t, "pfctl_-vv_-s_Interfaces.txt"), time.UTC)
+	byName := map[string]PfInterface{}
+	for _, i := range ifs {
+		byName[i.Name] = i
+	}
+	if i := byName["lo0"]; !i.Skip || i.Group {
+		t.Errorf("lo0: %+v", i)
+	}
+	if i := byName["egress"]; !i.Group || i.Skip || i.Cleared == nil {
+		t.Errorf("egress: %+v", i)
+	}
+	if i := byName["vio0"]; i.Group || i.InPass.Packets == 0 {
+		t.Errorf("vio0: %+v", i)
+	}
+	if got := ParsePfTimeouts("pfctl: /dev/pf: Permission denied\n"); len(got) != 0 {
+		t.Errorf("an error message: %+v", got)
+	}
+	info := must(ParsePfInfo(fixtureOr(t, "pfctl_-v_-s_info.txt")))
+	if s := info.Tables["states"]; s.Current != info.States || s.Searches == 0 {
+		t.Errorf("state table: %+v, %d", s, info.States)
+	}
+	if _, ok := info.Tables["srcNodes"]; !ok {
+		t.Errorf("no source tracking: %+v", info.Tables)
 	}
 }
 

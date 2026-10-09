@@ -415,6 +415,17 @@ never by number: numbers change with every reload.
   pfctl's names, and `iface`, the statistics interface's bytes and
   packets passed and blocked), `stateLimit`, and `blockedPerSec` on the
   statistics interface lately.
+- `GET /api/pf/stats`: everything pf counts, for Firewall › Statistics.
+  `at` (when it was read: rates are between two answers), `info` as
+  above plus `tables` (`states`, `srcNodes`, `fragments`: `current`,
+  `searches`, `inserts`, `removals`, totals since pf was enabled),
+  `limits` (each memory pool's hard limit, `pfctl -s memory`) and
+  `used` (what's in `states`, `src-nodes`, `tables`, `table-entries`),
+  `timeouts` (`pfctl -s timeouts` in its order: `name`, `value`, `unit`
+  `s` or `states`), `interfaces` (`pfctl -vv -s Interfaces`: `name`,
+  `group`, `skip`, `cleared`, `states`, `rules`, and `inPass`,
+  `inBlock`, `outPass`, `outBlock` as `packets` and `bytes`, IPv4 and
+  IPv6 together), and `errors` for any part that couldn't be read.
 - `GET /api/pf/states`: `{"states": [...], "truncated"}`, at most 5000.
   Each has `id` and `creatorId`, `iface` (or `all`), `proto`,
   `direction`, `source` and `destination` as the device that opened
