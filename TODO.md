@@ -186,6 +186,18 @@ endpoint, and in `cmd/opfwasm` too.
 jargon, and no assumption that OPF runs in an office. Show consequences
 before they happen: the review dialog gives changes in words, per-file
 diffs, whether confirmation is needed, and the server's objections.
+- Write short, complete sentences. Don't chain clauses with
+  semicolons, colons, dashes or "so"; make each its own sentence.
+- No parenthetical asides: make one a sentence or drop it.
+- No clipped phrases ("empty, the outgoing interface's", "unset is
+  1"): say "Leave it empty to use…", "1 if empty".
+- Make every pronoun and verb's object clear. "A rule that blocks
+  them still does" left readers unsure what still happened.
+- Say what happens for the admin or their devices first, and how it
+  works after, if at all. Name a daemon or file only when the admin
+  needs it.
+- Leave out caveats that hold for nearly everything, such as "your own
+  rules can still block it" on a setting that adds a pass rule.
 
 ### Working on it
 
