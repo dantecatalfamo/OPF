@@ -1,6 +1,8 @@
 package appliance
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -51,6 +53,9 @@ type fileState struct {
 	written map[string]writtenFile
 	staged  map[string]config.Change
 	commits map[string]*FileCommit
+	// onSystem, read-only, are the files OPF would manage that the
+	// machine has: its own configuration, which OPF only shows.
+	onSystem []string
 }
 
 func (m *Manager) fileState() (*fileState, error) {
@@ -91,6 +96,9 @@ func (m *Manager) fileState() (*fileState, error) {
 	if err != nil {
 		return nil, err
 	}
+	if m.ReadOnly {
+		st.onSystem = m.filesOnSystem()
+	}
 	for _, e := range entries {
 		if e.Status != config.StatusApplied && e.Status != config.StatusConfirmed && e.Status != config.StatusPending {
 			continue // reverted, failed: what it wrote isn't there
@@ -119,11 +127,40 @@ func (st *fileState) paths() []string {
 			set[p] = true
 		}
 	}
+	for _, p := range st.onSystem {
+		set[p] = true
+	}
 	out := make([]string, 0, len(set))
 	for p := range set {
 		out = append(out, p)
 	}
 	slices.Sort(out)
+	return out
+}
+
+// filesOnSystem are the registry's files the machine has, a pattern's
+// (hostname.*) each that matches it: only ever paths the registry
+// knows, never another.
+func (m *Manager) filesOnSystem() []string {
+	var out []string
+	for _, f := range m.store.Files() {
+		if f.Name == modelFile {
+			continue
+		}
+		matches, err := filepath.Glob(m.store.SystemPath(f.Path))
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			p := "/" + strings.TrimPrefix(strings.TrimPrefix(match, m.store.SystemPath("/")), "/")
+			if fi, err := os.Stat(match); err != nil || !fi.Mode().IsRegular() {
+				continue
+			}
+			if g, err := m.store.LookupPath(p); err == nil && (g.Path == f.Path || strings.Contains(f.Path, "*")) {
+				out = append(out, p)
+			}
+		}
+	}
 	return out
 }
 
@@ -148,6 +185,13 @@ func (m *Manager) describeFile(st *fileState, path string) (*ConfigFile, config.
 		}
 	}
 	_, _, cf.Outside = outsideChange(path, disk, onDisk, st.written, st.liveGen)
+	// A file OPF neither generates nor wrote (read-only, the machine's
+	// own) wasn't changed outside OPF: OPF never had it.
+	if _, gen := st.liveGen[path]; !gen {
+		if _, wrote := st.written[path]; !wrote {
+			cf.Outside = false
+		}
+	}
 	return cf, f, disk, onDisk, nil
 }
 

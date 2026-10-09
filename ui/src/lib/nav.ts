@@ -11,27 +11,34 @@ export interface NavItem {
   admin?: boolean;
   /** Other words it's found by in the command palette. */
   keywords?: string;
+  /** Shown in read-only mode too: it only watches the machine. The rest
+   *  are about OPF's own configuration, which a machine it only
+   *  monitors doesn't have. */
+  monitors?: boolean;
+  /** Only in read-only mode. */
+  readOnlyOnly?: boolean;
 }
 export interface NavGroup {
   label: string;
   icon: typeof IconGauge;
   to?: string;
   items?: NavItem[];
+  monitors?: boolean;
 }
 
 export const nav: NavGroup[] = [
-  { label: 'Dashboard', icon: IconGauge, to: '/' },
+  { label: 'Dashboard', icon: IconGauge, to: '/', monitors: true },
   {
     label: 'Devices', icon: IconDevices, items: [
-      { label: 'All devices', to: '/devices', keywords: 'hosts clients machines computers' },
+      { label: 'All devices', to: '/devices', keywords: 'hosts clients machines computers', monitors: true },
       { label: 'Traffic', to: '/devices/traffic', keywords: 'bandwidth usage bytes per device top talkers' },
-      { label: 'ARP table', to: '/devices/arp', keywords: 'mac addresses neighbours neighbors' },
+      { label: 'ARP table', to: '/devices/arp', keywords: 'mac addresses neighbours neighbors', monitors: true },
     ],
   },
   {
     label: 'Network', icon: IconNetwork, items: [
-      { label: 'Interfaces', to: '/interfaces', keywords: 'ports nics network cards vlan wan lan ip address' },
-      { label: 'Routing', to: '/network/routing', keywords: 'routes default route' },
+      { label: 'Interfaces', to: '/interfaces', keywords: 'ports nics network cards vlan wan lan ip address', monitors: true },
+      { label: 'Routing', to: '/network/routing', keywords: 'routes default route', monitors: true },
     ],
   },
   {
@@ -39,9 +46,9 @@ export const nav: NavGroup[] = [
       { label: 'Rules', to: '/firewall/rules', keywords: 'filter pass block allow deny policy' },
       { label: 'NAT', to: '/firewall/nat', keywords: 'network address translation masquerade' },
       { label: 'Aliases', to: '/firewall/aliases', keywords: 'tables lists groups of addresses url lists' },
-      { label: 'Connections', to: '/firewall/connections', keywords: 'states state table sessions kill close' },
-      { label: 'Firewall log', to: '/firewall/log', keywords: 'pflog blocked packets logged' },
-      { label: 'Statistics', to: '/firewall/stats', keywords: 'pf stats counters pfctl info memory limits timeouts interfaces state table congestion' },
+      { label: 'Connections', to: '/firewall/connections', keywords: 'states state table sessions kill close', monitors: true },
+      { label: 'Firewall log', to: '/firewall/log', keywords: 'pflog blocked packets logged', monitors: true },
+      { label: 'Statistics', to: '/firewall/stats', keywords: 'pf stats counters pfctl info memory limits timeouts interfaces state table congestion', monitors: true },
       { label: 'Sign-in access', to: '/firewall/authpf', keywords: 'authpf ssh sign in login contractors guests captive access while signed in' },
       { label: 'Ruleset', to: '/firewall/ruleset', keywords: 'pf.conf generated rules raw' },
       { label: 'Settings', to: '/firewall/settings', keywords: 'firewall options pf' },
@@ -49,7 +56,7 @@ export const nav: NavGroup[] = [
   },
   {
     label: 'Services', icon: IconServer2, items: [
-      { label: 'All services', to: '/services', keywords: 'daemons rcctl rc.d rc.conf start stop restart reload boot sshd ntpd smtpd' },
+      { label: 'All services', to: '/services', keywords: 'daemons rcctl rc.d rc.conf start stop restart reload boot sshd ntpd smtpd', monitors: true },
       { label: 'DHCP server', to: '/services/dhcp', keywords: 'dhcpd leases address pool range' },
       { label: 'DNS resolver', to: '/services/dns', keywords: 'unbound name server dns' },
       { label: 'WireGuard VPN', to: '/services/wireguard', keywords: 'vpn tunnels peers remote access wg' },
@@ -57,9 +64,9 @@ export const nav: NavGroup[] = [
   },
   {
     label: 'Monitoring', icon: IconActivity, items: [
-      { label: 'Graphs', to: '/monitoring/graphs', keywords: 'charts history metrics cpu memory' },
-      { label: 'Events', to: '/monitoring/events', keywords: 'event log alerts what happened' },
-      { label: 'Tools', to: '/monitoring/tools', keywords: 'diagnostics ping traceroute dns lookup port test' },
+      { label: 'Graphs', to: '/monitoring/graphs', keywords: 'charts history metrics cpu memory', monitors: true },
+      { label: 'Events', to: '/monitoring/events', keywords: 'event log alerts what happened', monitors: true },
+      { label: 'Tools', to: '/monitoring/tools', keywords: 'diagnostics ping traceroute dns lookup port test', monitors: true },
     ],
   },
   {
@@ -68,9 +75,10 @@ export const nav: NavGroup[] = [
       { label: 'Users', to: '/system/users', admin: true, keywords: 'accounts admins roles operators' },
       { label: 'Notifications', to: '/system/notifications', keywords: 'webhooks alerts slack' },
       { label: 'Change history', to: '/system/history', keywords: 'commits revert undo audit changes' },
-      { label: 'System logs', to: '/system/logs', keywords: 'syslog messages daemon' },
-      { label: 'Configuration files', to: '/system/files', keywords: 'files /etc config' },
-      { label: 'Storage', to: '/system/storage', keywords: 'disk space usage limits size memory' },
+      { label: 'System logs', to: '/system/logs', keywords: 'syslog messages daemon', monitors: true },
+      { label: 'Configuration files', to: '/system/files', keywords: 'files /etc config', monitors: true },
+      { label: 'Take over', to: '/system/take-over', keywords: 'read-only monitor import manage control', monitors: true, readOnlyOnly: true },
+      { label: 'Storage', to: '/system/storage', keywords: 'disk space usage limits size memory', monitors: true },
     ],
   },
 ];
@@ -81,8 +89,20 @@ const matches = (path: string, to: string) => (to === '/' ? path === '/' : path 
 // /devices/traffic that's Traffic, not All devices; on a device's page,
 // All devices.
 const allPaths = nav.flatMap((g) => (g.to ? [g.to] : g.items!.map((i) => i.to)));
+const allItems: (NavItem | NavGroup)[] = nav.flatMap((g): (NavItem | NavGroup)[] => (g.to ? [g] : g.items!));
 export const activePath = (path: string) =>
   allPaths.filter((to) => matches(path, to)).sort((a, b) => b.length - a.length)[0];
+
+/** Whether a sidebar item is shown, read-only or not. */
+export const itemShown = (i: NavItem | NavGroup, readOnly: boolean) => (readOnly ? !!i.monitors : !('readOnlyOnly' in i && i.readOnlyOnly));
+
+/** Whether the page at a path is there, read-only or not: the page of
+ *  the sidebar item it's under (a device's page is All devices'). */
+export function pageShown(path: string, readOnly: boolean) {
+  const to = activePath(path);
+  const item = allItems.find((i) => i.to === to);
+  return !item || itemShown(item, readOnly);
+}
 
 /** A tab or a card within a page, for the command palette. */
 export interface Place {
@@ -92,14 +112,20 @@ export interface Place {
   to: string;
   keywords?: string;
   admin?: boolean;
+  /** false: not in read-only mode, though its page is (a tab of OPF's
+   *  own configuration). */
+  monitors?: false;
 }
+
+/** Whether a place is there, read-only or not. */
+export const placeShown = (p: Place, readOnly: boolean) => !readOnly || (p.monitors !== false && pageShown(p.to.split(/[?#]/)[0], readOnly));
 
 export const places: Place[] = [
   // Devices
   { label: 'Traffic per device', page: 'Firewall › Settings', to: '/firewall/settings#traffic', keywords: 'count bandwidth keep days devices' },
   // Network
-  { label: 'Gateways', page: 'Routing', to: '/network/routing/gateways', keywords: 'gateway monitoring latency loss default' },
-  { label: 'Static routes', page: 'Routing', to: '/network/routing/routes', keywords: 'route network via' },
+  { label: 'Gateways', page: 'Routing', to: '/network/routing/gateways', keywords: 'gateway monitoring latency loss default', monitors: false },
+  { label: 'Static routes', page: 'Routing', to: '/network/routing/routes', keywords: 'route network via', monitors: false },
   { label: 'Routing table', page: 'Routing', to: '/network/routing/table', keywords: 'netstat routes kernel' },
   // Firewall
   { label: 'Counters', page: 'Statistics', to: '/firewall/stats#counters', keywords: 'pf counters match state-mismatch congestion memory drops' },

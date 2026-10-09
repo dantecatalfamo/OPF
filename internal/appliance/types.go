@@ -203,6 +203,12 @@ type Status struct {
 	// Release is the running OpenBSD release (kern.osrelease), read
 	// once; empty if it couldn't be.
 	Release string `json:"release,omitempty"`
+	// ReadOnly: OPF only watches this machine and changes nothing on it
+	// (readonly.go). Managed says whether it has a configuration of its
+	// own, from before: without one, taking over needs the existing
+	// configuration imported first.
+	ReadOnly bool `json:"readOnly,omitempty"`
+	Managed  bool `json:"managed"`
 }
 
 // LeaseNames is what the DHCP lease watcher last did: the names
@@ -496,6 +502,7 @@ const (
 	CodeForbidden       Code = "forbidden"        // signed in, but the role doesn't allow it
 	CodeRateLimited     Code = "rate_limited"     // too many failed sign-ins; try again later
 	CodeReauth          Code = "reauth_required"  // give your password again to do this
+	CodeReadOnly        Code = "read_only"        // OPF is only monitoring this machine (read-only mode)
 	CodeInternal        Code = "internal"
 )
 

@@ -42,6 +42,7 @@ mock server (`opf -mock`) has no accounts unless it's started with
 | `forbidden` | 403 | signed in, but the role doesn't allow it |
 | `rate_limited` | 429 | too many failed sign-ins from this name or address; the message says when to try again |
 | `reauth_required` | 403 | give your password again first (`POST /api/session/reauth`), then repeat the request |
+| `read_only` | 403 | OPF only monitors this machine (`opf -readonly`): nothing that would change it is done, for anyone |
 | `internal` | 500 | logged on the server; the message says only "internal error" |
 
 ## Signing in
@@ -165,11 +166,23 @@ Small enough to poll.
 {"live": "6265311081b0c6acc983", "staged": "9e304c6944d77c8d8571", "pending": {…commit…}}
 ```
 
-`staged` and `pending` are omitted when there's none.
+`staged` and `pending` are omitted when there's none. `readOnly` is
+true while OPF only monitors the machine; `managed` says whether OPF has
+a configuration of its own for it (from before it was made read-only).
+
+Read-only, every request that would change the machine answers
+`read_only`: staging, committing, confirming or reverting; closing a
+connection, changing a table, refreshing a list, ending a sign-in
+session; starting, stopping, restarting or reloading a service (checking
+is fine); forgetting cached DNS answers; keeping keys or secrets; and
+making, changing or removing an account, your own password included.
+Everything that only looks still answers, and `GET /api/files` lists the
+machine's own files OPF would manage.
 
 ### `GET /api/config`
 
-`{version, model}`: the live model.
+`{version, model}`: the live model. With none yet, an empty model: no
+interfaces, rules or settings, every list empty (not null).
 
 ### `GET /api/config/staged`
 

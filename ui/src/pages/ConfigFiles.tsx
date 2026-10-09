@@ -10,6 +10,7 @@ import { backend, useStore } from '../model/store';
 import type { ConfigFile, ConfigFileView } from '../lib/api';
 import { Mono, PageHeader, SectionTitle } from '../components/ui';
 import { UnifiedDiff } from '../components/UnifiedDiff';
+import { useMode } from '../lib/mode';
 
 /** A link to a file on this page, for the pages it belongs to. */
 export function FileLink({ path, label }: { path: string; label?: string }) {
@@ -111,6 +112,7 @@ function FileView({ path, changes }: { path: string; changes: number }) {
 
 export function ConfigFiles() {
   const { changes, history } = useStore();
+  const { readOnly } = useMode();
   const [params, setParams] = useSearchParams();
   const [files, setFiles] = useState<ConfigFile[]>();
   const [error, setError] = useState<string>();
@@ -125,7 +127,12 @@ export function ConfigFiles() {
 
   return (
     <>
-      <PageHeader title="Configuration files" description="The OpenBSD files OPF writes for this configuration, as they are on the firewall, with any staged change and anything changed by hand." />
+      <PageHeader
+        title="Configuration files"
+        description={readOnly
+          ? 'This machine’s own configuration: the files OPF would manage, as they are on it. OPF only reads them.'
+          : 'The OpenBSD files OPF writes for this configuration, as they are on the firewall, with any staged change and anything changed by hand.'}
+      />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, md: 4 }}>
@@ -147,7 +154,7 @@ export function ConfigFiles() {
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 8 }}>
-          <Card>{selected ? <FileView path={selected} changes={version} /> : <Text size="sm" c="dimmed">No files yet: nothing has been committed.</Text>}</Card>
+          <Card>{selected ? <FileView path={selected} changes={version} /> : <Text size="sm" c="dimmed">{readOnly ? 'None of the files OPF manages are on this machine.' : 'No files yet: nothing has been committed.'}</Text>}</Card>
         </Grid.Col>
       </Grid>
     </>

@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Anchor, Badge, Button, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, ThemeIcon } from '@mantine/core';
 import { IconShieldCheck, IconShieldHalf, IconWorld, IconWorldSearch, IconServer2, IconArrowDown, IconArrowUp, IconDownload } from '@tabler/icons-react';
-import { useStore } from '../model/store';
+import { backend, useStore } from '../model/store';
 import { tunnels, upstream } from '../model/types';
 import { firstIPv4, ifaceState, peerOnline, peerState, useLive } from '../lib/live';
 import { labelOwner } from '../lib/pfLabels';
-import { rpzBlocked } from '../lib/api';
+import { rpzBlocked, type InterfaceState, type ServiceStatus } from '../lib/api';
+import { useMode } from '../lib/mode';
 import { ranges, useEventMarks, useHistory } from '../lib/history';
 import { HistoryChart } from '../components/HistoryChart';
 import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
@@ -69,24 +70,53 @@ function Meter({ label, used, total, format }: { label: string; used?: number; t
   );
 }
 
+// The interfaces worth showing of a machine OPF only monitors: not
+// loopback, pflog or enc.
+const watched = (ifs: InterfaceState[]) => ifs.filter((i) => !/^(lo|pflog|enc)\d/.test(i.name));
+
+// A service of a machine OPF only monitors, from rcctl: running, off
+// (doesn't start at boot), or failed (starts at boot, isn't running).
+function serviceRow(svcs: ServiceStatus[] | undefined, name: string, label: string) {
+  const s = svcs?.find((x) => x.name === name);
+  return { name: label, ok: !!s?.running, note: !svcs ? '…' : !s ? 'Not on this machine' : s.running ? 'Running' : s.failed ? 'Starts at boot, not running' : 'Off' };
+}
+
 export function Dashboard() {
   const { applied } = useStore();
+  const { readOnly } = useMode();
   const { data: sys } = useLive('system');
   const { data: ifs } = useLive('interfaces');
   const { data: upd } = useLive('updates');
+  // Read-only, the machine as it is: its interfaces, the one in pf's
+  // egress group (where the default route goes) for the WAN, and its
+  // services from rcctl. Otherwise OPF's configuration says.
+  const roIfs = readOnly ? watched(ifs?.interfaces ?? []) : [];
+  const roWan = roIfs.find((i) => i.groups.includes('egress'));
+  const [svcs, setSvcs] = useState<ServiceStatus[]>();
+  useEffect(() => {
+    if (!readOnly) return;
+    const load = () => backend.services().then((r) => setSvcs(r.services), () => {});
+    load();
+    const t = setInterval(load, 30_000);
+    return () => clearInterval(t);
+  }, [readOnly]);
   // The WAN, or behind another router the interface towards it.
   const wan = upstream(applied);
   const behind = !!wan && wan.role !== 'wan';
+  const wanDev = readOnly ? roWan?.name : wan?.device;
   const [range, setRange] = useState(ranges[1].value);
-  const wanSeries = wan ? [{ key: `if.${wan.device}.rx`, label: 'Download', color: 'harbor.6' }, { key: `if.${wan.device}.tx`, label: 'Upload', color: 'amber.6' }] : [];
+  const wanSeries = wanDev ? [{ key: `if.${wanDev}.rx`, label: 'Download', color: 'harbor.6' }, { key: `if.${wanDev}.tx`, label: 'Upload', color: 'amber.6' }] : [];
   const { data: history } = useHistory(wanSeries.map((x) => x.key), Number(range));
-  const events = useEventMarks(Number(range), !!wan);
-  const wanMarks = wan ? [wan.id, applied.routing.defaultGateway ?? ''].flatMap((s) => events.get(s) ?? []) : [];
-  const wanStatus = wan ? ifaceState(ifs, wan) : undefined;
+  const events = useEventMarks(Number(range), !!wanDev);
+  const wanMarks = readOnly ? (wanDev ? events.get(wanDev) ?? [] : []) : wan ? [wan.id, applied.routing.defaultGateway ?? ''].flatMap((s) => events.get(s) ?? []) : [];
+  const wanStatus = readOnly ? roWan : wan ? ifaceState(ifs, wan) : undefined;
   const wanUp = !!wanStatus?.up && wanStatus.status !== 'no carrier' && wanStatus.ipv4.length > 0;
   const vpns = tunnels(applied);
-  const peers = vpns.flatMap((t) => t.wireguard.peers.map((p) => ({ tunnel: t, peer: p })));
-  const connectedPeers = peers.filter(({ tunnel, peer }) => peerOnline(peerState(ifs, tunnel, peer))).length;
+  const roPeers = roIfs.flatMap((i) => i.wireguard?.peers ?? []);
+  const peers = readOnly ? roPeers : vpns.flatMap((t) => t.wireguard.peers.map((p) => ({ tunnel: t, peer: p })));
+  const connectedPeers = readOnly ? roPeers.filter(peerOnline).length : vpns.flatMap((t) => t.wireguard.peers.map((p) => ({ tunnel: t, peer: p }))).filter(({ tunnel, peer }) => peerOnline(peerState(ifs, tunnel, peer))).length;
+  const vpnPorts = readOnly ? roIfs.flatMap((i) => (i.wireguard?.port ? [i.wireguard.port] : [])) : vpns.map((t) => t.wireguard.listenPort);
+  const dnsOn = readOnly ? !!svcs?.find((x) => x.name === 'unbound')?.running : applied.dns.enabled;
   const { data: pfs } = useLive('pfStatus');
   const { data: log } = useLive('firewallLog');
   const { data: dns } = useLive('dnsStats');
@@ -114,7 +144,9 @@ export function Dashboard() {
           icon={IconWorld}
           label="Internet"
           value={!ifs ? '…' : wanUp ? 'Connected' : 'Offline'}
-          detail={!wan ? 'No WAN, and no default gateway' : firstIPv4(wanStatus) ? `${firstIPv4(wanStatus)}${wan.ipv4.mode === 'dhcp' ? ' via DHCP' : ''}${behind ? `, through a router on ${wan.name}` : ''}` : 'No address'}
+          detail={readOnly
+            ? (!roWan ? 'No default route' : `${firstIPv4(roWan) ?? 'No address'} on ${roWan.description ? `${roWan.description} (${roWan.name})` : roWan.name}`)
+            : !wan ? 'No WAN, and no default gateway' : firstIPv4(wanStatus) ? `${firstIPv4(wanStatus)}${wan.ipv4.mode === 'dhcp' ? ' via DHCP' : ''}${behind ? `, through a router on ${wan.name}` : ''}` : 'No address'}
           state={!ifs || wanUp ? 'ok' : 'bad'}
         />
         <Tile
@@ -127,20 +159,20 @@ export function Dashboard() {
         <Tile
           icon={IconWorldSearch}
           label="DNS"
-          value={!applied.dns.enabled ? 'Off' : !dns ? '…' : dns.stats ? (dns.queriesPerSec !== undefined ? `${rate(dns.queriesPerSec)} queries/s` : 'Answering') : 'Not answering'}
+          value={readOnly && !svcs ? '…' : !dnsOn ? 'Off' : !dns ? '…' : readOnly && !dns.stats ? 'Running' : dns.stats ? (dns.queriesPerSec !== undefined ? `${rate(dns.queriesPerSec)} queries/s` : 'Answering') : 'Not answering'}
           detail={
-            !applied.dns.enabled ? 'The resolver isn’t running'
-              : !dns?.stats ? (dns?.errors[0] ? 'Couldn’t read its counters' : 'Name lookups for your networks')
+            !dnsOn ? 'The resolver isn’t running'
+              : !dns?.stats ? (readOnly ? 'unbound-control can’t read its counters' : dns?.errors[0] ? 'Couldn’t read its counters' : 'Name lookups for your networks')
               : dnsBlocking && dns.blockedPerSec !== undefined ? `${rate(dns.blockedPerSec)} blocked a second, ${formatCount(rpzBlocked(dns.stats))} in all`
               : `${Math.round((dns.stats.cacheHits / Math.max(1, dns.stats.cacheHits + dns.stats.cacheMisses)) * 100)}% answered from the cache`
           }
-          state={!applied.dns.enabled || !dns || dns.stats ? 'ok' : 'bad'}
+          state={!dnsOn || !dns || dns.stats || readOnly ? 'ok' : 'bad'}
         />
         <Tile
           icon={IconServer2}
           label="VPN"
           value={`${connectedPeers} of ${peers.length} connected`}
-          detail={vpns.length ? `WireGuard on port${vpns.length === 1 ? '' : 's'} ${vpns.map((t) => t.wireguard.listenPort).join(', ')}` : 'No tunnels'}
+          detail={vpnPorts.length ? `WireGuard on port${vpnPorts.length === 1 ? '' : 's'} ${vpnPorts.join(', ')}` : 'No tunnels'}
           state={connectedPeers > 0 ? 'ok' : 'warn'}
         />
         <Tile
@@ -172,7 +204,7 @@ export function Dashboard() {
             >
               Internet traffic
             </SectionTitle>
-            {wan ? (
+            {wanDev ? (
               <HistoryChart data={history} series={wanSeries} range={Number(range)} format={formatBits} area peaks h={250} marks={wanMarks} />
             ) : (
               <Text size="sm" c="dimmed" h={250} pt="xl" ta="center">No WAN, and no default gateway to reach the internet through.</Text>
@@ -183,8 +215,20 @@ export function Dashboard() {
 
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Card h="100%">
-            <SectionTitle right={<Anchor component={Link} to="/interfaces" size="sm">Manage</Anchor>}>Interfaces</SectionTitle>
+            <SectionTitle right={<Anchor component={Link} to="/interfaces" size="sm">{readOnly ? 'Details' : 'Manage'}</Anchor>}>Interfaces</SectionTitle>
             <Stack gap="md">
+              {readOnly && roIfs.map((s) => (
+                <Group key={s.name} justify="space-between" wrap="nowrap" align="flex-start">
+                  <Stack gap={2}>
+                    <StatusDot ok={s.up && s.status !== 'no carrier'} label={s.description ? `${s.description} (${s.name})` : s.name} />
+                    <Mono c="dimmed">{s.ipv4[0] ?? '—'}</Mono>
+                  </Stack>
+                  <Stack gap={2} align="flex-end">
+                    <Text size="xs" c="dimmed" className="num">↓ {s.rxBps !== undefined ? formatBits(s.rxBps) : '—'}</Text>
+                    <Text size="xs" c="dimmed" className="num">↑ {s.txBps !== undefined ? formatBits(s.txBps) : '—'}</Text>
+                  </Stack>
+                </Group>
+              ))}
               {applied.interfaces.map((i) => {
                 const s = ifaceState(ifs, i);
                 const addr = i.ipv4.mode === 'static' ? `${i.ipv4.address}/${i.ipv4.prefix}` : s?.ipv4[0] ?? '—';
@@ -218,7 +262,7 @@ export function Dashboard() {
                   {temp && ` · ${temp.number!.toFixed(0)} °C`}
                 </Text>
               )}
-              {patches > 0 && (
+              {patches > 0 && !readOnly && (
                 <Group justify="space-between" mt={4}>
                   <Text size="sm" c="dimmed">
                     {patches} security {patches === 1 ? 'patch' : 'patches'} ready
@@ -237,9 +281,15 @@ export function Dashboard() {
             <SectionTitle>Services</SectionTitle>
             <Stack gap="sm">
               {[
-                { name: 'DHCP server', ok: applied.dhcp.some((d) => d.enabled), note: `${applied.dhcp.filter((d) => d.enabled).length} networks` },
-                { name: 'DNS resolver', ok: applied.dns.enabled, note: applied.dns.mode === 'recursive' ? 'Recursive, DNSSEC' : 'Forwarding' },
-                { name: 'WireGuard VPN', ok: vpns.some((t) => t.enabled), note: `${vpns.filter((t) => t.enabled).length} of ${vpns.length} tunnels, ${peers.length} devices` },
+                ...(readOnly ? [
+                  serviceRow(svcs, 'dhcpd', 'DHCP server'),
+                  serviceRow(svcs, 'unbound', 'DNS resolver'),
+                  { name: 'WireGuard VPN', ok: roIfs.some((i) => i.wireguard && i.up), note: `${roIfs.filter((i) => i.wireguard).length} tunnels, ${roPeers.length} devices` },
+                ] : [
+                  { name: 'DHCP server', ok: applied.dhcp.some((d) => d.enabled), note: `${applied.dhcp.filter((d) => d.enabled).length} networks` },
+                  { name: 'DNS resolver', ok: applied.dns.enabled, note: applied.dns.mode === 'recursive' ? 'Recursive, DNSSEC' : 'Forwarding' },
+                  { name: 'WireGuard VPN', ok: vpns.some((t) => t.enabled), note: `${vpns.filter((t) => t.enabled).length} of ${vpns.length} tunnels, ${peers.length} devices` },
+                ]),
                 {
                   name: 'Time sync',
                   ok: !!sys?.time?.synced,

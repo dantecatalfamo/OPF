@@ -291,10 +291,14 @@ func (m *Manager) sample(now time.Time) {
 	model, _, _ := m.live()
 	m.applyGraphLimits(model) // a commit may have changed them
 	m.readDNSActivity(model, now)
-	m.readTraffic(model, now)
-	m.applySystemDNS(model) // resolvd forgets it when it restarts
-	m.expireTables(model, now)
-	m.syncAuthpfAccounts(model)
+	// Read-only, nothing the model asks for is kept up: these change
+	// the machine (pf's tables, resolvd, accounts).
+	if !m.ReadOnly {
+		m.readTraffic(model, now)
+		m.applySystemDNS(model) // resolvd forgets it when it restarts
+		m.expireTables(model, now)
+		m.syncAuthpfAccounts(model)
+	}
 	m.watchAuthpfSessions(model)
 
 	// Interfaces: bits a second in and out.

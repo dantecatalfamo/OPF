@@ -60,6 +60,7 @@ func main() {
 	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
 	seed := flag.String("seed", "ui/src/model/sample-model.json", "model the mock server starts from")
 	mockLogin := flag.String("mock-login", "", "with -mock, require signing in, as name:password (an admin); without it the mock has no accounts")
+	readOnly := flag.Bool("readonly", false, "only monitor this machine: change nothing on it, and refuse every change through the web UI (kept on in the state directory until the machine is taken over)")
 	watchdog := flag.String("watchdog", "", "run as the watchdog of the commit with this id (OPF starts these itself)")
 	flag.Parse()
 	log.SetPrefix("opf: ")
@@ -71,7 +72,7 @@ func main() {
 				addr = *listen
 			}
 		})
-		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin))
+		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin, *readOnly))
 	}
 
 	var runner run.Runner = run.Exec{}
@@ -115,6 +116,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	ro, err := readOnlyMode(*stateDir, *readOnly)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if ro {
+		log.Printf("read-only: monitoring this machine, changing nothing on it (%s)", filepath.Join(*stateDir, appliance.ReadOnlyMarker))
+	}
 	// A watchdog for each commit that waits, in case OPF dies first.
 	var watchdogArgs []string
 	flag.Visit(func(f *flag.Flag) {
@@ -143,6 +151,7 @@ func main() {
 		log.Fatal(err)
 	}
 	api.Actions = runner // dry-run with -dry
+	api.ReadOnly = ro    // and read-only, nothing runs at all
 	leasesFile := filepath.Join(*root, leases.Path)
 
 	// Who can sign in: the system's accounts in OPF's groups, which are
@@ -157,6 +166,11 @@ func main() {
 		log.Printf("OPF's groups: %v", err)
 	}
 	gcancel()
+	if ro {
+		// Its groups are the one thing OPF makes, so people can sign in;
+		// accounts are then changed by hand, not by OPF.
+		admin.W = auth.System{Runner: run.Refuse{Log: log.Default()}, Feeder: run.Exec{}}
+	}
 	var tlsPair *privsep.TLSPair
 	if useTLS {
 		tlsPair, err = certificate(api, *stateDir, *listen)
@@ -180,8 +194,12 @@ func main() {
 	// So does the webhook sender, this binary started again.
 	api.Sender, api.Exe = run.Exec{Credential: cred}, exe
 	// Unveil skips a directory that doesn't exist, and then nothing can
-	// be created in it; make the ones OPF writes before hiding the rest.
+	// be created in it; make the ones OPF writes before hiding the rest
+	// (read-only, only its state directory).
 	for _, d := range store.WritableDirs() {
+		if ro && filepath.Clean(d) != filepath.Clean(*stateDir) {
+			continue
+		}
 		if err := os.MkdirAll(d, 0755); err != nil {
 			log.Fatal(err)
 		}
@@ -189,7 +207,20 @@ func main() {
 	// Checking a password reads the account files; the login helpers
 	// are run (SandboxParent's exec directories).
 	readable := []string{leasesFile, "/etc/master.passwd", "/etc/group", "/etc/login.conf"}
-	if err := privsep.SandboxParent(store.WritableDirs(), readable, exe); err != nil {
+	writable := store.WritableDirs()
+	if ro {
+		// Read-only, OPF may write its state directory and nothing else:
+		// the rest of what it would manage it can only read. (Unveiling
+		// the state directory "r" too would take its "rwc" away: the
+		// last unveil of a path wins.)
+		for _, d := range writable {
+			if filepath.Clean(d) != filepath.Clean(*stateDir) {
+				readable = append(readable, d)
+			}
+		}
+		writable = []string{*stateDir}
+	}
+	if err := privsep.SandboxParent(writable, readable, exe); err != nil {
 		log.Fatal(err)
 	}
 
@@ -198,7 +229,7 @@ func main() {
 
 	// DHCP clients' names in DNS, when the model asks for them.
 	var resolver leases.Resolver = leases.Unbound{Runner: runner, Config: "/var/unbound/etc/unbound.conf"}
-	if *dry {
+	if *dry || ro {
 		resolver = &leases.Memory{Log: log.Default()}
 	}
 	watcher := &leases.Watcher{File: leasesFile, Model: liveModel(api), Resolver: resolver, Log: log.Default()}
@@ -324,6 +355,31 @@ func runWatchdog(id string, opts config.Options) {
 		log.Fatalf("commit %s: %v", id, err)
 	}
 	log.Print(msg)
+}
+
+// readOnlyMode says whether OPF runs read-only: while the state
+// directory has the marker. -readonly makes it; taking the machine over
+// takes it away, so starting later without the flag doesn't hand OPF
+// control.
+func readOnlyMode(stateDir string, flagged bool) (bool, error) {
+	marker := filepath.Join(stateDir, appliance.ReadOnlyMarker)
+	if flagged {
+		if err := os.MkdirAll(stateDir, 0700); err != nil {
+			return false, err
+		}
+		if _, err := os.Stat(marker); errors.Is(err, os.ErrNotExist) {
+			msg := "OPF only monitors this machine (opf -readonly) and changes nothing on it. Taking it over removes this file.\n"
+			if err := os.WriteFile(marker, []byte(msg), 0600); err != nil {
+				return false, err
+			}
+		}
+	}
+	if _, err := os.Stat(marker); err == nil {
+		return true, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+	return false, nil
 }
 
 func liveModel(api *appliance.Manager) func() (*pf.Model, error) {

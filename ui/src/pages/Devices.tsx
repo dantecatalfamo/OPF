@@ -610,7 +610,7 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
 export function Device() {
   const { key = '' } = useParams();
   const { applied } = useStore();
-  const { canEdit } = useRole();
+  const { isAdmin, readOnly } = useRole();
   const [d, setD] = useState<DeviceInfo>();
   const [error, setError] = useState<string>();
   const [days, setDays] = useState('1');
@@ -621,8 +621,8 @@ export function Device() {
     backend.device(key).then((x) => live && setD(x), (e) => live && setError(errorText(e)));
     return () => { live = false; };
   }, [key]);
-  const traffic = canEdit && !!applied.firewall.traffic?.enabled;
-  const dns = canEdit && applied.dns.enabled && !!applied.dns.activity?.enabled && !!applied.dns.activity.devices;
+  const traffic = isAdmin && !!applied.firewall.traffic?.enabled;
+  const dns = isAdmin && applied.dns.enabled && !!applied.dns.activity?.enabled && !!applied.dns.activity.devices;
   const kept = Math.max(traffic ? applied.firewall.traffic!.days : 1, dns ? applied.dns.activity!.days : 1);
   const n = Math.min(Number(days), kept);
   const ranges = [{ value: '1', label: 'Today' }, ...[7, 31].filter((x) => x <= kept).map((x) => ({ value: String(x), label: x === 31 ? 'Month' : `${x} days` }))];
@@ -661,13 +661,14 @@ export function Device() {
           )}
           {traffic && <TrafficCard deviceKey={d.key} days={n} />}
           {dns && <DnsCard deviceKey={d.key} days={n} />}
-          {!canEdit && (applied.firewall.traffic?.enabled || applied.dns.activity?.enabled) && (
+          {!isAdmin && (applied.firewall.traffic?.enabled || applied.dns.activity?.enabled) && (
             <Text size="xs" c="dimmed">Its traffic and DNS activity are kept, but only admins can see them.</Text>
           )}
           {d.addresses.length > 0 && <Connections addresses={d.addresses} showNames={showNames} />}
           <Grid gutter="md">
-            {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><Rules addresses={[...new Set([...d.addresses, ...(d.reservation ? [d.reservation.ip] : [])])]} /></Grid.Col>}
-            <Grid.Col span={{ base: 12, md: 6 }}><Events terms={terms} /></Grid.Col>
+            {/* OPF's rules naming it: read-only, OPF has none. */}
+            {d.addresses.length > 0 && !readOnly && <Grid.Col span={{ base: 12, md: 6 }}><Rules addresses={[...new Set([...d.addresses, ...(d.reservation ? [d.reservation.ip] : [])])]} /></Grid.Col>}
+            <Grid.Col span={{ base: 12, md: readOnly ? 12 : 6 }}><Events terms={terms} /></Grid.Col>
           </Grid>
           {d.addresses.length > 0 && <FirewallLog addresses={d.addresses} showNames={showNames} />}
         </Stack>

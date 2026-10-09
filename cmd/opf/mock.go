@@ -29,7 +29,10 @@ import (
 // one process with the real generators, parser and staging engine, but
 // nothing outside a scratch directory is read or written and commands
 // are logged instead of run.
-func runMock(listen, seedPath string, timeout time.Duration, login string) error {
+// runMock serves the API from the seed model. readOnly, it's a machine
+// configured by hand that OPF only monitors: its files are the seed's,
+// but OPF has no configuration of its own.
+func runMock(listen, seedPath string, timeout time.Duration, login string, readOnly bool) error {
 	host, _, err := net.SplitHostPort(listen)
 	if err != nil {
 		return err
@@ -85,8 +88,10 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if err != nil {
 		return err
 	}
-	if err := write(config.ModelPath, enc, 0600); err != nil {
-		return err
+	if !readOnly {
+		if err := write(config.ModelPath, enc, 0600); err != nil {
+			return err
+		}
 	}
 	if err := write(leases.Path, mockLeases(time.Now()), 0644); err != nil {
 		return err
@@ -119,7 +124,14 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	if err != nil {
 		return err
 	}
-	api.Runner = mockSystem{start: time.Now(), model: liveModel(api), pf: &mockPf{}, tables: &mockTableStore{}, authpf: &mockAuthpf{root: root, start: time.Now()}, services: &mockServices{}, dnsNames: func() int {
+	api.ReadOnly = readOnly
+	// What the system's commands answer: the seed's machine, read-only
+	// as much as when OPF manages it.
+	systemModel := liveModel(api)
+	if readOnly {
+		systemModel = func() (*pf.Model, error) { return &model, nil }
+	}
+	api.Runner = mockSystem{start: time.Now(), model: systemModel, pf: &mockPf{}, tables: &mockTableStore{}, authpf: &mockAuthpf{root: root, start: time.Now()}, services: &mockServices{}, dnsNames: func() int {
 		n := 0
 		ls, _ := api.DNSLists()
 		for _, l := range ls {
@@ -129,7 +141,11 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 		}
 		return n
 	}, next: run.Dry{Log: log.Default()}}
-	srv := web.New(api, ui.Files())
+	var served appliance.API = api
+	if readOnly {
+		served = appliance.ReadOnlyAPI(api)
+	}
+	srv := web.New(served, ui.Files())
 	if login != "" {
 		// Accounts, enforced as on OpenBSD: the privileged side's RPC
 		// service, over a pipe, with one admin whose password is given.
@@ -149,7 +165,7 @@ func runMock(listen, seedPath string, timeout time.Duration, login string) error
 	api.SetLeaseWatcher(watcher)
 	go watcher.Run(context.Background())
 	go api.RunRefresher(context.Background(), time.Minute)
-	if m, err := liveModel(api)(); err == nil {
+	if m, err := systemModel(); err == nil {
 		leases := map[string]int{}
 		if l, err := api.DHCPLeases(); err == nil {
 			for _, le := range l.Leases {

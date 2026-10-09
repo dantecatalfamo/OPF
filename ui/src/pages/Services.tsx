@@ -163,7 +163,7 @@ function RecentLog({ lines }: { lines: LogLine[] }) {
 function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () => void; onAction: (s: ServiceStatus, a: Action) => void }) {
   const [d, setD] = useState<ServiceDetailResource>();
   const [error, setError] = useState<string>();
-  const { canOperate } = useRole();
+  const { canOperate, readOnly } = useRole();
   useEffect(() => {
     if (!name) return;
     let live = true;
@@ -179,7 +179,7 @@ function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () 
       {d && (
         <Stack gap="md">
           <Group gap="sm"><State s={d} />{d.description && <Text size="sm" c="dimmed">{d.description}</Text>}</Group>
-          {d.managedAt && <Text size="sm">Set up on <Anchor component={Link} to={d.managedAt}>its own page</Anchor>.</Text>}
+          {d.managedAt && !readOnly && <Text size="sm">Set up on <Anchor component={Link} to={d.managedAt}>its own page</Anchor>.</Text>}
           {canOperate && actionsFor(d).length > 0 && (
             <Group gap="xs">
               {actionsFor(d).map((a) => {
@@ -212,7 +212,7 @@ function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () 
 }
 
 export function ServicesPage() {
-  const { canEdit, canOperate } = useRole();
+  const { canEdit, canOperate, readOnly } = useRole();
   const [data, setData] = useState<ServicesResource>();
   const [error, setError] = useState<string>();
   const [tick, setTick] = useState(0);
@@ -265,7 +265,9 @@ export function ServicesPage() {
     <>
       <PageHeader
         title="Services"
-        description="The base system’s services: what each is, whether it starts at boot, and whether it’s running. Starting and stopping happen at once; whether one starts at boot is a change you review and apply, written into rc.conf.local."
+        description={readOnly
+          ? 'The base system’s services: what each is, whether it starts at boot, and whether it’s running.'
+          : 'The base system’s services: what each is, whether it starts at boot, and whether it’s running. Starting and stopping happen at once; whether one starts at boot is a change you review and apply, written into rc.conf.local.'}
       />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       {data?.errors.map((e) => <Alert key={e} color="yellow" variant="light" mb="md">{e}</Alert>)}
@@ -307,7 +309,7 @@ export function ServicesPage() {
                             <Anchor component="button" type="button" className="mono" size="sm" onClick={() => setDetail(s.name)}>{s.name}</Anchor>
                             <Text size="xs" c="dimmed">
                               {s.description || 'Not one of the base system’s'}
-                              {s.managedAt && <> · <Anchor component={Link} to={s.managedAt} size="xs">set up on its page</Anchor></>}
+                              {s.managedAt && !readOnly && <> · <Anchor component={Link} to={s.managedAt} size="xs">set up on its page</Anchor></>}
                             </Text>
                           </Table.Td>
                           <Table.Td><State s={s} /></Table.Td>

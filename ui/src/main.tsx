@@ -15,15 +15,18 @@ import { theme } from './theme';
 import { App } from './App';
 import { StoreProvider } from './model/store';
 import { SessionGate } from './lib/session';
+import { ModeProvider } from './lib/mode';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications position="top-right" />
       <SessionGate>
-        <StoreProvider>
-          <App />
-        </StoreProvider>
+        <ModeProvider>
+          <StoreProvider>
+            <App />
+          </StoreProvider>
+        </ModeProvider>
       </SessionGate>
     </MantineProvider>
   </StrictMode>,

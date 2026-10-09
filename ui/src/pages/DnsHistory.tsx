@@ -452,7 +452,7 @@ function NameDrawer({ pick, days, detailDays, onClose, onDevice }: { pick?: { li
 /** The Activity tab: the network's DNS activity over the days chosen, and each device's. */
 export function DnsActivityTab() {
   const { applied } = useStore();
-  const { canEdit } = useRole();
+  const { isAdmin: canEdit } = useRole();
   const settings = applied.dns.enabled ? applied.dns.activity : undefined;
   const kept = settings?.enabled ? settings.days : 0;
   const [days, setDays] = useState('1');

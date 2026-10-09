@@ -8,6 +8,7 @@ import { Button, Center, Group, Loader, Modal, PasswordInput, Stack, Text } from
 import { api, ApiError, offline, SIGNED_OUT_EVENT, type Role, type SessionResource } from './api';
 import { localApi } from './localApi';
 import { SignIn } from '../pages/SignIn';
+import { useMode } from './mode';
 
 // Not model/store's backend: the store needs this module.
 const backend = offline ? localApi : api;
@@ -25,11 +26,15 @@ const Ctx = createContext<SessionContext>({ accounts: false, signOut: async () =
 
 export const useSession = () => useContext(Ctx);
 
-/** What the signed-in person may do; without accounts, anything. */
+/** What the signed-in person may do; without accounts, anything.
+ *  Read-only (useMode), nobody changes anything: canEdit and canOperate
+ *  are false, while isAdmin still opens what only admins may see. */
 export function useRole() {
   const { accounts, session } = useSession();
+  const { readOnly } = useMode();
   const role: Role = !accounts ? 'admin' : session?.role ?? 'view';
-  return { role, canEdit: role === 'admin', canOperate: role === 'admin' || role === 'operator' };
+  const isAdmin = role === 'admin';
+  return { role, isAdmin, readOnly, canEdit: isAdmin && !readOnly, canOperate: (isAdmin || role === 'operator') && !readOnly };
 }
 
 export function SessionGate({ children }: { children: ReactNode }) {

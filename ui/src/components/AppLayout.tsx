@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import {
-  ActionIcon, Alert, AppShell, Avatar, Badge, Burger, Button, Group, Kbd, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton,
+  ActionIcon, Alert, Anchor, AppShell, Avatar, Badge, Burger, Button, Group, Kbd, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton,
   useComputedColorScheme, useMantineColorScheme,
 } from '@mantine/core';
 import { useDisclosure, useHotkeys, useOs } from '@mantine/hooks';
 import {
-  IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconLogout, IconMoon, IconSearch, IconSettings, IconSun, IconUser,
+  IconAlertTriangle, IconArrowRight, IconChecks, IconClockHour4, IconEye, IconLogout, IconMoon, IconSearch, IconSettings, IconSun, IconUser,
 } from '@tabler/icons-react';
 import { Brand } from './Brand';
 import { ApplyModal } from './ApplyModal';
@@ -15,7 +15,8 @@ import { useStore } from '../model/store';
 import { useRole, useSession } from '../lib/session';
 import { offline } from '../lib/api';
 import { useNow } from '../lib/useNow';
-import { activePath, nav } from '../lib/nav';
+import { activePath, itemShown, nav, pageShown } from '../lib/nav';
+import { useLive } from '../lib/live';
 import { CommandPalette } from './CommandPalette';
 import type { Role } from '../lib/api';
 
@@ -23,11 +24,11 @@ const roleLabel: Record<Role, string> = { admin: 'admin', operator: 'operator', 
 
 function Navigation({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
-  const { canEdit } = useRole();
+  const { isAdmin, readOnly } = useRole();
   const active = activePath(pathname);
   return (
     <>
-      {nav.map((g) =>
+      {nav.filter((g) => (g.to ? itemShown(g, readOnly) : g.items!.some((i) => itemShown(i, readOnly)))).map((g) =>
         g.to ? (
           <NavLink
             key={g.label}
@@ -49,7 +50,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
             childrenOffset={30}
             fw={500}
           >
-            {g.items!.filter((i) => !i.admin || canEdit).map((i) => (
+            {g.items!.filter((i) => (!i.admin || isAdmin) && itemShown(i, readOnly)).map((i) => (
               <NavLink
                 key={i.to}
                 component={Link}
@@ -74,6 +75,16 @@ function Countdown({ deadline }: { deadline: number }) {
 
 function PendingButton({ onReview, onConfirm }: { onReview: () => void; onConfirm: () => void }) {
   const { changes, confirming } = useStore();
+  const { readOnly } = useRole();
+  if (readOnly) {
+    return (
+      <Tooltip label="OPF only watches this machine and changes nothing on it">
+        <Badge component={Link} to="/system/take-over" variant="light" color="blue" size="lg" radius="sm" tt="none" fw={500} leftSection={<IconEye size={14} />} style={{ cursor: 'pointer' }}>
+          Monitoring only
+        </Badge>
+      </Tooltip>
+    );
+  }
   if (confirming) {
     return (
       <Button color="amber" c="dark.9" className="pulse" leftSection={<IconClockHour4 size={18} />} onClick={onConfirm}>
@@ -96,6 +107,20 @@ function PendingButton({ onReview, onConfirm }: { onReview: () => void; onConfir
   );
 }
 
+// A page about OPF's own configuration, reached read-only by a link or
+// an old bookmark: there's no such configuration to show.
+function NotWhileMonitoring() {
+  return (
+    <Alert color="gray" variant="light" title="Not while OPF is only monitoring" icon={<IconEye size={18} />} maw={680}>
+      <Text size="sm" mb="xs">
+        This page is about OPF’s own configuration, which a machine it only monitors doesn’t have: what runs here is configured by hand. The machine’s files are under{' '}
+        <Anchor component={Link} to="/system/files" size="sm">Configuration files</Anchor>.
+      </Text>
+      <Anchor component={Link} to="/system/take-over" size="sm">Taking this machine over</Anchor>
+    </Alert>
+  );
+}
+
 export function AppLayout() {
   const [navOpened, nav] = useDisclosure();
   const [reviewOpened, review] = useDisclosure();
@@ -106,7 +131,8 @@ export function AppLayout() {
   const [confirmOpened, setConfirmOpened] = useState(false);
   const { staged, confirming, release } = useStore();
   const { accounts, session, signOut } = useSession();
-  const { canEdit } = useRole();
+  const { canEdit, readOnly } = useRole();
+  const { data: sys } = useLive('system');
   const { setColorScheme } = useMantineColorScheme();
   const scheme = useComputedColorScheme('light');
 
@@ -141,7 +167,7 @@ export function AppLayout() {
             <Burger opened={navOpened} onClick={nav.toggle} hiddenFrom="sm" size="sm" aria-label="Menu" />
             <Brand />
             <Badge variant="default" size="lg" radius="sm" visibleFrom="md" fw={500} tt="none">
-              <span className="mono">{staged.system.hostname}.{staged.system.domain}</span>
+              <span className="mono">{readOnly ? sys?.hostname ?? '…' : `${staged.system.hostname}.${staged.system.domain}`}</span>
             </Badge>
           </Group>
           <Group gap="sm" wrap="nowrap">
@@ -186,9 +212,11 @@ export function AppLayout() {
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>{session ? `Signed in as ${session.user} (${roleLabel[session.role]})` : 'No accounts on this server'}</Menu.Label>
-                <Menu.Item component={Link} to="/system/general" leftSection={<IconSettings size={16} />}>
-                  Settings
-                </Menu.Item>
+                {!readOnly && (
+                  <Menu.Item component={Link} to="/system/general" leftSection={<IconSettings size={16} />}>
+                    Settings
+                  </Menu.Item>
+                )}
                 {accounts && <Menu.Item leftSection={<IconLogout size={16} />} onClick={signOut}>Sign out</Menu.Item>}
               </Menu.Dropdown>
             </Menu>
@@ -209,7 +237,12 @@ export function AppLayout() {
 
       <AppShell.Main>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          {accounts && session && !canEdit && (
+          {readOnly && (
+            <Alert color="blue" variant="light" mb="md" icon={<IconEye size={18} />}>
+              OPF is only monitoring this machine: it shows what’s happening and changes nothing. Its configuration is still yours, by hand. <Anchor component={Link} to="/system/take-over" size="sm">Taking it over</Anchor>
+            </Alert>
+          )}
+          {accounts && session && !canEdit && !readOnly && (
             <Alert color="blue" variant="light" mb="md">
               {session.role === 'operator'
                 ? 'You’re signed in as an operator: you can look at everything, keep or undo a change someone applied, and run tools, but not change the configuration.'
@@ -221,7 +254,7 @@ export function AppLayout() {
               This is the development server: it has no accounts, so anyone who can reach it can change everything. It only listens on this machine.
             </Alert>
           )}
-          <Outlet />
+          {readOnly && !pageShown(pathname, true) ? <NotWhileMonitoring /> : <Outlet />}
         </div>
       </AppShell.Main>
 

@@ -17,6 +17,7 @@ import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 import { AddressLink, useKnownDevices } from '../components/DeviceLink';
 import { StartedTip } from '../components/StartedTip';
+import { useRole } from '../lib/session';
 
 function Proto({ c }: { c: PfState }) {
   const { applied } = useStore();
@@ -66,7 +67,10 @@ function State({ c }: { c: PfState }) {
   );
 }
 
+// Closing one is an operator's, and nobody's while OPF only monitors.
 function Close({ c, onClose }: { c: PfState; onClose: (c: PfState) => void }) {
+  const { canOperate } = useRole();
+  if (!canOperate) return null;
   return (
     <Tooltip label="Close connection">
       <ActionIcon variant="subtle" color="gray" aria-label="Close connection" onClick={() => onClose(c)}>
@@ -81,6 +85,7 @@ const PAGE = 200;
 const POLL_MS = 10_000;
 
 export function Connections() {
+  const { canOperate } = useRole();
   // The table needs about 820 px beside the navigation.
   const wide = useMediaQuery('(min-width: 75em)') ?? true;
   // A page at a time, filtered on the firewall: a table of thousands of
@@ -138,7 +143,7 @@ export function Connections() {
         description={
           count === undefined
             ? 'Reading pf’s state table…'
-            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table, the busiest first. A connection through the firewall has one on each side. Closing one ends it at once; the device can reconnect if the rules allow.`
+            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table, the busiest first. A connection through the firewall has one on each side.${canOperate ? ' Closing one ends it at once; the device can reconnect if the rules allow.' : ''}`
         }
       />
       {(error || data?.error) && <Alert color="red" variant="light" mb="md">{data?.error ?? error}</Alert>}
@@ -191,7 +196,7 @@ export function Connections() {
                 <Table.Th>Allowed by</Table.Th>
                 <Table.Th ta="right">Age</Table.Th>
                 <Table.Th ta="right">Data</Table.Th>
-                <Table.Th />
+                {canOperate && <Table.Th />}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -206,7 +211,7 @@ export function Connections() {
                     <State c={c} />
                   </Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatBytes(c.bytes)}</Text></Table.Td>
-                  <Table.Td w={44}><Close c={c} onClose={close} /></Table.Td>
+                  {canOperate && <Table.Td w={44}><Close c={c} onClose={close} /></Table.Td>}
                 </Table.Tr>
               ))}
             </Table.Tbody>

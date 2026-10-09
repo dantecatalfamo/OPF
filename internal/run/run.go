@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -85,6 +86,24 @@ func (d Dry) Run(ctx context.Context, argv ...string) ([]byte, error) {
 		d.Log.Printf("dry-run: %s", line)
 	}
 	return []byte("dry-run: " + line + "\n"), nil
+}
+
+// ErrReadOnly is what Refuse answers: OPF is only watching this
+// machine, so it runs nothing that would change it.
+var ErrReadOnly = errors.New("OPF is monitoring this machine read-only and changes nothing on it")
+
+// Refuse runs nothing: the runner for commands that change the system
+// while OPF only watches it (read-only mode). Each refusal is logged,
+// since one means some code tried.
+type Refuse struct {
+	Log *log.Logger
+}
+
+func (r Refuse) Run(ctx context.Context, argv ...string) ([]byte, error) {
+	if r.Log != nil {
+		r.Log.Printf("read-only: refused %s", strings.Join(argv, " "))
+	}
+	return nil, ErrReadOnly
 }
 
 // Streamer runs a command and hands over its combined output a line at

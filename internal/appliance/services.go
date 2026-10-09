@@ -226,6 +226,9 @@ var serviceActions = []string{"start", "stop", "restart", "reload", "check"}
 // its own page is started and stopped by that page's settings, so here
 // it's only restarted, reloaded or checked.
 func (m *Manager) ServiceAction(req ServiceActionRequest) (*ServiceActionResult, error) {
+	if req.Action != "check" && m.ReadOnly {
+		return nil, errReadOnly
+	}
 	if !slices.Contains(serviceActions, req.Action) {
 		return nil, errorf(CodeInvalid, "the action is start, stop, restart, reload or check, not %q", printable(req.Action, 20))
 	}

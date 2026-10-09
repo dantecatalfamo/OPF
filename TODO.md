@@ -534,6 +534,31 @@ until the admin does.
       `unbound_flags` agree (dhcpd enabled on exactly the devices with
       a scope, unbound on when DNS is), and ask the admin when they
       don't rather than change what's running.
+- [x] **Read-only mode** (`opf -readonly`): OPF monitors a machine
+      configured by hand and changes nothing. Kept in four places: the
+      API refuses every change (`appliance.ReadOnlyAPI`, with a test
+      that every method is classified), the runner for changes refuses
+      everything (`run.Refuse`), the background work that changes things
+      stops, and unveil(2) leaves only the state directory writable.
+      Account changes are refused in privsep. Sticky in
+      `/var/opf/readonly`. The UI hides OPF's configuration pages, shows
+      the machine from its live state (the dashboard's WAN is pf's
+      `egress` group, services come from rcctl), and Configuration files
+      lists the machine's own files. Tried on the VM beside the managed
+      OPF: every change refused, nothing run.
+  - [ ] **Take over from read-only** (System › Take over, locked now):
+        "Import and take over" runs the import below, shows what it
+        understood (rule by rule, raw what it can't model), then the
+        first commit, which must leave every file as it was (a diff of
+        nothing but OPF's header and normalization) before the admin's
+        own change. Then the marker goes, and OPF restarts out of the
+        sandbox (re-exec: unveil can't be widened in place). A machine
+        OPF managed before (`managed` in status) only needs the marker
+        removed and a restart; the page says how, by hand, for now.
+  - [ ] Read-only pages that still read OPF's model: DHCP leases and DNS
+        stats pages are hidden (their configuration tabs crash on the
+        empty model); show their live halves (leases, unbound's
+        counters) on their own.
 - [ ] First-run wizard: detect existing configs and offer to import them;
       set up WAN, LAN and the admin password.
   - [ ] A URL alias's list must download before the first commit that

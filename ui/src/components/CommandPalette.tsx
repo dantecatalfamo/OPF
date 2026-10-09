@@ -9,7 +9,7 @@ import { IconSearch } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { tunnels, type Model } from '../model/types';
 import { useRole } from '../lib/session';
-import { nav, places } from '../lib/nav';
+import { itemShown, nav, placeShown, places } from '../lib/nav';
 import type { DeviceInfo } from '../lib/api';
 
 interface Entry {
@@ -29,14 +29,15 @@ const enc = encodeURIComponent;
 
 // The pages, then the tabs and cards within them (places), found by
 // their names, their sections and their keywords.
-function pages(canEdit: boolean): Entry[] {
+// isAdmin: admins' pages too; readOnly: only those that watch.
+function pages(isAdmin: boolean, readOnly: boolean): Entry[] {
   return [
     ...nav.flatMap((g) =>
       g.to
-        ? [{ label: g.label, kind: 'Page', to: g.to, page: true }]
-        : g.items!.filter((i) => !i.admin || canEdit).map((i) => ({ label: i.label, kind: g.label, to: i.to, also: `${g.label} ${i.keywords ?? ''}`, page: true })),
+        ? (itemShown(g, readOnly) ? [{ label: g.label, kind: 'Page', to: g.to, page: true }] : [])
+        : g.items!.filter((i) => (!i.admin || isAdmin) && itemShown(i, readOnly)).map((i) => ({ label: i.label, kind: g.label, to: i.to, also: `${g.label} ${i.keywords ?? ''}`, page: true })),
     ),
-    ...places.filter((p) => !p.admin || canEdit).map((p) => ({ label: p.label, kind: p.page, to: p.to, also: p.keywords, page: true, place: true })),
+    ...places.filter((p) => (!p.admin || isAdmin) && placeShown(p, readOnly)).map((p) => ({ label: p.label, kind: p.page, to: p.to, also: p.keywords, page: true, place: true })),
   ];
 }
 
@@ -115,7 +116,7 @@ const looksLikeHost = (q: string) => /^[0-9a-f:.]+$/i.test(q) && /[.:]/.test(q) 
 export function CommandPalette({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const { staged } = useStore();
-  const { canEdit } = useRole();
+  const { isAdmin, readOnly } = useRole();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const [found, setFound] = useState<DeviceInfo[]>([]);
@@ -134,8 +135,8 @@ export function CommandPalette({ opened, onClose }: { opened: boolean; onClose: 
 
   const entries = useMemo(() => {
     const known = new Set(found.flatMap((d) => (d.mac ? [d.mac.toLowerCase()] : [])));
-    return [...pages(canEdit), ...things(staged, known), ...devices(found)];
-  }, [canEdit, staged, found]);
+    return [...pages(isAdmin, readOnly), ...things(staged, known), ...devices(found)];
+  }, [isAdmin, readOnly, staged, found]);
   const results = useMemo(() => {
     const query = q.trim().toLowerCase();
     const words = query.split(/\s+/).filter(Boolean);

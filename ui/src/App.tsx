@@ -28,6 +28,7 @@ import { Storage } from './pages/Storage';
 import { Traffic } from './pages/Traffic';
 import { Device, Devices } from './pages/Devices';
 import { FirewallLog } from './pages/FirewallLog';
+import { TakeOver } from './pages/TakeOver';
 import { FirewallStats } from './pages/FirewallStats';
 import { ARP } from './pages/ARP';
 import { Authpf } from './pages/Authpf';
@@ -115,6 +116,7 @@ function AppRoutes() {
         <Route path="system/logs" element={<SystemLogs />} />
         <Route path="system/files" element={<ConfigFiles />} />
         <Route path="system/storage" element={<Storage />} />
+        <Route path="system/take-over" element={<TakeOver />} />
         <Route path="diagnostics/*" element={<MovedFromDiagnostics />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

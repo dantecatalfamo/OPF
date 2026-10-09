@@ -85,8 +85,11 @@ func (m *Manager) RunRefresher(ctx context.Context, interval time.Duration) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
-		m.refreshDue(ctx)
-		m.pruneDownloads()
+		// Read-only, no list is downloaded or loaded (readonly.go).
+		if !m.ReadOnly {
+			m.refreshDue(ctx)
+			m.pruneDownloads()
+		}
 		select {
 		case <-ctx.Done():
 			return

@@ -70,7 +70,9 @@ func (m *Manager) DNSStats() (*DNSStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	if model == nil || !model.DNS.Enabled {
+	// Read-only, the machine's own unbound, whatever OPF's
+	// configuration (none) says.
+	if !m.ReadOnly && (model == nil || !model.DNS.Enabled) {
 		return res, nil
 	}
 	res.Enabled = true

@@ -931,6 +931,10 @@ export interface StatusResource {
   pending?: CommitResource;
   /** The running OpenBSD release, such as 7.9. */
   release?: string;
+  /** OPF only monitors this machine and changes nothing on it. */
+  readOnly?: boolean;
+  /** OPF has a configuration of its own for this machine, from before. */
+  managed?: boolean;
 }
 
 // When someone last used the page. Requests made within a minute of

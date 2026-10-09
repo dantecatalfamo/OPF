@@ -65,6 +65,10 @@ type Manager struct {
 	// commit, such as ending a connection. If nil, Runner is used; -dry
 	// makes it log them instead.
 	Actions run.Runner
+	// ReadOnly: OPF only watches this machine (readonly.go). Actions
+	// refuse everything, and nothing that would change the system runs
+	// in the background; the API is wrapped by ReadOnlyAPI as well.
+	ReadOnly bool
 
 	// DNSLog is unbound's log file while DNS activity is kept; empty,
 	// pf.DNSLogPath. The mock's is in its scratch directory.
@@ -123,6 +127,9 @@ type Manager struct {
 }
 
 func (m *Manager) actions() run.Runner {
+	if m.ReadOnly {
+		return run.Refuse{Log: log.Default()}
+	}
 	if m.Actions != nil {
 		return m.Actions
 	}
@@ -345,7 +352,7 @@ func (m *Manager) live() (*pf.Model, string, error) {
 func (m *Manager) liveOrEmpty() (*pf.Model, error) {
 	model, _, err := m.live()
 	if err == nil && model == nil {
-		model = &pf.Model{}
+		model = pf.EmptyModel()
 	}
 	return model, err
 }
@@ -356,7 +363,7 @@ func (m *Manager) Live() (*Config, error) {
 		return nil, apiError(err)
 	}
 	if model == nil {
-		model = &pf.Model{}
+		model = pf.EmptyModel()
 	}
 	return &Config{Version: v, Model: model}, nil
 }
@@ -385,7 +392,7 @@ func (m *Manager) Status() (*Status, error) {
 	if err != nil {
 		return nil, apiError(err)
 	}
-	st := &Status{Live: live, Release: m.osRelease()}
+	st := &Status{Live: live, Release: m.osRelease(), ReadOnly: m.ReadOnly, Managed: live != NoVersion}
 	if data, staged, err := m.stagedModel(); err != nil {
 		return nil, apiError(err)
 	} else if staged {

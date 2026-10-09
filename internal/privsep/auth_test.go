@@ -1,19 +1,19 @@
 package privsep
 
 import (
+	"context"
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
-
-	"github.com/dantecatalfamo/OPF/internal/auth"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
+	"github.com/dantecatalfamo/OPF/internal/auth"
 )
 
 // Methods anyone may call: signing in, the child noticing the parent
@@ -294,4 +294,66 @@ func TestAuthpfRoles(t *testing.T) {
 	if err := op.AuthpfEnd(appliance.AuthpfEndRequest{PID: 4242}); code(err) != appliance.CodeNotFound {
 		t.Errorf("an operator ending no session: %v", err)
 	}
+}
+
+// Read-only, the parent refuses every change before it reaches the
+// Manager, even an admin's, and still answers what only looks.
+func TestReadOnlyRefusesChanges(t *testing.T) {
+	api := newAPI(t)
+	r := &recordRunner{}
+	api.Runner = r
+	api.ReadOnly = true
+	c := newClient(t, api)
+	st, err := c.Status()
+	if err != nil || !st.ReadOnly || !st.Managed {
+		t.Fatalf("status: %+v %v", st, err)
+	}
+	if _, err := c.PfStats(); err != nil {
+		t.Errorf("looking: %v", err)
+	}
+	live, err := c.Live()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Stage(appliance.StageRequest{Base: live.Version, Model: live.Model}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("staged: %v", err)
+	}
+	if _, err := c.Commit(appliance.CommitRequest{}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("committed: %v", err)
+	}
+	if err := c.KillState(appliance.KillStateRequest{ID: "1", CreatorID: "2"}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("killed a state: %v", err)
+	}
+	if _, err := c.ServiceAction(appliance.ServiceActionRequest{Name: "sshd", Action: "restart"}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("restarted a service: %v", err)
+	}
+	if _, err := c.DNSTool(appliance.DNSToolRequest{Tool: "flush_bogus"}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("flushed unbound: %v", err)
+	}
+	if err := c.CreateUser(auth.NewAccount{Name: "carol", Role: "view", Password: "carol's long password"}); code(err) != appliance.CodeReadOnly {
+		t.Errorf("made an account: %v", err)
+	}
+	if err := c.ChangeOwnPassword("admin-pass", "a new long password", "192.0.2.1"); code(err) != appliance.CodeReadOnly {
+		t.Errorf("changed a password: %v", err)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, argv := range r.calls {
+		if len(argv) > 0 && (argv[0] == "pfctl" && slices.Contains(argv, "-k") || argv[0] == "rcctl" && slices.Contains(argv, "restart") || argv[0] == "unbound-control") {
+			t.Errorf("ran %v", argv)
+		}
+	}
+}
+
+// recordRunner runs nothing and keeps what it was asked to.
+type recordRunner struct {
+	mu    sync.Mutex
+	calls [][]string
+}
+
+func (r *recordRunner) Run(ctx context.Context, argv ...string) ([]byte, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = append(r.calls, argv)
+	return nil, nil
 }

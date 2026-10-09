@@ -331,7 +331,7 @@ func statusFor(c appliance.Code) int {
 		return http.StatusTooManyRequests
 	case appliance.CodeUnauthorized:
 		return http.StatusUnauthorized
-	case appliance.CodeForbidden, appliance.CodeReauth:
+	case appliance.CodeForbidden, appliance.CodeReauth, appliance.CodeReadOnly:
 		return http.StatusForbidden
 	}
 	return http.StatusInternalServerError

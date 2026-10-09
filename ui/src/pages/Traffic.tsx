@@ -188,7 +188,7 @@ function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: stri
 /** Devices › Traffic: what each device sent and received over the days chosen. */
 export function Traffic() {
   const { applied } = useStore();
-  const { canEdit } = useRole();
+  const { isAdmin: canEdit } = useRole();
   const kept = applied.firewall.traffic?.enabled ? applied.firewall.traffic.days : 0;
   const [days, setDays] = useState('1');
   const [data, setData] = useState<TrafficResource>();

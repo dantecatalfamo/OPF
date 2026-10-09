@@ -138,6 +138,29 @@ rcctl enable opf
 rcctl start opf
 ```
 
+### Monitoring only
+
+To watch a machine you configure by hand without handing it to OPF,
+run it read-only:
+
+```sh
+rcctl set opf flags -readonly -listen 0.0.0.0:443
+rcctl restart opf
+```
+
+OPF then shows the machine as it is (devices, connections, the firewall
+log and statistics, interfaces, routes, services, logs, graphs) and
+changes nothing: every change through the web UI is refused, nothing
+that would change the machine runs in the background, and on OpenBSD
+unveil(2) leaves it only its own state directory to write. It still
+makes its sign-in groups on first start; give someone a role with
+`usermod -G _opfadmin <name>`.
+
+Read-only is kept in `/var/opf/readonly`, so starting OPF later without
+the flag doesn't hand it control. Taking the machine over (System ›
+Take over) means importing its configuration first, which is next on
+the roadmap.
+
 ## Development
 
 Requires Go 1.25+.

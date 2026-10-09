@@ -54,6 +54,9 @@ func (m *Manager) DNSTool(req DNSToolRequest) (*DNSToolResult, error) {
 	if !ok {
 		return nil, errorf(CodeInvalid, "no resolver tool %q", printable(req.Tool, 40))
 	}
+	if t.change && m.ReadOnly {
+		return nil, errReadOnly
+	}
 	name := strings.TrimSuffix(strings.TrimSpace(strings.ToLower(req.Name)), ".")
 	if t.name && !isDNSName(name) {
 		return nil, &Error{Code: CodeInvalid, Message: "enter a name like example.com", Details: []Detail{{Path: "name", Message: "enter a name like example.com"}}}

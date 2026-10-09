@@ -11,6 +11,7 @@ import type { InterfaceState, InterfacesResource } from '../lib/api';
 import { formatBits } from '../lib/format';
 import { isIPv4 } from '../lib/ip';
 import { PageHeader, StatusDot, Mono } from '../components/ui';
+import { useMode } from '../lib/mode';
 import { TrafficSpark } from '../components/HistoryChart';
 import { useHistory } from '../lib/history';
 
@@ -177,14 +178,20 @@ function SetUp({ port, onClose }: { port: InterfaceState | null; onClose: () => 
 // its VLANs' cards say so.
 function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
   const { staged } = useStore();
+  // Read-only, every interface is the machine's own, and none is set up.
+  const { readOnly } = useMode();
   const [port, setPort] = useState<InterfaceState | null>(null);
   const managed = new Set(staged.interfaces.flatMap((i) => (i.vlan && i.enabled ? [i.device, i.vlan.parent] : [i.device])));
   const others = (ifs?.interfaces ?? []).filter((s) => !managed.has(s.name) && !pseudo.test(s.name));
   if (!others.length) return null;
   return (
     <>
-      <Text fw={600} mt="xl" mb={4}>Not set up by OPF</Text>
-      <Text size="sm" c="dimmed" mb="md">Interfaces this machine has that OPF doesn’t manage: a spare port, or one configured by hand.</Text>
+      {!readOnly && (
+        <>
+          <Text fw={600} mt="xl" mb={4}>Not set up by OPF</Text>
+          <Text size="sm" c="dimmed" mb="md">Interfaces this machine has that OPF doesn’t manage: a spare port, or one configured by hand.</Text>
+        </>
+      )}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {others.map((s) => {
           const link = !s.up ? 'Down' : s.status === 'no carrier' ? 'No link' : 'Up';
@@ -193,14 +200,17 @@ function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
               <Group justify="space-between" wrap="nowrap" align="flex-start">
                 <Stack gap={4}>
                   <Group gap="sm">
-                    <Text fw={600} className="mono">{s.name}</Text>
+                    {readOnly && s.description && <Text fw={600}>{s.description}</Text>}
+                    <Text fw={600} className="mono" c={readOnly && s.description ? 'dimmed' : undefined}>{s.name}</Text>
                     <StatusDot ok={link === 'Up'} label={link} />
                   </Group>
                   <Text size="xs" c="dimmed">
                     {[s.mac, s.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : mediaLabel(s), ...s.ipv4].filter(Boolean).join(' · ') || 'No address'}
                   </Text>
                 </Stack>
-                {settable(s) ? (
+                {readOnly ? (
+                  s.groups.includes('egress') && <Badge variant="light" size="sm">Default route</Badge>
+                ) : settable(s) ? (
                   <Button size="xs" variant="light" leftSection={<IconPlus size={14} />} onClick={() => setPort(s)}>Set up</Button>
                 ) : (
                   <Text size="xs" c="dimmed" ta="right">OPF doesn’t set up this kind yet</Text>
@@ -217,6 +227,7 @@ function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
 
 export function Interfaces() {
   const { staged } = useStore();
+  const { readOnly } = useMode();
   const [opened, dlg] = useDisclosure();
   const { data: ifs } = useLive('interfaces');
   const { data: routes } = useLive('routes');
@@ -227,12 +238,12 @@ export function Interfaces() {
     <>
       <PageHeader
         title="Interfaces"
-        description="The networks OPF connects. Each one gets its own firewall rules and, if you want, its own DHCP server."
-        actions={
+        description={readOnly ? 'This machine’s interfaces, as ifconfig has them.' : 'The networks OPF connects. Each one gets its own firewall rules and, if you want, its own DHCP server.'}
+        actions={readOnly ? undefined : (
           <Button leftSection={<IconPlus size={16} />} onClick={dlg.open}>
             Add VLAN
           </Button>
-        }
+        )}
       />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {staged.interfaces.map((i) => {

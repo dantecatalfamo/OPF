@@ -10,6 +10,7 @@ import type { RoutingTableResource } from '../lib/api';
 import { deviceName, ifaceName } from '../lib/labels';
 import { isCIDR, isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, StatusDot } from '../components/ui';
+import { useMode } from '../lib/mode';
 import { HistoryCard } from '../components/HistoryChart';
 
 
@@ -382,6 +383,17 @@ export function Routing() {
   const { tab } = useParams();
   const navigate = useNavigate();
   const current = tab === 'routes' || tab === 'table' ? tab : 'gateways';
+  // Read-only, OPF has no gateways or routes of its own: the machine's
+  // routing table is the page.
+  const { readOnly } = useMode();
+  if (readOnly) {
+    return (
+      <>
+        <PageHeader title="Routing" description="This machine’s routing table: where it sends traffic, as the kernel has it." />
+        <LiveRoutes />
+      </>
+    );
+  }
   return (
     <>
       <PageHeader title="Routing" description="Where OPF sends traffic that isn’t for one of its own networks." />

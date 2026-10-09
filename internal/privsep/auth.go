@@ -3,6 +3,7 @@ package privsep
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/dantecatalfamo/OPF/internal/appliance"
@@ -71,12 +72,28 @@ var methodRoles = map[string]auth.Role{
 	"SetUserPassword": auth.RoleAdmin, "LockUser": auth.RoleAdmin, "RemoveUser": auth.RoleAdmin,
 }
 
+// readOnlyAccounts are the methods that change the system's accounts,
+// refused in read-only mode with the API's changes
+// (appliance.ReadOnlyRefuses): OPF only watches, and its sign-in
+// groups are managed by hand (usermod -G _opfadmin).
+var readOnlyAccounts = []string{"CreateUser", "SetUserRole", "SetUserPassword", "LockUser", "RemoveUser", "ChangeOwnPassword"}
+
+// readOnlyRefused is whether read-only mode refuses a method: ConfirmBy
+// and RevertBy come in as Confirm and Revert.
+func readOnlyRefused(method string) bool {
+	return appliance.ReadOnlyRefuses(method) || slices.Contains(readOnlyAccounts, method)
+}
+
 // allow checks the token and the method's role, returning the session,
 // or nil with r saying why not.
 func (s *Service) allow(method string, c callInfo, r *Result) *auth.Session {
 	need, ok := methodRoles[method]
 	if !ok {
 		r.Err = &appliance.Error{Code: appliance.CodeForbidden, Message: "not allowed"}
+		return nil
+	}
+	if s.api != nil && s.api.ReadOnly && readOnlyRefused(method) {
+		r.Err = appliance.ReadOnlyError()
 		return nil
 	}
 	if s.sessions == nil {
