@@ -4,6 +4,7 @@ import { useForm } from '@mantine/form';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { timeoutNames, type FirewallOptions } from '../model/types';
+import { timeoutHelp } from '../lib/pfTimeouts';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { TrafficSettingsCard } from './Traffic';
 
@@ -233,14 +234,14 @@ export function FirewallSettings() {
                   <Part title="Individual timeouts" description="In seconds, except the adaptive values, which count states: timeouts shrink as the table fills past the start and reach zero at the end. Empty keeps the “Timeouts” preset’s value.">
                     <Stack gap="sm">
                       {timeoutGroups.map((g) => (
-                        <Grid key={g.label} gutter="sm" align="flex-end">
+                        <Grid key={g.label} gutter="sm" align="flex-start">
                           <Grid.Col span={{ base: 12, sm: 2 }}>
-                            <Text size="sm" c="dimmed" pb={{ sm: 6 }}>{g.label}</Text>
+                            <Text size="sm" c="dimmed" pt={{ sm: 2 }}>{g.label}</Text>
                           </Grid.Col>
                           <Grid.Col span={{ base: 12, sm: 10 }}>
-                            <SimpleGrid cols={{ base: 3, sm: 4, lg: 7 }} spacing="sm">
+                            <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="sm" verticalSpacing="sm">
                               {g.names.map((k) => (
-                                <NumberInput key={k} label={k.slice(g.prefix.length)} min={0} size="xs" hideControls styles={{ label: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps(`timeouts.${formKey(k)}`)} />
+                                <NumberInput key={k} label={k.slice(g.prefix.length)} description={timeoutHelp[k]} inputWrapperOrder={below} min={0} size="xs" hideControls styles={{ label: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps(`timeouts.${formKey(k)}`)} />
                               ))}
                             </SimpleGrid>
                           </Grid.Col>

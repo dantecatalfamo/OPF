@@ -12,6 +12,7 @@ import { deviceName } from '../lib/labels';
 import type { PfInterfaceStats, PfStatsResource } from '../lib/api';
 import { Mono, PageHeader, SectionTitle } from '../components/ui';
 import { StartedTip } from '../components/StartedTip';
+import { timeoutHelp } from '../lib/pfTimeouts';
 
 const POLL_MS = 5000;
 
@@ -71,28 +72,6 @@ const pools: { name: string; label: string; help: string; to?: string }[] = [
   { name: 'anchors', label: 'Anchors', help: 'Rule sets inside the main one: sign-in access’s, among others.' },
 ];
 
-const timeoutHelp: Record<string, string> = {
-  'tcp.first': 'A TCP connection after its first packet',
-  'tcp.opening': 'Before the other end has answered',
-  'tcp.established': 'An open TCP connection, idle',
-  'tcp.closing': 'After the first FIN',
-  'tcp.finwait': 'After both ends have sent FIN',
-  'tcp.closed': 'After a reset',
-  'tcp.tsdiff': 'How far a TCP timestamp may be off',
-  'udp.first': 'UDP after the first packet',
-  'udp.single': 'UDP when only one end has sent',
-  'udp.multiple': 'UDP when both ends have sent',
-  'icmp.first': 'ICMP after the first packet',
-  'icmp.error': 'After an ICMP error',
-  'other.first': 'Other protocols after the first packet',
-  'other.single': 'Other protocols, one end sending',
-  'other.multiple': 'Other protocols, both ends sending',
-  frag: 'How long a fragment waits for the rest',
-  interval: 'How often pf purges expired states',
-  'adaptive.start': 'States at which timeouts start shrinking',
-  'adaptive.end': 'States at which they reach zero',
-  'src.track': 'How long a source node lasts after its last state',
-};
 
 const num = (n: number) => n.toLocaleString();
 
