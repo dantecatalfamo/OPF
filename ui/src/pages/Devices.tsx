@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
-import { useMediaQuery } from '@mantine/hooks';
+import { useElementSize } from '@mantine/hooks';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
 import { useRole } from '../lib/session';
@@ -359,65 +359,96 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
   }, [addresses.join()]);
   const conns = useMemo(() => deviceConns(states ?? [], addresses).slice(0, 25), [states, addresses.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const names = useReverseNames(conns.map((c) => c.farHost), showNames);
-  // The rule that let each in, when there's room for it.
-  const wide = useMediaQuery('(min-width: 75em)') ?? true;
+  // The rule that let each in, when there's room for it; in a narrow
+  // card, each connection in two lines.
+  const { ref, width } = useElementSize();
+  const wide = width >= 860;
+  const table = !width || width >= 560;
+  const way = (c: DeviceConn) => (
+    <Tooltip label={c.dir === 'out' ? `Outgoing: this device opened it to the other end, from ${c.ownEnd}` : `Incoming: the other end opened it to this device, at ${c.ownEnd}`}>
+      <Group gap={8} wrap="nowrap">
+        <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
+        <ProtoBadge proto={c.proto} />
+      </Group>
+    </Tooltip>
+  );
+  const far = (c: DeviceConn) => (
+    <Text size="sm" className="mono" fw={500}>
+      <span style={{ whiteSpace: 'nowrap' }}>{c.farHost}</span>{c.farPort && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {c.farPort}</Text>}
+    </Text>
+  );
+  const farMore = (c: DeviceConn) => {
+    const name = names.get(c.farHost);
+    if (!name && !c.via) return null;
+    return (
+      <>
+        {name && <span className="mono"><Wrapped name={name} /></span>}
+        {name && c.via && ' · '}
+        {c.via && <>{c.dir === 'out' ? 'leaves as ' : 'arrives at '}<span className="mono">{c.via}</span></>}
+      </>
+    );
+  };
+  const state = (c: DeviceConn, size: 'sm' | 'xs') => (
+    <StateTip state={c.state} direction={c.pfDir} opener={c.dir === 'out' ? 'This device' : 'The other end'} other={c.dir === 'out' ? 'the other end' : 'this device'}>
+      <Text size={size} c="dimmed" style={{ whiteSpace: 'nowrap' }}>{stateWord(c.state, c.kind)}</Text>
+    </StateTip>
+  );
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/connections" size="xs">Connections</Anchor>}>Connections now</SectionTitle>
-      {error ? <Alert color="red" variant="light" p="sm">{error}</Alert> : !states ? <Text size="sm" c="dimmed">Reading…</Text> : conns.length ? (
-        <Table.ScrollContainer minWidth={520}>
-          <Table verticalSpacing={6} highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w={160}>Direction</Table.Th>
-                <Table.Th>Other end</Table.Th>
-                {wide && <Table.Th>Allowed by</Table.Th>}
-                <Table.Th w={100}>State</Table.Th>
-                <Table.Th w={90} ta="right">Data</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {conns.map((c) => {
-                const name = names.get(c.farHost);
-                return (
-                  <Table.Tr key={c.key}>
-                    <Table.Td>
-                      <Tooltip label={c.dir === 'out' ? `Outgoing: this device opened it to the other end, from ${c.ownEnd}` : `Incoming: the other end opened it to this device, at ${c.ownEnd}`}>
-                        <Group gap={8} wrap="nowrap">
-                          <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
-                          <ProtoBadge proto={c.proto} />
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" className="mono" fw={500}>
-                        <span style={{ whiteSpace: 'nowrap' }}>{c.farHost}</span>{c.farPort && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {c.farPort}</Text>}
-                      </Text>
-                      {(name || c.via) && (
-                        <Text size="xs" c="dimmed">
-                          {name && <span className="mono"><Wrapped name={name} /></span>}
-                          {name && c.via && ' · '}
-                          {c.via && <>{c.dir === 'out' ? 'leaves as ' : 'arrives at '}<span className="mono">{c.via}</span></>}
-                        </Text>
-                      )}
-                    </Table.Td>
-                    {wide && <Table.Td><AllowedBy c={c.allowedBy} /></Table.Td>}
-                    <Table.Td>
-                      <StateTip state={c.state} direction={c.pfDir} opener={c.dir === 'out' ? 'This device' : 'The other end'} other={c.dir === 'out' ? 'the other end' : 'this device'}>
-                        <Text size="sm" c="dimmed">{stateWord(c.state, c.kind)}</Text>
-                      </StateTip>
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Text size="sm" className="num">{formatBytes(c.bytes)}</Text>
-                      <Text size="xs" c="dimmed">{formatDuration(c.ageSec)}</Text>
-                    </Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      ) : <Empty>None now.</Empty>}
+      <div ref={ref} />
+      {error ? <Alert color="red" variant="light" p="sm">{error}</Alert> : !states ? <Text size="sm" c="dimmed">Reading…</Text> : !conns.length ? <Empty>None now.</Empty> : table ? (
+        <Table verticalSpacing={6} highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th w={160}>Direction</Table.Th>
+              <Table.Th>Other end</Table.Th>
+              {wide && <Table.Th>Allowed by</Table.Th>}
+              <Table.Th w={100}>State</Table.Th>
+              <Table.Th w={90} ta="right">Data</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {conns.map((c) => {
+              const more = farMore(c);
+              return (
+                <Table.Tr key={c.key}>
+                  <Table.Td>{way(c)}</Table.Td>
+                  <Table.Td>
+                    {far(c)}
+                    {more && <Text size="xs" c="dimmed">{more}</Text>}
+                  </Table.Td>
+                  {wide && <Table.Td><AllowedBy c={c.allowedBy} /></Table.Td>}
+                  <Table.Td>{state(c, 'sm')}</Table.Td>
+                  <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }}>
+                    <Text size="sm" className="num">{formatBytes(c.bytes)}</Text>
+                    <Text size="xs" c="dimmed">{formatDuration(c.ageSec)}</Text>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      ) : (
+        <Stack gap={0}>
+          {conns.map((c, i) => {
+            const more = farMore(c);
+            return (
+              <Stack key={c.key} gap={4} py="sm" style={i ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
+                <Group gap={10} wrap="wrap" style={{ rowGap: 2 }}>
+                  {way(c)}
+                  {far(c)}
+                </Group>
+                {more && <Text size="xs" c="dimmed">{more}</Text>}
+                <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
+                  {state(c, 'xs')}
+                  <Text size="xs" c="dimmed" className="num" style={{ whiteSpace: 'nowrap' }}>· {formatBytes(c.bytes)} · {formatDuration(c.ageSec)}</Text>
+                </Group>
+              </Stack>
+            );
+          })}
+        </Stack>
+      )}
     </Card>
   );
 }
@@ -513,11 +544,13 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
   const rows: LogRow[] = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
   const names = useReverseNames(rows.map((r) => r.far.host), showNames);
   const { applied } = useStore();
-  // The Connections page's width for its columns.
-  const wide = useMediaQuery('(min-width: 75em)') ?? true;
+  // Its columns when the card has room for them.
+  const { ref, width } = useElementSize();
+  const wide = !width || width >= 760;
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
+      <div ref={ref} />
       {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : !entries.length ? <Empty>Nothing logged for it lately.</Empty> : wide ? (
         <Table verticalSpacing={6} highlightOnHover>
           <Table.Thead>
