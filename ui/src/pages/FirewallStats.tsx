@@ -138,14 +138,15 @@ const tableNames: { key: 'states' | 'srcNodes' | 'fragments'; label: string; hel
   { key: 'fragments', label: 'Fragments', help: 'Packets waiting for the rest of their fragments.' },
 ];
 
-function Count({ c, label }: { c: { packets: number; bytes: number }; label: string }) {
+// The bytes rounded, with the exact count on hover; the packets under.
+function Count({ c }: { c: { packets: number; bytes: number } }) {
   return (
-    <Tooltip label={`${label}: ${num(c.packets)} packets, ${num(c.bytes)} bytes`}>
-      <div>
-        <Text size="sm" className="num" c={c.packets ? undefined : 'dimmed'}>{formatBytes(c.bytes)}</Text>
-        <Text size="xs" c="dimmed" className="num">{num(c.packets)} pkts</Text>
-      </div>
-    </Tooltip>
+    <div>
+      <Tooltip label={`${num(c.bytes)} bytes`} disabled={c.bytes < 1000}>
+        <Text span size="sm" className="num" c={c.packets ? undefined : 'dimmed'}>{formatBytes(c.bytes)}</Text>
+      </Tooltip>
+      <Text size="xs" c="dimmed" className="num">{num(c.packets)} pkts</Text>
+    </div>
   );
 }
 
@@ -193,10 +194,10 @@ function Interfaces({ list, prev, dt }: { list: PfInterfaceStats[]; prev?: PfInt
                       </StartedTip>
                     )}
                   </Table.Td>
-                  <Table.Td ta="right"><Count c={i.inPass} label="In, passed" /></Table.Td>
-                  <Table.Td ta="right"><Count c={i.inBlock} label="In, blocked" /></Table.Td>
-                  <Table.Td ta="right"><Count c={i.outPass} label="Out, passed" /></Table.Td>
-                  <Table.Td ta="right"><Count c={i.outBlock} label="Out, blocked" /></Table.Td>
+                  <Table.Td ta="right"><Count c={i.inPass} /></Table.Td>
+                  <Table.Td ta="right"><Count c={i.inBlock} /></Table.Td>
+                  <Table.Td ta="right"><Count c={i.outPass} /></Table.Td>
+                  <Table.Td ta="right"><Count c={i.outBlock} /></Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num" c={r ? undefined : 'dimmed'}>{formatRate(r)}</Text></Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num" c={i.rules ? undefined : 'dimmed'}>{num(i.rules)}</Text></Table.Td>
                 </Table.Tr>
