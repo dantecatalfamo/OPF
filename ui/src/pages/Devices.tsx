@@ -462,15 +462,15 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
   const rows = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
   const names = useReverseNames(rows.map((r) => r.far.host), showNames);
   return (
-    <Card h="100%">
+    <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
       {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : entries.length ? (
         <Table.ScrollContainer minWidth={400}>
           <Table verticalSpacing={6} highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={96}>When</Table.Th>
-                <Table.Th w={154}>Direction</Table.Th>
+                <Table.Th w={130}>When</Table.Th>
+                <Table.Th w={160}>Direction</Table.Th>
                 <Table.Th>Other end</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -493,8 +493,9 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
                       </Tooltip>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm" className="mono" fw={500} style={{ overflowWrap: 'anywhere' }}>
-                        {far.host || '—'}{far.port && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {far.port}</Text>}
+                      {/* An address never breaks; its port goes under it when it must. */}
+                      <Text size="sm" className="mono" fw={500}>
+                        <span style={{ whiteSpace: 'nowrap' }}>{far.host || '—'}</span>{far.port && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {far.port}</Text>}
                       </Text>
                       {(name || (!fromOwn && ownEnd.port)) && (
                         <Text size="xs" c="dimmed">
@@ -577,8 +578,8 @@ export function Device() {
           <Grid gutter="md">
             {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><Rules addresses={[...new Set([...d.addresses, ...(d.reservation ? [d.reservation.ip] : [])])]} /></Grid.Col>}
             <Grid.Col span={{ base: 12, md: 6 }}><Events terms={terms} /></Grid.Col>
-            {d.addresses.length > 0 && <Grid.Col span={{ base: 12, md: 6 }}><FirewallLog addresses={d.addresses} showNames={showNames} /></Grid.Col>}
           </Grid>
+          {d.addresses.length > 0 && <FirewallLog addresses={d.addresses} showNames={showNames} />}
         </Stack>
       )}
     </>
