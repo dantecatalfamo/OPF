@@ -232,11 +232,12 @@ export function FirewallSettings() {
               <Accordion.Panel>
                 <Stack gap="xl">
                   <Part title="Individual timeouts" description="In seconds, except the adaptive values, which count states: timeouts shrink as the table fills past the start and reach zero at the end. Empty keeps the “Timeouts” preset’s value.">
-                    <Stack gap="sm">
-                      {timeoutGroups.map((g) => (
-                        <Grid key={g.label} gutter="sm" align="flex-start">
+                    {/* One group to a band, a rule between, so each protocol's read as its own. */}
+                    <Stack gap={0}>
+                      {timeoutGroups.map((g, i) => (
+                        <Grid key={g.label} gutter="sm" align="flex-start" py="md" style={i ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
                           <Grid.Col span={{ base: 12, sm: 2 }}>
-                            <Text size="sm" c="dimmed" pt={{ sm: 2 }}>{g.label}</Text>
+                            <Text size="sm" fw={600} pt={{ sm: 2 }}>{g.label}</Text>
                           </Grid.Col>
                           <Grid.Col span={{ base: 12, sm: 10 }}>
                             <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="sm" verticalSpacing="sm">
