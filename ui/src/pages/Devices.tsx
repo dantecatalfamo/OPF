@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { backend, useStore } from '../model/store';
 import type { DeviceInfo, DevicesResource, DnsDeviceActivityResource, FirewallLogEntry, OpfEvent, PfState, TrafficDeviceResource } from '../lib/api';
 import { useRole } from '../lib/session';
@@ -454,6 +455,45 @@ function logView(e: FirewallLogEntry, own: string[]) {
   return { fromOwn, far, ownEnd, ownFull: (fromOwn ? e.source : e.destination) ?? '' };
 }
 
+type LogRow = ReturnType<typeof logView> & { e: FirewallLogEntry };
+
+const logAction = (e: FirewallLogEntry) => (
+  <Text span size="sm" fw={500} c={e.action === 'block' ? 'red' : e.action === 'pass' ? 'teal' : 'dimmed'}>
+    {e.action === 'block' ? 'Blocked' : e.action === 'pass' ? 'Allowed' : 'Matched'}
+  </Text>
+);
+
+function LogWay({ r }: { r: LogRow }) {
+  return (
+    <Tooltip label={r.fromOwn ? `Outgoing: this device sent it to the other end, from ${r.ownFull}` : `Incoming: the other end sent it to this device, at ${r.ownFull}`}>
+      <Group gap={8} wrap="nowrap">
+        <DirLabel dir={r.fromOwn ? 'out' : 'in'}>{r.fromOwn ? 'Outgoing' : 'Incoming'}</DirLabel>
+        {r.e.proto && <ProtoBadge proto={protoGroup(r.e.proto)} />}
+      </Group>
+    </Tooltip>
+  );
+}
+
+// An address never breaks; its port goes under it when it must.
+const logFar = (r: LogRow) => (
+  <Text size="sm" className="mono" fw={500}>
+    <span style={{ whiteSpace: 'nowrap' }}>{r.far.host || '—'}</span>{r.far.port && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {r.far.port}</Text>}
+  </Text>
+);
+
+// The other end's name and, for what reached the device, which port.
+function logFarMore(r: LogRow, name?: string) {
+  const port = !r.fromOwn && r.ownEnd.port;
+  if (!name && !port) return null;
+  return (
+    <>
+      {name && <span className="mono"><Wrapped name={name} /></span>}
+      {name && port && ' · '}
+      {port && <>to its port <span className="mono">{port}</span></>}
+    </>
+  );
+}
+
 function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames: boolean }) {
   const [entries, setEntries] = useState<FirewallLogEntry[]>();
   useEffect(() => {
@@ -461,64 +501,68 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
     backend.firewallLog().then((r) => live && setEntries(r.entries.filter((e) => addresses.some((a) => hasAddr(e.source, a) || hasAddr(e.destination, a)))), () => live && setEntries([]));
     return () => { live = false; };
   }, [addresses.join()]);
-  const rows = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
+  const rows: LogRow[] = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
   const names = useReverseNames(rows.map((r) => r.far.host), showNames);
   const { applied } = useStore();
+  // The Connections page's width for its columns.
+  const wide = useMediaQuery('(min-width: 75em)') ?? true;
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
-      {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : entries.length ? (
-        <Table.ScrollContainer minWidth={640}>
-          <Table verticalSpacing={6} highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w={130}>When</Table.Th>
-                <Table.Th w={160}>Direction</Table.Th>
-                <Table.Th>Other end</Table.Th>
-                <Table.Th>Rule</Table.Th>
-                <Table.Th>Logged on</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.map(({ e, fromOwn, far, ownEnd, ownFull }, i) => {
-                const name = names.get(far.host);
-                const blocked = e.action === 'block';
-                return (
-                  <Table.Tr key={e.time + i}>
-                    <Table.Td>
-                      <Text size="sm" fw={500} c={blocked ? 'red' : e.action === 'pass' ? 'teal' : 'dimmed'}>{blocked ? 'Blocked' : e.action === 'pass' ? 'Allowed' : 'Matched'}</Text>
-                      <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Tooltip label={fromOwn ? `Outgoing: this device sent it to the other end, from ${ownFull}` : `Incoming: the other end sent it to this device, at ${ownFull}`}>
-                        <Group gap={8} wrap="nowrap">
-                          <DirLabel dir={fromOwn ? 'out' : 'in'}>{fromOwn ? 'Outgoing' : 'Incoming'}</DirLabel>
-                          {e.proto && <ProtoBadge proto={protoGroup(e.proto)} />}
-                        </Group>
-                      </Tooltip>
-                    </Table.Td>
-                    <Table.Td>
-                      {/* An address never breaks; its port goes under it when it must. */}
-                      <Text size="sm" className="mono" fw={500}>
-                        <span style={{ whiteSpace: 'nowrap' }}>{far.host || '—'}</span>{far.port && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {far.port}</Text>}
-                      </Text>
-                      {(name || (!fromOwn && ownEnd.port)) && (
-                        <Text size="xs" c="dimmed">
-                          {name && <span className="mono"><Wrapped name={name} /></span>}
-                          {name && !fromOwn && ownEnd.port && ' · '}
-                          {!fromOwn && ownEnd.port && <>to its port <span className="mono">{ownEnd.port}</span></>}
-                        </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td><LogRule e={e} model={applied} /></Table.Td>
-                    <Table.Td><Text size="sm">{deviceName(applied, e.iface)}</Text></Table.Td>
-                  </Table.Tr>
-                );
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      ) : <Empty>Nothing logged for it lately.</Empty>}
+      {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : !entries.length ? <Empty>Nothing logged for it lately.</Empty> : wide ? (
+        <Table verticalSpacing={6} highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th w={130}>When</Table.Th>
+              <Table.Th w={160}>Direction</Table.Th>
+              <Table.Th>Other end</Table.Th>
+              <Table.Th>Rule</Table.Th>
+              <Table.Th>Logged on</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((r, i) => {
+              const more = logFarMore(r, names.get(r.far.host));
+              return (
+                <Table.Tr key={r.e.time + i}>
+                  <Table.Td>
+                    {logAction(r.e)}
+                    <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(r.e.time)}</Text>
+                  </Table.Td>
+                  <Table.Td><LogWay r={r} /></Table.Td>
+                  <Table.Td>
+                    {logFar(r)}
+                    {more && <Text size="xs" c="dimmed">{more}</Text>}
+                  </Table.Td>
+                  <Table.Td><LogRule e={r.e} model={applied} /></Table.Td>
+                  <Table.Td><Text size="sm">{deviceName(applied, r.e.iface)}</Text></Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      ) : (
+        // Too narrow for the columns: each entry in two lines.
+        <Stack gap={0}>
+          {rows.map((r, i) => {
+            const more = logFarMore(r, names.get(r.far.host));
+            return (
+              <Stack key={r.e.time + i} gap={4} py="sm" style={i ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
+                <Group gap={10} wrap="wrap" style={{ rowGap: 2 }}>
+                  {logAction(r.e)}
+                  <LogWay r={r} />
+                  {logFar(r)}
+                </Group>
+                <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
+                  <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(r.e.time)} · on {deviceName(applied, r.e.iface)} ·</Text>
+                  <LogRule e={r.e} model={applied} />
+                  {more && <Text size="xs" c="dimmed">· {more}</Text>}
+                </Group>
+              </Stack>
+            );
+          })}
+        </Stack>
+      )}
     </Card>
   );
 }
