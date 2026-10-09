@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Alert, Anchor, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { Alert, Anchor, Box, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowRight, IconSearch } from '@tabler/icons-react';
 import { useStore } from '../model/store';
@@ -45,13 +45,14 @@ export function LogRule({ e, model }: { e: FirewallLogEntry; model: Model }) {
 
 const protoOf = (e: FirewallLogEntry) => (e.proto ? protoGroup(e.proto) : '');
 
-/** pf's way, in or out on an interface, and its protocol. */
+/** Its protocol and pf's way, in or out on an interface: the badge
+ *  first, its width fixed, so the rows line up. */
 function LogWay({ e }: { e: FirewallLogEntry }) {
   const { applied } = useStore();
   return (
     <Group gap={8} wrap="nowrap">
+      {e.proto ? <ProtoBadge proto={protoOf(e)} /> : <Box w={52} style={{ flexShrink: 0 }} />}
       <DirLabel dir={e.direction}>{e.direction === 'in' ? 'In' : 'Out'} on {deviceName(applied, e.iface)}</DirLabel>
-      {e.proto && <ProtoBadge proto={protoOf(e)} />}
     </Group>
   );
 }

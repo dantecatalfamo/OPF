@@ -5,7 +5,7 @@
 // kept, its traffic and DNS activity.
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { Alert, Anchor, Badge, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { Alert, Anchor, Badge, Box, Card, Grid, Group, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { IconAlertTriangle, IconSearch } from '@tabler/icons-react';
 import { useElementSize } from '@mantine/hooks';
 import { backend, useStore } from '../model/store';
@@ -367,8 +367,8 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
   const way = (c: DeviceConn) => (
     <Tooltip label={c.dir === 'out' ? `Outgoing: this device opened it to the other end, from ${c.ownEnd}` : `Incoming: the other end opened it to this device, at ${c.ownEnd}`}>
       <Group gap={8} wrap="nowrap">
-        <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
         <ProtoBadge proto={c.proto} />
+        <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
       </Group>
     </Tooltip>
   );
@@ -502,8 +502,8 @@ function LogWay({ r }: { r: LogRow }) {
   return (
     <Tooltip label={r.fromOwn ? `Outgoing: this device sent it to the other end, from ${r.ownFull}` : `Incoming: the other end sent it to this device, at ${r.ownFull}`}>
       <Group gap={8} wrap="nowrap">
+        {r.e.proto ? <ProtoBadge proto={protoGroup(r.e.proto)} /> : <Box w={52} style={{ flexShrink: 0 }} />}
         <DirLabel dir={r.fromOwn ? 'out' : 'in'}>{r.fromOwn ? 'Outgoing' : 'Incoming'}</DirLabel>
-        {r.e.proto && <ProtoBadge proto={protoGroup(r.e.proto)} />}
       </Group>
     </Tooltip>
   );
