@@ -171,14 +171,14 @@ export function TimeSettings() {
           <Stack gap="md">
             <TagsInput
               label="Time servers"
-              description="ntpd syncs to every address each name has, such as a pool’s"
+              description="The firewall sets its clock from these. A name with several addresses, such as a pool, uses all of them."
               placeholder="pool.ntp.org"
               {...form.getInputProps('ntpServers')}
             />
             <Accordion variant="contained" radius="md" multiple>
               <Part value="servers" title="Servers with options" count={v.servers.length}>
                 <Text size="xs" c="dimmed">
-                  A server with a weight counts for more against the others (1 to 10; unset is 1). A trusted server’s time skips the constraints: for setting the clock at boot where no constraint can be reached.
+                  Weight is how much a server counts compared with the others, from 1 to 10 (1 if empty). A trusted server’s time isn’t checked against the constraints, so it can set the clock at boot before they can be reached.
                 </Text>
                 {v.servers.length > 0 && (
                   <Table verticalSpacing={4}>
@@ -204,7 +204,7 @@ export function TimeSettings() {
 
               <Part value="sensors" title="Sensors" count={v.sensors.length}>
                 <Text size="xs" c="dimmed">
-                  A timedelta sensor, such as a GPS (nmea0) or radio clock (udcf0), or * for every one the kernel finds; one that isn’t there is ignored. The correction, in microseconds, makes up for a receiver that lags; the reference ID (such as GPS) and stratum are what clients are told.
+                  A clock attached to the firewall, such as a GPS (nmea0) or radio clock (udcf0). Use * for every one the firewall finds. One that isn’t plugged in is ignored. Correction makes up for a receiver that runs late, in microseconds. Reference and stratum are what devices asking the firewall for the time are told.
                 </Text>
                 {v.sensors.map((_, i) => (
                   <Stack key={i} gap={6} pb="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
@@ -226,22 +226,22 @@ export function TimeSettings() {
 
               <Part value="constraints" title="Constraints" count={v.constraints.length}>
                 <Text size="xs" c="dimmed">
-                  ntpd asks these HTTPS servers for the date, over TLS, and ignores a time server whose answer is far from it, so a forged NTP reply can’t move the clock far. Without any, it believes the time servers.
+                  Websites ntpd checks the time servers against, over HTTPS. A time server that disagrees with them by much is ignored, so a forged reply can’t move the clock far. With none, the time servers are believed as they are.
                 </Text>
                 {v.constraints.map((c, i) => (
                   <Group key={i} gap="xs" align="flex-start" wrap="wrap">
                     <TextInput size="xs" style={{ flex: 1, minWidth: 200 }} label="URL" placeholder="https://www.example.com/" {...form.getInputProps(`constraints.${i}.url`)} />
-                    <Select size="xs" w={150} label="Asks" allowDeselect={false} data={[{ value: 'one', label: 'First to answer' }, { value: 'every', label: 'Every address' }]}
+                    <Select size="xs" w={150} label="Addresses" allowDeselect={false} data={[{ value: 'one', label: 'First to answer' }, { value: 'every', label: 'Every one' }]}
                       value={c.every ? 'every' : 'one'} onChange={(x) => form.setFieldValue(`constraints.${i}.every`, x === 'every')} />
                     {!c.every && (
-                      <TagsInput size="xs" w={200} label="Or these addresses" placeholder="9.9.9.9" {...form.getInputProps(`constraints.${i}.addresses`)} />
+                      <TagsInput size="xs" w={200} label="Use these addresses instead" placeholder="9.9.9.9" {...form.getInputProps(`constraints.${i}.addresses`)} />
                     )}
                     <Group mt={22}><Remove what="constraint" onClick={() => form.removeListItem('constraints', i)} /></Group>
                   </Group>
                 ))}
                 <Add onClick={() => form.insertListItem('constraints', blank.constraint())}>Add a constraint</Add>
                 {trusted && v.constraints.length > 0 && (
-                  <Text size="xs" c="dimmed">The trusted servers and sensors skip these.</Text>
+                  <Text size="xs" c="dimmed">Trusted servers and sensors aren’t checked against these.</Text>
                 )}
               </Part>
 
@@ -259,7 +259,7 @@ export function TimeSettings() {
                 />
                 <Text size="sm" fw={500} mt="xs">Other addresses</Text>
                 <Text size="xs" c="dimmed">
-                  More addresses ntpd answers on, or * for every one. For these, a <Anchor component={Link} to="/firewall/rules" size="xs">firewall rule</Anchor> has to pass UDP port 123 to it.
+                  More addresses for ntpd to answer on, or * for all of them. These need a <Anchor component={Link} to="/firewall/rules" size="xs">firewall rule</Anchor> of your own that allows UDP port 123.
                 </Text>
                 {v.listen.map((_, i) => (
                   <Group key={i} gap="xs" align="flex-start">
@@ -271,14 +271,14 @@ export function TimeSettings() {
                 <Add onClick={() => form.insertListItem('listen', blank.listen())}>Add an address</Add>
                 {v.listen.some((l) => l.address.trim() === '*') && (
                   <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-                    <Text size="sm">On every address, the WAN’s too: only your firewall rules keep the internet from asking it.</Text>
+                    <Text size="sm">* includes the WAN address. Only your firewall rules stop the internet from asking the firewall for the time.</Text>
                   </Alert>
                 )}
               </Part>
 
               <Part value="source" title="Source address" count={(v.query4 ? 1 : 0) + (v.query6 ? 1 : 0)}>
                 <Text size="xs" c="dimmed">
-                  The address ntpd asks the time servers from, for a firewall with more than one way out; empty, the outgoing interface’s.
+                  The address ntpd sends its requests from, for a firewall with more than one way to the internet. Leave it empty to use the outgoing interface’s address.
                 </Text>
                 <Group grow align="flex-start">
                   <TextInput size="xs" label="IPv4" placeholder="192.0.2.1" {...form.getInputProps('query4')} />
