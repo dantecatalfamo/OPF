@@ -40,14 +40,14 @@ export function ConfirmModal({ opened, onClose }: { opened: boolean; onClose: ()
                 <>
                   {confirming.move.name} has moved, so this page can’t reach OPF any more. Open{' '}
                   <Anchor href={confirming.move.url} target="_blank" className="mono">{confirming.move.url}</Anchor>,
-                  sign in, and keep the changes there. If you can’t, do nothing: the previous settings come back when
-                  the timer runs out, and this page with them.
+                  sign in, and keep the changes there. If you can’t, do nothing. The previous settings come back when
+                  the timer runs out, and this page works again.
                 </>
               ) : (
                 <>
                   {confirming.move.name} {confirming.move.dhcp ? 'now gets its address by DHCP' : 'has no address now'}, so this page can’t reach OPF any more. Keep the
-                  changes from wherever you can reach it, or do nothing: the previous settings come back when the
-                  timer runs out, and this page with them.
+                  changes from wherever you can reach OPF. If you can’t, do nothing. The previous settings come back when the
+                  timer runs out, and this page works again.
                 </>
               )}
             </Text>

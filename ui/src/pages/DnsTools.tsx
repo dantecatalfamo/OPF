@@ -21,10 +21,10 @@ function Output({ result, empty }: { result?: DnsToolResult; empty: string }) {
 }
 
 const flushes: { tool: DnsToolName; label: string; needsName: boolean; what: (n: string) => string }[] = [
-  { tool: 'flush', label: 'Forget this name', needsName: true, what: (n) => `unbound forgets what it has cached for ${n}, and asks again the next time a device looks it up.` },
-  { tool: 'flush_zone', label: 'Forget everything under it', needsName: true, what: (n) => `unbound forgets ${n} and every name under it (www.${n} and the rest), and asks again as each is looked up.` },
-  { tool: 'flush_bogus', label: 'Forget failed DNSSEC answers', needsName: false, what: () => 'unbound forgets every answer that failed DNSSEC validation, so it checks those names again: after a domain fixes its signatures, say.' },
-  { tool: 'flush_negative', label: 'Forget “no such name” answers', needsName: false, what: () => 'unbound forgets every “no such name” and empty answer, so a name that has just been created is found at once.' },
+  { tool: 'flush', label: 'Forget this name', needsName: true, what: (n) => `The resolver forgets what it has cached for ${n}. It asks again the next time a device looks the name up.` },
+  { tool: 'flush_zone', label: 'Forget everything under it', needsName: true, what: (n) => `The resolver forgets ${n} and every name under it, such as www.${n}. It asks again as each one is looked up.` },
+  { tool: 'flush_bogus', label: 'Forget failed DNSSEC answers', needsName: false, what: () => 'The resolver forgets every answer that failed DNSSEC validation, and checks those names again. Use this after a domain fixes its signatures.' },
+  { tool: 'flush_negative', label: 'Forget “no such name” answers', needsName: false, what: () => 'The resolver forgets every “no such name” and empty answer. A name that was just created is then found right away.' },
 ];
 
 export function DnsTools() {
@@ -69,8 +69,8 @@ export function DnsTools() {
               {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
               {lookup && (
                 <>
-                  <Text size="sm" c="dimmed">{lookup.tool === 'cache' ? 'What unbound has cached for the name and those under it, with each record’s seconds left:' : 'The servers unbound would ask, and how quickly each has answered:'}</Text>
-                  <Output result={lookup.result} empty="Nothing cached for this name: the next lookup asks the internet." />
+                  <Text size="sm" c="dimmed">{lookup.tool === 'cache' ? 'What the resolver has cached for this name and the names under it, with the seconds each record has left:' : 'The servers the resolver would ask, and how quickly each has answered:'}</Text>
+                  <Output result={lookup.result} empty="Nothing is cached for this name. The next lookup asks the internet." />
                 </>
               )}
               <Text size="xs" c="dimmed">To see the answer a device gets, use Monitoring › Tools › DNS lookup.</Text>
@@ -78,7 +78,7 @@ export function DnsTools() {
           </Card>
           <Card>
             <SectionTitle right={<Button size="xs" variant="light" loading={busy === 'local'} onClick={() => run('local')}>{local ? 'Show again' : 'Show'}</Button>}>Local names</SectionTitle>
-            <Text size="sm" c="dimmed" mb="sm">The zones and records unbound answers itself: host names, reserved and DHCP devices’ names.</Text>
+            <Text size="sm" c="dimmed" mb="sm">The zones and records the resolver answers itself, including host names and the names of reserved and DHCP devices.</Text>
             <Output result={local} empty="None." />
           </Card>
         </Stack>
@@ -87,7 +87,7 @@ export function DnsTools() {
         <Card>
           <SectionTitle>Cached answers</SectionTitle>
           <Stack gap="sm">
-            <Text size="sm" c="dimmed">unbound keeps answers until they expire. Making it forget some helps after a name changed somewhere else, or a domain fixed its DNSSEC.</Text>
+            <Text size="sm" c="dimmed">The resolver keeps answers until they expire. Making it forget some helps after a name changes elsewhere, or after a domain fixes its DNSSEC.</Text>
             {flushes.slice(2).map((f) => (
               <Group key={f.tool} justify="space-between" wrap="nowrap">
                 <Text size="sm">{f.label}</Text>
@@ -100,7 +100,7 @@ export function DnsTools() {
       <Modal opened={!!confirm} onClose={() => setConfirm(null)} title={<Text fw={600}>{confirm?.label}</Text>}>
         <Stack>
           <Text size="sm">{confirm?.what(n)}</Text>
-          <Text size="xs" c="dimmed">Nothing else changes, and it isn’t recorded as a change: the next lookups just take a little longer.</Text>
+          <Text size="xs" c="dimmed">Nothing else changes, and this isn’t recorded as a change. The next lookups just take a little longer.</Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setConfirm(null)}>Cancel</Button>
             <Button color="red" loading={!!confirm && busy === confirm.tool} onClick={async () => { const c = confirm!; await run(c.tool); setConfirm(null); }}>{confirm?.label}</Button>

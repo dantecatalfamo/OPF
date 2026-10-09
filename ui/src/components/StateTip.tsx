@@ -20,7 +20,7 @@ export function StateTip({ state, direction, opener, other, children }: {
         <Stack gap={4}>
           <Text size="xs">{stateExplain(state, direction, opener, other)}</Text>
           <Text size="xs" c="dimmed">
-            <span className="mono">pf: {state}</span>, {direction === 'out' ? 'the end that opened it first' : 'the end it was opened to first'}, as pfctl prints it
+            <span className="mono">pf: {state}</span>. pfctl prints {direction === 'out' ? 'the end that opened the connection' : 'the end the connection was opened to'} first.
           </Text>
         </Stack>
       }

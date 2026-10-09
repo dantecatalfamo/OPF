@@ -104,7 +104,7 @@ export function TableDrawer({ table, onClose }: { table?: string; onClose: () =>
             {data.filledBy.length > 0 && <> by <RuleLinks rules={data.filledBy} /></>}
             {dynamic && <> · {data.expireMinutes ? `each address taken out ${minutesText(data.expireMinutes)} after it was added` : 'addresses stay until it’s emptied or the firewall restarts'}</>}
           </Text>
-          {!data.loaded && <Alert color="gray" variant="light">pf has no such table yet: apply the configuration that adds this alias.</Alert>}
+          {!data.loaded && <Alert color="gray" variant="light">pf doesn’t have this table yet. Apply the change that adds this alias.</Alert>}
           {data.loaded && (
             <>
               <Group gap="sm" align="flex-end">
@@ -146,7 +146,7 @@ export function TableDrawer({ table, onClose }: { table?: string; onClose: () =>
                           <Table.Td>
                             <Group gap={6}>
                               <Mono>{e.address}</Mono>
-                              {e.negated && <Tooltip label="An exception: addresses here aren’t in the table, though a wider entry has them"><Badge size="xs" color="gray">except</Badge></Tooltip>}
+                              {e.negated && <Tooltip label="An exception. These addresses aren’t in the table, even though a wider entry covers them."><Badge size="xs" color="gray">except</Badge></Tooltip>}
                             </Group>
                             <Added at={e.added} expires={e.expires} />
                           </Table.Td>
@@ -161,12 +161,12 @@ export function TableDrawer({ table, onClose }: { table?: string; onClose: () =>
                       ))}
                     </Table.Tbody>
                   </Table>
-                ) : <Empty>{query ? 'Nothing matches.' : dynamic ? 'Empty: nothing has been added.' : 'Empty.'}</Empty>}
+                ) : <Empty>{query ? 'Nothing matches.' : dynamic ? 'Empty. Nothing has been added.' : 'Empty.'}</Empty>}
               </Card>
               {data.matching > data.entries.length && (
                 <Group justify="center">
                   <Button size="compact-sm" variant="subtle" onClick={() => setLimit((n) => Math.min(1000, n + PAGE))} disabled={limit >= 1000}>
-                    {limit >= 1000 ? `Showing the first 1,000 of ${data.matching.toLocaleString()}: search to find one` : `Show ${Math.min(PAGE, data.matching - data.entries.length)} more`}
+                    {limit >= 1000 ? `Showing the first 1,000 of ${data.matching.toLocaleString()}. Search to find the rest.` : `Show ${Math.min(PAGE, data.matching - data.entries.length)} more`}
                   </Button>
                 </Group>
               )}
@@ -247,7 +247,7 @@ export function FindInTables({ onOpen }: { onOpen: (table: string) => void }) {
                   {t.kind === 'list' ? ' (a downloaded list)' : ''}
                 </Text>
                 {t.added && <Text size="xs" c="dimmed">added {formatLogTime(t.added)}{t.expires ? `, out ${formatLogTime(t.expires)}` : ''}</Text>}
-                <Text size="xs" c="dimmed">{t.usedBy.length ? <>used by <RuleLinks rules={t.usedBy} /></> : 'No rule uses it, so it changes nothing.'}</Text>
+                <Text size="xs" c="dimmed">{t.usedBy.length ? <>used by <RuleLinks rules={t.usedBy} /></> : 'No rule uses this table, so it has no effect.'}</Text>
               </div>
               {t.kind === 'dynamic' && canOperate && t.entry === res.address && (
                 <Button size="compact-sm" variant="subtle" color="red" onClick={() => takeOut(t.table, t.entry)}>Take it out</Button>

@@ -55,29 +55,29 @@ export function costAdvice(cost: ActivityCost, sys?: SystemResource): CostAdvice
     const share = cost.bytes / ram;
     if (share > 0.1) {
       raise('warn');
-      reasons.push(`That’s ${Math.round(share * 100)}% of this machine’s memory: keep devices or the names’ when and who for fewer days, or keep only the network’s counts.`);
+      reasons.push(`That’s ${Math.round(share * 100)}% of this machine’s memory. To use less, set “Each device’s” or “When and by whom” to fewer days, or turn off “For each device too”.`);
     } else if (share > 0.03) {
       raise('note');
       reasons.push(`That’s ${(share * 100).toFixed(1)}% of this machine’s memory.`);
     }
     if (ram <= 1 << 30) {
       raise('note');
-      reasons.push('This machine has 1 GB of memory or less, which the resolver’s cache and blocklists share with this: shorter is safer.');
+      reasons.push('This machine has 1 GB of memory or less, and the resolver’s cache and blocklists need it too. Keeping activity for fewer days is safer.');
     }
   }
   const varDisk = sys?.disks.find((d) => d.mount === '/var') ?? sys?.disks.find((d) => d.mount === '/');
   if (varDisk && varDisk.available < cost.bytes * 4) {
     raise('warn');
-    reasons.push(`${varDisk.mount} has little room left for it (it’s saved there every few minutes, beside the last copy).`);
+    reasons.push(`${varDisk.mount} has little room left for it. Activity is saved there every few minutes, next to the previous copy.`);
   }
   const model = `${sys?.cpuModel ?? ''} ${sys?.machine ?? ''}`;
-  const work = 'the resolver writes a line for every answer and OPF reads each one, which on a busy network can slow the resolver down. Watch the DNS page’s lookup times after turning it on.';
+  const work = 'The resolver writes a line for every answer and OPF reads each one. On a busy network, that can slow the resolver down. Watch the lookup times on the DNS page after turning this on.';
   if (sys && lowPowerCPU.test(model)) {
     raise('note');
-    reasons.push(`This looks like a low-power machine (${sys.cpuModel || sys.machine}, ${sys.cpus} CPU${sys.cpus === 1 ? '' : 's'}): ${work}`);
+    reasons.push(`This looks like a low-power machine: ${sys.cpuModel || sys.machine}, ${sys.cpus} CPU${sys.cpus === 1 ? '' : 's'}. ${work}`);
   } else if (sys && sys.cpus <= 2) {
     raise('note');
-    reasons.push(`This machine has ${sys.cpus === 1 ? 'one CPU' : 'two CPUs'}, which the resolver, OPF and the firewall share: ${work}`);
+    reasons.push(`This machine has ${sys.cpus === 1 ? 'one CPU' : 'two CPUs'}, which the resolver, OPF and the firewall share. ${work}`);
   }
   return { level, reasons };
 }

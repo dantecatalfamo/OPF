@@ -97,7 +97,7 @@ function DeviceNames() {
         {data?.enabled && showing === 'given' && (
           <>
             <Text size="sm" c="dimmed">
-              The names devices asked for, reachable as name.{domain}. They follow the leases, so they come and go with the devices.
+              The names devices asked for. Each one is reachable as name.{domain} and goes away when the device’s lease ends.
             </Text>
             {data.registered.length ? (
               <Table.ScrollContainer minWidth={420}>
@@ -179,8 +179,8 @@ function DnsSettingsForm() {
         ));
         return (
           <>
-            {left.map((n) => n.name).join(' and ')}’s DHCP tells devices to ask OPF for names, so leaving {one ? 'it' : 'them'} out would leave those devices unable to look anything up.
-            Add {one ? 'it' : 'them'} here, or first have {dhcpLinks} hand out other DNS servers.
+            {left.map((n) => n.name).join(' and ')}’s DHCP tells devices to use OPF for DNS. If you leave {one ? 'it' : 'them'} out, those devices can’t look up any names.
+            Add {one ? 'it' : 'them'} here, or first set {dhcpLinks} to hand out other DNS servers.
           </>
         );
       },
@@ -228,7 +228,7 @@ function DnsSettingsForm() {
             <Text size="sm" fw={600}>Who can ask</Text>
             <MultiSelect
               label="Answer on" placeholder={form.values.interfaces?.length ? undefined : 'Every inside network and tunnel'}
-              description="Devices on other networks are refused, whatever the firewall’s rules allow. Those rules still apply on top: a network listed here can be blocked from port 53 too."
+              description="The resolver refuses devices on other networks, even if the firewall rules let them through."
               inputWrapperOrder={['label', 'input', 'description', 'error']}
               data={insides.map((i) => ({
                 value: i.id, disabled: !answerable(i),
@@ -243,12 +243,12 @@ function DnsSettingsForm() {
             <Switch label="Add reserved devices by name" description={`Devices with a DHCP reservation can be reached as name.${domain}.`} {...form.getInputProps('registerReservations', { type: 'checkbox' })} />
             <Switch
               label="Add other DHCP devices by name"
-              description={`Devices can be reached by the name they give themselves, as name.${domain}. Any device can pick any name, so names used by this configuration, and names claimed by two devices, are never added.`}
+              description={`Devices can be reached as name.${domain}, using the name they give themselves. Any device can pick any name, so OPF never adds a name this configuration already uses or a name two devices both claim.`}
               {...form.getInputProps('registerDynamicLeases', { type: 'checkbox' })}
             />
             <Switch
               label="Fix names that aren’t valid"
-              description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${domain}. Turned off, devices with names like that get none.`}
+              description={`A device calling itself “Priya’s iPad” becomes priyas-ipad.${domain}. When this is off, devices with names like that don’t get a name.`}
               disabled={!form.values.registerDynamicLeases}
               {...form.getInputProps('rewriteInvalidLeaseNames', { type: 'checkbox' })}
             />
@@ -337,7 +337,7 @@ export function Dns() {
           </Fieldset>
         </Tabs.Panel>
         <Tabs.Panel value="tools">
-          {applied.dns.enabled || handConfigured(applied, 'dns') ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}
+          {applied.dns.enabled || handConfigured(applied, 'dns') ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so these tools can’t ask it anything.</Alert>}
         </Tabs.Panel>
       </Tabs>
     </>

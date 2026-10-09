@@ -10,9 +10,9 @@ import { formatBytes } from '../lib/format';
 import { PageHeader, SectionTitle } from '../components/ui';
 
 const groups: { id: StorageItem['group']; title: string; desc: string }[] = [
-  { id: 'pf', title: 'pf, in the kernel', desc: 'Its tables have hard limits; once one is full, what needs a new entry fails.' },
-  { id: 'opf', title: 'Kept by OPF', desc: 'Its own records, each with its own limit.' },
-  { id: 'graphs', title: 'Graphs', desc: 'A month of history in memory, by what it records; saved under Kept by OPF.' },
+  { id: 'pf', title: 'pf, in the kernel', desc: 'pf’s tables have hard limits. When one is full, anything that needs a new entry in it fails.' },
+  { id: 'opf', title: 'Kept by OPF', desc: 'OPF’s own records. Each has its own limit.' },
+  { id: 'graphs', title: 'Graphs', desc: 'A month of history in memory for each kind of graph. The copy saved to disk is listed under Kept by OPF.' },
   { id: 'logs', title: 'Logs', desc: 'The system’s logs OPF reads, rotated by newsyslog.' },
   { id: 'disk', title: 'OPF and its disk', desc: '' },
 ];
@@ -75,7 +75,7 @@ export function Storage() {
   }, []);
   return (
     <>
-      <PageHeader title="Storage" description="Everything that fills up as the firewall runs: what each holds now, and the most it can." />
+      <PageHeader title="Storage" description="Everything that fills up as the firewall runs, with how much each holds now and the most it can hold." />
       <Stack gap="md">
         {error && <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {error}</Alert>}
         {data?.errors.map((e) => <Alert key={e} color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{e}</Alert>)}

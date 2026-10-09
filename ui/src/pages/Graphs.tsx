@@ -71,7 +71,7 @@ export function Graphs() {
     <>
       <PageHeader
         title="Graphs"
-        description="What OPF has recorded, sampled every 10 seconds and kept for a month: the last hour in full, older times averaged."
+        description="OPF samples these every 10 seconds and keeps a month of history. The last hour shows every sample, and older times are averaged."
         actions={<SegmentedControl size="xs" value={String(range)} data={ranges} onChange={(v) => setParams(v === '86400' ? {} : { range: v }, { replace: true })} />}
       />
       {error && !data && <Text c="red" size="sm" mb="md">Couldn’t ask OPF: {error}</Text>}
@@ -88,7 +88,7 @@ export function Graphs() {
         <Grid.Col span={{ base: 12, md: 6, lg: 4 }}><Graph title="Load" series={load} format={(n) => n.toFixed(2)} {...common} /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}><Graph title="Connections (pf states)" series={states} format={(n) => Math.round(n).toLocaleString()} {...common} /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Graph title="Packets blocked" series={blocked} format={perSec} note="On pf’s statistics interface (Firewall › Settings)." empty="Nothing recorded: pf needs a statistics interface for this." {...common} />
+          <Graph title="Packets blocked" series={blocked} format={perSec} note="Only packets on pf’s statistics interface are counted. You choose it under Firewall › Settings." empty="Nothing recorded. This needs a statistics interface, which you choose under Firewall › Settings." {...common} />
         </Grid.Col>
       </Grid>
       {applied.dns.enabled && (
@@ -123,7 +123,7 @@ export function Graphs() {
       <Grid gutter="md">
         {pools.length > 0 && <Grid.Col span={{ base: 12, md: 7 }}><Graph title="DHCP leases in use" series={leases} format={(n) => String(Math.round(n))} {...common} /></Grid.Col>}
         <Grid.Col span={{ base: 12, md: pools.length ? 5 : 12 }}>
-          <Graph title="Clock offset" series={offset} format={(n) => `${n.toFixed(Math.abs(n) < 10 ? 1 : 0)} ms`} note="How far the clock is from the time server ntpd follows." {...common} />
+          <Graph title="Clock offset" series={offset} format={(n) => `${n.toFixed(Math.abs(n) < 10 ? 1 : 0)} ms`} note="How far the firewall’s clock is from the time server it syncs to." {...common} />
         </Grid.Col>
       </Grid>
     </>

@@ -44,7 +44,7 @@ export function DeleteInterface({ iface, kind, opened, onClose, onDeleted }: {
             </Text>
             {deps.length > 0 && (
               <>
-                <Text size="sm" fw={500}>These use it and go or change with it:</Text>
+                <Text size="sm" fw={500}>These use it. Here is what happens to each:</Text>
                 <List spacing={6} size="sm">
                   {deps.map((d, i) => (
                     <List.Item key={i}>
@@ -59,11 +59,11 @@ export function DeleteInterface({ iface, kind, opened, onClose, onDeleted }: {
             )}
             {toEdit.length > 0 && (
               <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-                OPF can’t change pf text you wrote yourself. Edit {toEdit.length === 1 ? 'it' : 'them'} before applying, or the check
-                of the new rules will refuse the change.
+                OPF can’t change pf text you wrote yourself. Edit {toEdit.length === 1 ? 'it' : 'them'} before you apply, or the new rules
+                will fail pf’s check and the change will be refused.
               </Alert>
             )}
-            <Text size="xs" c="dimmed">Nothing changes until you review and apply, and a commit can be reverted from Change history.</Text>
+            <Text size="xs" c="dimmed">Nothing changes until you review and apply. You can revert a commit later from Change history.</Text>
           </>
         )}
         <Group justify="flex-end">

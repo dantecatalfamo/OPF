@@ -14,7 +14,7 @@ export interface Outcome {
 export function commonOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined {
   const host = req.host ?? req.name ?? '';
   if (run.lines.some((l) => /no address associated with name|unknown host|hostname nor servname/.test(l))) {
-    return { ok: false, text: `${host} doesn’t resolve: DNS has no address for it${req.family === 'ipv6' ? ' (IPv6)' : ''}.`, next: [{ label: `Look up ${host}`, req: { tool: 'dns', name: host, type: req.family === 'ipv6' ? 'AAAA' : 'A' } }] };
+    return { ok: false, text: `${host} doesn’t resolve. DNS has no ${req.family === 'ipv6' ? 'IPv6 ' : ''}address for it.`, next: [{ label: `Look up ${host}`, req: { tool: 'dns', name: host, type: req.family === 'ipv6' ? 'AAAA' : 'A' } }] };
   }
   if (run.lines.some((l) => /No route to host|Network is unreachable/.test(l)) && !run.lines.some((l) => /bytes from|^\s*\d+\s+\S+\s+[\d.]+ ms/.test(l))) {
     const v6 = (req.host ?? '').includes(':') || req.family === 'ipv6';
@@ -59,7 +59,7 @@ export function tracerouteOutcome(run: ToolRun, req: ToolRequest): Outcome | und
   return {
     ok: false,
     text: last
-      ? `${target} never answered. The last router that did is ${last[1]} (hop ${last[0]}), so the trouble is likely there or just after it. Some hosts don’t answer traceroute at all; try ICMP, or ping it.`
+      ? `${target} never answered. The last router that did is ${last[1]}, at hop ${last[0]}. The problem is likely there or just after it. Some hosts don’t answer traceroute at all, so try probing with ICMP, or ping the host.`
       : `No router on the way answered, not even the first. Check this firewall’s internet connection.`,
     next: [{ label: 'Ping it', req: { tool: 'ping', host: req.host } }],
   };
@@ -70,7 +70,7 @@ export function dnsOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined 
   if (!status && run.lines.some((l) => /connection timed out|no servers could be reached/.test(l))) {
     return req.server || req.trace
       ? { ok: false, text: `${req.server || 'The DNS servers'} didn’t answer.` }
-      : { ok: false, text: 'This firewall’s DNS resolver didn’t answer. Check that it’s turned on (Services › DNS resolver), or ask another server.', next: [{ label: 'Ask 9.9.9.9 instead', req: { ...req, server: '9.9.9.9' } }] };
+      : { ok: false, text: 'This firewall’s DNS resolver didn’t answer. Check that it’s turned on under Services › DNS resolver, or ask another server.', next: [{ label: 'Ask 9.9.9.9 instead', req: { ...req, server: '9.9.9.9' } }] };
   }
   if (!status) return undefined;
   if (status === 'NXDOMAIN') return { ok: false, text: 'The name doesn’t exist.' };
@@ -91,11 +91,11 @@ export function dnsOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined 
 export function portOutcome(run: ToolRun, req: ToolRequest): Outcome | undefined {
   const proto = req.protocol === 'udp' ? 'UDP' : 'TCP';
   if (run.lines.some((l) => /succeeded/.test(l))) {
-    return { ok: true, text: req.protocol === 'udp' ? `Nothing refused UDP port ${req.port}; with UDP that’s all a test can tell.` : `Something is listening on port ${req.port}.` };
+    return { ok: true, text: req.protocol === 'udp' ? `Nothing refused UDP port ${req.port}. With UDP, that’s all a test can tell.` : `Something is listening on port ${req.port}.` };
   }
   if (run.lines.some((l) => /Connection refused/.test(l))) {
-    return { ok: false, text: `${req.host} answered, but nothing is listening on ${proto} port ${req.port} (the connection was refused).` };
+    return { ok: false, text: `${req.host} answered and refused the connection. Nothing is listening on ${proto} port ${req.port}.` };
   }
-  return { ok: false, text: `Nothing answered on ${proto} port ${req.port}: the host may be down, or a firewall on the way drops it.`, next: [{ label: `Ping ${req.host}`, req: { tool: 'ping', host: req.host } }] };
+  return { ok: false, text: `Nothing answered on ${proto} port ${req.port}. The host may be down, or a firewall along the way may be dropping the traffic.`, next: [{ label: `Ping ${req.host}`, req: { tool: 'ping', host: req.host } }] };
 }
 

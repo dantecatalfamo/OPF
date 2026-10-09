@@ -115,7 +115,7 @@ function NotWhileMonitoring() {
   return (
     <Alert color="gray" variant="light" title="Not while OPF is only monitoring" icon={<IconEye size={18} />} maw={680}>
       <Text size="sm" mb="xs">
-        This page is about OPF’s own configuration, which a machine it only monitors doesn’t have: what runs here is configured by hand. The machine’s files are under{' '}
+        This page shows OPF’s own configuration. OPF is only monitoring this machine, so there is none to show. Everything here is configured by hand. You can see the machine’s files under{' '}
         <Anchor component={Link} to="/system/files" size="sm">Configuration files</Anchor>.
       </Text>
       <Anchor component={Link} to="/system/take-over" size="sm">Taking this machine over</Anchor>
@@ -252,19 +252,19 @@ export function AppLayout() {
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           {readOnly && (
             <Alert color="blue" variant="light" mb="md" icon={<IconEye size={18} />}>
-              OPF is only monitoring this machine: it shows what’s happening and changes nothing. Its configuration is still yours, by hand. <Anchor component={Link} to="/system/take-over" size="sm">Taking it over</Anchor>
+              OPF is only monitoring this machine. It shows what’s happening and changes nothing. You still configure the machine by hand. <Anchor component={Link} to="/system/take-over" size="sm">Taking it over</Anchor>
             </Alert>
           )}
           {accounts && session && !canEdit && !readOnly && (
             <Alert color="blue" variant="light" mb="md">
               {session.role === 'operator'
-                ? 'You’re signed in as an operator: you can look at everything, keep or undo a change someone applied, and run tools, but not change the configuration.'
-                : 'You’re signed in read-only: you can look at everything, but not change anything.'}
+                ? 'You’re signed in as an operator. You can see everything, keep or undo a change someone applied, and run tools. You can’t change the configuration.'
+                : 'You’re signed in read-only. You can see everything, but you can’t change anything.'}
             </Alert>
           )}
           {!accounts && !offline && (
             <Alert color="yellow" variant="light" mb="md" icon={<IconAlertTriangle size={18} />}>
-              This is the development server: it has no accounts, so anyone who can reach it can change everything. It only listens on this machine.
+              This is the development server. It has no accounts, so anyone who can reach it can change everything. It only listens on this machine.
             </Alert>
           )}
           {readOnly && !pageShown(pathname, true) ? <NotWhileMonitoring /> : <Outlet />}

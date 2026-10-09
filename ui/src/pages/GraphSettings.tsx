@@ -55,7 +55,7 @@ export function GraphSettings() {
       <SectionTitle>Graphs</SectionTitle>
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          How many of each thing the graphs keep a month of history for. Each kind has its own limit, so many rules never crowd out the interfaces. A larger limit costs memory; it’s shown at its most, and a typical firewall uses far less. Leave one empty for the default.
+          How many of each kind of thing the graphs keep a month of history for. Each kind has its own limit, so a lot of rules can’t crowd out the interfaces. A higher limit uses more memory. The memory shown is the most it could use, and a typical firewall uses far less. Leave a limit empty to use the default.
         </Text>
         <Table.ScrollContainer minWidth={480}>
           <Table verticalSpacing={6}>
@@ -100,17 +100,17 @@ export function GraphSettings() {
         </Table.ScrollContainer>
         {groups && (
           <Text size="xs" c="dimmed">
-            With the system’s own graphs (CPU, memory, pf, DNS, time), up to {formatBytes(total)} of memory{physmem ? ` of ${formatBytes(physmem)}` : ''}, and about as much on disk at most.
+            Together with the system’s own graphs for CPU, memory, pf, DNS and time, the graphs use at most {formatBytes(total)} of memory and about as much on disk.{physmem ? ` This machine has ${formatBytes(physmem)} of memory.` : ''}
           </Text>
         )}
         {groups?.some((g) => g.refused) && (
           <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-            Some are full: there are more than they keep, and the rest aren’t recorded. Raise the limit to graph them all.
+            Some kinds are full. There are more of them than the limit, and the extra ones aren’t recorded. Raise the limit to graph them all.
           </Alert>
         )}
         {physmem && total > physmem * 0.25 && (
           <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-            At their most these would take over a quarter of this machine’s memory.
+            At most, these graphs could use over a quarter of this machine’s memory.
           </Alert>
         )}
         <Group justify="flex-end">

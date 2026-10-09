@@ -19,7 +19,7 @@ export function Wrapped({ name }: { name: string }) {
 /** Turns names on or off, for every page that shows them. */
 export function NamesSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <Tooltip multiline w={300} label="Look up each address’s name (reverse DNS) through the firewall’s own resolver. Lookups for addresses on the internet go to whoever runs them.">
+    <Tooltip multiline w={300} label="Show each address’s name, looked up with reverse DNS through the firewall’s own resolver. For an address on the internet, the lookup goes to whoever runs that address’s reverse DNS.">
       <Switch label="Names" checked={checked} onChange={(e) => onChange(e.currentTarget.checked)} />
     </Tooltip>
   );

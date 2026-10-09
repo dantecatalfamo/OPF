@@ -16,8 +16,8 @@ const MAX_NAMESERVERS = 3;
 
 const help: Record<SystemDnsMode, string> = {
   wan: 'The servers the WAN learns with its DHCP lease, as OpenBSD does by default. A WAN with a fixed address learns none.',
-  self: 'OPF’s own DNS resolver first, so the firewall gets your local names and blocklists too. The servers below answer if it doesn’t, then the WAN’s unless you choose only these.',
-  servers: 'These servers first, such as Quad9 (9.9.9.9) or your provider’s. The WAN’s come after them while there’s room (the system asks at most three), unless you choose only these.',
+  self: 'The firewall asks OPF’s own DNS resolver first, so it gets your local names and blocklists too. If the resolver doesn’t answer, the firewall asks the servers below, then the WAN’s servers. “Only these” leaves out the WAN’s.',
+  servers: 'The firewall asks these servers first, such as Quad9 at 9.9.9.9 or your provider’s. Then it asks the WAN’s servers, if there’s room. The system asks at most three. “Only these” leaves out the WAN’s.',
 };
 
 const isIP = (s: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s) ? s.split('.').every((o) => Number(o) <= 255) : /^[0-9a-f:]+$/i.test(s) && s.includes(':');
@@ -41,7 +41,7 @@ export function FirewallDns() {
       servers: (v, vals) => {
         if (vals.mode === 'wan') return null;
         if (vals.mode === 'servers' && !v.length) return 'Add at least one server';
-        if (v.length > max(vals.mode)) return `At most ${max(vals.mode)}: the system asks no more than three`;
+        if (v.length > max(vals.mode)) return `At most ${max(vals.mode)}. The system asks no more than three`;
         const bad = v.find((s) => !isIP(s));
         return bad ? `${bad} isn’t an IP address` : null;
       },
@@ -77,8 +77,8 @@ export function FirewallDns() {
         <SectionTitle>DNS for the firewall itself</SectionTitle>
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            Where the firewall’s own lookups go: checking for updates, downloading blocklists and lists of addresses, its tools.
-            Devices on your networks are told under <Anchor component={Link} to="/services/dhcp" size="sm">DHCP server</Anchor>.
+            Where the firewall sends its own lookups, such as for update checks, blocklist and address list downloads, and its tools.
+            The DNS servers that devices on your networks use are set under <Anchor component={Link} to="/services/dhcp" size="sm">DHCP server</Anchor>.
           </Text>
           <Stack gap={6}>
             <SegmentedControl
@@ -104,17 +104,17 @@ export function FirewallDns() {
           {v.mode !== 'wan' && (
             <Checkbox
               label={v.mode === 'self' ? 'Only these: never the WAN’s servers' : 'Only these servers: never the WAN’s'}
-              description="Keeps the firewall’s lookups off your provider’s DNS servers: the DHCP client ignores the ones its lease brings."
+              description="Keeps the firewall’s lookups off your provider’s DNS servers. The WAN’s DHCP client ignores the servers its lease offers."
               disabled={!canEdit}
               {...form.getInputProps('only', { type: 'checkbox' })}
             />
           )}
           {v.mode !== 'wan' && v.only && wan?.ipv6 === 'slaac' && (
-            <Text size="xs" c="dimmed">The WAN also takes IPv6 settings from your provider’s routers, which can bring DNS servers too; those aren’t ignored. Asking now, below, shows any.</Text>
+            <Text size="xs" c="dimmed">The WAN also takes IPv6 settings from your provider’s routers, and those can include DNS servers. Those servers aren’t ignored. Asking now, below, shows any it has.</Text>
           )}
           {v.mode === 'wan' && fixedWan && (
             <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-              The WAN ({wan!.name}) has a fixed address, so it learns no DNS servers: unless resolv.conf names some by hand, the firewall has none. Choose its own resolver or these servers.
+              The WAN, {wan!.name}, has a fixed address, so it learns no DNS servers. Unless resolv.conf lists some by hand, the firewall has none. Choose “Its own resolver” or “These servers”.
             </Alert>
           )}
           {servers && (
@@ -122,7 +122,7 @@ export function FirewallDns() {
               <Text size="sm" fw={500}>Asking now</Text>
               {asking.length === 0 ? (
                 <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-                  The firewall has no DNS server, so it can’t look anything up: update checks and list downloads fail.
+                  The firewall has no DNS server, so it can’t look anything up. Update checks and list downloads fail.
                   {fixedWan && applied.system.dns === undefined ? ' Its WAN has a fixed address and learns none.' : ''}
                 </Alert>
               ) : (
@@ -132,7 +132,7 @@ export function FirewallDns() {
                     <Text span size="xs" c="dimmed">
                       {s.address === '127.0.0.1' ? 'its own resolver, ' : ''}
                       {s.from === 'lo0' ? 'set by OPF' : s.from ? `learned on ${s.from}` : 'written in resolv.conf by hand'}
-                      {s.unused ? '; not asked: the system asks at most three' : ''}
+                      {s.unused ? ', but not asked, because the system asks at most three' : ''}
                     </Text>
                   </Text>
                 ))

@@ -114,11 +114,11 @@ export function InterfaceEdit() {
         // The default route needs it; another gateway can be the default.
         const gw = ownGateway(staged, iface.id);
         const isDefault = !staged.routing.defaultGateway || gw?.id === staged.routing.defaultGateway;
-        if (!v) return isDefault ? 'Enter the gateway your ISP gave with the address: it’s the firewall’s way to the internet' : null;
+        if (!v) return isDefault ? 'Enter the gateway your ISP gave you with the address. The firewall reaches the internet through it.' : null;
         if (!isIPv4(v)) return 'Enter an IPv4 address';
         return inSubnet(v, vals.address, Number(vals.prefix)) ? null : 'The gateway must be inside this network';
       },
-      mtu: (v) => (v === '' || (Number(v) >= 576 && Number(v) <= 9000) ? null : 'Use 576 to 9000, or leave empty'),
+      mtu: (v) => (v === '' || (Number(v) >= 576 && Number(v) <= 9000) ? null : 'Use 576 to 9000, or leave it empty'),
       vlanTag: (v) => {
         if (v === '') return null;
         if (!Number.isInteger(v) || v < 1 || v > 4094) return 'VLAN IDs are 1 to 4094';
@@ -231,7 +231,7 @@ export function InterfaceEdit() {
             {isWan && (
               <NumberInput
                 label="VLAN ID" placeholder="None" min={1} max={4094} allowDecimal={false}
-                description={`Only if your provider tags its traffic: some fibre services do (VLAN 35, 10 or 7, say), and their instructions say which. OPF then carries the WAN as that VLAN on ${iface.vlan?.parent ?? iface.device}.`}
+                description={`Set this only if your provider tags its traffic. Some fibre services do, for example with VLAN 35, 10 or 7, and their instructions say which. OPF then carries the WAN as that VLAN on ${iface.vlan?.parent ?? iface.device}.`}
                 {...form.getInputProps('vlanTag')}
               />
             )}
@@ -303,15 +303,15 @@ export function InterfaceEdit() {
             <Switch
               label="Block spoofed addresses"
               description={form.values.mode === 'static'
-                ? `Drop traffic that claims to come from ${iface.name}’s network but arrives on another interface (pf’s antispoof).`
-                : 'Needs a fixed address: pf would keep guarding the old network after the address changed.'}
+                ? `Drop traffic that claims to come from ${iface.name}’s network but arrives on another interface. This is pf’s antispoof.`
+                : 'This needs a fixed address. Otherwise pf would keep guarding the old network after the address changed.'}
               disabled={form.values.mode !== 'static'}
               {...form.getInputProps('antispoof', { type: 'checkbox' })}
             />
             {inside && (
               <Switch
                 label="Share this address with OPF’s other networks"
-                description={`Traffic from OPF’s other networks (VPN devices, other LANs) leaving through ${iface.name} takes its address, so this network’s router needn’t know about them. For OPF behind an existing router, such as a VPN server reached through a port forward.`}
+                description={`Traffic from OPF’s other networks, such as VPN devices and other LANs, leaves through ${iface.name} with this interface’s address. This network’s router then doesn’t need to know about those networks. Use this when OPF sits behind an existing router, for example as a VPN server reached through a port forward.`}
                 disabled={form.values.mode === 'none'}
                 {...form.getInputProps('masquerade', { type: 'checkbox' })}
               />

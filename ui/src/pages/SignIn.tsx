@@ -52,7 +52,7 @@ export function SignIn({ tls, onSignedIn, unreachable, onRetry }: {
                 {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
                 <Button type="submit" loading={busy} disabled={!user || !password}>Sign in</Button>
                 <Text size="xs" c="dimmed">
-                  With your account on this OpenBSD system. It needs to be in _opfadmin, _opfoperator or _opfview.
+                  Use your account on this OpenBSD system. It must be in the _opfadmin, _opfoperator or _opfview group.
                 </Text>
               </Stack>
             </form>
@@ -60,7 +60,7 @@ export function SignIn({ tls, onSignedIn, unreachable, onRetry }: {
         </Card>
         {tls && (
           <Text size="xs" c="dimmed" ta="center">
-            This connection’s certificate, to compare with the one OPF logged when it started:
+            This connection’s certificate is below. Compare it with the one OPF logged when it started.
             <Code block mt={4} style={{ fontSize: 10, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{tls}</Code>
           </Text>
         )}

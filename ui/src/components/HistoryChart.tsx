@@ -106,7 +106,7 @@ export function HistoryChart({ data, series, range, format, area, peaks, h = 200
               <Text size="xs" c="dimmed">{x.label}</Text>
             </Group>
           ))}
-          {withPeaks && <Text size="xs" c="dimmed">Dashed: the peak in each point</Text>}
+          {withPeaks && <Text size="xs" c="dimmed">The dashed line shows the highest value within each point</Text>}
         </Group>
       )}
       {shown.length > 0 && (

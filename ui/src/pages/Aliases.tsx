@@ -28,8 +28,8 @@ const typeHelp: Record<Alias['type'], string> = {
   hosts: 'A fixed list of addresses.',
   networks: 'A fixed list of networks in CIDR form.',
   ports: 'A fixed list of ports, for the port field of rules.',
-  table: 'Starts empty and is filled at runtime: by a rule’s connection limits, or by hand from what’s in it now. Entries survive rule reloads, and stay until they expire (below), the table is emptied or the firewall restarts.',
-  url: 'A list of addresses or networks downloaded from a URL into a pf table, such as a blocklist. It’s downloaded when you first apply it, again on the schedule below, and from its menu whenever you want the latest.',
+  table: 'Starts empty and is filled while the firewall runs. A rule’s connection limits can add addresses, or you can add them by hand under What’s in it now. Entries survive rule reloads. They stay until they expire, the table is emptied or the firewall restarts.',
+  url: 'A list of addresses or networks, such as a blocklist, downloaded from a URL into a pf table. OPF downloads it when you first apply it and again on the schedule below. To get the latest at any time, use Download again now in its menu.',
 };
 
 
@@ -75,7 +75,7 @@ function ExpiryInput({ value, onChange }: { value?: number; onChange: (n: number
     <Group grow align="flex-start" gap="xs">
       <NumberInput
         label="Take each address out after"
-        description={value ? `OPF removes it ${minutesText(value)} after it was added` : 'Empty: it stays until the table is flushed or the firewall restarts'}
+        description={value ? `OPF removes each address ${minutesText(value)} after it was added` : 'Leave empty to keep each address until the table is flushed or the firewall restarts'}
         inputWrapperOrder={['label', 'input', 'description']}
         placeholder="Never"
         min={1}
@@ -128,7 +128,7 @@ function AliasModal({ opened, onClose, alias, onSave }: { opened: boolean; onClo
           <Text size="xs" c="dimmed" mt={-8}>{typeHelp[t]}</Text>
           {t === 'url' ? (
             <>
-              <TextInput label="List URL" description="One address or network a line; comments after # or ; are fine" inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
+              <TextInput label="List URL" description="One address or network per line. Comments after # or ; are fine." inputWrapperOrder={['label', 'input', 'description', 'error']} placeholder="https://example.org/blocklist.txt" {...form.getInputProps('url')} />
               <NumberInput label="Download it again every" suffix=" hours" min={1} max={8760} placeholder="24" {...form.getInputProps('refreshHours')} />
             </>
           ) : t !== 'table' && (
@@ -157,7 +157,7 @@ function useTables(applied: Model) {
     setRefreshing(name);
     try {
       const t = await backend.refreshAlias(name);
-      notifications.show({ color: t.warning ? 'yellow' : 'teal', title: `Downloaded ${name}`, message: t.warning ?? `${t.entries.toLocaleString()} entries, loaded into pf.` });
+      notifications.show({ color: t.warning ? 'yellow' : 'teal', title: `Downloaded ${name}`, message: t.warning ?? `Loaded ${t.entries.toLocaleString()} entries into pf.` });
     } catch (e) {
       notifications.show({ color: 'red', title: `Couldn’t download ${name}`, message: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -183,7 +183,7 @@ export function Aliases() {
     <>
       <PageHeader
         title="Aliases"
-        description="Named groups of addresses, networks or ports. Each address alias becomes a pf table, so large lists stay fast and can change without reloading rules."
+        description="Named groups of addresses, networks or ports. Each address alias becomes a pf table. Large lists stay fast, and they can change without reloading the rules."
         actions={<Button leftSection={<IconPlus size={16} />} onClick={() => setModal({ open: true, alias: null })}>Add alias</Button>}
       />
       {applied.firewall.aliases.some((a) => a.type === 'table' || a.type === 'url') && <FindInTables onOpen={show} />}
@@ -245,7 +245,7 @@ export function Aliases() {
                               {refreshing === a.name ? 'Downloading…' : 'Download again now'}
                             </Menu.Item>
                           )}
-                          <Tooltip label="Stop using it first (Used by)" disabled={n === 0} position="left">
+                          <Tooltip label="Remove it from the rules under Used by first." disabled={n === 0} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={n > 0} onClick={() => set(`Deleted alias ${a.name}`, (all) => all.filter((x) => x.id !== a.id))}>Delete</Menu.Item>
                           </Tooltip>
                         </Menu.Dropdown>

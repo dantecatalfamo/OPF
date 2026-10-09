@@ -78,7 +78,7 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
         <Stack>
           <Text size="sm" c="dimmed">
             A VLAN is a separate network carried over an existing port, for example to keep guest or IoT devices apart.
-            Your switch needs to tag this VLAN ID too. A port OPF doesn’t use yet can carry VLANs only: OPF brings it up for them.
+            Your switch needs to tag this VLAN ID too. A port OPF doesn’t use yet can carry only VLANs. OPF brings the port up for them.
           </Text>
           <TextInput label="Name" placeholder="Guests" data-autofocus {...form.getInputProps('name')} />
           <Group grow>
@@ -146,11 +146,11 @@ function SetUp({ port, onClose }: { port: InterfaceState | null; onClose: () => 
       <form onSubmit={submit}>
         <Stack>
           <Text size="sm" c="dimmed">
-            OPF will manage this port: its address, and firewall rules for its network (nothing gets in until you add some).
+            OPF will manage this port’s address and the firewall rules for its network. Nothing gets in until you add rules.
           </Text>
           {(port.ipv4.length > 0 || port.ipv6.some((a) => !a.startsWith('fe80'))) && (
             <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-              It has {[...port.ipv4, ...port.ipv6.filter((a) => !a.startsWith('fe80'))].join(', ')} now, set outside OPF, which replaces it with what you choose here. If a hostname.{port.name} file set it, applying says the file changed outside OPF and offers to replace it.
+              It has {[...port.ipv4, ...port.ipv6.filter((a) => !a.startsWith('fe80'))].join(', ')} now, set outside OPF. OPF replaces it with what you choose here. If a hostname.{port.name} file set it, OPF will say the file changed outside OPF when you apply, and offer to replace it.
             </Alert>
           )}
           <TextInput label="Name" placeholder="Guests" data-autofocus {...form.getInputProps('name')} />
@@ -189,7 +189,7 @@ function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
       {!readOnly && (
         <>
           <Text fw={600} mt="xl" mb={4}>Not set up by OPF</Text>
-          <Text size="sm" c="dimmed" mb="md">Interfaces this machine has that OPF doesn’t manage: a spare port, or one configured by hand.</Text>
+          <Text size="sm" c="dimmed" mb="md">Interfaces on this machine that OPF doesn’t manage, such as a spare port or one configured by hand.</Text>
         </>
       )}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">

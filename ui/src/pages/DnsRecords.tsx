@@ -14,12 +14,12 @@ import { Mono, SectionTitle } from '../components/ui';
 type Kind = 'host' | 'firewall' | DnsRecordType;
 
 const kinds: { kind: Kind; label: string; badge: string; about: string }[] = [
-  { kind: 'host', label: 'Host name', badge: 'Host', about: 'A name for an address: devices using OPF for DNS find it by name.' },
+  { kind: 'host', label: 'Host name', badge: 'Host', about: 'A name for an address. Devices that use OPF for DNS can reach the address by this name.' },
   { kind: 'firewall', label: 'The firewall', badge: 'Firewall', about: '' },
   { kind: 'CNAME', label: 'Alias', badge: 'Alias', about: 'Another name for a name that exists already.' },
   { kind: 'MX', label: 'Mail server', badge: 'Mail', about: 'Where mail for a domain goes (MX).' },
-  { kind: 'TXT', label: 'Text', badge: 'Text', about: 'Text for programs to read: SPF, domain verification (TXT).' },
-  { kind: 'SRV', label: 'Service', badge: 'Service', about: 'Where a service runs, for programs that look it up by name (SRV): _ipp._tcp for printers, _sip._tcp for phones.' },
+  { kind: 'TXT', label: 'Text', badge: 'Text', about: 'Text for programs to read, such as SPF or domain verification (TXT).' },
+  { kind: 'SRV', label: 'Service', badge: 'Service', about: 'Where a service runs, for programs that look it up by name (SRV). For example, _ipp._tcp for printers or _sip._tcp for phones.' },
   { kind: 'PTR', label: 'Reverse name', badge: 'Reverse', about: 'The name an address gives when a program asks what it’s called (PTR).' },
   { kind: 'CAA', label: 'Certificate authorities', badge: 'CA', about: 'Which certificate authorities may issue certificates for a name (CAA).' },
 ];
@@ -61,12 +61,12 @@ function aliasOutcome(m: Model, name: string, target: string): { ok: boolean; te
   if (!isHost(target)) return { ok: false, text: 'Enter a name like files.office.arpa' };
   if (t === lower(name)) return { ok: false, text: 'An alias can’t stand for itself' };
   const alias = (m.dns.records ?? []).find((r) => r.type === 'CNAME' && lower(r.name) === t);
-  if (alias) return { ok: false, text: `${target} is an alias too; point at ${alias.value}` };
+  if (alias) return { ok: false, text: `${target} is an alias too. Point at ${alias.value} instead` };
   const addrs = localAddresses(m).get(t);
-  if (addrs) return { ok: true, text: `Answers with ${target}’s address, ${addrs.join(', ')}, and follows it if that changes.` };
+  if (addrs) return { ok: true, text: `Answers with ${target}’s address, ${addrs.join(', ')}. If that address changes, the alias follows it.` };
   const z = zoneOf(m, t);
-  if (z?.type === 'static') return { ok: false, text: `${target} has no address here: point at a host name or reserved device. A device’s name from its lease can’t be followed.` };
-  return { ok: true, text: `The resolver looks ${target} up and answers with both. Names under the alias answer the same way.` };
+  if (z?.type === 'static') return { ok: false, text: `${target} has no address here. Point at a host name or a reserved device. An alias can’t follow a name a device got from its lease.` };
+  return { ok: true, text: `The resolver looks up ${target} and answers with the alias and ${target}’s records. Names under the alias get the same answer.` };
 }
 
 // Why a record can't go at name, if it can't: an alias must be the only
@@ -75,12 +75,12 @@ function nameTaken(m: Model, type: DnsRecordType, name: string): string | null {
   const n = lower(name);
   const records = (m.dns.records ?? []).filter((r) => r.type !== 'PTR' && lower(r.name) === n);
   const alias = records.find((r) => r.type === 'CNAME');
-  if (alias) return `${name} is an alias for ${alias.value}; an alias must be the only thing at its name`;
+  if (alias) return `${name} is an alias for ${alias.value}. An alias must be the only record at its name`;
   if (type !== 'CNAME') return null;
   if (lower(`${m.system.hostname}.${m.system.domain}`) === n) return `${name} is the firewall’s own name`;
-  if (n === lower(m.system.domain) || (m.dns.zones ?? []).some((z) => lower(z.name) === n)) return `${name} is a domain; an alias can’t be a domain itself`;
+  if (n === lower(m.system.domain) || (m.dns.zones ?? []).some((z) => lower(z.name) === n)) return `${name} is a domain. An alias can’t be a domain`;
   if (localAddresses(m).has(n)) return `${name} is already a host name or reserved device`;
-  if (records.length) return `${name} has other records; an alias must be the only thing at its name`;
+  if (records.length) return `${name} has other records. An alias must be the only record at its name`;
   return null;
 }
 
@@ -121,7 +121,7 @@ function rows(m: Model): Row[] {
     switch (r.type) {
       case 'CNAME': {
         const a = local.get(lower(r.value));
-        detail = a ? `answers with ${a.join(', ')}` : 'looked up, then answered with both';
+        detail = a ? `answers with ${a.join(', ')}` : 'looked up, then answered with the alias and its target’s records';
         break;
       }
       case 'MX': value = `${r.priority ?? 0} ${r.value}`; break;
@@ -197,7 +197,7 @@ const unlisted: { value: DnsZone['type']; label: string }[] = [
   { value: 'transparent', label: 'are looked up on the internet' },
 ];
 const unlistedExample = (type: DnsZone['type'], domain: string) =>
-  isTopLevel(domain) ? `${domain} is a top-level domain: answering only your names in it would hide every name under it.` : type === 'static' ? `A device asking for anything else in ${domain} is told there’s no such name.` : `Anything else in ${domain} is looked up on the internet, as usual.`;
+  isTopLevel(domain) ? `${domain} is a top-level domain. Answering only your names in it would hide every other name under it.` : type === 'static' ? `A device asking for anything else in ${domain} is told there’s no such name.` : `Anything else in ${domain} is looked up on the internet, as usual.`;
 
 export function LocalNames() {
   const { staged, edit } = useStore();
@@ -319,7 +319,7 @@ export function LocalNames() {
                           <IconTrash size={16} />
                         </ActionIcon>
                       ) : (
-                        <Tooltip label="Its name is set in System › General" withinPortal>
+                        <Tooltip label="The firewall’s name is set in System › General" withinPortal>
                           <ActionIcon component={Link} to="/system/general" variant="subtle" color="gray" aria-label="Change the firewall’s name in System › General">
                             <IconSettings size={16} />
                           </ActionIcon>
@@ -348,10 +348,10 @@ function DomainModal({ opened, onClose, taken }: { opened: boolean; onClose: () 
       name: (v) => {
         const n = lower(v.trim().replace(/\.$/, ''));
         if (!isHost(n)) return 'Enter a domain like lab.example.com';
-        if (/^((in-addr|ip6)\.)?arpa$/.test(n)) return 'That holds every reverse name; use a domain under it';
+        if (/^((in-addr|ip6)\.)?arpa$/.test(n)) return 'That domain holds every reverse name. Use a domain under it';
         return taken.includes(n) ? 'Already listed' : null;
       },
-      type: (v, f) => (v === 'static' && isTopLevel(f.name.trim().replace(/\.$/, '')) ? 'A top-level domain can’t answer only your names: that would hide every name under it' : null),
+      type: (v, f) => (v === 'static' && isTopLevel(f.name.trim().replace(/\.$/, '')) ? 'A top-level domain can’t answer only your names. That would hide every other name under it' : null),
     },
   });
   useEffect(() => {
@@ -514,12 +514,12 @@ function RecordModal({ type, onClose }: { type: DnsRecordType | null; onClose: (
           {(type === 'MX' || type === 'SRV') && (
             <Group grow align="flex-start">
               <NumberInput label={type === 'MX' ? 'Preference' : 'Priority'} description="Lower is tried first" min={0} max={65535} allowDecimal={false} {...form.getInputProps('priority')} />
-              {type === 'SRV' && <NumberInput label="Weight" description="Shares among equals" min={0} max={65535} allowDecimal={false} {...form.getInputProps('weight')} />}
+              {type === 'SRV' && <NumberInput label="Weight" description="Splits traffic among servers with the same priority" min={0} max={65535} allowDecimal={false} {...form.getInputProps('weight')} />}
               {type === 'SRV' && <NumberInput label="Port" description=" " min={0} max={65535} allowDecimal={false} {...form.getInputProps('port')} />}
             </Group>
           )}
           <Group grow align="flex-start">
-            <NumberInput label="Kept for" description="Seconds devices may remember it; 3600 if empty" min={0} max={604800} allowDecimal={false} {...form.getInputProps('ttl')} />
+            <NumberInput label="Kept for" description="How many seconds devices may remember it. Leave it empty for 3600." min={0} max={604800} allowDecimal={false} {...form.getInputProps('ttl')} />
           </Group>
           <TextInput label="Description" {...form.getInputProps('description')} />
           <Group justify="flex-end" mt="sm">

@@ -40,9 +40,9 @@ function CustomDrawer({ opened, onClose }: { opened: boolean; onClose: () => voi
           <Text size="sm" c="dimmed">
             Anything pf.conf(5) supports, placed at fixed points in the generated ruleset. Interface macros ($wan, $lan…) and alias tables are available. OPF checks the whole ruleset with pfctl before applying.
           </Text>
-          <Textarea label="Options" description="After the generated set lines. For set, queue or anchor definitions." autosize minRows={3} styles={mono} {...form.getInputProps('options')} />
+          <Textarea label="Options" description="Placed after the generated set lines. Use it for set, queue or anchor definitions." autosize minRows={3} styles={mono} {...form.getInputProps('options')} />
           <Textarea label="Before the filter rules" description="Checked before floating and interface rules." autosize minRows={4} styles={mono} {...form.getInputProps('beforeFilter')} />
-          <Textarea label="After the filter rules" description="At the very end of the ruleset." autosize minRows={3} styles={mono} {...form.getInputProps('afterFilter')} />
+          <Textarea label="After the filter rules" description="Placed at the very end of the ruleset." autosize minRows={3} styles={mono} {...form.getInputProps('afterFilter')} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit">Save</Button>

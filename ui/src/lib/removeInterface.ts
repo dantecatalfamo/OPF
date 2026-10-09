@@ -36,7 +36,7 @@ function opensTunnelPort(m: Model, iface: Iface | undefined, r: Rule): boolean {
 /** Why the interface can't be deleted, if it can't. */
 export function cannotDelete(m: Model, id: string): string | null {
   const gw = m.routing.gateways.find((g) => g.id === m.routing.defaultGateway);
-  if (gw?.iface === id) return `It carries the default gateway (${gw.name}); choose another default gateway first.`;
+  if (gw?.iface === id) return `The default gateway, ${gw.name}, is on this interface. Choose another default gateway first.`;
   return null;
 }
 
@@ -51,16 +51,16 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
   if (m.dhcp.some((s) => s.iface === id)) out.push({ what: `DHCP server on ${name}`, effect: 'deleted' });
   if (m.dns.interfaces?.includes(id)) {
     // Its list emptied would be every network, so it's turned off.
-    out.push({ what: 'DNS resolver', effect: 'changed', detail: m.dns.interfaces.length === 1 && m.dns.enabled ? `turned off: it only answers on ${name}` : `no longer answers on ${name}` });
+    out.push({ what: 'DNS resolver', effect: 'changed', detail: m.dns.interfaces.length === 1 && m.dns.enabled ? `turned off, because it only answers on ${name}` : `no longer answers on ${name}` });
   }
   if (m.system.ntp?.serveOn?.includes(id)) out.push({ what: 'Time', effect: 'changed', detail: `no longer served to ${name}` });
   for (const r of m.firewall.rules) {
     const label = `Firewall rule “${r.description || r.id}”`;
     const onIt = r.interfaces.includes(id);
     if (opensTunnelPort(m, iface, r)) {
-      out.push({ what: label, effect: 'deleted', detail: `it opens the tunnel’s port, ${iface?.wireguard?.listenPort}` });
+      out.push({ what: label, effect: 'deleted', detail: `it opens port ${iface?.wireguard?.listenPort} for the tunnel` });
     } else if (r.kind === 'form' && (refersTo(r.source, id) || refersTo(r.destination, id))) {
-      out.push({ what: label, effect: 'deleted', detail: `its addresses are ${name}’s` });
+      out.push({ what: label, effect: 'deleted', detail: `its source or destination is ${name}` });
     } else if (onIt && r.interfaces.length === 1) {
       out.push({ what: label, effect: 'deleted' });
     } else if (onIt) {
@@ -92,7 +92,7 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
       } else if (exact.length) {
         out.push({ what: `Alias ${a.name}`, effect: 'changed', detail: `loses ${net.cidr}` });
       }
-      if (inside.length) out.push({ what: `Alias ${a.name}`, effect: 'edit', detail: `has addresses on ${name}’s network (${inside.join(', ')})` });
+      if (inside.length) out.push({ what: `Alias ${a.name}`, effect: 'edit', detail: `holds ${inside.join(', ')}, on ${name}’s network` });
     }
   }
   const c = m.firewall.custom;

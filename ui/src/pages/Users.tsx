@@ -14,9 +14,9 @@ import { formatAgo } from '../lib/format';
 import { Mono, PageHeader, SectionTitle } from '../components/ui';
 
 const roles: { value: Role; label: string; about: string }[] = [
-  { value: 'admin', label: 'Admin', about: 'Changes everything, including who can sign in.' },
-  { value: 'operator', label: 'Operator', about: 'Looks at everything, keeps or undoes a change someone applied, and runs tools.' },
-  { value: 'view', label: 'Read-only', about: 'Looks at everything.' },
+  { value: 'admin', label: 'Admin', about: 'Can change everything, including who can sign in.' },
+  { value: 'operator', label: 'Operator', about: 'Can see everything, confirm or undo a change someone applied, and run tools.' },
+  { value: 'view', label: 'Read-only', about: 'Can see everything.' },
 ];
 const roleName = (r: Role | '') => roles.find((x) => x.value === r)?.label ?? 'None';
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -58,7 +58,7 @@ export function Users() {
   const me = session?.user;
   return (
     <>
-      <PageHeader title="Users" description="Who can sign in to OPF: this OpenBSD system’s accounts in _opfadmin, _opfoperator or _opfview. Changes happen straight away." />
+      <PageHeader title="Users" description="Who can sign in to OPF. These are this OpenBSD system’s accounts in the _opfadmin, _opfoperator or _opfview group. Changes take effect straight away." />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       <Stack gap="md">
         <Card>
@@ -136,7 +136,7 @@ export function Users() {
               <Text key={r.value} size="xs" c="dimmed"><Text span fw={600} size="xs" c="var(--mantine-color-text)">{r.label}</Text>: {r.about}</Text>
             ))}
             <Text size="xs" c="dimmed">
-              Removing an account OPF made deletes it; for one it didn’t, only the role goes. Nobody can take away their own admin role, and there’s always one admin left.
+              Removing an account that OPF made deletes the account. For any other account, only its role is taken away. Nobody can take away their own admin role, and at least one admin always remains.
             </Text>
           </Stack>
         </Card>
@@ -227,7 +227,7 @@ function NewAccountModal({ opened, onClose, onDone }: { opened: boolean; onClose
             <PasswordInput label="Password" autoComplete="new-password" value={v.password} onChange={(e) => setV({ ...v, password: e.currentTarget.value })} error={errors.password} />
             <PasswordInput label="Again" autoComplete="new-password" value={v.again} onChange={(e) => setV({ ...v, again: e.currentTarget.value })} error={errors.again} />
           </Group>
-          <Switch label="Can also log in over SSH and at the console" description="Off, the account only signs in here." checked={v.shell} onChange={(e) => setV({ ...v, shell: e.currentTarget.checked })} />
+          <Switch label="Can also log in over SSH and at the console" description="When this is off, the account can sign in only here." checked={v.shell} onChange={(e) => setV({ ...v, shell: e.currentTarget.checked })} />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit" loading={busy}>Make the account</Button>
@@ -245,7 +245,7 @@ function ExistingModal({ opened, candidates, onClose, onPick }: { opened: boolea
   return (
     <Modal opened={opened} onClose={onClose} title={<Text fw={600}>A role for an existing account</Text>}>
       <Stack>
-        <Text size="sm" c="dimmed">The account keeps its password and everything else; it’s only added to OPF’s group for the role.</Text>
+        <Text size="sm" c="dimmed">The account keeps its password and everything else. OPF only adds it to its group for the role.</Text>
         <Select label="Account" data={candidates.map((c) => ({ value: c.name, label: c.fullName ? `${c.name} (${c.fullName})` : c.name }))} value={name} onChange={setName} searchable />
         <Select label="Role" data={roles.map((r) => ({ value: r.value, label: r.label }))} value={role} allowDeselect={false}
           description={roles.find((r) => r.value === role)?.about} inputWrapperOrder={['label', 'input', 'description', 'error']}
@@ -275,7 +275,7 @@ function PasswordModal({ account, onClose, onSet }: { account: Account | null; o
         onClose();
       }}>
         <Stack>
-          <Text size="sm" c="dimmed">It’s the OpenBSD account’s password{account?.shell ? ', for SSH and the console too' : ''}. Their sessions end.</Text>
+          <Text size="sm" c="dimmed">This sets the OpenBSD account’s password{account?.shell ? ', which SSH and the console use too' : ''}. Their sessions in OPF end.</Text>
           <PasswordInput label="New password" autoComplete="new-password" data-autofocus value={pw} onChange={(e) => setPw(e.currentTarget.value)} />
           <PasswordInput label="Again" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.currentTarget.value)} error={error} />
           <Group justify="flex-end" mt="sm">

@@ -36,8 +36,8 @@ const label = (d: DeviceInfo) => d.name || d.mac || d.addresses[0] || d.key;
 
 const nameFromWords: Record<NonNullable<DeviceInfo['nameFrom']>, string> = {
   reservation: 'from its DHCP reservation',
-  dns: 'its name in DNS, from its lease',
-  asked: 'what it calls itself: it isn’t in DNS',
+  dns: 'its name in DNS, from its DHCP lease',
+  asked: 'the name it asked for, which isn’t in DNS',
   vpn: 'the VPN device’s name',
 };
 
@@ -69,7 +69,7 @@ export function Devices() {
   }, [data, q]);
   return (
     <>
-      <PageHeader title="Devices" description="Every device OPF knows of: from DHCP leases and reservations, the ARP table and VPN tunnels. Each one’s page has everything about it." />
+      <PageHeader title="Devices" description="Every device OPF knows of, from DHCP leases and reservations, the ARP table and VPN tunnels. Open a device to see everything about it." />
       <Card>
         <Stack gap="sm">
           <TextInput placeholder="Name, address or MAC" leftSection={<IconSearch size={14} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} w={320} />
@@ -201,7 +201,7 @@ function TrafficCard({ deviceKey, days }: { deviceKey: string; days: number }) {
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/devices/traffic" size="xs">Traffic</Anchor>}>Traffic</SectionTitle>
-      {data === undefined ? <Text size="sm" c="dimmed">Reading…</Text> : data === null ? <Empty>None counted for it over these days.</Empty> : (
+      {data === undefined ? <Text size="sm" c="dimmed">Reading…</Text> : data === null ? <Empty>No traffic counted for this device in this period.</Empty> : (
         <Stack gap="sm">
           <SimpleGrid cols={2}>
             <Stat label="Received" value={formatBytes(data.total.received)} />
@@ -269,7 +269,7 @@ function TopNames({ data }: { data: DnsDeviceActivityResource }) {
           </Table.Tbody>
         </Table>
       ) : <Text size="sm" c="dimmed" py="xs">{current.empty}</Text>}
-      {items.length > 10 && <Text size="xs" c="dimmed">The first 10 of {items.length}; the rest are on <Anchor component={Link} to="/services/dns?tab=activity" size="xs">DNS activity</Anchor>.</Text>}
+      {items.length > 10 && <Text size="xs" c="dimmed">The first 10 of {items.length}. The rest are on <Anchor component={Link} to="/services/dns?tab=activity" size="xs">DNS activity</Anchor>.</Text>}
     </Stack>
   );
 }
@@ -284,7 +284,7 @@ function DnsCard({ deviceKey, days }: { deviceKey: string; days: number }) {
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/services/dns?tab=activity" size="xs">DNS activity</Anchor>}>DNS</SectionTitle>
-      {data === undefined ? <Text size="sm" c="dimmed">Reading…</Text> : data === null ? <Empty>None kept for it over these days.</Empty> : (
+      {data === undefined ? <Text size="sm" c="dimmed">Reading…</Text> : data === null ? <Empty>No DNS activity kept for this device in this period.</Empty> : (
         <Stack gap="md">
           <SimpleGrid cols={{ base: 2, sm: 4 }}>
             <Stat label="Queries" value={data.total.queries.toLocaleString()} />
@@ -366,7 +366,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
   const wide = width >= 860;
   const table = !width || width >= 560;
   const way = (c: DeviceConn) => (
-    <Tooltip label={c.dir === 'out' ? `Outgoing: this device opened it to the other end, from ${c.ownEnd}` : `Incoming: the other end opened it to this device, at ${c.ownEnd}`}>
+    <Tooltip label={c.dir === 'out' ? `Outgoing. This device opened the connection from ${c.ownEnd}.` : `Incoming. The other end opened the connection to this device at ${c.ownEnd}.`}>
       <Group gap={8} wrap="nowrap">
         <ProtoBadge proto={c.proto} />
         <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
@@ -477,7 +477,7 @@ function Events({ terms }: { terms: string[] }) {
             </Group>
           ))}
         </Stack>
-      ) : <Empty>None about it.</Empty>}
+      ) : <Empty>No events about this device.</Empty>}
     </Card>
   );
 }
@@ -501,7 +501,7 @@ type LogRow = ReturnType<typeof logView> & { e: FirewallLogEntry };
 
 function LogWay({ r }: { r: LogRow }) {
   return (
-    <Tooltip label={r.fromOwn ? `Outgoing: this device sent it to the other end, from ${r.ownFull}` : `Incoming: the other end sent it to this device, at ${r.ownFull}`}>
+    <Tooltip label={r.fromOwn ? `Outgoing. This device sent the packet from ${r.ownFull}.` : `Incoming. The other end sent the packet to this device at ${r.ownFull}.`}>
       <Group gap={8} wrap="nowrap">
         {r.e.proto ? <ProtoBadge proto={protoGroup(r.e.proto)} /> : <Box w={52} style={{ flexShrink: 0 }} />}
         <DirLabel dir={r.fromOwn ? 'out' : 'in'}>{r.fromOwn ? 'Outgoing' : 'Incoming'}</DirLabel>

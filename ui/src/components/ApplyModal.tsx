@@ -20,16 +20,16 @@ export function MoveNotice({ move }: { move: Move }) {
       {move.url ? (
         <>
           These changes move {move.name} off {here}, the address this page is on. Once they’re applied, open{' '}
-          <Anchor href={move.url} target="_blank" className="mono">{move.url}</Anchor>, sign in again (your browser will
-          warn about the certificate there too) and keep the changes before the timer runs out. Otherwise the previous
-          settings come back on their own, here.
+          <Anchor href={move.url} target="_blank" className="mono">{move.url}</Anchor> and sign in again. Your browser will
+          warn about the certificate there too. Keep the changes there before the timer runs out. Otherwise the previous
+          settings come back on their own, and this page works again.
         </>
       ) : (
         <>
-          These changes take {move.name} off {here}, the address this page is on,
-          {move.dhcp ? ' and its new address comes from DHCP, so OPF can’t say what it will be.' : ' and leave it without one.'}{' '}
-          Unless you reach OPF another way and keep the changes before the timer runs out, the previous settings come
-          back on their own, here.
+          These changes take {move.name} off {here}, the address this page is on.
+          {move.dhcp ? ' Its new address will come from DHCP, so OPF can’t tell you what it will be.' : ' It will have no address.'}{' '}
+          To keep the changes, reach OPF another way before the timer runs out. Otherwise the previous settings come
+          back on their own, and this page works again.
         </>
       )}
     </Alert>

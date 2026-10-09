@@ -26,17 +26,17 @@ interface AreaInfo {
 const areas: Record<Area, AreaInfo> = {
   dhcp: {
     what: 'DHCP server', file: '/etc/dhcpd.conf', daemon: 'dhcpd', section: 'dhcp',
-    kept: 'The scopes here are what OPF understood from that file, turned off until OPF manages the server.',
+    kept: 'The scopes on this page are what OPF understood from that file. They stay off until OPF manages the server.',
     turnOn: { label: 'Hand out addresses on every scope', apply: (m) => ({ ...m, dhcp: m.dhcp.map((s) => ({ ...s, enabled: true })) }) },
   },
   dns: {
     what: 'DNS resolver', file: '/var/unbound/etc/unbound.conf', daemon: 'unbound', section: 'dns',
-    kept: 'Its statistics and tools are its own. The settings here are what OPF understood from that file, turned off until OPF manages the resolver.',
+    kept: 'The statistics and tools on this page use the resolver that’s running now. The settings on this page are what OPF understood from that file. They stay off until OPF manages the resolver.',
     turnOn: { label: 'Run the resolver', apply: (m) => ({ ...m, dns: { ...m.dns, enabled: true } }) },
   },
   ntp: {
     what: 'time servers', file: '/etc/ntpd.conf', daemon: 'ntpd', section: 'system',
-    kept: 'The time servers here are what OPF understood from that file.',
+    kept: 'The time servers on this page are what OPF understood from that file.',
   },
 };
 
@@ -72,7 +72,7 @@ export function HandConfigured({ area, compact }: { area: Area; compact?: boolea
   if (compact) {
     body = (
       <Group justify="space-between" wrap="nowrap" gap="sm">
-        <Text size="sm">Configured by hand: OPF leaves <Mono>{a.file}</Mono> and {a.daemon} as they are.</Text>
+        <Text size="sm">Configured by hand. OPF leaves <Mono>{a.file}</Mono> and {a.daemon} as they are.</Text>
         {button}
       </Group>
     );
@@ -80,7 +80,7 @@ export function HandConfigured({ area, compact }: { area: Area; compact?: boolea
     body = (
       <Stack gap="xs">
         <Text size="sm">
-          This machine’s {a.what} was set up by hand, and OPF leaves it that way: it doesn’t write <Mono>{a.file}</Mono>, or start, stop or restart {a.daemon}. {a.kept}
+          OPF leaves this machine’s {a.what} alone. It doesn’t write <Mono>{a.file}</Mono>, or start, stop or restart {a.daemon}. {a.kept}
         </Text>
         {button && <Group>{button}</Group>}
       </Stack>
@@ -94,11 +94,11 @@ export function HandConfigured({ area, compact }: { area: Area; compact?: boolea
       <Modal opened={opened} onClose={() => setOpened(false)} title={`Let OPF manage the ${a.what}`}>
         <Stack>
           <Text size="sm">
-            When you apply this change, OPF writes <Mono>{a.file}</Mono> from its settings, replacing the one made by hand, and {a.daemon} runs with it from then on. Reviewing the change shows exactly what the file becomes.
+            When you apply this change, OPF replaces <Mono>{a.file}</Mono> with one written from its own settings, and {a.daemon} uses it from then on. Review the change to see exactly what the file will contain.
           </Text>
           {a.turnOn && <Checkbox label={a.turnOn.label} checked={turnOn} onChange={(e) => setTurnOn(e.currentTarget.checked)} />}
           {a.turnOn && !turnOn && (
-            <Text size="xs" c="dimmed">Left off, OPF stops {a.daemon} when the change is applied.</Text>
+            <Text size="xs" c="dimmed">If this is unchecked, OPF stops {a.daemon} when the change is applied.</Text>
           )}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setOpened(false)}>Cancel</Button>

@@ -58,30 +58,30 @@ export function TrafficSettingsCard() {
         <SectionTitle right={<Switch label="Count" disabled={!canEdit} {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Traffic per device</SectionTitle>
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            pf counts every packet each device on your networks sends and receives, through the firewall or to it, and OPF keeps the totals by hour, shown under{' '}
-            <Anchor component={Link} to="/devices/traffic" size="sm">Devices › Traffic</Anchor>. Only how much, never what or where to.
+            The firewall counts how much each device on your networks sends and receives, both through the firewall and to it. OPF keeps hourly totals and shows them under{' '}
+            <Anchor component={Link} to="/devices/traffic" size="sm">Devices › Traffic</Anchor>. It records only how much, never what or where to.
           </Text>
           <Alert color="gray" variant="light" p="sm" icon={<IconLock size={16} />}>
-            <Text size="sm">How much each device moves, and when, says when people are home and what they do. Only admins can see it, and nothing of it goes to webhooks.</Text>
+            <Text size="sm">How much each device sends and receives, and when, can show when people are home and what they do. Only admins can see it, and none of it is sent to webhooks.</Text>
           </Alert>
           <Group align="flex-start" grow>
             <Select label="Keep it for" allowDeselect={false} disabled={!v.enabled || !canEdit}
               data={dayChoices.map((d) => ({ value: String(d), label: dayLabel(d) }))} {...form.getInputProps('days')} />
             <NumberInput
               label="Devices kept apart a day" min={1} max={MAX_DEVICE_CAP} allowDecimal={false} thousandSeparator="," disabled={!v.enabled || !canEdit}
-              description={`Past it, the rest are counted together; ${DEFAULT_TRAFFIC_DEVICES} by default.`}
+              description={`How many devices get their own totals each day. Any more are counted together. The default is ${DEFAULT_TRAFFIC_DEVICES}.`}
               inputWrapperOrder={['label', 'input', 'description', 'error']}
               {...form.getInputProps('maxDevices')}
             />
           </Group>
           {v.enabled && (
             <Text size="sm">
-              At most about <b>{formatBytes(worst)}</b> in memory, and as much on disk, with {cap.toLocaleString()} devices every hour.
+              At most about <b>{formatBytes(worst)}</b> in memory, and as much on disk, if {cap.toLocaleString()} devices are active every hour.
               {ram && worst / ram > 0.03 ? ` That’s ${(worst / ram * 100).toFixed(1)}% of this machine’s memory.` : ''}
             </Text>
           )}
           {keeping && !v.enabled && (
-            <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Once applied, the traffic kept is deleted.</Alert>
+            <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>When you apply this, the traffic kept so far is deleted.</Alert>
           )}
           <Group justify="space-between">
             {keeping && canEdit ? <Button variant="subtle" color="red" size="compact-sm" onClick={() => setForgetting(true)}>Delete what’s kept</Button> : <span />}
@@ -91,7 +91,7 @@ export function TrafficSettingsCard() {
       </form>
       <Modal opened={forgetting} onClose={() => setForgetting(false)} title="Delete the traffic kept?" size="md">
         <Stack gap="md">
-          <Text size="sm">Every device’s traffic kept so far is deleted now. Counting goes on from here.</Text>
+          <Text size="sm">This deletes the traffic kept so far for every device. Counting continues from now.</Text>
           {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setForgetting(false)}>Cancel</Button>
@@ -136,8 +136,8 @@ export function TrafficHoursChart({ hours, days }: { hours: (TrafficBytes & { st
 
 const deviceLabel = (key: string, info?: ActivityDeviceInfo) => info?.name || info?.mac || key.replace(/^(ip|mac|vpn):/, '');
 const kindWords: Record<ActivityDeviceInfo['kind'], string> = {
-  device: 'Device', vpn: 'VPN device', address: 'Address only', other: 'Past the devices kept apart a day',
-  firewall: 'What it starts itself: DNS lookups for your devices, updates, downloads, time',
+  device: 'Device', vpn: 'VPN device', address: 'Address only', other: 'Devices past the daily limit, counted together',
+  firewall: 'Traffic the firewall starts itself, such as DNS lookups for your devices, updates, downloads and time',
 };
 
 function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: string; info?: ActivityDeviceInfo; days: number; onClose: () => void; onForgot: () => void }) {
@@ -205,13 +205,13 @@ export function Traffic() {
 
   const header = <PageHeader title="Traffic" description="What each device on your networks sent and received, through the firewall or to it." />;
   if (!canEdit) {
-    return <>{header}<Alert color="gray" variant="light" icon={<IconLock size={18} />}>Each device’s traffic says when people are home and what they do, so only admins can see it.</Alert></>;
+    return <>{header}<Alert color="gray" variant="light" icon={<IconLock size={18} />}>Each device’s traffic can show when people are home and what they do. Only admins can see it.</Alert></>;
   }
   if (!kept) {
     return (
       <>
         {header}
-        <Card><Empty>OPF doesn’t count each device’s traffic. It can: turn it on under <Anchor component={Link} to="/firewall/settings#traffic" size="sm">Firewall › Settings › Traffic per device</Anchor>.</Empty></Card>
+        <Card><Empty>OPF isn’t counting each device’s traffic. You can turn it on under <Anchor component={Link} to="/firewall/settings#traffic" size="sm">Firewall › Settings › Traffic per device</Anchor>.</Empty></Card>
       </>
     );
   }
@@ -233,12 +233,12 @@ export function Traffic() {
                 <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
                   <Stat label="Received" value={formatBytes(total.received)} detail="by your devices" />
                   <Stat label="Sent" value={formatBytes(total.sent)} detail="by your devices" />
-                  <Stat label="This firewall" value={formatBytes((data?.firewall?.received ?? 0) + (data?.firewall?.sent ?? 0))} detail="what it starts itself, both ways" />
+                  <Stat label="This firewall" value={formatBytes((data?.firewall?.received ?? 0) + (data?.firewall?.sent ?? 0))} detail="traffic it starts itself, sent and received" />
                   <Stat label="Not attributed" value={formatBytes(data?.unknown ?? 0)} detail="from addresses OPF hadn’t seen yet" />
                 </SimpleGrid>
                 <TrafficHoursChart hours={data?.hours ?? []} days={n} />
               </>
-            ) : <Empty>Nothing yet: pf’s counters are read every few seconds, once the change that turned this on is applied.</Empty>)}
+            ) : <Empty>Nothing yet. Counting starts once the change that turned this on is applied, and the totals update every few seconds.</Empty>)}
           </Stack>
         </Card>
         {data?.devices && (
@@ -280,11 +280,11 @@ export function Traffic() {
                   </Table.Tbody>
                 </Table>
               </Table.ScrollContainer>
-            ) : <Empty>No device has moved anything yet.</Empty>}
+            ) : <Empty>No device has sent or received anything yet.</Empty>}
           </Card>
         )}
         <Text size="xs" c="dimmed">
-          Counted by pf as packets pass the firewall: traffic between two devices on the same network, through a switch, never reaches it. Kept {dayLabel(kept).toLowerCase()}; set under{' '}
+          Only traffic that passes through the firewall is counted. Traffic between two devices on the same network never reaches the firewall, because a switch carries it. Totals are kept {dayLabel(kept).toLowerCase()}. You can change this under{' '}
           <Anchor component={Link} to="/firewall/settings#traffic" size="xs">Firewall › Settings › Traffic per device</Anchor>.
         </Text>
         <DeviceDrawer device={device} info={device ? data?.deviceInfo?.[device] : undefined} days={n} onClose={() => setDevice(undefined)} onForgot={() => { setDevice(undefined); load(); }} />

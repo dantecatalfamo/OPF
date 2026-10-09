@@ -162,7 +162,7 @@ export function Dashboard() {
           value={readOnly && !svcs ? '…' : !dnsOn ? 'Off' : !dns ? '…' : readOnly && !dns.stats ? 'Running' : dns.stats ? (dns.queriesPerSec !== undefined ? `${rate(dns.queriesPerSec)} queries/s` : 'Answering') : 'Not answering'}
           detail={
             !dnsOn ? 'The resolver isn’t running'
-              : !dns?.stats ? (readOnly ? 'unbound-control can’t read its counters' : dns?.errors[0] ? 'Couldn’t read its counters' : 'Name lookups for your networks')
+              : !dns?.stats ? (readOnly ? 'unbound-control can’t read its counters' : dns?.errors[0] ? 'Couldn’t read the resolver’s counters' : 'Name lookups for your networks')
               : dnsBlocking && dns.blockedPerSec !== undefined ? `${rate(dns.blockedPerSec)} blocked a second, ${formatCount(rpzBlocked(dns.stats))} in all`
               : `${Math.round((dns.stats.cacheHits / Math.max(1, dns.stats.cacheHits + dns.stats.cacheMisses)) * 100)}% answered from the cache`
           }

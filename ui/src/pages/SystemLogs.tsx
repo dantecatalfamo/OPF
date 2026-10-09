@@ -11,11 +11,11 @@ import { formatLogTime } from '../lib/format';
 import { PageHeader } from '../components/ui';
 
 const logs: { value: SystemLogName; label: string; file: string; about: string }[] = [
-  { value: 'messages', label: 'Messages', file: '/var/log/messages', about: 'The kernel and most programs: links changing, the clock, DHCP on the WAN.' },
-  { value: 'daemon', label: 'Daemons', file: '/var/log/daemon', about: 'The services: dhcpd’s leases, unbound, and the rest.' },
-  { value: 'authlog', label: 'Logins', file: '/var/log/authlog', about: 'SSH logins and failed attempts, and doas.' },
-  { value: 'maillog', label: 'Mail', file: '/var/log/maillog', about: 'smtpd, which delivers the system’s own mail.' },
-  { value: 'dmesg', label: 'Kernel', file: 'dmesg', about: 'The kernel’s message buffer, in the order it wrote it: the hardware found at boot, and what the drivers said since.' },
+  { value: 'messages', label: 'Messages', file: '/var/log/messages', about: 'Messages from the kernel and most programs, such as link changes, the clock and DHCP on the WAN.' },
+  { value: 'daemon', label: 'Daemons', file: '/var/log/daemon', about: 'Messages from the services, such as dhcpd’s leases and unbound.' },
+  { value: 'authlog', label: 'Logins', file: '/var/log/authlog', about: 'SSH logins, failed login attempts, and doas.' },
+  { value: 'maillog', label: 'Mail', file: '/var/log/maillog', about: 'Messages from smtpd, which delivers the system’s own mail.' },
+  { value: 'dmesg', label: 'Kernel', file: 'dmesg', about: 'The kernel’s message buffer, oldest first. It shows the hardware found at boot and what the drivers have reported since.' },
 ];
 
 const PAGE = 300;
@@ -56,7 +56,7 @@ export function SystemLogs() {
   const lines = kernel ? [...(data?.lines ?? [])].reverse() : data?.lines ?? [];
   return (
     <>
-      <PageHeader title="System logs" description="What OpenBSD’s own programs write down, newest first. The firewall reads the end of each log; older lines are in the rotated copies beside it." />
+      <PageHeader title="System logs" description="What OpenBSD’s own programs write down, newest first. Only the end of each log is read. Older lines are in the rotated copies next to it." />
       <Tabs value={log.value} onChange={(v) => setParams(v && v !== 'messages' ? { log: v } : {}, { replace: true })} mb="md">
         <Tabs.List>
           {logs.map((l) => <Tabs.Tab key={l.value} value={l.value}>{l.label}</Tabs.Tab>)}

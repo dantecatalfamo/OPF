@@ -44,7 +44,7 @@ function Updates() {
           {upd.patches.map((p) => <List.Item key={p}><Text span className="mono" size="sm">{p}</Text></List.Item>)}
         </List>
         <Text size="xs" c="dimmed">
-          Installing them from here comes later. For now, run <Text span className="mono" size="xs">syspatch</Text> as root on the firewall; some patches then need a reboot.
+          You can’t install them from here yet. For now, run <Text span className="mono" size="xs">syspatch</Text> as root on the firewall. Some patches need a reboot afterwards.
         </Text>
       </Stack>
     );
@@ -56,7 +56,7 @@ function Updates() {
       {upd?.checkedAt && (
         <Group justify="space-between" mt="sm" gap="xs">
           <Text size="xs" c="dimmed">
-            {upd.checking ? 'Checking again…' : `Checked ${new Date(upd.checkedAt).toLocaleString()}; again every 2 hours.`}
+            {upd.checking ? 'Checking again…' : `Checked ${new Date(upd.checkedAt).toLocaleString()}. OPF checks again every 2 hours.`}
           </Text>
           <Button size="compact-xs" variant="subtle" disabled={upd.checking} onClick={() => backend.checkUpdates().then(() => refreshLive('updates'), () => refreshLive('updates'))}>
             Check again
@@ -83,7 +83,7 @@ function Account() {
         <Stack gap="sm">
           <Text size="sm">Signed in as <b>{session.user}</b>, {roleAbout[session.role]}.</Text>
           <Text size="sm" c="dimmed">
-            A session ends after 30 minutes without use, or 12 hours in all, and when your password or groups change. Your password is this OpenBSD account’s.
+            A session ends after 30 minutes without use or 12 hours in total, or when your password or groups change. Your password is your OpenBSD account’s password.
           </Text>
           <Group justify="flex-end"><Button size="xs" variant="default" onClick={() => setChanging(true)}>Change your password</Button></Group>
           {mine.length > 1 && (
@@ -99,7 +99,7 @@ function Account() {
           <OwnPassword opened={changing} onClose={() => setChanging(false)} />
         </Stack>
       ) : (
-        <Text size="sm" c="dimmed">This server has no accounts: it’s the development server, and anyone who can reach it can change everything.</Text>
+        <Text size="sm" c="dimmed">This is the development server, which has no accounts. Anyone who can reach it can change everything.</Text>
       )}
     </Card>
   );
@@ -135,7 +135,7 @@ function OwnPassword({ opened, onClose }: { opened: boolean; onClose: () => void
           <PasswordInput label="Current password" autoComplete="current-password" data-autofocus value={v.current} onChange={(e) => setV({ ...v, current: e.currentTarget.value })} error={errors.current} />
           <PasswordInput label="New password" autoComplete="new-password" value={v.next} onChange={(e) => setV({ ...v, next: e.currentTarget.value })} error={errors.new} />
           <PasswordInput label="Again" autoComplete="new-password" value={v.again} onChange={(e) => setV({ ...v, again: e.currentTarget.value })} error={errors.again} />
-          <Text size="xs" c="dimmed">It’s also your password for SSH and the console, if your account has those.</Text>
+          <Text size="xs" c="dimmed">If your account can log in over SSH or at the console, this password is used there too.</Text>
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit" loading={busy}>Change it</Button>
@@ -147,9 +147,9 @@ function OwnPassword({ opened, onClose }: { opened: boolean; onClose: () => void
 }
 
 const roleAbout: Record<Role, string> = {
-  admin: 'an admin (_opfadmin): you can change everything',
-  operator: 'an operator (_opfoperator): you can look, keep or undo changes, and run tools, but not make changes',
-  view: 'read-only (_opfview): you can look at everything',
+  admin: 'an admin, in the _opfadmin group. You can change everything',
+  operator: 'an operator, in the _opfoperator group. You can see everything, confirm or undo changes someone applied, and run tools, but you can’t make changes',
+  view: 'a read-only user, in the _opfview group. You can see everything',
 };
 
 export function SystemGeneral() {

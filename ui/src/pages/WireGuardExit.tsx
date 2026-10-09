@@ -54,7 +54,7 @@ export function parseProviderConfig(text: string): { config?: ProviderConfig; pr
   const peers = sections.filter((s) => s.name === 'peer');
   const problems: string[] = [];
   if (iface.length !== 1) problems.push('It needs one [Interface] section.');
-  if (peers.length !== 1) problems.push(peers.length ? 'It has more than one [Peer]; pick one server’s configuration.' : 'It needs a [Peer] section, the provider’s server.');
+  if (peers.length !== 1) problems.push(peers.length ? 'It has more than one [Peer]. Pick one server’s configuration.' : 'It needs a [Peer] section for the provider’s server.');
   if (problems.length) return { problems };
   const i = iface[0].values;
   const p = peers[0].values;
@@ -96,7 +96,7 @@ export function AddExit({ opened, onClose, onAdded }: { opened: boolean; onClose
   const form = useForm({
     initialValues: { name: 'VPN provider', from: [] as string[], dns: true },
     validate: {
-      name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Letters, digits and spaces'),
+      name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Use letters, digits and spaces'),
       from: (v) => (v.length ? null : 'Pick the networks that leave through it'),
     },
   });
@@ -116,7 +116,7 @@ export function AddExit({ opened, onClose, onAdded }: { opened: boolean; onClose
     let n = 0;
     while (devices.has(`wg${n}`)) n++;
     if (n > 55) {
-      setError('OPF gives each way out a routing table numbered 200 plus its device’s number, and wg0 to wg55 are all taken.');
+      setError('Every device from wg0 to wg55 is taken. Each way out uses routing table 200 plus its device number, and 255 is the highest table.');
       return;
     }
     setBusy(true);
@@ -156,9 +156,9 @@ export function AddExit({ opened, onClose, onAdded }: { opened: boolean; onClose
       <form onSubmit={submit}>
         <Stack>
           <Text size="sm" c="dimmed">
-            The networks you pick reach the internet through the provider and appear at its address; if the tunnel is down,
-            their traffic goes nowhere rather than out with your own address. OPF’s own traffic (updates, downloads, the
-            tunnel itself) keeps going out the usual way.
+            The networks you pick reach the internet through the provider and appear at its address. If the tunnel is down,
+            their traffic stops rather than going out with your own address. OPF’s own traffic, such as updates, downloads and the
+            tunnel itself, keeps going out the usual way.
           </Text>
           <Textarea
             label="The provider’s WireGuard configuration" description="The .conf file it gives you. Its private key is kept on the firewall, readable only by root."
@@ -180,7 +180,7 @@ export function AddExit({ opened, onClose, onAdded }: { opened: boolean; onClose
             data={insides.map((i) => ({ value: i.id, label: taken.has(i.id) ? `${i.name} (leaves through ${taken.get(i.id)})` : i.name, disabled: taken.has(i.id) }))}
             {...form.getInputProps('from')} />
           {c && c.dns.length > 0 && (
-            <Switch label="Ask the provider’s DNS" description={`OPF’s resolver sends every lookup to ${c.dns.join(', ')}, through the tunnel, so none leaves from your own address. Devices keep asking OPF, and its local names and blocking still work.`}
+            <Switch label="Ask the provider’s DNS" description={`OPF’s resolver sends every lookup to ${c.dns.join(', ')} through the tunnel, so no lookup leaves from your own address. Devices still ask OPF, so its local names and blocking keep working.`}
               {...form.getInputProps('dns', { type: 'checkbox' })} />
           )}
           {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
@@ -204,9 +204,9 @@ export function ExitSettings({ tunnel, onDeleted }: { tunnel: Tunnel; onDeleted:
   const form = useForm({
     initialValues: values(),
     validate: {
-      name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Letters, digits and spaces'),
-      endpoint: (v) => (/^(\[[0-9a-f:]+\]|[A-Za-z0-9.-]+):\d{1,5}$/i.test(v.trim()) ? null : 'host:port, like vpn.example.net:51820'),
-      dns: (v) => (v.every(isIPv4) ? null : 'IPv4 addresses'),
+      name: (v) => (/^[A-Za-z0-9][A-Za-z0-9 _.-]{0,62}$/.test(v.trim()) ? null : 'Use letters, digits and spaces'),
+      endpoint: (v) => (/^(\[[0-9a-f:]+\]|[A-Za-z0-9.-]+):\d{1,5}$/i.test(v.trim()) ? null : 'Enter host:port, like vpn.example.net:51820'),
+      dns: (v) => (v.every(isIPv4) ? null : 'Enter IPv4 addresses only'),
     },
   });
   useEffect(() => {
@@ -236,9 +236,9 @@ export function ExitSettings({ tunnel, onDeleted }: { tunnel: Tunnel; onDeleted:
             data={insides.map((i) => ({ value: i.id, label: taken.has(i.id) ? `${i.name} (leaves through ${taken.get(i.id)})` : i.name, disabled: taken.has(i.id) }))}
             {...form.getInputProps('from')} />
           <TagsInput label="Provider’s DNS" placeholder="None: OPF resolves as usual" spellCheck={false}
-            description="OPF’s resolver sends every lookup to these, through the tunnel."
+            description="OPF’s resolver sends every lookup to these servers through the tunnel."
             inputWrapperOrder={['label', 'input', 'description', 'error']} {...form.getInputProps('dns')} />
-          <NumberInput label="Keepalive" description="Seconds between keepalive packets; empty for none." min={0} max={65535} {...form.getInputProps('keepalive')} />
+          <NumberInput label="Keepalive" description="Seconds between keepalive packets. Leave it empty to send none." min={0} max={65535} {...form.getInputProps('keepalive')} />
           <Stack gap={2}>
             <Text size="sm" fw={500}>Tunnel address</Text>
             <Text size="sm"><Mono>{tunnel.ipv4.address}/{tunnel.ipv4.prefix}</Mono> <Text span size="xs" c="dimmed">on <Mono>{tunnel.device}</Mono>, from the provider · <FileLink path={`/etc/hostname.${tunnel.device}`} /></Text></Text>
@@ -274,30 +274,30 @@ export function ExitFlow({ tunnel }: { tunnel: Tunnel }) {
       <Timeline bulletSize={28} lineWidth={2}>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconPlugConnected size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>The tunnel</Text>}>
           <Text size="sm" c="dimmed">
-            To <Mono>{e.endpoint}</Mono>
-            {s?.handshakeAgo !== undefined ? `, last handshake ${formatAgo(s.handshakeAgo)}` : s?.lastSeen ? `, last seen ${formatAgo((Date.now() - Date.parse(s.lastSeen)) / 1000)}` : ', no handshake yet'}
-            {s && `; ${formatBytes(s.rxBytes)} in, ${formatBytes(s.txBytes)} out`}. It leaves through {out?.name ?? 'the default route'}, like OPF’s own traffic.
+            Connects to <Mono>{e.endpoint}</Mono>.
+            {s?.handshakeAgo !== undefined ? ` Last handshake ${formatAgo(s.handshakeAgo)}.` : s?.lastSeen ? ` Last seen ${formatAgo((Date.now() - Date.parse(s.lastSeen)) / 1000)}.` : ' No handshake yet.'}
+            {s && ` It has received ${formatBytes(s.rxBytes)} and sent ${formatBytes(s.txBytes)}.`} The tunnel itself goes out through {out?.name ?? 'the default route'}, like OPF’s own traffic.
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconArrowsSplit2 size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>Who leaves through it</Text>}>
           <Text size="sm" c="dimmed">
-            {names} send{from.length === 1 ? 's' : ''} everything beyond your networks through it, with the tunnel’s address, and appear{from.length === 1 ? 's' : ''} at the provider’s.
-            Their own rules still decide what may leave; OPF only chooses the way (routing table {table}). Traffic between your networks, and to OPF itself, stays local.
+            {names} send{from.length === 1 ? 's' : ''} all traffic that leaves your networks through it, using the tunnel’s address. On the internet, {from.length === 1 ? 'it appears' : 'they appear'} at the provider’s address.
+            Each network’s own rules still decide what may leave. OPF only chooses the route, using routing table {table}. Traffic between your networks, and to OPF itself, stays local.
           </Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconLock size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>If the tunnel is down</Text>}>
-          <Text size="sm" c="dimmed">Their traffic goes nowhere: it has no other way out, so nothing leaves with your own address. It goes again by itself once the tunnel is back.</Text>
+          <Text size="sm" c="dimmed">Their traffic stops. It has no other way out, so nothing leaves with your own address. It starts flowing again by itself once the tunnel is back.</Text>
         </Timeline.Item>
         <Timeline.Item bullet={<ThemeIcon size={28} radius="xl" variant="light"><IconWorld size={16} /></ThemeIcon>} title={<Text size="sm" fw={600}>DNS</Text>}>
           {e.dns?.length ? (
             <Text size="sm" c="dimmed">
-              OPF’s resolver asks the provider’s <Mono>{e.dns.join(', ')}</Mono> for every lookup, through the tunnel. Devices keep asking OPF, so
+              OPF’s resolver sends every lookup to the provider’s <Mono>{e.dns.join(', ')}</Mono> through the tunnel. Devices still ask OPF, so
               its <Anchor component={Link} to="/services/dns" size="sm">local names and blocking</Anchor> still work.
             </Text>
           ) : (
             <Text size="sm" c="yellow">
-              <IconAlertTriangle size={14} style={{ verticalAlign: -2 }} /> Devices ask OPF, which looks names up from your own address: anyone watching your
-              connection sees which sites they visit. Add the provider’s DNS servers to send lookups through the tunnel.
+              <IconAlertTriangle size={14} style={{ verticalAlign: -2 }} /> Devices ask OPF, which looks names up from your own address. Anyone watching your
+              connection can see which sites they visit. Add the provider’s DNS servers to send lookups through the tunnel.
             </Text>
           )}
         </Timeline.Item>

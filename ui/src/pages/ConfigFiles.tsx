@@ -77,7 +77,7 @@ function FileView({ path, changes }: { path: string; changes: number }) {
       {view.outside && (
         <Alert color="red" variant="light" p="xs">
           <Text size="xs">
-            Someone changed this file outside OPF. The next change that writes it asks before replacing it; until then the firewall uses it as it is.
+            Someone changed this file outside OPF. The firewall uses it as it is until the next change that writes it. That change asks before replacing it.
           </Text>
         </Alert>
       )}
@@ -100,7 +100,7 @@ function FileView({ path, changes }: { path: string; changes: number }) {
               </pre>
             </ScrollArea.Autosize>
           ) : (
-            <Text size="sm" c="dimmed">It isn’t on the firewall{view.staged === 'added' ? ' yet: the staged changes add it' : ''}.</Text>
+            <Text size="sm" c="dimmed">It isn’t on the firewall{view.staged === 'added' ? ' yet. The staged changes add it' : ''}.</Text>
           )}
         </Tabs.Panel>
         {view.stagedDiff && <Tabs.Panel value="staged" pt="sm"><UnifiedDiff diff={view.stagedDiff} /></Tabs.Panel>}
@@ -130,8 +130,8 @@ export function ConfigFiles() {
       <PageHeader
         title="Configuration files"
         description={readOnly
-          ? 'This machine’s own configuration: the files OPF would manage, as they are on it. OPF only reads them.'
-          : 'The OpenBSD files OPF writes for this configuration, as they are on the firewall, with any staged change and anything changed by hand.'}
+          ? 'The files OPF would manage, as they are on this machine. OPF only reads them.'
+          : 'The OpenBSD files OPF writes, as they are on the firewall. Each one shows any staged change and any change made by hand.'}
       />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       <Grid gutter="md">
@@ -154,7 +154,7 @@ export function ConfigFiles() {
           </Card>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 8 }}>
-          <Card>{selected ? <FileView path={selected} changes={version} /> : <Text size="sm" c="dimmed">{readOnly ? 'None of the files OPF manages are on this machine.' : 'No files yet: nothing has been committed.'}</Text>}</Card>
+          <Card>{selected ? <FileView path={selected} changes={version} /> : <Text size="sm" c="dimmed">{readOnly ? 'None of the files OPF manages are on this machine.' : 'No files yet. Nothing has been committed.'}</Text>}</Card>
         </Grid.Col>
       </Grid>
     </>

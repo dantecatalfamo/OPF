@@ -46,7 +46,7 @@ export function DnsStatsCard() {
   const physmem = sys?.memory?.total;
   return (
     <Card>
-      <SectionTitle right={s && <Text size="xs" c="dimmed">Counting since unbound started {formatDuration(s.uptime)} ago</Text>}>Right now</SectionTitle>
+      <SectionTitle right={s && <Text size="xs" c="dimmed">Counting since the resolver started {formatDuration(s.uptime)} ago</Text>}>Right now</SectionTitle>
       <Stack gap="sm">
         {error && !data && <Alert color="red" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {error}</Alert>}
         {data?.errors.map((e) => <Alert key={e} color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>{e}</Alert>)}
@@ -59,7 +59,7 @@ export function DnsStatsCard() {
                 label="Lookups"
                 value={s.cacheMisses ? `${Math.round(s.recursionMedian * 1000)} ms` : '—'}
                 detail="typical, when not cached"
-                tip={`Half the lookups that weren’t in the cache took less than this; they averaged ${Math.round(s.recursionAvg * 1000)} ms.`}
+                tip={`Half the lookups that weren’t in the cache took less than this. They averaged ${Math.round(s.recursionAvg * 1000)} ms.`}
               />
               <Stat
                 label="Blocked"
@@ -69,7 +69,7 @@ export function DnsStatsCard() {
               <Stat
                 label="Memory"
                 value={data?.memoryBytes ? formatBytes(data.memoryBytes) : '—'}
-                detail={data?.memoryBytes && physmem ? `${pct(data.memoryBytes, physmem)} of the RAM` : 'unbound, lists included'}
+                detail={data?.memoryBytes && physmem ? `${pct(data.memoryBytes, physmem)} of the RAM` : 'the resolver, lists included'}
               />
             </SimpleGrid>
             <HistoryCard
@@ -127,7 +127,7 @@ export function DnsBlockedNames() {
           <Text size="sm" c="dimmed">
             {data.blocked.toLocaleString()} {data.blocked === 1 ? 'query' : 'queries'} blocked{by.length > 1 ? `: ${by.join(', ')}` : ''}
             {data.allowed ? `. Your never-block names let ${data.allowed.toLocaleString()} through` : ''}.
-            {applied.dns.activity?.enabled ? (applied.dns.activity.devices ? ' Which device asked is under Activity.' : ' Today’s, from what Activity keeps.') : ' Which device asked isn’t kept.'}
+            {applied.dns.activity?.enabled ? (applied.dns.activity.devices ? ' To see which device asked, open Activity.' : ' These are today’s counts, from what Activity keeps.') : ' OPF doesn’t keep which device asked.'}
           </Text>
         )}
         {data?.names.length ? (
@@ -193,8 +193,8 @@ export function BlocklistMemory({ status }: { status?: DnsListStatus[] }) {
     <Alert color={level === 'warn' ? 'red' : 'yellow'} variant="light" p="sm" icon={<IconAlertTriangle size={16} />}
       title={level === 'warn' ? 'These lists may not fit in memory' : 'These lists take a lot of memory'}>
       <Text size="sm">
-        {names.toLocaleString()} names{unknown ? `, plus ${unknown === 1 ? 'a list' : `${unknown} lists`} not downloaded yet,` : ''} take the resolver about {formatBytes(bytes)} of this machine’s {formatBytes(physmem)} of RAM, and a list briefly takes twice its share while it’s downloaded again.
-        {level === 'warn' ? ' Without enough memory unbound stops answering, and every device loses DNS.' : ''} Lighter lists block most of the same: Hagezi Light or Normal instead of Pro, or one big list rather than several that overlap.
+        {names.toLocaleString()} names take the resolver about {formatBytes(bytes)} of this machine’s {formatBytes(physmem)} of RAM.{unknown ? ` ${unknown === 1 ? 'A list not downloaded yet adds' : `${unknown} lists not downloaded yet add`} more.` : ''} A list briefly takes twice its share while it’s downloaded again.
+        {level === 'warn' ? ' Without enough memory the resolver stops answering, and every device loses DNS.' : ''} Lighter lists block most of the same names. Try Hagezi Light or Normal instead of Pro, or one big list instead of several that overlap.
       </Text>
     </Alert>
   );
@@ -209,14 +209,14 @@ export function ResolverReloadNotice({ model }: { model: Model }) {
   const { names, unknown } = modelNames(model, status);
   const last = data?.lastReload;
   const secs = reloadSeconds(names, last);
-  const lastText = last && !last.timedOut ? ` The last one, with ${last.names.toLocaleString()} names, took ${last.seconds.toFixed(1)} s.` : last?.timedOut ? ' The last one hadn’t finished after three minutes.' : '';
+  const lastText = last && !last.timedOut ? ` The last one, with ${last.names.toLocaleString()} names, took ${last.seconds.toFixed(1)} s.` : last?.timedOut ? ' The last reload hadn’t finished after three minutes.' : '';
   if (secs < 3 && !unknown && !last?.timedOut) {
     return <Text size="sm" c="dimmed">The DNS resolver reloads, which empties its cache.{lastText}</Text>;
   }
   return (
     <Alert color="yellow" variant="light" icon={<IconClockPause size={18} />} title="DNS pauses while the resolver reloads">
       <Text size="sm">
-        These changes reload the DNS resolver whole. Devices can’t look names up until it has loaded its lists ({names.toLocaleString()} names{unknown ? `, and ${unknown === 1 ? 'a list' : `${unknown} lists`} not downloaded yet` : ''}): about {Math.max(1, Math.round(secs))} s{unknown ? ' or more' : ''}.{lastText}
+        These changes fully reload the DNS resolver. Devices can’t look up names until it has loaded its lists of {names.toLocaleString()} names{unknown ? `, plus ${unknown === 1 ? 'a list' : `${unknown} lists`} not downloaded yet` : ''}. That takes about {Math.max(1, Math.round(secs))} s{unknown ? ' or more' : ''}.{lastText}
       </Text>
     </Alert>
   );

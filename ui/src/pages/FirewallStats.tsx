@@ -29,23 +29,23 @@ interface Counter {
 // pfctl's Counters, in its order: each a reason pf matched or dropped a
 // packet (pf's PFRES_*).
 const counters: Counter[] = [
-  { name: 'match', help: 'Packets that matched a rule: the ordinary work of filtering.' },
+  { name: 'match', help: 'Packets that matched a rule. This is the ordinary work of filtering.' },
   { name: 'bad-offset', help: 'Packets dropped for a bad IP header offset.', trouble: true },
-  { name: 'fragment', help: 'Fragments dropped: overlapping, too many or too late to put back together.', trouble: true },
+  { name: 'fragment', help: 'Fragments dropped because they overlapped, there were too many, or they came too late to put back together.', trouble: true },
   { name: 'short', help: 'Packets dropped as too short to read their headers.', trouble: true },
-  { name: 'normalize', help: 'Packets dropped by normalization (scrub): bad flags or options.', to: '/firewall/settings#scrub', toLabel: 'Scrub settings' },
+  { name: 'normalize', help: 'Packets that scrub dropped for bad flags or options.', to: '/firewall/settings#scrub', toLabel: 'Scrub settings' },
   { name: 'memory', help: 'Packets dropped because pf ran out of memory for them.', trouble: true, to: '/firewall/settings#limits', toLabel: 'Limits' },
-  { name: 'bad-timestamp', help: 'TCP packets dropped for a timestamp outside the connection’s.', trouble: true },
-  { name: 'congestion', help: 'Packets dropped because the network stack’s queue was full: the firewall is falling behind.', trouble: true },
+  { name: 'bad-timestamp', help: 'TCP packets dropped because their timestamp didn’t fit the connection.', trouble: true },
+  { name: 'congestion', help: 'Packets dropped because the network stack’s queue was full. The firewall is falling behind.', trouble: true },
   { name: 'ip-option', help: 'Packets dropped for carrying IP options, which pf refuses unless a rule allows them.' },
   { name: 'proto-cksum', help: 'Packets dropped for a bad TCP, UDP or ICMP checksum.', trouble: true },
-  { name: 'state-mismatch', help: 'Packets that belonged to a connection but not to its TCP window: late, duplicated or forged.' },
-  { name: 'state-insert', help: 'New connections that couldn’t be added to the state table, usually a duplicate of one there.', trouble: true },
-  { name: 'state-limit', help: 'New connections refused because the state table, or a rule’s max states, was full.', trouble: true, to: '/firewall/settings#limits', toLabel: 'Limits' },
-  { name: 'src-limit', help: 'New connections refused by a rule’s limits on one source (max-src-states, max-src-conn…).' },
+  { name: 'state-mismatch', help: 'Packets for a known connection that fell outside its TCP window. They may be late, duplicated or forged.' },
+  { name: 'state-insert', help: 'New connections that couldn’t be added to the state table. Usually the table already had the same connection.', trouble: true },
+  { name: 'state-limit', help: 'New connections refused because the state table was full or a rule reached its max states.', trouble: true, to: '/firewall/settings#limits', toLabel: 'Limits' },
+  { name: 'src-limit', help: 'New connections refused because one source reached a rule’s limits, such as max-src-states or max-src-conn.' },
   { name: 'synproxy', help: 'TCP handshakes pf answered itself for a synproxy rule.' },
-  { name: 'translate', help: 'Packets NAT found no free address or port for.', trouble: true, to: '/firewall/nat', toLabel: 'NAT' },
-  { name: 'no-route', help: 'Packets a route-to rule had no route for.', trouble: true },
+  { name: 'translate', help: 'Packets dropped because NAT found no free address or port for them.', trouble: true, to: '/firewall/nat', toLabel: 'NAT' },
+  { name: 'no-route', help: 'Packets dropped because a route-to rule had no route for them.', trouble: true },
 ];
 
 // pfctl's Limit Counters: rules' limits, each time one took effect.
@@ -55,21 +55,21 @@ const limitCounters: Counter[] = [
   { name: 'max-src-nodes', help: 'A rule refused a new source at its max-src-nodes.' },
   { name: 'max-src-conn', help: 'A source reached a rule’s max-src-conn.' },
   { name: 'max-src-conn-rate', help: 'A source connected faster than a rule’s max-src-conn-rate.' },
-  { name: 'overload table insertion', help: 'Addresses put in an overload table, as brute-force protection does.', to: '/firewall/aliases', toLabel: 'Aliases' },
+  { name: 'overload table insertion', help: 'Addresses added to an overload table, for example by brute-force protection.', to: '/firewall/aliases', toLabel: 'Aliases' },
   { name: 'overload flush states', help: 'Connections ended when their source was put in an overload table with flush.' },
-  { name: 'synfloods detected', help: 'Times the half-open connections passed the adaptive syncookies watermark.' },
-  { name: 'syncookies sent', help: 'Handshakes answered with a syncookie instead of a state.' },
-  { name: 'syncookies validated', help: 'Syncookies that came back right and became connections.' },
+  { name: 'synfloods detected', help: 'Times half-open connections passed the start threshold for adaptive SYN cookies.' },
+  { name: 'syncookies sent', help: 'Handshakes answered with a SYN cookie instead of adding a state.' },
+  { name: 'syncookies validated', help: 'SYN cookies that came back valid and became connections.' },
 ];
 
 const pools: { name: string; label: string; help: string; to?: string }[] = [
-  { name: 'states', label: 'Connections (states)', help: 'Full, new connections are refused until old ones end.', to: '/firewall/settings#limits' },
-  { name: 'src-nodes', label: 'Source nodes', help: 'One for each source a rule tracks (source limits, sticky addresses).', to: '/firewall/settings#limits' },
+  { name: 'states', label: 'Connections (states)', help: 'When this is full, new connections are refused until old ones end.', to: '/firewall/settings#limits' },
+  { name: 'src-nodes', label: 'Source nodes', help: 'One for each source a rule tracks, for source limits or sticky addresses.', to: '/firewall/settings#limits' },
   { name: 'frags', label: 'Fragments', help: 'Fragments held while pf puts packets back together.' },
-  { name: 'tables', label: 'Tables', help: 'Address tables: aliases, blocklists, OPF’s own.', to: '/firewall/settings#limits' },
+  { name: 'tables', label: 'Tables', help: 'Address tables, including aliases, blocklists and OPF’s own.', to: '/firewall/settings#limits' },
   { name: 'table-entries', label: 'Table entries', help: 'Addresses and networks in all the tables together.', to: '/firewall/settings#limits' },
   { name: 'pktdelay-pkts', label: 'Delayed packets', help: 'Packets held by rules that delay them.' },
-  { name: 'anchors', label: 'Anchors', help: 'Rule sets inside the main one: sign-in access’s, among others.' },
+  { name: 'anchors', label: 'Anchors', help: 'Rule sets inside the main ruleset, such as the one for sign-in access.' },
 ];
 
 
@@ -134,7 +134,7 @@ function CounterTable({ list, totals, prev, dt }: { list: Counter[]; totals: Rec
 
 const tableNames: { key: 'states' | 'srcNodes' | 'fragments'; label: string; help: string }[] = [
   { key: 'states', label: 'State table', help: 'A connection’s packets are looked up here before any rule.' },
-  { key: 'srcNodes', label: 'Source tracking', help: 'Sources that rules with source limits or sticky addresses follow.' },
+  { key: 'srcNodes', label: 'Source tracking', help: 'Sources tracked by rules with source limits or sticky addresses.' },
   { key: 'fragments', label: 'Fragments', help: 'Packets waiting for the rest of their fragments.' },
 ];
 
@@ -159,7 +159,7 @@ function Interfaces({ list, prev, dt }: { list: PfInterfaceStats[]; prev?: PfInt
     <Card id="interfaces">
       <SectionTitle right={<Switch size="xs" label="Groups too" checked={groups} onChange={(e) => setGroups(e.currentTarget.checked)} />}>Interfaces</SectionTitle>
       <Text size="xs" c="dimmed" mb="sm">
-        What pf passed and blocked on each interface since its counters were cleared, usually at boot. A group (egress, all) isn’t counted itself; its interfaces are.
+        What pf passed and blocked on each interface since its counters were cleared, usually at boot. A group such as egress or all has no counts of its own. Its interfaces are counted instead.
       </Text>
       <Table.ScrollContainer minWidth={760}>
         <Table verticalSpacing={6} highlightOnHover>
@@ -186,7 +186,7 @@ function Interfaces({ list, prev, dt }: { list: PfInterfaceStats[]; prev?: PfInt
                       <Text size="sm" fw={500}>{name}</Text>
                       {name !== i.name && <Mono c="dimmed">{i.name}</Mono>}
                       {i.group && <Badge size="xs" variant="light" color="gray">group</Badge>}
-                      {i.skip && <Tooltip label="set skip: pf doesn’t filter it"><Badge size="xs" variant="light" color="gray">skipped</Badge></Tooltip>}
+                      {i.skip && <Tooltip label="pf doesn’t filter this interface."><Badge size="xs" variant="light" color="gray">skipped</Badge></Tooltip>}
                     </Group>
                     {i.cleared && (
                       <StartedTip at={i.cleared} label="Counting since">
@@ -243,7 +243,7 @@ export function FirewallStats() {
     <>
       <PageHeader
         title="Statistics"
-        description="Everything pf counts: totals since it was enabled, and how fast each is rising now, over the last few seconds."
+        description="Everything pf counts. Totals are since pf was enabled. Rates show how fast each is rising over the last few seconds."
       />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       {data?.errors.map((e) => <Alert key={e} color="yellow" variant="light" mb="md">{e}</Alert>)}
@@ -324,7 +324,7 @@ export function FirewallStats() {
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Card h="100%" id="counters">
                   <SectionTitle>Counters</SectionTitle>
-                  <Text size="xs" c="dimmed" mb="sm">Why pf matched or dropped packets. A rate in yellow is one that means trouble, rising now.</Text>
+                  <Text size="xs" c="dimmed" mb="sm">Why pf matched or dropped packets. A yellow rate means a counter that signals trouble is rising now.</Text>
                   <CounterTable list={counters} totals={info.counters} prev={last?.info?.counters} dt={dt} />
                 </Card>
               </Grid.Col>
@@ -369,7 +369,7 @@ export function FirewallStats() {
               <Grid.Col span={{ base: 12, lg: 6 }}>
                 <Card h="100%" id="timeouts">
                   <SectionTitle right={<Anchor component={Link} to="/firewall/settings#connections" size="xs">Connection tracking</Anchor>}>Timeouts</SectionTitle>
-                  <Text size="xs" c="dimmed" mb="sm">How long pf keeps a connection it hasn’t seen a packet for, by where it’s got to.</Text>
+                  <Text size="xs" c="dimmed" mb="sm">How long pf keeps an idle connection, by the stage the connection has reached.</Text>
                   <Table verticalSpacing={4}>
                     <Table.Tbody>
                       {data.timeouts.map((t) => (

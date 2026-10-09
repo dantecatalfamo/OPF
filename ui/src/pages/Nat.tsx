@@ -54,7 +54,7 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
       >
         <Stack gap="lg">
           <Text size="sm" c="dimmed">
-            Connections arriving on a public port are redirected (rdr-to) to a device inside. The pass rule that lets them in is part of the forward.
+            Connections that arrive on a public port are sent on to a device inside. The forward includes the rule that lets them in.
           </Text>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <Select label="Arriving on" data={[...staged.interfaces].filter((i) => i.role !== 'vpn').sort((a, b) => Number(b.role === 'wan') - Number(a.role === 'wan')).map((i) => ({ value: i.id, label: i.name }))} allowDeselect={false} {...form.getInputProps('iface')} />
@@ -76,7 +76,7 @@ function ForwardDrawer({ opened, onClose, forward, onSave }: { opened: boolean; 
           <Stack gap="sm">
             <Switch
               label="Also works from inside the network"
-              description="Devices on your networks can use the public address too (NAT reflection)."
+              description="Devices on your networks can reach it at the public address too. This is called NAT reflection."
               {...form.getInputProps('reflection', { type: 'checkbox' })}
             />
             <Switch label="Log connections" {...form.getInputProps('log', { type: 'checkbox' })} />
@@ -273,13 +273,13 @@ function Outbound() {
             onChange={(mode) => set(`Outbound NAT mode: ${modeLabel[mode as keyof typeof modeLabel]}`, (n) => ({ ...n, mode: mode as typeof nat.mode }))}
           />
           <Text size="sm" c="dimmed">
-            {nat.mode === 'auto' && 'Every internal network is translated to the WAN address when it goes to the internet. Right for almost everyone.'}
+            {nat.mode === 'auto' && 'Every internal network is translated to the WAN address when it goes to the internet. This suits almost everyone.'}
             {nat.mode === 'hybrid' && 'The automatic rules still apply, and your manual rules below take priority over them.'}
             {nat.mode === 'manual' && 'Only your rules below apply. Networks without a rule can’t reach the internet.'}
           </Text>
           {uncovered.length > 0 && (
             <Alert color="yellow" variant="light" icon={<IconInfoCircle size={18} />} p="sm">
-              No rule translates {uncovered.map((t) => t.name).join(' or ')}, so VPN devices there sending all their traffic through OPF can’t reach the internet.
+              No rule translates {uncovered.map((t) => t.name).join(' or ')}. VPN devices there that send all their traffic through OPF can’t reach the internet.
             </Alert>
           )}
         </Stack>
@@ -327,7 +327,7 @@ function Outbound() {
               {nat.mode !== 'manual' &&
                 auto.map((n) => (
                   <Table.Tr key={n.id} style={{ background: 'var(--opf-bg)' }}>
-                    <Table.Td><Tooltip label="Automatic. Follows your interfaces."><IconLock size={16} color="var(--mantine-color-dimmed)" style={{ marginLeft: 6 }} /></Tooltip></Table.Td>
+                    <Table.Td><Tooltip label="Automatic. It changes with your interfaces."><IconLock size={16} color="var(--mantine-color-dimmed)" style={{ marginLeft: 6 }} /></Tooltip></Table.Td>
                     <Table.Td><Text size="sm" c="dimmed">{n.description}</Text></Table.Td>
                     <Table.Td><Text size="sm" c="dimmed">{ifaceName(staged, n.iface)}</Text></Table.Td>
                     <Table.Td><Text size="sm" c="dimmed">{endpointLabel(n.source, staged)}</Text></Table.Td>
@@ -341,7 +341,7 @@ function Outbound() {
         </Table.ScrollContainer>
       </Card>
       <Text size="xs" c="dimmed">
-        Manual rules take priority over automatic ones; exceptions that don’t translate are checked first. <Anchor component={Link} to="/firewall/ruleset" size="xs">See the generated rules</Anchor>
+        Manual rules take priority over automatic ones. Rules set to “Don’t translate” are checked first. <Anchor component={Link} to="/firewall/ruleset" size="xs">See the generated rules</Anchor>
       </Text>
       <NatDrawer
         opened={drawer.open}
@@ -363,7 +363,7 @@ export function Nat() {
   const current = tab === 'outbound' ? 'outbound' : 'forwards';
   return (
     <>
-      <PageHeader title="NAT" description="Address translation: letting the internet reach devices inside (port forwarding), and how inside devices appear when they go out." />
+      <PageHeader title="NAT" description="Address translation. Port forwarding lets the internet reach devices inside. Outbound NAT sets how inside devices appear when they go out." />
       <Tabs value={current} onChange={(v) => navigate(v === 'outbound' ? '/firewall/nat/outbound' : '/firewall/nat')} mb="md">
         <Tabs.List>
           <Tabs.Tab value="forwards">Port forwarding</Tabs.Tab>

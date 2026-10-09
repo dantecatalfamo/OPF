@@ -51,20 +51,20 @@ function Settings() {
         <Stack gap="sm">
           <MultiSelect
             label="Users sign in from"
-            description="SSH to the firewall's address on these networks is let in, for signing in."
+            description="Users on these networks can connect to the firewall’s address there over SSH to sign in."
             data={staged.interfaces.map((i) => ({ value: i.id, label: i.name }))}
             error={v.enabled && !v.signIn.length ? 'Choose at least one' : undefined}
             {...form.getInputProps('signIn')}
           />
           {v.signIn.some((id) => wan.includes(id)) && (
             <Alert color="yellow" variant="light" p="xs" icon={<IconAlertTriangle size={16} />}>
-              Signing in from the WAN opens SSH to the internet; only keys are taken, never passwords.
+              Signing in from the WAN opens SSH to the internet. Only keys are accepted, never passwords.
             </Alert>
           )}
-          <Textarea label="Message once signed in" description="Shown to each user; their access lasts while they stay connected." autosize minRows={2} maxRows={6} {...form.getInputProps('message')} />
+          <Textarea label="Message once signed in" description="Shown to each user after they sign in. Their access lasts while they stay connected." autosize minRows={2} maxRows={6} {...form.getInputProps('message')} />
           <Text size="xs" c="dimmed">
-            Each user is a system account OPF makes, with authpf as its shell and no password. sshd’s settings for them (keys only, no tunnels, a dropped session
-            ended within a minute) go in a block OPF keeps at the end of <Mono>/etc/ssh/sshd_config</Mono>.
+            Each user is a system account that OPF makes, with authpf as its shell and no password. OPF keeps sshd’s settings for these accounts in a block at the end
+            of <Mono>/etc/ssh/sshd_config</Mono>. They allow keys only and no tunnels, and they end a dropped session within a minute.
           </Text>
           <Group justify="flex-end">
             <Button type="submit" disabled={!form.isDirty() || (v.enabled && !v.signIn.length)}>Save</Button>
@@ -83,15 +83,15 @@ function UserModal({ user, opened, onClose }: { user: AuthpfUser | null; opened:
     initialValues: { name: '', description: '', keys: '', banned: false, bannedMessage: '' },
     validate: {
       name: (n) => {
-        if (!loginRE.test(n)) return 'Lowercase letters, digits and -, starting with a letter';
-        if (reserved.includes(n)) return 'That login is the system’s';
+        if (!loginRE.test(n)) return 'Use lowercase letters, digits and -, starting with a letter';
+        if (reserved.includes(n)) return 'The system already uses that login';
         return a.users.some((u) => u.name === n && u.id !== user?.id) ? 'That login is taken' : null;
       },
       keys: (k, vals) => {
         const lines = k.split('\n').map((l) => l.trim()).filter(Boolean);
-        if (!lines.length && !vals.banned) return 'Add a public key: signing in takes one';
+        if (!lines.length && !vals.banned) return 'Add a public key. Signing in needs one.';
         const bad = lines.find((l) => !keyRE.test(l));
-        return bad ? `Not a public key: “${bad.slice(0, 40)}${bad.length > 40 ? '…' : ''}” (no options before the key)` : null;
+        return bad ? `“${bad.slice(0, 40)}${bad.length > 40 ? '…' : ''}” isn’t a public key. Options before the key aren’t allowed.` : null;
       },
     },
   });
@@ -116,11 +116,11 @@ function UserModal({ user, opened, onClose }: { user: AuthpfUser | null; opened:
         onClose();
       })}>
         <Stack>
-          <TextInput label="Login" description="Their account on the firewall; they sign in with ssh login@firewall" disabled={!!user} {...form.getInputProps('name')} />
+          <TextInput label="Login" description="Their account on the firewall. They sign in with ssh login@firewall." disabled={!!user} {...form.getInputProps('name')} />
           <TextInput label="Description" placeholder="Contractor, Acme" {...form.getInputProps('description')} />
           <Textarea
             label="SSH public keys"
-            description="One per line, as in authorized_keys: ssh-ed25519 AAAA… comment"
+            description="One per line, as in authorized_keys, such as ssh-ed25519 AAAA… comment"
             autosize
             minRows={3}
             maxRows={8}
@@ -190,9 +190,9 @@ function Users({ signedIn }: { signedIn: Set<string> }) {
       <Modal opened={!!removing} onClose={() => setRemoving(undefined)} title={<Text fw={600}>Remove {removing?.name}?</Text>}>
         {removing && (
           <Stack>
-            <Text size="sm">Their account is removed when the change is applied; a session they have open stays until it ends.</Text>
+            <Text size="sm">Their account is removed when the change is applied. A session they have open stays until it ends.</Text>
             {onlyTheirs(removing).length > 0 && (
-              <Text size="sm">Their own rules go too: {onlyTheirs(removing).map((r) => `“${r.description}”`).join(', ')}.</Text>
+              <Text size="sm">Rules only for them are deleted too: {onlyTheirs(removing).map((r) => `“${r.description}”`).join(', ')}.</Text>
             )}
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setRemoving(undefined)}>Cancel</Button>
@@ -225,8 +225,8 @@ function Rules() {
         Rules while signed in
       </SectionTitle>
       <Text size="xs" c="dimmed" mb="sm">
-        Loaded for each user when they sign in, with their address as the signed-in user, and taken out when they sign out; checked before every
-        interface rule. A user’s own rules come after everyone’s.
+        These rules load when a user signs in and are taken out when they sign out. In them, the signed-in user means that user’s address.
+        They’re checked before every interface rule. A user’s own rules come after the rules for everyone.
       </Text>
       {rules.length ? (
         <Table verticalSpacing={6}>
@@ -257,7 +257,7 @@ function Rules() {
             ))}
           </Table.Tbody>
         </Table>
-      ) : <Empty>No rules yet: a signed-in user gets nothing until one lets them.</Empty>}
+      ) : <Empty>No rules yet. Signed-in users get no access until a rule allows it.</Empty>}
       <RuleDrawer opened={drawer.open} onClose={() => setDrawer((d) => ({ ...d, open: false }))} model={staged} rule={drawer.rule} iface={a.signIn[0] ?? null} onSave={save} authpf />
     </Card>
   );
@@ -274,8 +274,8 @@ function Sessions({ data, error, onEnded }: { data?: AuthpfSessionsResource; err
       // Ending a session from its own address cuts this request too:
       // what's left says whether it ended.
       const still = await backend.authpfSessions().then((d) => d.sessions.some((s) => s.pid === pid), () => true);
-      if (still) notifications.show({ color: 'red', title: 'Couldn’t end it', message: errorText(e) });
-      else notifications.show({ color: 'teal', message: 'Session ended; the connection from that address, this one included, was cut' });
+      if (still) notifications.show({ color: 'red', title: 'Couldn’t end the session', message: errorText(e) });
+      else notifications.show({ color: 'teal', message: 'Session ended. Connections from that address were cut, including this one.' });
     }
     onEnded();
     setEnding(undefined);
@@ -306,8 +306,8 @@ function Sessions({ data, error, onEnded }: { data?: AuthpfSessionsResource; err
         {ending && (
           <Stack>
             <Text size="sm">
-              Their rules are taken out, and every connection from <Mono>{ending.address}</Mono> ends, not only theirs: anything else at that address, an
-              admin’s SSH included, is cut off too.
+              Their rules are taken out, and every connection from <Mono>{ending.address}</Mono> ends.
+              That includes connections that aren’t theirs, such as an admin’s SSH from the same address.
             </Text>
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setEnding(undefined)}>Cancel</Button>
@@ -339,9 +339,9 @@ export function Authpf() {
     <>
       <PageHeader
         title="Sign-in access"
-        description="Network access that opens while someone is signed in to the firewall over SSH, and closes when they sign out: for contractors, guests, or anything that should need a person there. Built on OpenBSD’s authpf."
+        description="Network access that opens while someone is signed in to the firewall over SSH and closes when they sign out. Use it for contractors, guests, or anything that should need a person present. It’s built on OpenBSD’s authpf."
       />
-      {a.enabled && !appliedOn && <Alert color="gray" variant="light" mb="md">Apply the change to set it up: the accounts are made, and sshd and pf take their settings.</Alert>}
+      {a.enabled && !appliedOn && <Alert color="gray" variant="light" mb="md">Apply the change to set it up. Applying makes the accounts and gives sshd and pf their settings.</Alert>}
       <Grid gutter="md" mb="md">
         <Grid.Col span={{ base: 12, md: 5 }}><Settings /></Grid.Col>
         <Grid.Col span={{ base: 12, md: 7 }}><Users signedIn={signedIn} /></Grid.Col>

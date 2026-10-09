@@ -32,7 +32,7 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
   }
   const m: { icon: typeof IconNotes; label: string }[] = [];
   if (rule.log !== 'off') m.push({ icon: IconNotes, label: rule.log === 'all' ? 'Logs every packet' : 'Logs new connections' });
-  if (!rule.quick) m.push({ icon: IconArrowBarToRight, label: 'Doesn’t stop here; later rules can override it' });
+  if (!rule.quick) m.push({ icon: IconArrowBarToRight, label: 'Doesn’t stop here. Later rules can override it.' });
   if (rule.state && (rule.state.maxStates || rule.state.maxSrcConn || rule.state.maxSrcConnRate || rule.state.mode !== 'keep')) {
     m.push({ icon: IconGauge, label: `Connection limits or ${rule.state.mode} state` });
   }
@@ -61,9 +61,9 @@ const SPARK_STEP = 600;
 // shows, or why there isn't one.
 function sparkNote(history: MetricsResource | undefined, series: string | undefined): string {
   if (!series || !history) return '';
-  if (history.known.includes(series)) return ' The graph behind it is matches a second over the last day.';
+  if (history.known.includes(series)) return ' The graph behind it shows matches per second over the last day.';
   const rules = history.groups.find((g) => g.name === 'rules');
-  return rules?.refused ? ` Not graphed: the graphs keep ${rules.max.toLocaleString()} rules, and this firewall has more (System › General).` : '';
+  return rules?.refused ? ` There’s no graph for it. The graphs keep up to ${rules.max.toLocaleString()} rules, and this firewall has more. You can raise the limit under System › General.` : '';
 }
 const sparkColor = (action: string) => (action === 'block' ? 'red.6' : 'harbor.5');
 
@@ -168,7 +168,7 @@ function SystemRow({ action, description, source, destination, port, pf, showPf,
   return (
     <Table.Tr style={{ background: 'var(--opf-bg)' }}>
       <Table.Td pr={0}>
-        <Tooltip label="Built in. Change it where it’s set.">
+        <Tooltip label="Built in. Its name links to where you can change it.">
           <IconLock size={16} color="var(--mantine-color-dimmed)" style={{ marginLeft: 6 }} />
         </Tooltip>
       </Table.Td>
@@ -342,7 +342,7 @@ export function FirewallRules() {
                   <Table.Tr>
                     <Table.Td colSpan={9}>
                       <Text size="sm" c="dimmed" ta="center" py="md">
-                        {floating ? 'No floating rules.' : `No rules yet, so nothing new can come in on ${current!.name}.`}
+                        {floating ? 'No floating rules.' : `No rules yet. Nothing new can come in on ${current!.name}.`}
                       </Text>
                     </Table.Td>
                   </Table.Tr>

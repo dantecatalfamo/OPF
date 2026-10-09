@@ -33,10 +33,10 @@ const areaLabel: Record<Area, { name: string; file: string; daemon: string }> = 
 };
 
 const noteKind: Record<ImportNote['kind'], { label: string; color: string; hint: string }> = {
-  model: { label: 'In OPF', color: 'teal', hint: 'Understood: it’s part of OPF’s configuration, and you change it on OPF’s pages' },
-  kept: { label: 'As written', color: 'blue', hint: 'Kept exactly as written (a raw rule, or custom pf): same meaning, changed as text' },
-  left: { label: 'Left alone', color: 'gray', hint: 'Not part of OPF’s configuration: OPF leaves it as it is' },
-  lost: { label: 'Changes', color: 'orange', hint: 'The first commit loses or changes it' },
+  model: { label: 'In OPF', color: 'teal', hint: 'OPF understood it. It’s part of OPF’s configuration now, and you change it on OPF’s pages.' },
+  kept: { label: 'As written', color: 'blue', hint: 'Kept exactly as written, as a raw rule or custom pf. It means the same, and you edit it as text.' },
+  left: { label: 'Left alone', color: 'gray', hint: 'Not part of OPF’s configuration. OPF leaves it as it is.' },
+  lost: { label: 'Changes', color: 'orange', hint: 'The first commit loses or changes it.' },
 };
 
 export function TakeOver() {
@@ -57,14 +57,14 @@ export function TakeOver() {
       <PageHeader
         title="Take over this machine"
         description={readOnly
-          ? 'OPF is only monitoring this machine. Taking it over hands OPF its configuration, so you change it here instead of by hand.'
-          : 'This machine has a configuration of its own. Importing it makes it OPF’s, so nothing changes until you change it.'}
+          ? 'OPF is only monitoring this machine. Taking it over hands the machine’s configuration to OPF, so you change it here instead of by hand.'
+          : 'This machine has a configuration of its own. Importing it makes it OPF’s configuration as it is. Nothing on the machine changes until you change it.'}
       />
       <Stack gap="md" maw={980}>
         {readOnly && <WhileMonitoring />}
         {!readOnly && changes.length > 0 ? (
           <Alert color="blue" variant="light" icon={<IconInfoCircle size={18} />} title="Changes are staged">
-            <Text size="sm" mb="xs">Review and apply them first, or discard them: importing replaces what’s staged.</Text>
+            <Text size="sm" mb="xs">Review and apply them first, or discard them. Importing replaces what’s staged.</Text>
             <Button size="xs" component={Link} to="/?review=1">Review the changes</Button>
           </Alert>
         ) : isAdmin ? (
@@ -91,9 +91,9 @@ function WhileMonitoring() {
       <Collapse in={open}>
         <List size="sm" spacing={6} mt="sm">
           <List.Item>It shows the machine as it is: devices, connections, the firewall log and its statistics, interfaces, routes, services, logs and graphs.</List.Item>
-          <List.Item>It changes nothing. Every change through this interface is refused, and OPF runs nothing that would change the machine: no new rules or settings, no services started or stopped, no connections closed, no accounts made.</List.Item>
-          <List.Item>OPF writes only its own state directory (<Mono>/var/opf</Mono>): the graphs’ history and the event log. On OpenBSD the sandbox (unveil) holds it to that.</List.Item>
-          <List.Item>The one thing it made is its sign-in groups, on first start, so people can sign in. Give someone a role by hand: <Mono>usermod -G _opfadmin name</Mono>.</List.Item>
+          <List.Item>It changes nothing. It refuses every change made through this interface. It runs nothing that would change the machine. It loads no new rules or settings, starts or stops no services, closes no connections and makes no accounts.</List.Item>
+          <List.Item>OPF writes only to its own state directory, <Mono>/var/opf</Mono>, which holds the graphs’ history and the event log. On OpenBSD, unveil keeps it to that directory.</List.Item>
+          <List.Item>The only thing it made was its sign-in groups, when it first started, so that people can sign in. To give someone a role, add them to a group by hand, for example with <Mono>usermod -G _opfadmin name</Mono>.</List.Item>
         </List>
       </Collapse>
     </Card>
@@ -105,14 +105,14 @@ function ManagedBefore() {
     <Card maw={820}>
       <SectionTitle>Managing it again</SectionTitle>
       <Text size="sm" mb="sm">
-        OPF has a configuration of its own for this machine, from before it was made read-only, so it can take over again without importing anything. That’s done on the machine itself, as root:
+        OPF still has its own configuration for this machine from before it was made read-only. It can manage the machine again without importing anything. To do that, run these commands on the machine as root:
       </Text>
       <Code block>{`rcctl get opf flags          # then set them again without -readonly:
 rcctl set opf flags <the same flags, without -readonly>
 rm /var/opf/readonly
 rcctl restart opf`}</Code>
       <Text size="xs" c="dimmed" mt="sm">
-        Restarting changes nothing by itself: OPF keeps its configuration up again (lists, tables, sign-in accounts), and writes the machine’s files only when a change is applied.
+        Restarting doesn’t change anything by itself. OPF goes back to maintaining its lists, tables and sign-in accounts. It writes the machine’s files only when you apply a change.
       </Text>
     </Card>
   );
@@ -203,7 +203,7 @@ function Found({ report, loading, onChoose }: { report: ImportReport; loading: b
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
-        ) : <Text size="sm" c="dimmed">None OPF can take over.</Text>}
+        ) : <Text size="sm" c="dimmed">OPF found no interfaces it can take over.</Text>}
         {leftIfaces.length > 0 && (
           <Stack gap={4} mt="sm">
             {leftIfaces.map((n) => (
@@ -212,7 +212,7 @@ function Found({ report, loading, onChoose }: { report: ImportReport; loading: b
           </Stack>
         )}
         <Text size="xs" c="dimmed" mt="sm">
-          The WAN is the interface with the default route. The others take OPF’s “optional” role: making one the LAN later adds OPF’s anti-lockout rule, which keeps this page and SSH reachable from it.
+          The WAN is the interface with the default route. The others get OPF’s “optional” role. If you later make one of them the LAN, OPF adds its anti-lockout rule, which keeps this page and SSH reachable from that network.
         </Text>
       </Card>
 
@@ -225,7 +225,7 @@ function Found({ report, loading, onChoose }: { report: ImportReport; loading: b
           <Count n={custom} label="macros, tables and settings kept as written" />
         </Group>
         <Text size="xs" c="dimmed">
-          Every rule keeps its place. One OPF can’t show in its own form, or that its form would move, is kept as written: it means the same, and you edit it as text.
+          Every rule keeps its place in the order. A rule that OPF can’t show in its form, or that OPF would write in a different place, is kept as written. It means the same, and you edit it as text.
         </Text>
       </Card>
 
@@ -256,9 +256,9 @@ function Count({ n, label }: { n: number; label: string }) {
 function AreaRow({ a, loading, onChoose }: { a: ImportArea; loading: boolean; onChoose: (a: Area, managed: boolean) => void }) {
   const l = areaLabel[a.area];
   let why: string;
-  if (a.exact) why = `OPF writes ${l.file} meaning the same as this machine’s.`;
-  else if (!a.running) why = `${l.daemon} isn’t enabled, so nothing changes until you turn it on.`;
-  else why = `${l.file} has settings OPF doesn’t have: managed by OPF, they’d go.`;
+  if (a.exact) why = `OPF would write a ${l.file} that means the same as this machine’s.`;
+  else if (!a.running) why = `${l.daemon} isn’t enabled. Nothing changes until you turn it on.`;
+  else why = `${l.file} has settings OPF can’t keep. If OPF manages it, those settings are removed.`;
   return (
     <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
       <div style={{ flex: '1 1 260px', minWidth: 0 }}>
@@ -266,7 +266,7 @@ function AreaRow({ a, loading, onChoose }: { a: ImportArea; loading: boolean; on
           <Text size="sm" fw={600}>{l.name}</Text>
           <Text size="sm" c="dimmed">· {a.summary}</Text>
         </Group>
-        <Text size="xs" c="dimmed">{why}{!a.managed && ' Left as it is, OPF doesn’t write it or start, stop or restart ' + l.daemon + '; you can hand it over later, on its page.'}</Text>
+        <Text size="xs" c="dimmed">{why}{!a.managed && ' While it’s left as it is, OPF doesn’t write the file or start, stop or restart ' + l.daemon + '. You can hand it over to OPF later on its page.'}</Text>
       </div>
       <SegmentedControl
         size="xs"
@@ -338,7 +338,7 @@ function Changes({ report }: { report: ImportReport }) {
         <SectionTitle>Files the first commit writes</SectionTitle>
         <Text size="sm" c="dimmed" mb="sm">
           {changed.length
-            ? 'Nothing is written until you apply the first commit. Each file then becomes OPF’s, with its header; the diffs show the rest.'
+            ? 'Nothing is written until you apply the first commit. Then each file becomes OPF’s and gets OPF’s header. The diffs show the other changes.'
             : 'Every file stays as it is.'}
         </Text>
         <Stack gap={6}>
@@ -364,13 +364,13 @@ function Ruleset({ ruleset, error }: { ruleset?: PfComparison; error?: string })
       {ruleset.same ? (
         <Group gap="sm" wrap="nowrap" align="flex-start">
           <ThemeIcon color="teal" variant="light" radius="xl"><IconCheck size={16} /></ThemeIcon>
-          <Text size="sm">pfctl reads the pf.conf OPF would write as the same ruleset as this machine’s: the same options, tables and rules, in the same order. OPF’s labels and default rules aside, which change nothing here.</Text>
+          <Text size="sm">pfctl reads the pf.conf OPF would write as the same ruleset as this machine’s. It has the same options, tables and rules, in the same order. Only OPF’s labels and default rules differ, and they change nothing here.</Text>
         </Group>
       ) : (
         <>
           <Group gap="sm" wrap="nowrap" align="flex-start" mb="sm">
             <ThemeIcon color="orange" variant="light" radius="xl"><IconAlertTriangle size={16} /></ThemeIcon>
-            <Text size="sm">pfctl reads the pf.conf OPF would write differently from this machine’s:</Text>
+            <Text size="sm">pfctl reads the pf.conf OPF would write as a different ruleset from this machine’s, in these ways:</Text>
           </Group>
           <List size="sm" spacing={4} mb="sm">
             {ruleset.differences.map((d, i) => <List.Item key={i}><Text size="sm" style={{ overflowWrap: 'anywhere' }}>{d}</Text></List.Item>)}
@@ -473,7 +473,7 @@ function Finish({ report, manage, readOnly, onStale, onBack }: {
           <Loader size="sm" />
           <div>
             <Text size="sm" fw={600}>OPF is starting again, out of read-only mode</Text>
-            <Text size="xs" c="dimmed">When it’s back, you sign in again, and the import opens, staged as OPF’s first change, for you to review.</Text>
+            <Text size="xs" c="dimmed">When it’s back, sign in again. The import then opens, staged as OPF’s first change, for you to review.</Text>
           </div>
         </Group>
       </Card>
@@ -491,12 +491,12 @@ function Finish({ report, manage, readOnly, onStale, onBack }: {
       <Card>
         <SectionTitle>Taking over</SectionTitle>
         <List size="sm" spacing={6} mb="md" icon={<IconFileImport size={14} style={{ marginTop: 3 }} />}>
-          {readOnly && <List.Item>OPF starts again, out of read-only mode, and takes <Mono>-readonly</Mono> out of its flags in <Mono>rc.conf.local</Mono>.</List.Item>}
+          {readOnly && <List.Item>OPF restarts out of read-only mode and removes <Mono>-readonly</Mono> from its flags in <Mono>rc.conf.local</Mono>.</List.Item>}
           <List.Item>The import is staged as OPF’s first change. Nothing on the machine changes yet.</List.Item>
-          <List.Item>You review it and apply it. Like every change, it waits for you to confirm it, and undoes itself if you don’t, so a mistake can’t lock you out.</List.Item>
+          <List.Item>You review it and apply it. Like every change, it then waits for you to confirm it. If you don’t, it undoes itself, so a mistake can’t lock you out.</List.Item>
           {left.length > 0 && (
             <List.Item icon={<IconHandStop size={14} style={{ marginTop: 3 }} />}>
-              Left as they are: {left.map((a) => areaLabel[a.area].name).join(', ')}. Each page says so, and hands it over when you want.
+              Left as they are: {left.map((a) => areaLabel[a.area].name).join(', ')}. Each one’s page says so, and you can hand it over to OPF there whenever you want.
             </List.Item>
           )}
         </List>
@@ -505,7 +505,7 @@ function Finish({ report, manage, readOnly, onStale, onBack }: {
             mb="md"
             checked={accept}
             onChange={(e) => setAccept(e.currentTarget.checked)}
-            label={report.ruleset ? 'Take over though the firewall’s rules would change as shown' : 'Take over though the rulesets couldn’t be compared'}
+            label={report.ruleset ? 'Take over even though the firewall’s rules would change as shown' : 'Take over even though the rulesets couldn’t be compared'}
           />
         )}
         {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}

@@ -9,7 +9,7 @@ export interface DeviceRule {
   id: string;
   enabled: boolean;
   description: string;
-  /** How it names the device: "from it", "to it, by alias servers"… */
+  /** How it names the device: "Matches traffic from its address."… */
   how: string;
   /** The UI page that has it. */
   to: string;
@@ -21,10 +21,10 @@ export interface DeviceRule {
 // and how to say so.
 function holds(value: string, addr: string): string | undefined {
   const v = value.trim();
-  if (v === addr || v === `${addr}/32`) return 'by its address';
+  if (v === addr || v === `${addr}/32`) return 'its address';
   if (isCIDR(v)) {
     const [net, p] = v.split('/');
-    if (isIPv4(net) && inSubnet(addr, net, Number(p))) return `by ${v}, a network it’s in`;
+    if (isIPv4(net) && inSubnet(addr, net, Number(p))) return `${v}, a network it’s in`;
   }
   return undefined;
 }
@@ -40,7 +40,7 @@ function endpointHolds(ep: Endpoint, addr: string, aliases: Alias[]): string | u
       if (!a || (a.type !== 'hosts' && a.type !== 'networks')) return undefined;
       for (const e of a.entries) {
         const h = holds(e, addr);
-        if (h) return h === 'by its address' ? `by alias ${a.name}, which lists its address` : `by alias ${a.name}, ${h.replace(/^by /, '')}`;
+        if (h) return h === 'its address' ? `alias ${a.name}, which lists its address` : `alias ${a.name}, which holds ${h}`;
       }
       return undefined;
     }
@@ -57,14 +57,14 @@ export function rulesFor(m: Model, addrs: string[]): DeviceRule[] {
   for (const r of m.firewall.rules) {
     if (r.kind === 'raw') {
       const a = v4.find((x) => new RegExp(`(^|[^0-9.])${x.replace(/\./g, '\\.')}([^0-9]|$)`).test(r.text));
-      if (a) out.push({ kind: 'raw', id: r.id, enabled: r.enabled, description: r.description || r.text, how: 'written in pf, naming its address', to: page(r.interfaces, r.groups), exact: true });
+      if (a) out.push({ kind: 'raw', id: r.id, enabled: r.enabled, description: r.description || r.text, how: 'A rule written in pf that names its address.', to: page(r.interfaces, r.groups), exact: true });
       continue;
     }
     for (const a of v4) {
       const from = endpointHolds(r.source, a, m.firewall.aliases);
       const to = endpointHolds(r.destination, a, m.firewall.aliases);
       if (from || to) {
-        const how = [from && `from it, ${from}`, to && `to it, ${to}`].filter(Boolean).join('; ');
+        const how = `Matches traffic ${[from && `from ${from}`, to && `to ${to}`].filter(Boolean).join(', and traffic ')}.`;
         const exact = [from, to].some((h) => h && !h.includes('network it’s in'));
         out.push({ kind: 'rule', id: r.id, enabled: r.enabled, description: `${r.action === 'pass' ? 'Allow' : r.action === 'block' ? 'Block' : r.action}: ${r.description || 'no description'}`, how, to: page(r.interfaces, r.groups), exact });
         break;
@@ -76,7 +76,7 @@ export function rulesFor(m: Model, addrs: string[]): DeviceRule[] {
       const iface = m.interfaces.find((i) => i.id === f.iface)?.name ?? f.iface;
       out.push({
         kind: 'forward', id: f.id, enabled: f.enabled, description: f.description || 'Port forward',
-        how: `${f.protocol} ${f.externalPort} on ${iface} is sent to it${f.targetPort && f.targetPort !== f.externalPort ? `, port ${f.targetPort}` : ''}`,
+        how: `${f.protocol} port ${f.externalPort} on ${iface} is forwarded to it${f.targetPort && f.targetPort !== f.externalPort ? ` on port ${f.targetPort}` : ''}.`,
         to: '/firewall/nat/forwards', exact: true,
       });
     }

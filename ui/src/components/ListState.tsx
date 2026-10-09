@@ -22,12 +22,12 @@ export function ListState({ applied, fetched, count, refresh }: {
       {fetched ? (
         <Text size="xs" c="dimmed">{count ? `${count}, ` : ''}downloaded {formatAgo((now - Date.parse(fetched)) / 1000)}{nextText}</Text>
       ) : (
-        <Text size="xs" c="dimmed">Not downloaded yet; it will be with the next change you apply</Text>
+        <Text size="xs" c="dimmed">Not downloaded yet. It will be downloaded when you next apply a change</Text>
       )}
       {refresh?.lastError && (
         <Tooltip label={refresh.lastError} multiline w={320}>
           <Text size="xs" c="yellow">
-            The last download failed{refresh.lastAttempt ? ` ${formatAgo((now - Date.parse(refresh.lastAttempt)) / 1000)}` : ''}{fetched ? '; the list already here is still in use' : ''}
+            The last download failed{refresh.lastAttempt ? ` ${formatAgo((now - Date.parse(refresh.lastAttempt)) / 1000)}` : ''}{fetched ? '. The list downloaded before is still in use' : ''}
           </Text>
         </Tooltip>
       )}

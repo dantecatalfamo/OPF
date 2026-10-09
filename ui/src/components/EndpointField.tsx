@@ -109,7 +109,7 @@ function IfaceOptions({ value, onChange, model }: { value: IfaceEndpoint | SelfE
         <Checkbox
           size="xs"
           label="Follow address changes"
-          title="pf updates the rule when the address changes, as a DHCP lease or an edit makes it"
+          title="pf updates the rule when the address changes, for example from a new DHCP lease or an edit"
           checked={follows}
           // Back to the default when it matches, so the model only says
           // something when it differs from what OPF would write anyway.

@@ -26,7 +26,7 @@ type LimitKey = keyof NonNullable<FirewallOptions['limits']>;
 
 // pf's defaults, from pf.conf(5); frags depends on the machine's memory.
 const limitFields: { key: LimitKey; label: string; pf: string; description?: string }[] = [
-  { key: 'tableEntries', label: 'Addresses in all tables', pf: '200,000', description: 'Downloaded blocklists count against this, and pf refuses the whole ruleset when they don’t fit.' },
+  { key: 'tableEntries', label: 'Addresses in all tables', pf: '200,000', description: 'Downloaded blocklists count toward this. If they don’t fit, pf refuses the whole ruleset.' },
   { key: 'tables', label: 'Tables', pf: '1,000' },
   { key: 'srcNodes', label: 'Source-tracking entries', pf: '10,000', description: 'Used by per-source connection limits.' },
   { key: 'frags', label: 'Fragments held for reassembly', pf: 'depends on memory' },
@@ -135,7 +135,7 @@ export function FirewallSettings() {
     })}>
       <PageHeader
         title="Firewall settings"
-        description="How pf behaves as a whole. The defaults suit most networks; empty fields keep pf’s default."
+        description="How pf behaves as a whole. The defaults suit most networks. Leave a field empty to keep pf’s default."
         actions={<Button type="submit" disabled={!form.isDirty()}>Save</Button>}
       />
       <Grid gutter="md">
@@ -150,7 +150,7 @@ export function FirewallSettings() {
                 allowDeselect={false}
                 {...form.getInputProps('blockPolicy')}
               />
-              <Switch label="Log traffic blocked by the default rule" description="Useful for troubleshooting; busy on a WAN." {...form.getInputProps('logDefaultBlock', { type: 'checkbox' })} />
+              <Switch label="Log traffic blocked by the default rule" description="Useful for troubleshooting. On a WAN, this logs a lot." {...form.getInputProps('logDefaultBlock', { type: 'checkbox' })} />
             </Stack>
           </Card>
         </Grid.Col>
@@ -166,7 +166,7 @@ export function FirewallSettings() {
               />
               <Select
                 label="Timeouts"
-                description="Or set them one by one under Advanced."
+                description="You can also set them one by one under Advanced."
                 data={[
                   { value: 'normal', label: 'Normal' },
                   { value: 'high-latency', label: 'High latency (satellite links)' },
@@ -208,7 +208,7 @@ export function FirewallSettings() {
               </Stack>
             </Group>
             <Text size="xs" c={scrubEmpty ? 'yellow' : 'dimmed'} mt="md">
-              {scrubEmpty ? 'Choose at least one option; with none, scrub does nothing and isn’t written.' : 'Applies to incoming traffic on every interface.'}
+              {scrubEmpty ? 'Choose at least one option. With none, scrub does nothing and OPF leaves it out of the ruleset.' : 'Applies to incoming traffic on every interface.'}
             </Text>
           </Card>
         </Grid.Col>
@@ -221,7 +221,7 @@ export function FirewallSettings() {
               ))}
             </SimpleGrid>
             {hasBlocklists && v.limits.tableEntries === '' && (
-              <Text size="xs" c="dimmed" mt="md">You have downloaded blocklists; large ones can need more than pf’s 200,000 table addresses.</Text>
+              <Text size="xs" c="dimmed" mt="md">You have downloaded blocklists. Large ones can need more than pf’s default of 200,000 addresses in tables.</Text>
             )}
           </Card>
         </Grid.Col>
@@ -231,7 +231,7 @@ export function FirewallSettings() {
               <Accordion.Control><Text fw={600}>Advanced</Text></Accordion.Control>
               <Accordion.Panel>
                 <Stack gap="xl">
-                  <Part title="Individual timeouts" description="In seconds, except the adaptive values, which count states: timeouts shrink as the table fills past the start and reach zero at the end. Empty keeps the “Timeouts” preset’s value.">
+                  <Part title="Individual timeouts" description="In seconds. The adaptive values are numbers of states instead. Once the state table holds more than the start value, timeouts shrink, and they reach zero at the end value. Leave a field empty to keep the “Timeouts” preset’s value.">
                     {/* One group to a band, a rule between, so each protocol's read as its own. */}
                     <Stack gap={0}>
                       {timeoutGroups.map((g, i) => (
@@ -302,7 +302,7 @@ export function FirewallSettings() {
                     <Stack gap="sm" maw={640}>
                       <TagsInput
                         label="Don’t filter at all on"
-                        description="Interfaces or groups pf ignores entirely, besides loopback. The WAN can’t be listed."
+                        description="pf ignores these interfaces or groups entirely. It always ignores loopback too. The WAN can’t be listed."
                         inputWrapperOrder={below}
                         data={inside.map((i) => i.id)}
                         {...form.getInputProps('skipOn')}
@@ -310,7 +310,7 @@ export function FirewallSettings() {
                       />
                       {(v.skipOn?.length ?? 0) > 0 && (
                         <Alert color="red" variant="light" p="xs" icon={<IconAlertTriangle size={16} />}>
-                          Nothing is blocked on {v.skipOn!.join(', ')}: every rule, including the default block, is skipped there.
+                          Nothing is blocked on {v.skipOn!.join(', ')}. pf skips every rule there, including the default block.
                         </Alert>
                       )}
                     </Stack>

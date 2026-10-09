@@ -148,7 +148,7 @@ export function Events() {
     <>
       <PageHeader
         title="Events"
-        description="What happened: links and gateways going down and coming back, new devices, VPN devices connecting from somewhere new, services stopping, downloads failing, patches, and every change applied. Kept for 90 days."
+        description="What happened on the firewall, such as links and gateways going down and coming back, new devices, VPN devices connecting from somewhere new, services stopping, failed downloads, patches and every change applied. Events are kept for 90 days."
       />
       <Stack gap="sm" mb="md">
         <TextInput placeholder="Search" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} maw={420} />
@@ -162,7 +162,7 @@ export function Events() {
       </Stack>
       {error && <Alert color="red" variant="light" mb="md">Couldn’t ask OPF: {error}</Alert>}
       {events && events.length === 0 && (
-        <Text c="dimmed" size="sm">{query || selected.length ? 'No events match.' : 'Nothing has happened yet. OPF starts noticing when it starts.'}</Text>
+        <Text c="dimmed" size="sm">{query || selected.length ? 'No events match.' : 'Nothing has happened yet. OPF records events from the moment it starts.'}</Text>
       )}
       <Stack gap="md">
         {days.map(({ day, events: list }) => (

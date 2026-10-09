@@ -25,7 +25,7 @@ export function LogRule({ e, model }: { e: FirewallLogEntry; model: Model }) {
   const owner = labelOwner(model, e.label);
   if (e.rule < 0) {
     return (
-      <Tooltip label="No rule: pf itself, such as dropping a packet with IP options." multiline w={260}>
+      <Tooltip label="No rule logged this. pf did it itself, for example by dropping a packet with IP options." multiline w={260}>
         <Text size="sm" c="dimmed">pf’s default rule</Text>
       </Tooltip>
     );
@@ -34,7 +34,7 @@ export function LogRule({ e, model }: { e: FirewallLogEntry; model: Model }) {
   const why = e.anchor
     ? `Rule ${e.rule} in anchor ${e.anchor}.`
     : e.label
-      ? `Labelled ${e.label}, which isn’t in the configuration any more.`
+      ? `Its label, ${e.label}, isn’t in the configuration any more.`
       : `pf rule ${e.rule}. The rules have been reloaded since, so which rule that was isn’t known.`;
   return (
     <Tooltip label={why} multiline w={260}>
@@ -112,7 +112,7 @@ export function FirewallLog() {
 
   return (
     <>
-      <PageHeader title="Firewall log" description="Traffic matched by rules that have logging turned on, newest first. The last 500 entries pf has kept. In and out are pf’s: a packet arriving on an interface, or leaving by it." />
+      <PageHeader title="Firewall log" description="Traffic matched by rules that have logging turned on, newest first. Shows the last 500 entries pf has kept. In means a packet arriving on an interface, and out means a packet leaving by it." />
       {(error || data?.error) && <Alert color="red" variant="light" mb="md">{data?.error ?? error}</Alert>}
       <Group mb="md" gap="sm">
         <TextInput placeholder="Filter by address, device or rule" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ flex: '1 1 240px' }} />

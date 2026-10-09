@@ -170,7 +170,7 @@ function Gateways() {
                           {(s?.address ?? address) && (
                             <Menu.Item leftSection={<IconActivity size={16} />} component={Link} to={`/monitoring/tools?tool=ping&host=${encodeURIComponent(s?.address ?? address ?? '')}`}>Ping</Menu.Item>
                           )}
-                          <Tooltip label="Still used by a route, rule or as the default" disabled={!inUse(g.id)} position="left">
+                          <Tooltip label="In use by a route, a firewall rule, or as the default gateway" disabled={!inUse(g.id)} position="left">
                             <Menu.Item leftSection={<IconTrash size={16} />} color="red" disabled={inUse(g.id)} onClick={() => edit('routing', `Deleted gateway ${g.name}`, (m) => ({ ...m, routing: { ...m.routing, gateways: m.routing.gateways.filter((x) => x.id !== g.id) } }))}>
                               Delete
                             </Menu.Item>
@@ -309,7 +309,7 @@ function LiveRoutes() {
   return (
     <>
       <Group gap="sm" mb="md">
-        <Text size="sm" c="dimmed" style={{ flex: 1 }}>What the kernel is using right now (netstat -rn).</Text>
+        <Text size="sm" c="dimmed" style={{ flex: 1 }}>The routes the kernel is using right now, as netstat -rn shows them.</Text>
         {hasIPv6 && (
           <SegmentedControl
             size="xs"
@@ -389,7 +389,7 @@ export function Routing() {
   if (readOnly) {
     return (
       <>
-        <PageHeader title="Routing" description="This machine’s routing table: where it sends traffic, as the kernel has it." />
+        <PageHeader title="Routing" description="Where this machine sends traffic, from the kernel’s routing table." />
         <LiveRoutes />
       </>
     );

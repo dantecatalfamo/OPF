@@ -108,18 +108,18 @@ export function DnsActivitySettingsCard() {
         <SectionTitle right={<Switch label="Keep" disabled={!canEdit} {...form.getInputProps('enabled', { type: 'checkbox' })} />}>Activity</SectionTitle>
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            Keeps how many names were looked up, blocked and not found, by hour, and the names looked up, blocked and not found most each day, shown under Activity.
-            OPF counts; it never keeps the queries themselves.
+            Keeps hourly counts of the names looked up, blocked and not found, and each day’s most common names in each of those. You can see them under Activity.
+            OPF keeps counts, never the queries themselves.
           </Text>
           <Alert color="gray" variant="light" p="sm" icon={<IconLock size={16} />}>
             <Text size="sm">
               The names a network looks up say a lot about the people on it: what they read, who they bank with, what their devices are.
-              Only admins can see what’s kept, and nothing of it goes to webhooks. Turn this on where the people using the network know.
+              Only admins can see what’s kept, and nothing of it goes to webhooks. Only turn this on if the people using the network know about it.
             </Text>
           </Alert>
           <Switch
             label="For each device too"
-            description="Which device asked, by its MAC address, VPN device or address: each device’s counts and the names it looked up, had blocked and asked for that don’t exist most."
+            description="Also keeps each device’s counts and its most looked-up, blocked and not-found names. Devices are told apart by MAC address, VPN device or IP address."
             disabled={!v.enabled || !canEdit}
             {...form.getInputProps('devices', { type: 'checkbox' })}
           />
@@ -143,19 +143,19 @@ export function DnsActivitySettingsCard() {
           {v.enabled && v.devices && (
             <NumberInput
               label="Devices kept apart a day" w={420} min={1} inputWrapperOrder={['label', 'input', 'description', 'error']} max={MAX_DEVICE_CAP} allowDecimal={false} thousandSeparator="," disabled={!canEdit}
-              description={`Past it, the rest of the day’s are counted together as other devices. Each takes up to about 5.6 KB a day; ${DEFAULT_ACTIVITY_DEVICES} by default.`}
+              description={`After this many devices in a day, the rest are counted together as other devices. Each device takes up to about 5.6 KB a day. The default is ${DEFAULT_ACTIVITY_DEVICES}.`}
               {...form.getInputProps('maxDevices')}
             />
           )}
           {v.enabled && (
             <Stack gap={6}>
               <Text size="sm">
-                At most about <b>{formatBytes(cost.bytes)}</b> in memory, and as much on disk
-                {v.devices ? `, with ${devices >= cap ? `${cap.toLocaleString()} devices (the most kept apart a day)` : `this network’s ${devices} device${devices === 1 ? '' : 's'}`}` : ''}:
-                {' '}{formatBytes(cost.network)} for the counts and top names, {formatBytes(cost.detail)} for their when and who{v.devices ? `, ${formatBytes(cost.devices)} for the devices` : ''}.
-                {saved && keeping ? ` What’s kept takes ${formatBytes(saved)}, as last saved.` : ''}
+                This takes at most about <b>{formatBytes(cost.bytes)}</b> of memory, and as much on disk
+                {v.devices ? `, for ${devices >= cap ? `${cap.toLocaleString()} devices, the most kept apart a day` : `this network’s ${devices} device${devices === 1 ? '' : 's'}`}` : ''}.
+                {' '}That’s {formatBytes(cost.network)} for the counts and top names, plus {formatBytes(cost.detail)} for when and by whom each was asked{v.devices ? `, plus ${formatBytes(cost.devices)} for the devices` : ''}.
+                {saved && keeping ? ` What’s kept now takes ${formatBytes(saved)}, as of the last save.` : ''}
               </Text>
-              <Text size="xs" c="dimmed">That’s if every list fills every day; most networks use a fraction of it.</Text>
+              <Text size="xs" c="dimmed">That’s if every list fills every day. Most networks use a fraction of it.</Text>
               {advice.level !== 'ok' && (
                 <Alert color={advice.level === 'warn' ? 'red' : 'yellow'} variant="light" p="sm" icon={<IconAlertTriangle size={16} />}
                   title={advice.level === 'warn' ? 'Too much for this machine' : 'Mind this machine’s size'}>
@@ -166,12 +166,12 @@ export function DnsActivitySettingsCard() {
           )}
           {v.enabled && (
             <Text size="xs" c="dimmed">
-              While it’s on, the resolver logs every answer to its own file for OPF to count, instead of to the system log; its warnings still reach the system log, through OPF’s.
+              While this is on, the resolver logs every answer to its own file for OPF to count, instead of to the system log. Its warnings still reach the system log, passed on by OPF.
             </Text>
           )}
           {(turningOff || droppingDevices) && (
             <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-              {turningOff ? 'Once applied, everything kept is deleted.' : 'Once applied, every device’s activity is deleted; the network’s stays.'}
+              {turningOff ? 'Once applied, everything kept is deleted.' : 'Once applied, every device’s activity is deleted. The network’s activity is kept.'}
             </Alert>
           )}
           <Group justify="space-between">
@@ -184,7 +184,7 @@ export function DnsActivitySettingsCard() {
       </form>
       <Modal opened={forgetting} onClose={() => setForgetting(false)} title="Delete the DNS activity kept?" size="md">
         <Stack gap="md">
-          <Text size="sm">Every count and name kept so far, for the network and every device, is deleted now. Keeping goes on from here.</Text>
+          <Text size="sm">Every count and name kept so far, for the network and every device, is deleted now. OPF goes on keeping new activity.</Text>
           {forgetError && <Alert color="red" variant="light" p="sm">{forgetError}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setForgetting(false)}>Cancel</Button>
@@ -220,7 +220,7 @@ function CountStats({ total, narrow }: { total: ActivityCounts; narrow?: boolean
       <Stat label="Blocked" value={formatCount(total.blocked)} detail={`${pct(total.blocked, q)} of queries`} />
       <Stat
         label="No such name" value={formatCount(total.nxdomain ?? 0)} detail={`${pct(total.nxdomain ?? 0, q)} of queries`}
-        warn={manyMissing(total.nxdomain ?? 0, q) ? 'That’s a lot. Malware often tries many made-up names; see Not found most.' : undefined}
+        warn={manyMissing(total.nxdomain ?? 0, q) ? 'That’s a lot. Malware often tries many made-up names. See Not found most.' : undefined}
       />
       <Stat label="Failed" value={formatCount(total.servfail ?? 0)} detail={`${pct(total.servfail ?? 0, q)} the resolver couldn’t answer`} />
       <Stat label="From the cache" value={pct(total.cached ?? 0, q)} detail="answered without asking" />
@@ -268,7 +268,7 @@ function NameList({ title, items, blocked, model, empty, onPick }: { title: stri
                   </Table.Td>
                   <Table.Td ta="right" style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                     <Group gap={4} justify="flex-end" wrap="nowrap">
-                      <Text size="sm" className="num" title={n.err ? `Up to ${n.err.toLocaleString()} of these may be other names’: the list keeps only the names seen most` : undefined}>
+                      <Text size="sm" className="num" title={n.err ? `Up to ${n.err.toLocaleString()} of these may belong to other names. The list keeps only the names seen most.` : undefined}>
                         {n.err ? '≈' : ''}{n.count.toLocaleString()}
                       </Text>
                       {onPick && (
@@ -296,7 +296,7 @@ function NameList({ title, items, blocked, model, empty, onPick }: { title: stri
 }
 
 const deviceLabel = (key: string, info?: ActivityDeviceInfo) => info?.name || info?.mac || key.replace(/^(ip|mac|vpn):/, '');
-const kindWords: Record<ActivityDeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', firewall: 'OPF itself', address: 'Address only', other: 'Past the devices kept apart a day' };
+const kindWords: Record<ActivityDeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', firewall: 'OPF itself', address: 'Address only', other: 'Other devices, counted together' };
 
 function DeviceDrawer({ device, info, days, onClose, onForgot }: { device?: string; info?: ActivityDeviceInfo; days: number; onClose: () => void; onForgot: () => void }) {
   const { applied } = useStore();
@@ -411,8 +411,8 @@ function NameDrawer({ pick, days, detailDays, onClose, onDevice }: { pick?: { li
           {counted < data.count && (
             <Text size="xs" c="dimmed">
               {days > detailDays
-                ? `When and by whom is kept for ${detailDays === 1 ? 'today' : `the last ${detailDays} days`}, so the hours and devices show ${counted.toLocaleString()} of the ${data.count.toLocaleString()}.`
-                : `${(data.count - counted).toLocaleString()} of these came before it was among the day’s most ${pick.list === 'names' ? 'looked up' : pick.list === 'blocked' ? 'blocked' : 'not found'}, so the hours and devices don’t include them.`}
+                ? `When and by whom is kept only for ${detailDays === 1 ? 'today' : `the last ${detailDays} days`}. The hours and devices show ${counted.toLocaleString()} of these ${data.count.toLocaleString()}.`
+                : `${(data.count - counted).toLocaleString()} of these came before this name was among the day’s most ${pick.list === 'names' ? 'looked up' : pick.list === 'blocked' ? 'blocked' : 'not found'}. The hours and devices don’t include them.`}
             </Text>
           )}
           <Card>
@@ -436,12 +436,12 @@ function NameDrawer({ pick, days, detailDays, onClose, onDevice }: { pick?: { li
               </Table>
             ) : (
               <Empty>
-                {applied.dns.activity?.devices ? 'No device is kept for it.' : (
-                  <>Which devices asked is only kept with <Anchor component={Link} to="/services/dns?tab=settings" size="sm">For each device too</Anchor> on.</>
+                {applied.dns.activity?.devices ? 'No devices were kept for this name.' : (
+                  <>OPF only keeps which devices asked when <Anchor component={Link} to="/services/dns?tab=settings" size="sm">For each device too</Anchor> is on.</>
                 )}
               </Empty>
             )}
-            {data.devices.length >= 10 && <Text size="xs" c="dimmed" mt="xs">The ten that asked most each day are kept.</Text>}
+            {data.devices.length >= 10 && <Text size="xs" c="dimmed" mt="xs">OPF keeps the ten devices that asked most each day.</Text>}
           </Card>
         </Stack>
       )}
@@ -476,7 +476,7 @@ export function DnsActivityTab() {
     return (
       <Card>
         <Empty>
-          OPF doesn’t keep a history of lookups. It can, for the network and each device: turn it on under{' '}
+          OPF doesn’t keep a history of lookups. To keep one for the network and each device, turn it on under{' '}
           <Anchor component={Link} to="/services/dns?tab=settings" size="sm">Settings › Activity</Anchor>.
         </Empty>
       </Card>
@@ -499,7 +499,7 @@ export function DnsActivityTab() {
               <HoursChart hours={data?.hours ?? []} days={n} />
               {by.length > 0 && <Text size="xs" c="dimmed">Blocked: {by.join(', ')}{total.allowed ? `. Your never-block names let ${total.allowed.toLocaleString()} through` : ''}.</Text>}
             </>
-          ) : <Empty>Nothing yet: the resolver’s answers are counted as they come, every few seconds.</Empty>)}
+          ) : <Empty>Nothing yet. The resolver’s answers are counted every few seconds.</Empty>)}
         </Stack>
       </Card>
       {data?.names && (

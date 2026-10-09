@@ -28,7 +28,7 @@ const isTcp = (p: FormRule['protocol']) => p === 'tcp' || p === 'tcp/udp';
 function overloadKept(m: Model, table?: string): string | undefined {
   const a = table ? m.firewall.aliases.find((x) => x.name === table && x.type === 'table') : undefined;
   if (!a) return undefined;
-  return a.expireMinutes ? `Each is taken out ${minutesText(a.expireMinutes)} later.` : `It stays there until <${a.name}> is flushed or the firewall restarts; set how long under Aliases.`;
+  return a.expireMinutes ? `OPF removes each address ${minutesText(a.expireMinutes)} after it was added.` : `Each address stays in <${a.name}> until the table is flushed or the firewall restarts. You can set how long it stays under Aliases.`;
 }
 
 function toValues(rule: Rule | null, iface: string | null, authpf = false): Values {
@@ -109,14 +109,14 @@ export function RuleDrawer({
         return e;
       }
       e.source = validateEndpoint(v.source, isIPv4, isCIDR);
-      if (authpf && v.source.type !== 'authpfUser' && v.destination.type !== 'authpfUser') e.source = 'A rule for signed-in users is from or to the signed-in user';
+      if (authpf && v.source.type !== 'authpfUser' && v.destination.type !== 'authpfUser') e.source = 'A rule for signed-in users must be from or to the signed-in user';
       e.destination = validateEndpoint(v.destination, isIPv4, isCIDR);
       const port = (s?: string) => (!s?.trim() || s.startsWith('alias:') || isPfPortExpr(s) ? null : 'Use pf port syntax: 443, 8000:8080, > 1023, != 22, or 80,443');
       if (hasPorts(v.protocol)) {
         e.port = port(v.port);
         e.sourcePort = port(v.sourcePort);
       }
-      if (isTcp(v.protocol) && v.tcpFlags && !/^(any|[FSRPAUEW]*\/[FSRPAUEW]+)$/.test(v.tcpFlags)) e.tcpFlags = 'Like S/SA, or any';
+      if (isTcp(v.protocol) && v.tcpFlags && !/^(any|[FSRPAUEW]*\/[FSRPAUEW]+)$/.test(v.tcpFlags)) e.tcpFlags = 'Use flags like S/SA, or any';
       if (v.state?.overload && !model.firewall.aliases.some((a) => a.name === v.state!.overload && a.type === 'table')) e['state.overload'] = 'Pick a table alias';
       return e;
     },
@@ -159,7 +159,7 @@ export function RuleDrawer({
         form.setValues({ ...formValues, description: v.description, mode: 'form', rawText: '' });
       } else {
         // Could not convert to form rule - show error
-        form.setFieldError('rawText', 'This rule cannot be converted to the guided form. Complex features like NAT, anchors, queues or a label of its own are only supported in raw mode.');
+        form.setFieldError('rawText', 'The guided form can’t show this rule. Rules with NAT, anchors, queues or their own label only work in pf syntax.');
       }
     } catch {
       form.setFieldError('rawText', 'Failed to parse rule');
@@ -194,7 +194,7 @@ export function RuleDrawer({
           {authpf && (
             <MultiSelect
               label="For"
-              description="Everyone signed in, or only these users: a user's own rules come after everyone's."
+              description="Leave empty for everyone signed in, or choose users. A user’s own rules come after the rules for everyone."
               placeholder={(v.authpf?.users ?? []).length ? undefined : 'Everyone'}
               data={(model.firewall.authpf?.users ?? []).map((u) => ({ value: u.id, label: u.name }))}
               value={v.authpf?.users ?? []}
@@ -308,11 +308,11 @@ export function RuleDrawer({
                   {v.action === 'pass' && 'Let matching connections through. Replies are allowed automatically.'}
                   {v.action === 'block' && !v.blockReturn && 'Silently discard. The sender sees nothing, like a timeout.'}
                   {v.action === 'block' && v.blockReturn === 'drop' && 'Silently discard. The sender sees nothing, like a timeout.'}
-                  {v.action === 'block' && v.blockReturn === 'return' && 'Send TCP RST for TCP, ICMP unreachable for others.'}
+                  {v.action === 'block' && v.blockReturn === 'return' && 'Send a TCP RST for TCP, and an ICMP unreachable error for other protocols.'}
                   {v.action === 'block' && v.blockReturn === 'return-rst' && 'Send TCP RST. Only works for TCP connections.'}
-                  {v.action === 'block' && v.blockReturn === 'return-icmp' && 'Send ICMP unreachable error to IPv4 sender.'}
-                  {v.action === 'block' && v.blockReturn === 'return-icmp6' && 'Send ICMPv6 unreachable error to IPv6 sender.'}
-                  {v.action === 'reject' && 'Discard and tell the sender, so their connection fails quickly (block return).'}
+                  {v.action === 'block' && v.blockReturn === 'return-icmp' && 'Send an ICMP unreachable error to the IPv4 sender.'}
+                  {v.action === 'block' && v.blockReturn === 'return-icmp6' && 'Send an ICMPv6 unreachable error to the IPv6 sender.'}
+                  {v.action === 'reject' && 'Discard and tell the sender. Their connection fails right away instead of timing out.'}
                   {v.action === 'match' && 'Neither allow nor block. Apply options such as priority, tags or routing, then keep checking rules.'}
                 </Text>
               </Stack>
@@ -383,7 +383,7 @@ export function RuleDrawer({
                 <Stack gap={8} pt={4}>
                   <Switch
                     label="Stop at this rule"
-                    description={v.quick ? 'First match wins (quick).' : 'Later rules can still override this one.'}
+                    description={v.quick ? 'If this rule matches, later rules aren’t checked.' : 'Later rules can still override this one.'}
                     {...form.getInputProps('quick', { type: 'checkbox' })}
                   />
                   <Switch label="Enabled" {...form.getInputProps('enabled', { type: 'checkbox' })} />
@@ -455,7 +455,7 @@ export function RuleDrawer({
                   </Accordion.Control>
                   <Accordion.Panel>
                     <Stack>
-                      <Text size="xs" c="dimmed">Send matching traffic somewhere other than the routing table says. Useful for multiple internet connections or sending one device through a VPN.</Text>
+                      <Text size="xs" c="dimmed">Send matching traffic somewhere other than where the routing table says. This is useful for multiple internet connections or sending one device through a VPN.</Text>
                       <SimpleGrid cols={{ base: 1, sm: 3 }}>
                         <Select label="Send via gateway" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('gateway')} />
                         <Select label="Send replies via" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('replyTo')} />
@@ -507,7 +507,7 @@ export function RuleDrawer({
                               placeholder="Any"
                               clearable
                               data={getIcmpCodeOptions(v.icmpType, v.protocol === 'icmp6')}
-                              description="Optional: filter by specific code"
+                              description="Match only packets with this code."
                               inputWrapperOrder={['label', 'input', 'description', 'error']}
                             />
                           )}

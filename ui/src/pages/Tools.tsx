@@ -76,7 +76,7 @@ function Output({ run, outcome, onNext, onStop }: { run?: ToolRun; outcome?: Out
       <ScrollArea.Autosize mah={420} viewportRef={viewport} type="auto">
         <Code block style={{ whiteSpace: 'pre', minHeight: 60 }}>{run.lines.join('\n') || (run.running ? '…' : '(no output)')}</Code>
       </ScrollArea.Autosize>
-      {run.truncated && <Text size="xs" c="yellow">It printed more than OPF keeps, so it was stopped.</Text>}
+      {run.truncated && <Text size="xs" c="yellow">The tool printed more output than OPF keeps, so OPF stopped it.</Text>}
       {outcome && (
         <Alert color={outcome.ok ? 'teal' : 'yellow'} variant="light">
           <Stack gap="xs">
@@ -148,7 +148,7 @@ const below: ('label' | 'input' | 'description' | 'error')[] = ['label', 'input'
 
 const family = [{ value: '', label: 'Either' }, { value: 'ipv4', label: 'IPv4' }, { value: 'ipv6', label: 'IPv6' }];
 const dnsTypes = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'SRV', 'TXT', 'CAA', 'DS', 'DNSKEY', 'HTTPS', 'SVCB', 'ANY'];
-const hostHelp = 'An address, or a name such as example.com (international names in their xn-- form).';
+const hostHelp = 'An address, or a name such as example.com. Enter international names in their xn-- form.';
 
 export function Tools() {
   const [params, setParams] = useSearchParams();
@@ -179,14 +179,14 @@ export function Tools() {
         <Tabs.Panel value="ping">
           <ToolPanel
             runKey={key('ping')} initial={initial('ping') as never} onNext={next} outcome={pingOutcome}
-            help="Sends a few pings and times the answers. Don’t fragment, with a size, finds the largest packet that gets through (1472 fits a normal 1500-byte link)."
+            help="Sends a few pings and times the answers. To find the largest packet that gets through, turn on Don’t fragment and try different sizes. On a normal 1500-byte link, the largest size that fits is 1472."
             defaults={{ host: '', count: 5 as number | string, size: 56 as number | string, family: '', dontFragment: false }}
             toRequest={(v) => ({ tool: 'ping', host: v.host, count: Number(v.count) || undefined, size: Number(v.size) || undefined, family: v.family as ToolRequest['family'], dontFragment: v.dontFragment })}
             fields={(f) => (
               <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
                 <TextInput inputWrapperOrder={below} label="Host" description={hostHelp} placeholder="9.9.9.9" {...f.getInputProps('host')} />
                 <NumberInput label="Pings" min={1} max={50} {...f.getInputProps('count')} />
-                <NumberInput inputWrapperOrder={below} label="Size" description="Data bytes in each" min={1} max={9000} {...f.getInputProps('size')} />
+                <NumberInput inputWrapperOrder={below} label="Size" description="Bytes of data in each ping" min={1} max={9000} {...f.getInputProps('size')} />
                 <Stack gap={6}>
                   <Text size="sm" fw={500}>Address family</Text>
                   <SegmentedControl size="xs" data={family} {...f.getInputProps('family')} />
@@ -220,14 +220,14 @@ export function Tools() {
         <Tabs.Panel value="dns">
           <ToolPanel
             runKey={key('dns')} initial={initial('dns') as never} onNext={next} outcome={dnsOutcome}
-            help="Asks DNS about a name, or an address for its name. Asking this firewall’s resolver shows what your devices get; asking another server, or tracing from the root, shows whether the problem is here or upstream."
+            help="Looks up a name, or finds the name for an address. Asking this firewall’s resolver shows what your devices get. Asking another server, or tracing from the root, shows whether a problem is here or upstream."
             defaults={{ name: '', type: 'A', server: '', trace: false, dnssec: false }}
             toRequest={(v) => ({ tool: 'dns', name: v.name, type: v.type, server: v.server.trim() || undefined, trace: v.trace, dnssec: v.dnssec })}
             fields={(f) => (
               <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
                 <TextInput label="Name or address" placeholder="example.com" {...f.getInputProps('name')} />
                 <Select label="Record type" data={dnsTypes} allowDeselect={false} searchable {...f.getInputProps('type')} />
-                <TextInput inputWrapperOrder={below} label="Server" description="Empty asks this firewall’s resolver" placeholder="9.9.9.9" disabled={f.values.trace} {...f.getInputProps('server')} />
+                <TextInput inputWrapperOrder={below} label="Server" description="Leave empty to ask this firewall’s resolver" placeholder="9.9.9.9" disabled={f.values.trace} {...f.getInputProps('server')} />
                 <Stack gap={6} pt={4}>
                   <Checkbox label="Trace from the root servers" {...f.getInputProps('trace', { type: 'checkbox' })} />
                   <Checkbox label="Show DNSSEC records" {...f.getInputProps('dnssec', { type: 'checkbox' })} />
@@ -239,7 +239,7 @@ export function Tools() {
         <Tabs.Panel value="port">
           <ToolPanel
             runKey={key('port')} initial={initial('port') as never} onNext={next} outcome={portOutcome}
-            help="Checks whether something answers on a port, from the firewall. For TCP that’s a clear yes or no; UDP can only show that nothing refused."
+            help="Checks from the firewall whether something answers on a port. TCP gives a clear yes or no. For UDP, the test can only show that nothing refused it."
             defaults={{ host: '', port: 443 as number | string, protocol: 'tcp', family: '' }}
             toRequest={(v) => ({ tool: 'port', host: v.host, port: Number(v.port) || 0, protocol: v.protocol, family: v.family as ToolRequest['family'] })}
             fields={(f) => (

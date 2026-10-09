@@ -37,10 +37,10 @@ type Format = '' | NonNullable<Webhook['format']>;
 
 // What each format sends, and where its URL comes from.
 const formats: { value: Format; label: string; about: string; url: string }[] = [
-  { value: '', label: 'JSON', about: 'OPF’s own JSON, signed: for Home Assistant, n8n or a script of your own.', url: 'https://example.com/api/webhook/…' },
-  { value: 'slack', label: 'Slack', about: 'A message in a Slack channel, from an incoming webhook (Slack › Apps › Incoming Webhooks). Mattermost takes the same.', url: 'https://hooks.slack.com/services/…' },
-  { value: 'discord', label: 'Discord', about: 'A message in a Discord channel, from its webhook (the channel’s Settings › Integrations › Webhooks).', url: 'https://discord.com/api/webhooks/…' },
-  { value: 'ntfy', label: 'ntfy', about: 'A push notification on your phone through ntfy, ntfy.sh or your own server; problems arrive at high priority. A token for a protected topic goes in the URL as ?auth=….', url: 'https://ntfy.sh/your-topic' },
+  { value: '', label: 'JSON', about: 'OPF’s own signed JSON, for Home Assistant, n8n or a script of your own.', url: 'https://example.com/api/webhook/…' },
+  { value: 'slack', label: 'Slack', about: 'A message in a Slack channel. Get the URL from an incoming webhook, under Slack › Apps › Incoming Webhooks. Mattermost accepts the same format.', url: 'https://hooks.slack.com/services/…' },
+  { value: 'discord', label: 'Discord', about: 'A message in a Discord channel. Get the URL from the channel’s webhook, under its Settings › Integrations › Webhooks.', url: 'https://discord.com/api/webhooks/…' },
+  { value: 'ntfy', label: 'ntfy', about: 'A push notification on your phone through ntfy, using ntfy.sh or your own server. Problems arrive at high priority. For a protected topic, add its token to the URL as ?auth=….', url: 'https://ntfy.sh/your-topic' },
 ];
 const formatOf = (w?: Webhook | null) => formats.find((f) => f.value === (w?.format ?? '')) ?? formats[0];
 
@@ -56,7 +56,7 @@ function hookId(name: string, m: Model): string {
 function EditModal({ hook, onClose, onSave }: { hook: Webhook | null; onClose: () => void; onSave: (w: Omit<Webhook, 'id'>) => void }) {
   const form = useForm({
     initialValues: { name: '', kinds: [] as string[], problemsOnly: false, format: '' as Format },
-    validate: { name: (v) => (!v.trim() ? 'Name it' : v.length > 60 ? 'Up to 60 characters' : null) },
+    validate: { name: (v) => (!v.trim() ? 'Enter a name' : v.length > 60 ? 'Up to 60 characters' : null) },
   });
   useEffect(() => {
     if (hook) form.setValues({ name: hook.name, kinds: hook.kinds ?? [], problemsOnly: hook.problemsOnly ?? false, format: hook.format ?? '' });
@@ -78,7 +78,7 @@ function EditModal({ hook, onClose, onSave }: { hook: Webhook | null; onClose: (
                 {kinds.map((k) => <Chip key={k.value} value={k.value} size="xs" variant="outline">{k.label}</Chip>)}
               </Group>
             </Chip.Group>
-            <Text size="xs" c="dimmed">None chosen sends every kind.</Text>
+            <Text size="xs" c="dimmed">Choose none to send every kind of event.</Text>
           </Stack>
           <Switch label="Only problems" description="A link or gateway down, a service stopped, a download failing, a change reverted." {...form.getInputProps('problemsOnly', { type: 'checkbox' })} />
           <Group justify="flex-end" mt="sm">
@@ -125,7 +125,7 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
       {generated ? (
         <Stack>
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={18} />} title="Shown this once">
-            Give this key to the receiver so it can check each delivery came from this firewall. OPF won’t show it again; to replace it, set the URL again with a new key.
+            Give this key to the receiver so it can check each delivery came from this firewall. OPF won’t show it again. To replace it, set the URL again and make a new key.
           </Alert>
           <Group gap="xs" wrap="nowrap">
             <Code block style={{ flex: 1, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{generated}</Code>
@@ -142,10 +142,10 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
       ) : (
         <Stack>
           <Text size="sm" c="dimmed">
-            The URL and key are secrets: they’re saved now, take effect at once, and only the URL’s scheme and host are shown afterwards.{status?.target ? ` It sends to ${status.target} now; a new URL replaces it.` : ''}
+            The URL and key are secrets. They’re saved and take effect at once. Afterwards, only the URL’s scheme and host are shown.{status?.target ? ` It sends to ${status.target} now. A new URL replaces it.` : ''}
           </Text>
           <TextInput label="URL" placeholder={formatOf(hook).url} value={url} onChange={(e) => setUrl(e.currentTarget.value)} autoComplete="off" spellCheck={false} data-autofocus />
-          {url.startsWith('http://') && <Text size="xs" c="yellow">Sent unencrypted: anyone on the way can read it. Use http only for a receiver on your own network.</Text>}
+          {url.startsWith('http://') && <Text size="xs" c="yellow">This is sent unencrypted, so anyone along the way can read it. Use http only for a receiver on your own network.</Text>}
           <Stack gap={6}>
             <Text size="sm" fw={500}>Signing</Text>
             <SegmentedControl
@@ -161,7 +161,7 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
             />
             {signing === 'set' && <TextInput placeholder="The key the receiver checks with" value={key} onChange={(e) => setKey(e.currentTarget.value)} autoComplete="off" spellCheck={false} />}
             <Text size="xs" c="dimmed">
-              {hook?.format ? `${formatOf(hook).label} doesn’t check signatures; they matter for a receiver of your own.` : 'Signed deliveries carry X-OPF-Signature, so the receiver can tell they came from this firewall.'}
+              {hook?.format ? `${formatOf(hook).label} doesn’t check signatures. They matter only for a receiver of your own.` : 'Signed deliveries carry X-OPF-Signature, so the receiver can tell they came from this firewall.'}
             </Text>
           </Stack>
           {error && <Alert color="red" variant="light" p="sm">{error}</Alert>}
@@ -176,7 +176,7 @@ function SecretModal({ hook, status, onClose, onSet }: { hook: Webhook | null; s
 }
 
 function StatusLine({ st, applied, now }: { st?: WebhookStatus; applied: boolean; now: number }) {
-  if (!st?.target) return <Text size="xs" c="yellow">No URL yet: set one to start sending.</Text>;
+  if (!st?.target) return <Text size="xs" c="yellow">No URL yet. Set one to start sending.</Text>;
   const ago = (iso: string) => formatAgo((now - Date.parse(iso)) / 1000);
   return (
     <Stack gap={2}>
@@ -232,7 +232,7 @@ export function Notifications() {
     <>
       <PageHeader
         title="Notifications"
-        description="Send OPF’s events to other systems as they happen: Home Assistant, n8n, a chat bot, a script of your own."
+        description="Send OPF’s events to other systems as they happen, such as Home Assistant, n8n, a chat bot or a script of your own."
         actions={<Button leftSection={<IconPlus size={16} />} onClick={() => setEditing({ id: '', name: '', enabled: true })}>Add webhook</Button>}
       />
       <Stack gap="md" maw={900}>
@@ -281,7 +281,7 @@ export function Notifications() {
             <Accordion.Control><Text size="sm">What a delivery looks like</Text></Accordion.Control>
             <Accordion.Panel>
               <Stack gap="sm">
-                <Text size="sm">Slack and Discord get a one-line message, and ntfy a notification titled with the firewall and the kind of event. JSON is a POST with this body:</Text>
+                <Text size="sm">Slack and Discord get a one-line message. ntfy gets a notification titled with the firewall’s name and the kind of event. JSON is sent as a POST with this body:</Text>
                 <Code block>{`{
   "source": "opf",
   "host": "${applied.system.hostname}.${applied.system.domain}",
@@ -294,7 +294,7 @@ export function Notifications() {
   }
 }`}</Code>
                 <Text size="sm">
-                  With the headers <Code>X-OPF-Timestamp</Code> (unix seconds) and, when it has a key, <Code>X-OPF-Signature: sha256=…</Code>: the hex HMAC-SHA256 of <Code>{'<timestamp>.<body>'}</Code> with the key. The receiver should compute it and compare, and refuse a timestamp more than a few minutes old. A test has <Code>"test": true</Code>. A delivery that fails is tried again after 10 seconds, a minute, 5 minutes, 30 minutes and 2 hours, then dropped. Redirects aren’t followed.
+                  It has the header <Code>X-OPF-Timestamp</Code>, in Unix seconds. When the webhook has a key, it also has <Code>X-OPF-Signature: sha256=…</Code>, the hex HMAC-SHA256 of <Code>{'<timestamp>.<body>'}</Code> with the key. The receiver should compute it and compare, and refuse a timestamp more than a few minutes old. A test has <Code>"test": true</Code>. A delivery that fails is tried again after 10 seconds, a minute, 5 minutes, 30 minutes and 2 hours, then dropped. Redirects aren’t followed.
                 </Text>
               </Stack>
             </Accordion.Panel>

@@ -143,11 +143,11 @@ export function Connections() {
         description={
           count === undefined
             ? 'Reading pf’s state table…'
-            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table, the busiest first. A connection through the firewall has one on each side.${canOperate ? ' Closing one ends it at once; the device can reconnect if the rules allow.' : ''}`
+            : `${count.toLocaleString()}${data?.truncated ? '+' : ''} entries in pf’s state table, busiest first. A connection through the firewall has two entries, one where it comes in and one where it goes out.${canOperate ? ' Closing a connection ends it at once. The device can connect again if the rules allow it.' : ''}`
         }
       />
       {(error || data?.error) && <Alert color="red" variant="light" mb="md">{data?.error ?? error}</Alert>}
-      {data?.truncated && <Alert color="yellow" variant="light" mb="md">The table has more than {data.read.toLocaleString()} entries; OPF reads that many, so a filter may not find a newer one.</Alert>}
+      {data?.truncated && <Alert color="yellow" variant="light" mb="md">The table has more than {data.read.toLocaleString()} entries. OPF reads only the first {data.read.toLocaleString()}, and a filter may miss newer connections.</Alert>}
       <Group mb="md" gap="sm">
         <TextInput placeholder="Filter by address" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} style={{ flex: '1 1 240px' }} />
         <SegmentedControl

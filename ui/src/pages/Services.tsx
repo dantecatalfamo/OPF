@@ -85,14 +85,14 @@ function BootModal({ s, onClose }: { s?: ServiceStatus; onClose: () => void }) {
         <Switch label={daemon ? 'Start it at boot' : 'On at boot'} checked={v.enabled} onChange={(e) => setV({ ...v, enabled: e.currentTarget.checked })} />
         {s.name === 'sshd' && !v.enabled && (
           <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={16} />}>
-            After the next restart there’ll be no SSH: no remote shell and no sign-in access. This interface stays.
+            After the next restart, SSH won’t run. There’ll be no remote shell, and no one can use sign-in access. This web interface keeps working.
           </Alert>
         )}
         {daemon && (
           <>
             <TextInput
               label="Flags"
-              description="Empty: rc.d’s defaults."
+              description="Leave empty to use the service’s default flags."
               placeholder="Its defaults"
               disabled={!v.enabled}
               value={flags}
@@ -101,13 +101,13 @@ function BootModal({ s, onClose }: { s?: ServiceStatus; onClose: () => void }) {
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
             <Group grow>
-              <NumberInput label="Routing table" description="Empty: 0" min={0} max={255} allowDecimal={false} value={v.rtable ?? ''} onChange={(n) => setV({ ...v, rtable: typeof n === 'number' ? n : undefined })} />
-              <NumberInput label="Stop timeout" description="Seconds; empty: 30" min={1} max={3600} allowDecimal={false} value={v.timeout ?? ''} onChange={(n) => setV({ ...v, timeout: typeof n === 'number' ? n : undefined })} />
+              <NumberInput label="Routing table" description="Leave empty to use table 0" min={0} max={255} allowDecimal={false} value={v.rtable ?? ''} onChange={(n) => setV({ ...v, rtable: typeof n === 'number' ? n : undefined })} />
+              <NumberInput label="Stop timeout" description="In seconds. Leave empty for 30." min={1} max={3600} allowDecimal={false} value={v.timeout ?? ''} onChange={(n) => setV({ ...v, timeout: typeof n === 'number' ? n : undefined })} />
             </Group>
           </>
         )}
         <Text size="xs" c="dimmed">
-          Applied with your other changes, into <Mono>/etc/rc.conf.local</Mono>; it takes effect at the next boot. Start or stop it now from its menu.
+          This is written into <Mono>/etc/rc.conf.local</Mono> when you apply your other changes, and takes effect at the next boot. To start or stop the service now, use its menu.
         </Text>
         <Group justify="space-between">
           {current ? <Button variant="subtle" color="gray" onClick={() => { set(`${s.name}: back to the system’s boot setting`); onClose(); }}>Back to the system’s setting</Button> : <span />}
@@ -197,12 +197,12 @@ function DetailDrawer({ name, onClose, onAction }: { name?: string; onClose: () 
                 ))}
               </Table.Tbody>
             </Table>
-            <Text size="xs" c="dimmed" mt={4}>As rcctl get has them: rc.conf’s defaults, then rc.conf.local.</Text>
+            <Text size="xs" c="dimmed" mt={4}>As rcctl get reports them: rc.conf’s defaults, overridden by rc.conf.local.</Text>
           </div>
           <div>
             <SectionTitle right={<Anchor component={Link} to={`/system/logs?log=${d.logName}`} size="xs">Open {d.logName}</Anchor>}>Its recent log</SectionTitle>
             {d.log.length ? <RecentLog lines={d.log.slice(0, 20)} /> : null}
-            {d.log.length ? null : (              <Empty>Nothing from it in {d.logName} lately.</Empty>
+            {d.log.length ? null : (              <Empty>Nothing from this service in {d.logName} lately.</Empty>
             )}
           </div>
         </Stack>
@@ -266,8 +266,8 @@ export function ServicesPage() {
       <PageHeader
         title="Services"
         description={readOnly
-          ? 'The base system’s services: what each is, whether it starts at boot, and whether it’s running.'
-          : 'The base system’s services: what each is, whether it starts at boot, and whether it’s running. Starting and stopping happen at once; whether one starts at boot is a change you review and apply, written into rc.conf.local.'}
+          ? 'The base system’s services: what each one does, whether it starts at boot, and whether it’s running.'
+          : 'The base system’s services: what each one does, whether it starts at boot, and whether it’s running. Starting and stopping take effect at once. Whether a service starts at boot is a change you review and apply, and OPF writes it into rc.conf.local.'}
       />
       {error && <Alert color="red" variant="light" mb="md">{error}</Alert>}
       {data?.errors.map((e) => <Alert key={e} color="yellow" variant="light" mb="md">{e}</Alert>)}
@@ -308,7 +308,7 @@ export function ServicesPage() {
                           <Table.Td>
                             <Anchor component="button" type="button" className="mono" size="sm" onClick={() => setDetail(s.name)}>{s.name}</Anchor>
                             <Text size="xs" c="dimmed">
-                              {s.description || 'Not one of the base system’s'}
+                              {s.description || 'Not part of the base system'}
                               {s.managedAt && !readOnly && <> · <Anchor component={Link} to={s.managedAt} size="xs">set up on its page</Anchor></>}
                             </Text>
                           </Table.Td>
@@ -339,7 +339,7 @@ export function ServicesPage() {
         })}
       </Stack>
       <Text size="xs" c="dimmed" mt="sm">
-        OPF itself and pf aren’t stopped from here, and services set up on their own pages start and stop with their settings there. Every start, stop and restart is
+        You can’t stop OPF or pf from here. Services that have their own page start and stop with their settings there. Every start, stop and restart is recorded
         in <Anchor component={Link} to="/monitoring/events" size="xs">the events</Anchor>, with who did it.
       </Text>
       <DetailDrawer name={detail} onClose={() => setDetail(undefined)} onAction={act} />
@@ -349,10 +349,10 @@ export function ServicesPage() {
           <Stack>
             {confirm.s.name === 'sshd' ? (
               <Alert color="yellow" variant="light" icon={<IconAlertTriangle size={16} />}>
-                No new SSH connections until it’s started again: no remote shell, and no one can sign in for sign-in access. Connections open now stay.
+                Until sshd is started again, no new SSH connections can be made. That means no remote shell, and no one can sign in for sign-in access. Connections that are open now stay open.
               </Alert>
             ) : (
-              <Text size="sm">{confirm.s.description}. It stays stopped until it’s started again{confirm.s.enabled ? ', or the next boot' : ''}.</Text>
+              <Text size="sm">{confirm.s.description}. It stays stopped until someone starts it again{confirm.s.enabled ? ' or the machine next boots' : ''}.</Text>
             )}
             <Code>rcctl stop {confirm.s.name}</Code>
             <Group justify="flex-end">

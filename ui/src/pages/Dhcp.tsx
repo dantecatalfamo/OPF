@@ -55,7 +55,7 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
         <Stack>
           {router && form.values.enabled && (
             <Alert color="yellow" variant="light" p="sm">
-              {iface.name} has a router on it ({router.name}{router.address !== 'dhcp' ? `, ${router.address}` : ''}), which probably gives out addresses already. Two DHCP servers on one network hand out clashing addresses: leave this off unless that router’s is turned off.
+              {iface.name} has another router on it, {router.name}{router.address !== 'dhcp' ? ` at ${router.address}` : ''}. It probably hands out addresses already. Two DHCP servers on one network hand out clashing addresses. Leave this off unless that router’s DHCP server is turned off.
             </Alert>
           )}
           <Group grow align="flex-start">
@@ -76,8 +76,8 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
           </Stack>
           <Text size="xs" c="dimmed">
             {staged.system.ntp?.serveOn?.includes(iface.id) && !handConfigured(staged, 'ntp')
-              ? <>Devices are told to ask this firewall ({iface.ipv4.address}) the time, as set under <Anchor component={Link} to="/system/general#time" size="xs">Time</Anchor>.</>
-              : <>Devices aren’t told a time server. <Anchor component={Link} to="/system/general#time" size="xs">Serving time</Anchor> to {iface.name} tells them to ask this firewall.</>}
+              ? <>Devices are told to get the time from this firewall at {iface.ipv4.address}. Change this under <Anchor component={Link} to="/system/general#time" size="xs">Time</Anchor>.</>
+              : <>Devices aren’t told about a time server. To have them get the time from this firewall, add {iface.name} under <Anchor component={Link} to="/system/general#time" size="xs">Serving time</Anchor>.</>}
           </Text>
           <Group justify="space-between">
             <FileLink path="/etc/dhcpd.conf" />
@@ -118,7 +118,7 @@ function ReservationModal({ opened, onClose, iface, scope, initial }: {
       ip: (v) => {
         if (!inSubnet(v, iface.ipv4.address!, iface.ipv4.prefix!)) return `Must be inside ${iface.name}’s network`;
         if (v === iface.ipv4.address) return 'That’s the firewall’s own address';
-        if (inRange(v, scope)) return `DHCP hands out ${scope.rangeStart} to ${scope.rangeEnd}; pick an address outside that, like ${freeAddress(iface, scope)}`;
+        if (inRange(v, scope)) return `DHCP hands out ${scope.rangeStart} to ${scope.rangeEnd}. Pick an address outside that range, like ${freeAddress(iface, scope)}`;
         return scope.reservations.some((r) => r.ip === v) ? 'Already reserved' : null;
       },
     },
@@ -147,7 +147,7 @@ function ReservationModal({ opened, onClose, iface, scope, initial }: {
           <TextInput label="Hardware (MAC) address" placeholder="00:11:22:33:44:55" styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }} {...form.getInputProps('mac')} />
           <TextInput
             label="IP address"
-            description={moves ? `It has ${initial!.ip} now, from the range DHCP hands out; it moves to this address the next time it renews its lease.` : undefined}
+            description={moves ? `It has ${initial!.ip} now, from the range DHCP hands out. It moves to this address the next time it renews its lease.` : undefined}
             placeholder={freeAddress(iface, scope)}
             styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             {...form.getInputProps('ip')}
@@ -213,7 +213,7 @@ export function Dhcp() {
       <>
         <PageHeader title="DHCP server" description="Hands out addresses to devices as they join each network." />
         <HandConfigured area="dhcp" />
-        <Card><Empty>No inside network has a fixed address, which a DHCP server needs.</Empty></Card>
+        <Card><Empty>No inside network has a fixed address. A DHCP server needs one.</Empty></Card>
       </>
     );
   }
