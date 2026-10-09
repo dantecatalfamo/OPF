@@ -13,7 +13,7 @@ export function ProtoBadge({ proto }: { proto: string }) {
 }
 
 /** Which way: in, arriving (an arrow down and in, yellow), or out,
- *  leaving (an arrow up and out, teal); words says it, "In on LAN" or "To". */
+ *  leaving (an arrow up and out, teal); words says it, "In on LAN" or "Outgoing". */
 export function DirLabel({ dir, children }: { dir: 'in' | 'out'; children: React.ReactNode }) {
   const In = dir === 'in';
   const Arrow = In ? IconArrowDownLeft : IconArrowUpRight;

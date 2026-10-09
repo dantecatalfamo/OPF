@@ -359,7 +359,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
           <Table verticalSpacing={6} highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={130}>Way</Table.Th>
+                <Table.Th w={160}>Direction</Table.Th>
                 <Table.Th>Other end</Table.Th>
                 <Table.Th w={100}>State</Table.Th>
                 <Table.Th w={90} ta="right">Data</Table.Th>
@@ -371,9 +371,9 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                 return (
                   <Table.Tr key={c.key}>
                     <Table.Td>
-                      <Tooltip label={c.dir === 'out' ? `This device opened it, from ${c.ownEnd}` : `Opened to this device, at ${c.ownEnd}`}>
+                      <Tooltip label={c.dir === 'out' ? `Outgoing: this device opened it to the other end, from ${c.ownEnd}` : `Incoming: the other end opened it to this device, at ${c.ownEnd}`}>
                         <Group gap={8} wrap="nowrap">
-                          <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'To' : 'From'}</DirLabel>
+                          <DirLabel dir={c.dir === 'out' ? 'out' : 'in'}>{c.dir === 'out' ? 'Outgoing' : 'Incoming'}</DirLabel>
                           <ProtoBadge proto={c.proto} />
                         </Group>
                       </Tooltip>
@@ -470,7 +470,7 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
             <Table.Thead>
               <Table.Tr>
                 <Table.Th w={96}>When</Table.Th>
-                <Table.Th w={124}>Way</Table.Th>
+                <Table.Th w={154}>Direction</Table.Th>
                 <Table.Th>Other end</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -485,9 +485,9 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
                       <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Tooltip label={fromOwn ? `Sent by this device, from ${ownFull}` : `Sent to this device, at ${ownFull}`}>
+                      <Tooltip label={fromOwn ? `Outgoing: this device sent it to the other end, from ${ownFull}` : `Incoming: the other end sent it to this device, at ${ownFull}`}>
                         <Group gap={8} wrap="nowrap">
-                          <DirLabel dir={fromOwn ? 'out' : 'in'}>{fromOwn ? 'To' : 'From'}</DirLabel>
+                          <DirLabel dir={fromOwn ? 'out' : 'in'}>{fromOwn ? 'Outgoing' : 'Incoming'}</DirLabel>
                           {e.proto && <ProtoBadge proto={protoGroup(e.proto)} />}
                         </Group>
                       </Tooltip>
