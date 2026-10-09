@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { ActionIcon, Alert, Badge, Button, Card, Fieldset, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { ActionIcon, Alert, Anchor, Badge, Button, Card, Fieldset, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconBookmark, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
@@ -74,6 +74,11 @@ function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
             />
             {form.values.dns === 'custom' && <TagsInput placeholder="9.9.9.9" {...form.getInputProps('dnsServers')} />}
           </Stack>
+          <Text size="xs" c="dimmed">
+            {staged.system.ntp?.serveOn?.includes(iface.id) && !handConfigured(staged, 'ntp')
+              ? <>Devices are told to ask this firewall ({iface.ipv4.address}) the time, as set under <Anchor component={Link} to="/system/general#time" size="xs">Time</Anchor>.</>
+              : <>Devices aren’t told a time server. <Anchor component={Link} to="/system/general#time" size="xs">Serving time</Anchor> to {iface.name} tells them to ask this firewall.</>}
+          </Text>
           <Group justify="space-between">
             <FileLink path="/etc/dhcpd.conf" />
             <Button type="submit" disabled={!form.isDirty()}>Save</Button>

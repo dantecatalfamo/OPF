@@ -43,6 +43,8 @@ export function labelOwner(m: Model, label: string | undefined): LabelOwner | un
       return iface && { text: `WireGuard: into ${iface.name}, as OPF`, to: `/services/wireguard/${iface.id}` };
     case 'vpn-only':
       return iface && { text: `WireGuard: ${iface.name} (devices kept to this VPN)`, to: `/services/wireguard/${iface.id}` };
+    case 'ntp':
+      return iface && { text: `Time for ${iface.name}`, to: '/system/general#time' };
     case 'antispoof':
       return iface && { text: `Antispoof: ${iface.name}`, to: `/interfaces/${iface.id}` };
     case 'builtin':

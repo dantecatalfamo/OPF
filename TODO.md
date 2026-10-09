@@ -983,13 +983,13 @@ in 7.9 has RPZ, response policy zones, through its respip module):
       requests to a server elsewhere (a Windows domain's, a central
       one) instead of serving them, per interface, exclusive of OPF's
       own DHCP server on it.
-- [ ] **Time for the network:** ntpd can serve time to the inside
-      networks (`listen on` their addresses, a pf rule letting them
-      in), and DHCP can tell devices to use it (option 42,
-      `ntp-servers`), as it does for DNS. System › General › Time
-      already writes `listen on`, but the pf rule is the admin's. A switch per network, like
-      DNS resolver › Answer on, refusing to serve until ntpd is
-      synced.
+- [x] **Time for the network:** System › General › Time › Serve
+      time to: per network, ntpd listens on its address, a pf rule
+      (not quick, so the network's own rules still decide) lets its
+      devices ask, and its DHCP scope hands out `ntp-servers`. Until
+      ntpd has synced it answers with the alarm leap indicator, which
+      clients ignore, so nothing more is needed to keep an unsynced
+      clock from being served.
 
 ## Services
 

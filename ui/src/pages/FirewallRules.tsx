@@ -12,7 +12,7 @@ import { useLive } from '../lib/live';
 import type { RuleCountersResource } from '../lib/api';
 import { useDerived } from '../lib/generated';
 import type { Model, Rule, RuleInput } from '../model/types';
-import { endpointLabel, ifaceName, portLabel, protocolLabel } from '../lib/labels';
+import { endpointLabel, ifaceName, portLabel, protocolLabel, servable } from '../lib/labels';
 import { formatBytes, formatCount } from '../lib/format';
 import { rawAction } from '../lib/pfcheck';
 import { isFloating } from '../lib/rules';
@@ -213,7 +213,10 @@ export function FirewallRules() {
   const inTab = (r: Rule) => !r.authpf && (floating ? isFloating(r) : !isFloating(r) && r.interfaces[0] === current!.id);
   const rules = staged.firewall.rules.filter(inTab);
   // Every row's matches over the last day, in one request.
-  const builtins = ['pf.builtin.anti-lockout', 'pf.builtin.block-private', 'pf.builtin.block-bogons', 'pf.builtin.default-block'];
+  // Not quick, so it's checked before the rules here but they decide:
+  // pf.NTPServed.
+  const servesTime = !!current && servable(current) && !!staged.system.ntp?.serveOn?.includes(current.id) && !staged.system.unmanaged?.includes('ntp');
+  const builtins = ['pf.builtin.anti-lockout', 'pf.builtin.block-private', 'pf.builtin.block-bogons', 'pf.builtin.default-block', ...(servesTime ? [`pf.ntp.${current!.id}`] : [])];
   const { data: history } = useHistory([...builtins, ...rules.filter((r) => r.enabled).map((r) => `pf.rule.${r.id}`)], SPARK_RANGE, SPARK_STEP);
   const tabName = floating ? 'floating' : current!.name;
   const [drawer, setDrawer] = useState<{ open: boolean; rule: Rule | null }>({ open: false, rule: null });
@@ -307,6 +310,10 @@ export function FirewallRules() {
                 )}
                 {wan?.blockPrivate && <SystemRow action="block" description="Block private networks" source="<private>" destination="Any" pf={`block in log quick on $${wan.id} from <private>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-private']} series="pf.builtin.block-private" history={history} />}
                 {wan?.blockBogons && <SystemRow action="block" description="Block bogon networks" source="<bogons>" destination="Any" pf={`block in log quick on $${wan.id} from <bogons>`} showPf={showPf} to={`/interfaces/${wan.id}`} counter={counters?.labels['opf:builtin:block-bogons']} series="pf.builtin.block-bogons" history={history} />}
+                {current && servesTime && (
+                  <SystemRow action="pass" description="Time: devices may ask the firewall the time, unless a rule below blocks them" source={`${current.name} network`} destination={`${current.name} address`} port="123 (UDP)"
+                    pf={`pass in on $${current.id} inet proto udp from ($${current.id}:network) to ($${current.id}) port 123`} showPf={showPf} to="/system/general#time" counter={counters?.labels[`opf:ntp:${current.id}`]} series={`pf.ntp.${current.id}`} history={history} />
+                )}
                 {wan && staged.firewall.forwards.some((f) => f.enabled && f.iface === wan.id) && (
                   <SystemRow action="pass" description={`Port forwards (${staged.firewall.forwards.filter((f) => f.enabled && f.iface === wan.id).length})`} source="See NAT" destination="Forward targets" pf="pass in quick on $wan … rdr-to …" showPf={showPf} to="/firewall/nat" />
                 )}

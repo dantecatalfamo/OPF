@@ -49,6 +49,11 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
   const gwIds = new Set(gateways.map((g) => g.id));
 
   if (m.dhcp.some((s) => s.iface === id)) out.push({ what: `DHCP server on ${name}`, effect: 'deleted' });
+  if (m.dns.interfaces?.includes(id)) {
+    // Its list emptied would be every network, so it's turned off.
+    out.push({ what: 'DNS resolver', effect: 'changed', detail: m.dns.interfaces.length === 1 && m.dns.enabled ? `turned off: it only answers on ${name}` : `no longer answers on ${name}` });
+  }
+  if (m.system.ntp?.serveOn?.includes(id)) out.push({ what: 'Time', effect: 'changed', detail: `no longer served to ${name}` });
   for (const r of m.firewall.rules) {
     const label = `Firewall rule “${r.description || r.id}”`;
     const onIt = r.interfaces.includes(id);
@@ -114,10 +119,15 @@ export function withoutInterface(m: Model, id: string): Model {
       }
       return next;
     });
+  const dnsOn = m.dns.interfaces?.filter((i) => i !== id);
+  const serveOn = m.system.ntp?.serveOn?.filter((i) => i !== id);
   return {
     ...m,
     interfaces: m.interfaces.filter((i) => i.id !== id),
     dhcp: m.dhcp.filter((s) => s.iface !== id),
+    // An emptied list would mean every network to the resolver.
+    dns: m.dns.interfaces?.includes(id) && !dnsOn?.length ? { ...m.dns, enabled: false, interfaces: undefined } : { ...m.dns, interfaces: dnsOn },
+    system: m.system.ntp?.serveOn ? { ...m.system, ntp: { ...m.system.ntp, serveOn } } : m.system,
     routing: {
       ...m.routing,
       gateways: m.routing.gateways.filter((g) => !gwIds.has(g.id)),

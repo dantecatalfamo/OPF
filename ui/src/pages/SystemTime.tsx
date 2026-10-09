@@ -1,11 +1,14 @@
 // System › General: ntpd, which keeps the firewall's clock (and, when
 // asked, other devices' clocks) right: /etc/ntpd.conf, ntpd.conf(5).
 import { useEffect, type ReactNode } from 'react';
-import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Fieldset, Group, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { Link } from 'react-router';
+import { Accordion, ActionIcon, Alert, Anchor, Badge, Button, Card, Checkbox, Fieldset, Group, MultiSelect, NumberInput, Select, Stack, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useStore } from '../model/store';
 import { useRole } from '../lib/session';
+import { useLive } from '../lib/live';
+import { servable } from '../lib/labels';
 import type { NtpConstraint, NtpListen, NtpSensor, NtpServer, NtpSettings, SystemSettings } from '../model/types';
 import { SectionTitle } from '../components/ui';
 import { FileLink } from './ConfigFiles';
@@ -16,6 +19,7 @@ interface Values {
   servers: NtpServer[];
   sensors: NtpSensor[];
   constraints: NtpConstraint[];
+  serveOn: string[];
   listen: NtpListen[];
   query4: string;
   query6: string;
@@ -43,6 +47,7 @@ function pick(s: SystemSettings): Values {
     servers: (n.servers ?? []).map(blank.server),
     sensors: (n.sensors ?? []).map(blank.sensor),
     constraints: (n.constraints ?? []).map(blank.constraint),
+    serveOn: n.serveOn ?? [],
     listen: (n.listen ?? []).map(blank.listen),
     query4: q.find(isV4) ?? '',
     query6: q.find((a) => !isV4(a)) ?? '',
@@ -58,6 +63,7 @@ function settings(v: Values): NtpSettings | undefined {
     servers: v.servers.map((s) => clean({ address: s.address.trim(), one: s.one, trusted: s.trusted, weight: num(s.weight) })),
     sensors: v.sensors.map((s) => clean({ device: s.device.trim(), correction: num(s.correction), refid: s.refid?.trim(), stratum: num(s.stratum), trusted: s.trusted, weight: num(s.weight) })),
     constraints: v.constraints.map((c) => clean({ url: c.url.trim(), every: c.every, addresses: c.every ? undefined : c.addresses })),
+    serveOn: v.serveOn,
     listen: v.listen.map((l) => clean({ address: l.address.trim(), rtable: num(l.rtable) })),
     queryFrom: [v.query4.trim(), v.query6.trim()].filter(Boolean),
   });
@@ -91,7 +97,9 @@ function Add({ onClick, children }: { onClick: () => void; children: ReactNode }
 export function TimeSettings() {
   const { staged, edit } = useStore();
   const { canEdit } = useRole();
+  const { data: live } = useLive('system');
   const sys = staged.system;
+  const insides = staged.interfaces.filter((i) => i.role !== 'wan' && !i.wireguard?.exit);
   const hand = handConfigured(staged, 'ntp');
   const form = useForm<Values>({
     initialValues: pick(sys),
@@ -128,15 +136,16 @@ export function TimeSettings() {
     const now = ntp ?? {};
     const parts: string[] = [];
     const part = (what: string, before: unknown, after: unknown, list: string[]) => {
-      if (JSON.stringify(before ?? []) !== JSON.stringify(after ?? [])) parts.push(`${what}: ${list.join(', ') || 'none'}`);
+      if (JSON.stringify(before ?? []) !== JSON.stringify(after ?? [])) parts.push(`${what} ${list.join(', ') || 'none'}`);
     };
-    part('time servers', sys.ntpServers, v.ntpServers, v.ntpServers);
+    part('servers', sys.ntpServers, v.ntpServers, v.ntpServers);
     part('servers with options', was.servers, now.servers, (now.servers ?? []).map((s) => s.address));
     part('sensors', was.sensors, now.sensors, (now.sensors ?? []).map((s) => s.device));
     part('constraints', was.constraints, now.constraints, (now.constraints ?? []).map((c) => c.url));
-    part('serving time on', was.listen, now.listen, (now.listen ?? []).map((l) => l.address));
-    part('asking from', was.queryFrom, now.queryFrom, now.queryFrom ?? []);
-    edit('system', parts.length ? `Time ${parts.join('; ')}` : 'Updated the time settings', (m) => {
+    part('served to', was.serveOn, now.serveOn, (now.serveOn ?? []).map((id) => staged.interfaces.find((i) => i.id === id)?.name ?? id));
+    part('also served on', was.listen, now.listen, (now.listen ?? []).map((l) => l.address));
+    part('asked from', was.queryFrom, now.queryFrom, now.queryFrom ?? []);
+    edit('system', parts.length ? `Time: ${parts.join('; ')}` : 'Updated the time settings', (m) => {
       const system = { ...m.system, ntpServers: v.ntpServers };
       if (ntp) system.ntp = ntp;
       else delete system.ntp;
@@ -151,6 +160,13 @@ export function TimeSettings() {
       <form onSubmit={save}>
         <SectionTitle>Time</SectionTitle>
         <HandConfigured area="ntp" compact />
+        {live && (
+          <Text size="sm" mb="sm" c={live.time?.synced ? undefined : 'dimmed'}>
+            {!live.time ? 'ntpd isn’t running.'
+              : live.time.synced ? `The clock is synced${live.time.source ? ` to ${live.time.source}` : ''}${live.time.offsetMs !== undefined ? `, ${Math.abs(live.time.offsetMs) < 10 ? (Math.round(live.time.offsetMs * 10) / 10 || 0).toFixed(1) : Math.round(live.time.offsetMs)} ms off` : ''}.`
+                : 'ntpd hasn’t synced the clock yet.'}
+          </Text>
+        )}
         <Fieldset variant="unstyled" disabled={hand || !canEdit}>
           <Stack gap="md">
             <TagsInput
@@ -229,9 +245,21 @@ export function TimeSettings() {
                 )}
               </Part>
 
-              <Part value="serve" title="Serving time" count={v.listen.length}>
+              <Part value="serve" title="Serving time" count={v.serveOn.length + v.listen.length}>
+                <MultiSelect
+                  label="Serve time to"
+                  placeholder={v.serveOn.length ? undefined : 'No network'}
+                  description="ntpd answers on each network’s address, the firewall lets its devices ask (a rule on that network that blocks them still does), and the DHCP server tells them to. Until ntpd has synced, its answers say so, and devices don’t take the time from it."
+                  inputWrapperOrder={['label', 'input', 'description', 'error']}
+                  data={insides.map((i) => ({
+                    value: i.id, disabled: !servable(i),
+                    label: servable(i) ? i.name : `${i.name} (${!i.enabled ? 'off' : 'gets its address by DHCP'})`,
+                  }))}
+                  {...form.getInputProps('serveOn')}
+                />
+                <Text size="sm" fw={500} mt="xs">Other addresses</Text>
                 <Text size="xs" c="dimmed">
-                  The addresses ntpd answers time queries on, or * for every one; with none, it serves no one. A firewall rule still has to pass UDP port 123 to it.
+                  More addresses ntpd answers on, or * for every one. For these, a <Anchor component={Link} to="/firewall/rules" size="xs">firewall rule</Anchor> has to pass UDP port 123 to it.
                 </Text>
                 {v.listen.map((_, i) => (
                   <Group key={i} gap="xs" align="flex-start">

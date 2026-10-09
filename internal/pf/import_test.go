@@ -129,7 +129,7 @@ constraint from "9.9.9.9"
 constraint from "2620:fe::fe"
 constraints from "www.google.com"
 `
-	if got := ntpdConf(m.System); got != want {
+	if got := ntpdConf(m); got != want {
 		t.Errorf("ntpd.conf:\n%s", got)
 	}
 	if a := areas[AreaDNS]; a.Running || !a.Managed || m.DNS.Enabled || !m.DNS.DNSSEC {
@@ -431,7 +431,7 @@ constraint from "https://9.9.9.9/dns" "2620:fe::fe" "9.9.9.9"
 		t.Errorf("servers %v", m.System.NTPServers)
 	}
 	// A keyword as a name stays quoted.
-	if conf := ntpdConf(m.System); !strings.Contains(conf, `servers "weight"`+"\n") || !strings.HasPrefix(conf, "listen on 10.0.0.1 rtable 2\nlisten on *\nquery from 192.0.2.9\nquery from 2001:db8::1\n") {
+	if conf := ntpdConf(m); !strings.Contains(conf, `servers "weight"`+"\n") || !strings.HasPrefix(conf, "listen on 10.0.0.1 rtable 2\nlisten on *\nquery from 192.0.2.9\nquery from 2001:db8::1\n") {
 		t.Errorf("ntpd.conf:\n%s", conf)
 	}
 
@@ -508,7 +508,7 @@ func FuzzImportNTP(f *testing.F) {
 			t.Fatalf("imported invalid: %v", v.errs)
 		}
 		again := &Model{}
-		a, notes := importNTP(again, ImportSources{Files: map[string]string{NTPdConfPath: header + "\n" + ntpdConf(m.System)}})
+		a, notes := importNTP(again, ImportSources{Files: map[string]string{NTPdConfPath: header + "\n" + ntpdConf(m)}})
 		for _, n := range notes {
 			if n.Kind == NoteLost && n.Line != 0 {
 				t.Fatalf("OPF's own file: %+v", n)
@@ -523,4 +523,62 @@ func FuzzImportNTP(f *testing.F) {
 			t.Fatalf("read back\n%s\n%s", x, y)
 		}
 	})
+}
+
+// Serving time to a network: ntpd answers on its address, pf lets its
+// devices ask, and DHCP tells them to.
+func TestServeTime(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	m.System.NTP = &NTPSettings{ServeOn: []string{"lan"}, Listen: []NTPListen{{Address: "192.168.1.1"}, {Address: "10.8.0.1"}}}
+	if errs := Validate(m); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	files := map[string]string{}
+	for _, f := range GenerateFiles(m) {
+		files[f.Path] = f.Content
+	}
+	// The address once, though it's also listed by hand.
+	if conf := files[NTPdConfPath]; strings.Count(conf, "listen on 192.168.1.1\n") != 1 || !strings.Contains(conf, "listen on 10.8.0.1\n") {
+		t.Errorf("ntpd.conf:\n%s", conf)
+	}
+	rule := `pass in on $lan inet proto udp from ($lan:network) to ($lan) port 123 label "opf:ntp:lan"`
+	if pfConf := files["/etc/pf.conf"]; !strings.Contains(pfConf, rule+"\n") || strings.Contains(pfConf, "opf:ntp:iot") {
+		t.Errorf("pf.conf has no rule for lan, or one for iot:\n%s", pfConf)
+	}
+	dhcpd := files[DHCPdConfPath]
+	lan, iot, _ := strings.Cut(dhcpd, "# IoT")
+	if !strings.Contains(lan, "option ntp-servers 192.168.1.1;") || strings.Contains(iot, "ntp-servers") {
+		t.Errorf("dhcpd.conf:\n%s", dhcpd)
+	}
+	// An interface turned off is kept, and served nothing.
+	off, _ := loadSampleModel(t)
+	off.System.NTP = &NTPSettings{ServeOn: []string{"iot"}}
+	off.Interfaces[slices.IndexFunc(off.Interfaces, func(i Iface) bool { return i.ID == "iot" })].Enabled = false
+	off.DHCP = slices.DeleteFunc(off.DHCP, func(s DHCPScope) bool { return s.Iface == "iot" })
+	if errs := Validate(off); len(errs) > 0 || len(NTPServed(off)) > 0 {
+		t.Errorf("off: %v %v", errs, NTPServed(off))
+	}
+	if kind, id, ok := ParseLabel("opf:ntp:lan"); !ok || kind != LabelNTP || id != "lan" {
+		t.Error("the label isn't OPF's")
+	}
+
+	for _, c := range []struct {
+		name, path string
+		on         []string
+		unmanaged  bool
+	}{
+		{"the WAN", "system.ntp.serveOn[0]", []string{"wan"}, false},
+		{"no such interface", "system.ntp.serveOn[0]", []string{"nope"}, false},
+		{"twice", "system.ntp.serveOn[1]", []string{"lan", "lan"}, false},
+		{"ntpd configured by hand", "system.ntp.serveOn[0]", []string{"lan"}, true},
+	} {
+		m, _ := loadSampleModel(t)
+		m.System.NTP = &NTPSettings{ServeOn: c.on}
+		if c.unmanaged {
+			m.System.Unmanaged = []string{AreaNTP}
+		}
+		if !slices.ContainsFunc(Validate(m), func(e FieldError) bool { return e.Path == c.path }) {
+			t.Errorf("%s: %v", c.name, Validate(m))
+		}
+	}
 }

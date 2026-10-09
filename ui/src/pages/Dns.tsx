@@ -8,7 +8,8 @@ import { backend, useStore } from '../model/store';
 import type { LeaseNamesResource } from '../lib/api';
 import { formatAgo } from '../lib/format';
 import { useNow } from '../lib/useNow';
-import type { Dns as DnsSettings, Iface } from '../model/types';
+import type { Dns as DnsSettings } from '../model/types';
+import { servable } from '../lib/labels';
 import { isIPv4 } from '../lib/ip';
 import { Empty, Mono, PageHeader, SectionTitle } from '../components/ui';
 import { DeviceLink } from '../components/DeviceLink';
@@ -22,9 +23,7 @@ import { HandConfigured, handConfigured } from '../components/HandConfigured';
 type Settings = Omit<DnsSettings, 'overrides'>;
 
 // What changed in the resolver settings, for review and history.
-// Whether the resolver can answer on an interface (pf.DNSEligible): an
-// inside one with a fixed address, not a way out through a provider.
-const answerable = (i: Iface) => i.enabled && i.role !== 'wan' && !i.wireguard?.exit && i.ipv4.mode === 'static' && !!i.ipv4.address;
+const answerable = servable;
 
 const switches: [keyof Settings, string][] = [
   ['enabled', 'the DNS resolver'],

@@ -1,4 +1,9 @@
-import type { Endpoint, Model, Protocol } from '../model/types';
+import type { Endpoint, Iface, Model, Protocol } from '../model/types';
+
+/** Whether the firewall can answer DNS or serve time on an interface
+ *  (pf.DNSEligible, pf.NTPEligible): an inside one with a fixed address,
+ *  not a way out through a provider. */
+export const servable = (i: Iface) => i.enabled && i.role !== 'wan' && !i.wireguard?.exit && i.ipv4.mode === 'static' && !!i.ipv4.address;
 
 export function ifaceName(m: Model, id: string): string {
   return m.interfaces.find((i) => i.id === id)?.name ?? id;

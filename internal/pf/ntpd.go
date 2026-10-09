@@ -24,8 +24,13 @@ type NTPSettings struct {
 	// the servers give; an NTP server far off it is ignored. None, and
 	// ntpd believes the servers.
 	Constraints []NTPConstraint `json:"constraints,omitempty"`
-	// Listen are the addresses ntpd serves time on; none, it serves
-	// none. pf still has to let the queries in.
+	// ServeOn are the interfaces (ids) whose networks the firewall
+	// serves time to (NTPServed): ntpd answers on each one's address,
+	// pf lets the network ask it unless a rule on it says otherwise,
+	// and DHCP tells its devices to use it.
+	ServeOn []string `json:"serveOn,omitempty"`
+	// Listen are other addresses ntpd serves time on, for which pf has
+	// to be told by hand to let the queries in.
 	Listen []NTPListen `json:"listen,omitempty"`
 	// QueryFrom are the addresses ntpd asks the servers from: at most
 	// one IPv4 and one IPv6 address. Unset, the outgoing interface's.
@@ -108,13 +113,43 @@ func ntpdWord(s string) string {
 	return `"` + s + `"`
 }
 
-func ntpdConf(s SystemSettings) string {
+// NTPEligible is whether the firewall can serve time to an interface's
+// network: as for the resolver (DNSEligible), one inside, with a fixed
+// IPv4 address to listen on and a network to let in.
+func NTPEligible(i *Iface) bool { return DNSEligible(i) }
+
+// NTPServed are the interfaces the firewall serves time to.
+func NTPServed(m *Model) []Iface {
+	if m.System.NTP == nil || Unmanaged(m, AreaNTP) {
+		return nil
+	}
+	var out []Iface
+	for _, i := range m.Interfaces {
+		if NTPEligible(&i) && slices.Contains(m.System.NTP.ServeOn, i.ID) {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// ntpServes is whether the firewall serves time to the interface.
+func ntpServes(m *Model, id string) bool {
+	return slices.ContainsFunc(NTPServed(m), func(i Iface) bool { return i.ID == id })
+}
+
+func ntpdConf(m *Model) string {
+	s := m.System
 	n := s.NTP
 	if n == nil {
 		n = &NTPSettings{}
 	}
 	var lines []string
 	add := func(format string, args ...any) { lines = append(lines, fmt.Sprintf(format, args...)) }
+	for _, i := range NTPServed(m) {
+		if !slices.Contains(n.Listen, NTPListen{Address: i.IPv4.Address}) {
+			add("listen on %s", i.IPv4.Address)
+		}
+	}
 	for _, l := range n.Listen {
 		line := "listen on " + ntpdWord(l.Address)
 		if l.RTable != 0 {
@@ -238,6 +273,24 @@ func (v *validator) ntp() {
 		}
 		for j, a := range c.Addresses {
 			v.addr(at(p+".addresses", j), a, false)
+		}
+	}
+	seenOn := map[string]bool{}
+	for i, id := range n.ServeOn {
+		p := at("system.ntp.serveOn", i)
+		v.unique(p, seenOn, id, "interface")
+		f := v.ifaceRef(p, id)
+		switch {
+		case f == nil:
+		case Unmanaged(v.m, AreaNTP):
+			v.fail(p, "ntpd is configured by hand; OPF serves no time until it's handed over")
+		case f.Role == RoleWAN:
+			v.fail(p, "the firewall doesn't serve time to a WAN (%s)", f.Name)
+		case f.WireGuard != nil && f.WireGuard.Exit != nil:
+			v.fail(p, "%s is a way out through a VPN provider; the firewall doesn't serve time there", f.Name)
+		case !NTPEligible(f) && f.Enabled:
+			// Off, it's kept, and served again once it's on.
+			v.fail(p, "%s gets its address by DHCP; for now time is only served on interfaces with a fixed address", f.Name)
 		}
 	}
 	count("system.ntp.listen", len(n.Listen))

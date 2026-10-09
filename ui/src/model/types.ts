@@ -481,7 +481,9 @@ export interface NtpSettings {
   sensors?: NtpSensor[];
   /** HTTPS servers whose Date bounds the time servers' answers. */
   constraints?: NtpConstraint[];
-  /** Addresses ntpd serves time on; none, it serves none. */
+  /** Interfaces (ids) whose networks the firewall serves time to: ntpd answers on each one's address, pf lets the network ask, and DHCP tells its devices to. */
+  serveOn?: string[];
+  /** Other addresses ntpd serves time on; pf has to be told by hand to let the queries in. */
   listen?: NtpListen[];
   /** Addresses ntpd asks from: at most one IPv4 and one IPv6. */
   queryFrom?: string[];

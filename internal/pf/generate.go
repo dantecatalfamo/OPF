@@ -532,6 +532,7 @@ const (
 	LabelVPNIn     = "vpn-in"       // NAT into a tunnel from networks that may reach it, by tunnel id
 	LabelExit      = "exit"         // a way out through a VPN provider, by tunnel id
 	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
+	LabelNTP       = "ntp"          // devices asking the firewall the time, by interface id
 	// Counting each device's traffic (TrafficAccounting), by interface
 	// id: the devices in the table, and what came from or went to
 	// addresses that aren't in it yet.
@@ -564,7 +565,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf, LabelAuthpf:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelNTP, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf, LabelAuthpf:
 	default:
 		return "", "", false
 	}
@@ -1064,6 +1065,13 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	// never be reached.
 	add("pass out inet"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
 	add("pass out inet6"+label(LabelBuiltin, "self-out"), &Origin{Label: "This firewall's own traffic", To: "/firewall/settings"})
+	// Devices asking the firewall the time. Not quick, so a rule on
+	// the network can still refuse it.
+	for _, i := range NTPServed(m) {
+		described("Time: "+i.Name+"'s devices can ask the firewall the time", &Origin{Label: "Time for " + i.Name, To: "/system/general#time"},
+			fmt.Sprintf("pass in on $%s inet proto udp from %s to %s port 123%s", i.ID,
+				endpoint(Endpoint{Type: EndpointIface, Iface: i.ID, Part: PartNetwork}, m), endpoint(ifaceAddr(i.ID), m), label(LabelNTP, i.ID)))
+	}
 	if lan != nil {
 		described("Anti-lockout: the web UI and SSH stay reachable from the LAN", &Origin{Label: "Anti-lockout", To: fmt.Sprintf("/interfaces/%s", lan.ID)},
 			fmt.Sprintf("pass in quick on $%s proto tcp to %s port { 443 22 }%s", lan.ID, endpoint(ifaceAddr(lan.ID), m), label(LabelBuiltin, "anti-lockout")))
@@ -1383,6 +1391,9 @@ func GenerateDHCPdConf(m *Model) string {
 		lines = append(lines, fmt.Sprintf("subnet %s netmask %s {", networkAddr(iface.IPv4.Address, *iface.IPv4.Prefix), netmask(*iface.IPv4.Prefix)))
 		lines = append(lines, fmt.Sprintf("\toption routers %s;", iface.IPv4.Address))
 		lines = append(lines, fmt.Sprintf("\toption domain-name-servers %s;", dns))
+		if ntpServes(m, iface.ID) {
+			lines = append(lines, fmt.Sprintf("\toption ntp-servers %s;", iface.IPv4.Address))
+		}
 		lines = append(lines, fmt.Sprintf("\trange %s %s;", s.RangeStart, s.RangeEnd))
 		lines = append(lines, fmt.Sprintf("\tdefault-lease-time %d;", s.LeaseHours*3600))
 
@@ -1534,7 +1545,7 @@ func GenerateUnboundConf(m *Model) string {
 func GenerateFiles(m *Model) []GeneratedFile {
 	files := []GeneratedFile{
 		{Path: "/etc/myname", Content: fmt.Sprintf("%s.%s\n", m.System.Hostname, m.System.Domain)},
-		{Path: "/etc/ntpd.conf", Content: header + "\n" + ntpdConf(m.System)},
+		{Path: "/etc/ntpd.conf", Content: header + "\n" + ntpdConf(m)},
 		{Path: "/etc/pf.conf", Content: GeneratePfConf(m)},
 		{Path: "/etc/dhcpd.conf", Content: GenerateDHCPdConf(m)},
 		{Path: "/var/unbound/etc/unbound.conf", Content: GenerateUnboundConf(m)},
