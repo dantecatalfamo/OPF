@@ -249,7 +249,7 @@ export function TimeSettings() {
                 <MultiSelect
                   label="Serve time to"
                   placeholder={v.serveOn.length ? undefined : 'No network'}
-                  description="ntpd answers on each network’s address, the firewall lets its devices ask (a rule on that network that blocks them still does), and the DHCP server tells them to. Until ntpd has synced, its answers say so, and devices don’t take the time from it."
+                  description="ntpd answers on each network’s address, the firewall lets that network’s devices ask it, and the DHCP server tells them to use it. A rule of yours that blocks those devices still blocks them. Until ntpd has synced, its answers say so, and devices don’t take the time from it."
                   inputWrapperOrder={['label', 'input', 'description', 'error']}
                   data={insides.map((i) => ({
                     value: i.id, disabled: !servable(i),
