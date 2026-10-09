@@ -22,6 +22,8 @@ import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
+import { LogRule } from './FirewallLog';
+import { deviceName } from '../lib/labels';
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const kindWords: Record<DeviceInfo['kind'], string> = { device: 'Device', vpn: 'VPN device', address: 'Address only', firewall: 'This firewall' };
@@ -461,17 +463,20 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
   }, [addresses.join()]);
   const rows = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
   const names = useReverseNames(rows.map((r) => r.far.host), showNames);
+  const { applied } = useStore();
   return (
     <Card>
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
       {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : entries.length ? (
-        <Table.ScrollContainer minWidth={400}>
+        <Table.ScrollContainer minWidth={640}>
           <Table verticalSpacing={6} highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th w={130}>When</Table.Th>
                 <Table.Th w={160}>Direction</Table.Th>
                 <Table.Th>Other end</Table.Th>
+                <Table.Th>Rule</Table.Th>
+                <Table.Th>Logged on</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -481,7 +486,7 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
                 return (
                   <Table.Tr key={e.time + i}>
                     <Table.Td>
-                      <Text size="sm" fw={500} c={blocked ? 'red' : 'green'}>{blocked ? 'Blocked' : e.action === 'pass' ? 'Passed' : e.action}</Text>
+                      <Text size="sm" fw={500} c={blocked ? 'red' : e.action === 'pass' ? 'teal' : 'dimmed'}>{blocked ? 'Blocked' : e.action === 'pass' ? 'Allowed' : 'Matched'}</Text>
                       <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
                     </Table.Td>
                     <Table.Td>
@@ -505,6 +510,8 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
                         </Text>
                       )}
                     </Table.Td>
+                    <Table.Td><LogRule e={e} model={applied} /></Table.Td>
+                    <Table.Td><Text size="sm">{deviceName(applied, e.iface)}</Text></Table.Td>
                   </Table.Tr>
                 );
               })}
