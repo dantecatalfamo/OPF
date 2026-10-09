@@ -412,14 +412,6 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
 
 // The name of the end of a log entry that isn't this device, under it,
 // when it has one.
-function Names({ names, own, from, to }: { names: Map<string, string>; own: string[]; from?: string; to?: string }) {
-  const fromOwn = own.includes(hostOf(from) ?? '');
-  const far = fromOwn ? to : from;
-  const n = names.get(hostOf(far) ?? '');
-  if (!n) return null;
-  return <Text size="xs" c="dimmed" className="mono">{fromOwn ? 'to ' : 'from '}<Wrapped name={n} /></Text>;
-}
-
 function Events({ terms }: { terms: string[] }) {
   const [events, setEvents] = useState<OpfEvent[]>();
   useEffect(() => {
@@ -450,6 +442,16 @@ function Events({ terms }: { terms: string[] }) {
 // port: 192.168.1.5:443, [fd00::5]:53.
 const hasAddr = (field: string | undefined, a: string) => !!field && (field === a || field.startsWith(a + ':') || field.startsWith(a + '.') || field.startsWith(`[${a}]`));
 
+// A log entry from this device's side: which way it went and the other
+// end, like a connection. pf leaves a decoded packet's protocol and ends
+// unknown sometimes.
+function logView(e: FirewallLogEntry, own: string[]) {
+  const fromOwn = own.includes(hostOf(e.source) ?? '');
+  const far = splitEnd((fromOwn ? e.destination : e.source) ?? '');
+  const ownEnd = splitEnd((fromOwn ? e.source : e.destination) ?? '');
+  return { fromOwn, far, ownEnd, ownFull: (fromOwn ? e.source : e.destination) ?? '' };
+}
+
 function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames: boolean }) {
   const [entries, setEntries] = useState<FirewallLogEntry[]>();
   useEffect(() => {
@@ -457,26 +459,57 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
     backend.firewallLog().then((r) => live && setEntries(r.entries.filter((e) => addresses.some((a) => hasAddr(e.source, a) || hasAddr(e.destination, a)))), () => live && setEntries([]));
     return () => { live = false; };
   }, [addresses.join()]);
-  const names = useReverseNames((entries ?? []).slice(0, 15).flatMap((e) => [e.source, e.destination]), showNames);
+  const rows = (entries ?? []).slice(0, 15).map((e) => ({ e, ...logView(e, addresses) }));
+  const names = useReverseNames(rows.map((r) => r.far.host), showNames);
   return (
     <Card h="100%">
       <SectionTitle right={<Anchor component={Link} to="/firewall/log" size="xs">Firewall log</Anchor>}>Firewall log</SectionTitle>
       {!entries ? <Text size="sm" c="dimmed">Reading…</Text> : entries.length ? (
-        <Stack gap={4}>
-          {entries.slice(0, 15).map((e, i) => (
-            <Group key={e.time + i} gap="xs" wrap="nowrap" align="flex-start">
-              <Text size="xs" c="dimmed" w={110} style={{ flexShrink: 0 }}>{formatLogTime(e.time)}</Text>
-              <Text size="sm" c={e.action === 'block' ? 'red' : undefined}>{e.action}</Text>
-              {/* Lines wrap at the arrow, not inside an address; tcpdump
-                  leaves a decoded packet's protocol unknown. */}
-              <Text size="sm" className="mono">
-                {e.proto && <><span style={{ whiteSpace: 'nowrap' }}>{e.proto}</span> </>}
-                <span style={{ whiteSpace: 'nowrap' }}>{e.source}</span> → <span style={{ whiteSpace: 'nowrap' }}>{e.destination}</span>
-                <Names names={names} own={addresses} from={e.source} to={e.destination} />
-              </Text>
-            </Group>
-          ))}
-        </Stack>
+        <Table.ScrollContainer minWidth={400}>
+          <Table verticalSpacing={6} highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={96}>When</Table.Th>
+                <Table.Th w={124}>Way</Table.Th>
+                <Table.Th>Other end</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map(({ e, fromOwn, far, ownEnd, ownFull }, i) => {
+                const name = names.get(far.host);
+                const blocked = e.action === 'block';
+                return (
+                  <Table.Tr key={e.time + i}>
+                    <Table.Td>
+                      <Text size="sm" fw={500} c={blocked ? 'red' : 'green'}>{blocked ? 'Blocked' : e.action === 'pass' ? 'Passed' : e.action}</Text>
+                      <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Tooltip label={fromOwn ? `Sent by this device, from ${ownFull}` : `Sent to this device, at ${ownFull}`}>
+                        <Group gap={8} wrap="nowrap">
+                          <DirLabel dir={fromOwn ? 'out' : 'in'}>{fromOwn ? 'To' : 'From'}</DirLabel>
+                          {e.proto && <ProtoBadge proto={protoGroup(e.proto)} />}
+                        </Group>
+                      </Tooltip>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" className="mono" fw={500} style={{ overflowWrap: 'anywhere' }}>
+                        {far.host || '—'}{far.port && <Text span size="sm" c="dimmed" className="mono" fw={400} style={{ whiteSpace: 'nowrap' }}> port {far.port}</Text>}
+                      </Text>
+                      {(name || (!fromOwn && ownEnd.port)) && (
+                        <Text size="xs" c="dimmed">
+                          {name && <span className="mono"><Wrapped name={name} /></span>}
+                          {name && !fromOwn && ownEnd.port && ' · '}
+                          {!fromOwn && ownEnd.port && <>to its port <span className="mono">{ownEnd.port}</span></>}
+                        </Text>
+                      )}
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
       ) : <Empty>Nothing logged for it lately.</Empty>}
     </Card>
   );

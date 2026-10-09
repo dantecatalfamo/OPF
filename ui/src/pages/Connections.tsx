@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { ActionIcon, Alert, Anchor, Button, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconSearch, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconSearch, IconX } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import { formatBytes, formatDuration } from '../lib/format';
 import { deviceName } from '../lib/labels';
@@ -117,7 +117,7 @@ export function Connections() {
     try {
       await backend.killState(c);
       setClosed((s) => new Set(s).add(c.id));
-      notifications.show({ message: `Closed ${c.source} → ${c.destination}` });
+      notifications.show({ message: `Closed the connection from ${c.source} to ${c.destination}` });
       setTick((n) => n + 1);
     } catch (e) {
       notifications.show({ color: 'red', title: 'Couldn’t close the connection', message: e instanceof Error ? e.message : String(e) });
@@ -214,7 +214,7 @@ export function Connections() {
                   <Group gap={8} wrap="wrap" align="flex-start" style={{ rowGap: 2 }}>
                     <Proto c={c} />
                     <From c={c} names={names} />
-                    <Text size="sm" c="dimmed">→</Text>
+                    <IconArrowRight size={16} color="var(--mantine-color-dimmed)" style={{ marginTop: 2, flexShrink: 0 }} />
                     <To c={c} names={names} />
                   </Group>
                   <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
