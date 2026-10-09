@@ -249,7 +249,7 @@ export function TimeSettings() {
                 <MultiSelect
                   label="Serve time to"
                   placeholder={v.serveOn.length ? undefined : 'No network'}
-                  description="Devices on these networks can get the time from the firewall, and DHCP tells them to. Your own firewall rules can still block them. Until the firewall’s clock is synced, devices won’t use it."
+                  description="Devices on these networks can get the time from the firewall, and DHCP tells them to. Until the firewall’s clock is synced, devices won’t use it."
                   inputWrapperOrder={['label', 'input', 'description', 'error']}
                   data={insides.map((i) => ({
                     value: i.id, disabled: !servable(i),
