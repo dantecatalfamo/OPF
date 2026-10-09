@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, Table, TagsInput, Text, TextInput, ThemeIcon } from '@mantine/core';
+import { Button, Card, Grid, Group, List, Modal, PasswordInput, Select, Stack, Table, Text, TextInput, ThemeIcon } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import { IconCheck, IconShieldCheck } from '@tabler/icons-react';
@@ -12,7 +12,7 @@ import { useSession } from '../lib/session';
 import { ApiError, type Role, type SessionInfo } from '../lib/api';
 import { SessionRow } from './Users';
 import { FileLink } from './ConfigFiles';
-import { HandConfigured, handConfigured } from '../components/HandConfigured';
+import { TimeSettings } from './SystemTime';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -160,7 +160,6 @@ export function SystemGeneral() {
     validate: {
       hostname: (v) => (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i.test(v) ? null : 'Letters, digits and hyphens only'),
       domain: (v) => (/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/i.test(v) ? null : 'Enter a domain like office.arpa'),
-      ntpServers: (v) => (v.length ? null : 'Add at least one time server'),
     },
   });
   useEffect(() => {
@@ -180,26 +179,24 @@ export function SystemGeneral() {
                 const parts: string[] = [];
                 if (v.hostname !== sys.hostname || v.domain !== sys.domain) parts.push(`name set to ${v.hostname}.${v.domain}`);
                 if (v.timezone !== sys.timezone) parts.push(`time zone set to ${v.timezone}`);
-                if (v.ntpServers.join() !== sys.ntpServers.join()) parts.push(`time servers: ${v.ntpServers.join(', ')}`);
-                edit('system', parts.length ? `System ${parts.join(', ')}` : 'Updated system settings', (m) => ({ ...m, system: { ...m.system, hostname: v.hostname, domain: v.domain, timezone: v.timezone, ntpServers: v.ntpServers } }));
+                edit('system', parts.length ? `System ${parts.join(', ')}` : 'Updated system settings', (m) => ({ ...m, system: { ...m.system, hostname: v.hostname, domain: v.domain, timezone: v.timezone } }));
               })}
             >
-              <SectionTitle>Identity and time</SectionTitle>
+              <SectionTitle>Name and time zone</SectionTitle>
               <Stack>
                 <Group grow align="flex-start">
                   <TextInput label="Hostname" {...form.getInputProps('hostname')} />
                   <TextInput label="Domain" description="Used for local device names" inputWrapperOrder={['label', 'input', 'description', 'error']} {...form.getInputProps('domain')} />
                 </Group>
                 <Select label="Time zone" data={zones} searchable allowDeselect={false} {...form.getInputProps('timezone')} />
-                <TagsInput label="Time servers" disabled={handConfigured(staged, 'ntp')} {...form.getInputProps('ntpServers')} />
-                <HandConfigured area="ntp" compact />
                 <Group justify="space-between">
-                  <Group gap="md"><FileLink path="/etc/myname" /><FileLink path="/etc/ntpd.conf" /></Group>
+                  <FileLink path="/etc/myname" />
                   <Button type="submit" disabled={!form.isDirty()}>Save</Button>
                 </Group>
               </Stack>
             </form>
           </Card>
+          <TimeSettings />
           <FirewallDns />
           <GraphSettings />
           </Stack>

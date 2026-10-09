@@ -545,8 +545,12 @@ until the admin does.
         move to OPF's key files (ImportTunnelKey) and the hostname.if
         read `wgkey` from there. Nor are interfaces with lines OPF lacks
         (`-inet6`, `lladdr`, aliases, `!` commands), carp, trunks, PPPoE.
-  - [ ] ntpd: a stock ntpd.conf has `server`, `sensor` and
-        `constraint` lines, so it's left alone. Model them.
+  - [x] ntpd: every ntpd.conf(5) statement is modelled (system.ntp:
+        servers with options, sensors, constraints, listen on, query
+        from), so a stock ntpd.conf is taken over exactly. A line is
+        left out only when OPF refuses its value (a zoned address, a
+        host name to listen on, an odd character) or when `query from`
+        follows a server it doesn't apply to.
   - [ ] unbound: a running resolver is always left alone by default:
         import listen addresses, access control and local data so a
         common one can be written the same way.
@@ -982,7 +986,8 @@ in 7.9 has RPZ, response policy zones, through its respip module):
 - [ ] **Time for the network:** ntpd can serve time to the inside
       networks (`listen on` their addresses, a pf rule letting them
       in), and DHCP can tell devices to use it (option 42,
-      `ntp-servers`), as it does for DNS. A switch per network, like
+      `ntp-servers`), as it does for DNS. System › General › Time
+      already writes `listen on`, but the pf rule is the admin's. A switch per network, like
       DNS resolver › Answer on, refusing to serve until ntpd is
       synced.
 

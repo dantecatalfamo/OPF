@@ -1534,7 +1534,7 @@ func GenerateUnboundConf(m *Model) string {
 func GenerateFiles(m *Model) []GeneratedFile {
 	files := []GeneratedFile{
 		{Path: "/etc/myname", Content: fmt.Sprintf("%s.%s\n", m.System.Hostname, m.System.Domain)},
-		{Path: "/etc/ntpd.conf", Content: header + "\n" + ntpdConf(m.System.NTPServers)},
+		{Path: "/etc/ntpd.conf", Content: header + "\n" + ntpdConf(m.System)},
 		{Path: "/etc/pf.conf", Content: GeneratePfConf(m)},
 		{Path: "/etc/dhcpd.conf", Content: GenerateDHCPdConf(m)},
 		{Path: "/var/unbound/etc/unbound.conf", Content: GenerateUnboundConf(m)},
@@ -1580,14 +1580,6 @@ func GenerateFiles(m *Model) []GeneratedFile {
 		files = slices.DeleteFunc(files, func(f GeneratedFile) bool { return slices.Contains(left, f.Path) })
 	}
 	return files
-}
-
-func ntpdConf(servers []string) string {
-	var lines []string
-	for _, s := range servers {
-		lines = append(lines, fmt.Sprintf("servers %s", s))
-	}
-	return strings.Join(lines, "\n") + "\n"
 }
 
 func networkAddr(address string, prefix int) string {

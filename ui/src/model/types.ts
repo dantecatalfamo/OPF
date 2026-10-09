@@ -461,7 +461,10 @@ export interface SystemSettings {
   hostname: string;
   domain: string;
   timezone: string;
+  /** ntpd's time servers: names or addresses, every address of each used (servers). */
   ntpServers: string[];
+  /** The rest of ntpd.conf. */
+  ntp?: NtpSettings;
   /** How many of each thing the graphs keep a history of; unset, OPF's default, and 0 keeps none. */
   graphs?: GraphLimits;
   /** Where the firewall's own lookups go; unset, the WAN's servers. */
@@ -470,6 +473,54 @@ export interface SystemSettings {
   services?: ServiceSetting[];
   /** Areas OPF leaves as they're configured by hand: their file isn't written, and their daemon isn't touched. */
   unmanaged?: ('dhcp' | 'dns' | 'ntp')[];
+}
+
+/** ntpd.conf beyond the plain time servers: see ntpd.conf(5). */
+export interface NtpSettings {
+  servers?: NtpServer[];
+  sensors?: NtpSensor[];
+  /** HTTPS servers whose Date bounds the time servers' answers. */
+  constraints?: NtpConstraint[];
+  /** Addresses ntpd serves time on; none, it serves none. */
+  listen?: NtpListen[];
+  /** Addresses ntpd asks from: at most one IPv4 and one IPv6. */
+  queryFrom?: string[];
+}
+
+export interface NtpServer {
+  address: string;
+  /** Only the name's first address that answers (server), not every address (servers). */
+  one?: boolean;
+  /** Its time skips the constraints. */
+  trusted?: boolean;
+  /** 1 to 10; unset is 1. */
+  weight?: number;
+}
+
+export interface NtpSensor {
+  /** A sensor device such as nmea0, or * for every one. */
+  device: string;
+  /** Microseconds added to its time. */
+  correction?: number;
+  refid?: string;
+  stratum?: number;
+  trusted?: boolean;
+  weight?: number;
+}
+
+export interface NtpConstraint {
+  /** An https:// URL, a host name or an IP address. */
+  url: string;
+  /** Every address the name has, taking their median (constraints). */
+  every?: boolean;
+  /** Addresses to try for the URL's host; not with every. */
+  addresses?: string[];
+}
+
+export interface NtpListen {
+  /** An IP address, or * for every one. */
+  address: string;
+  rtable?: number;
 }
 
 /** A base service's boot settings: whether it starts at boot, and a daemon's flags (unset: rc.d's defaults), routing table and stop timeout. */

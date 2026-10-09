@@ -480,57 +480,6 @@ func importGateway(m *Model, src ImportSources) []ImportNote {
 	return []ImportNote{{File: file, Kind: NoteLeft, Text: addr, Message: "on none of the interfaces OPF took over: left as it is"}}
 }
 
-// importNTP reads ntpd.conf's time servers. Only servers lines are
-// what the model writes.
-func importNTP(m *Model, src ImportSources) (ImportArea, []ImportNote) {
-	const file = NTPdConfPath
-	content, ok := src.Files[file]
-	a := ImportArea{Running: true, Exact: true} // ntpd runs by default
-	var notes []ImportNote
-	if !ok {
-		// ntpd's built-in default.
-		m.System.NTPServers = []string{"pool.ntp.org"}
-		a.Summary = "no ntpd.conf: ntpd uses its defaults"
-		a.Exact = false
-		return a, notes
-	}
-	for n, raw := range strings.Split(content, "\n") {
-		line := strings.TrimSpace(raw)
-		if c := strings.IndexByte(line, '#'); c >= 0 {
-			line = strings.TrimSpace(line[:c])
-		}
-		if line == "" {
-			continue
-		}
-		f := strings.Fields(line)
-		v := &validator{m: m}
-		if len(f) == 2 && (f[0] == "servers" || f[0] == "server") {
-			v.host("", f[1])
-		}
-		switch {
-		case len(f) == 2 && f[0] == "servers" && len(v.errs) == 0:
-			m.System.NTPServers = append(m.System.NTPServers, f[1])
-			notes = append(notes, ImportNote{File: file, Line: n + 1, Kind: NoteModel, Text: line, Message: "a time server"})
-		case len(f) == 2 && f[0] == "server" && len(v.errs) == 0:
-			m.System.NTPServers = append(m.System.NTPServers, f[1])
-			a.Exact = false
-			notes = append(notes, ImportNote{File: file, Line: n + 1, Kind: NoteLost, Text: line, Message: "OPF writes it as servers, which uses every address the name has, not one"})
-		default:
-			a.Exact = false
-			notes = append(notes, ImportNote{File: file, Line: n + 1, Kind: NoteLost, Text: line, Message: "a setting OPF doesn't have"})
-		}
-	}
-	if len(m.System.NTPServers) == 0 {
-		m.System.NTPServers = []string{"pool.ntp.org"}
-		a.Exact = false
-	}
-	a.Summary = fmt.Sprintf("%d time servers", len(m.System.NTPServers))
-	if len(m.System.NTPServers) == 1 {
-		a.Summary = "1 time server"
-	}
-	return a, notes
-}
-
 // dhcpdStmt is a statement of dhcpd.conf: its words, and its block's
 // statements when it has one.
 type dhcpdStmt struct {

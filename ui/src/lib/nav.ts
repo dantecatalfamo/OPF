@@ -162,7 +162,8 @@ export const places: Place[] = [
   { label: 'DNS lookup', page: 'Tools', to: '/monitoring/tools?tool=dns', keywords: 'resolve name dig nslookup host' },
   { label: 'Port test', page: 'Tools', to: '/monitoring/tools?tool=port', keywords: 'tcp udp open port reachable nc' },
   // System
-  { label: 'Identity and time', page: 'System › General', to: '/system/general#identity', keywords: 'hostname domain time zone ntp servers clock' },
+  { label: 'Name and time zone', page: 'System › General', to: '/system/general#identity', keywords: 'hostname domain time zone clock' },
+  { label: 'Time', page: 'System › General', to: '/system/general#time', keywords: 'ntp ntpd time servers clock sync sensors gps constraints serve time listen' },
   { label: 'DNS for the firewall itself', page: 'System › General', to: '/system/general#system-dns', keywords: 'resolv.conf nameservers own dns servers' },
   { label: 'Graphs', page: 'System › General', to: '/system/general#graphs', keywords: 'keep history series' },
   { label: 'Updates', page: 'System › General', to: '/system/general#updates', keywords: 'syspatch patches upgrade security fixes' },

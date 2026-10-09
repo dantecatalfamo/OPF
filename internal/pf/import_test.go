@@ -1,6 +1,7 @@
 package pf
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -116,10 +117,20 @@ func TestImportStock(t *testing.T) {
 	for _, a := range res.Areas {
 		areas[a.Area] = a
 	}
-	// ntpd.conf has constraints and a sensor: left alone. dhcpd and
-	// unbound don't run, so OPF takes them, off.
-	if a := areas[AreaNTP]; a.Exact || a.Managed {
+	// ntpd.conf's servers, sensor and constraints, written the same way.
+	// dhcpd and unbound don't run, so OPF takes them, off.
+	if a := areas[AreaNTP]; !a.Exact || !a.Managed {
 		t.Errorf("ntp %+v", a)
+	}
+	want := `servers pool.ntp.org
+server time.cloudflare.com
+sensor *
+constraint from "9.9.9.9"
+constraint from "2620:fe::fe"
+constraints from "www.google.com"
+`
+	if got := ntpdConf(m.System); got != want {
+		t.Errorf("ntpd.conf:\n%s", got)
 	}
 	if a := areas[AreaDNS]; a.Running || !a.Managed || m.DNS.Enabled || !m.DNS.DNSSEC {
 		t.Errorf("dns %+v %+v", a, m.DNS)
@@ -383,5 +394,133 @@ func FuzzImport(f *testing.F) {
 			t.Fatal("no model")
 		}
 		GenerateFiles(res.Model)
+	})
+}
+
+func TestImportNTP(t *testing.T) {
+	read := func(content string) (*Model, ImportArea, []ImportNote) {
+		m := &Model{}
+		a, notes := importNTP(m, ImportSources{Files: map[string]string{NTPdConfPath: content}})
+		return m, a, notes
+	}
+	m, a, notes := read(`listen on 10.0.0.1 rtable 2
+listen on *
+query from 192.0.2.1
+query from 192.0.2.9 # the last one counts
+query from 2001:db8::1
+servers pool.ntp.org weight 5
+server 'ntp.example.org' trusted
+servers "weight"
+sensor nmea0 correction -70000 refid GPS stratum 2 trusted weight 10
+constraint from "https://9.9.9.9/dns" "2620:fe::fe" "9.9.9.9"
+`)
+	if !a.Exact {
+		t.Errorf("not exact: %+v %+v", a, notes)
+	}
+	want := NTPSettings{
+		Servers:     []NTPServer{{Address: "pool.ntp.org", Weight: 5}, {Address: "ntp.example.org", One: true, Trusted: true}},
+		Sensors:     []NTPSensor{{Device: "nmea0", Correction: -70000, RefID: "GPS", Stratum: 2, Trusted: true, Weight: 10}},
+		Constraints: []NTPConstraint{{URL: "https://9.9.9.9/dns", Addresses: []string{"2620:fe::fe", "9.9.9.9"}}},
+		Listen:      []NTPListen{{Address: "10.0.0.1", RTable: 2}, {Address: "*"}},
+		QueryFrom:   []string{"192.0.2.9", "2001:db8::1"},
+	}
+	if got, _ := json.Marshal(m.System.NTP); string(got) != string(must(json.Marshal(want))) {
+		t.Errorf("ntp %s", got)
+	}
+	if !slices.Equal(m.System.NTPServers, []string{"weight"}) {
+		t.Errorf("servers %v", m.System.NTPServers)
+	}
+	// A keyword as a name stays quoted.
+	if conf := ntpdConf(m.System); !strings.Contains(conf, `servers "weight"`+"\n") || !strings.HasPrefix(conf, "listen on 10.0.0.1 rtable 2\nlisten on *\nquery from 192.0.2.9\nquery from 2001:db8::1\n") {
+		t.Errorf("ntpd.conf:\n%s", conf)
+	}
+
+	for _, c := range []struct{ conf, why string }{
+		{"servers a.example\nquery from 192.0.2.1\n", "applies only to the servers after it"},
+		{"listen on gw.example\n", "isn't an IP address"},
+		{"servers a.example weight 11\n", "between 1 and 10"},
+		{"servers a.example weight \"5\"\n", "can't read it"},
+		{"sensor nmea0 refid TOOLONG\n", "1 to 4"},
+		{"constraints from \"https://a.example/\" \"9.9.9.9\"\n", "can't read it"},
+		{"constraint from \"https://a.example:8443/\"\n", "isn't a valid domain"},
+		{"servers 1234\n", "can't read it"},
+		{"servers a.example(\n", "can't read it"},
+		{"servers a.example\\ \n", "backslashes"},
+		{"servers \"a.example\n", "can't read it"},
+	} {
+		m, a, notes := read(c.conf)
+		if a.Exact || !slices.ContainsFunc(notes, func(n ImportNote) bool { return n.Kind == NoteLost && strings.Contains(n.Message, c.why) }) {
+			t.Errorf("%q: %+v %+v", c.conf, a, notes)
+		}
+		if errs := Validate(withNTP(t, m)); len(errs) > 0 {
+			t.Errorf("%q: the import doesn't validate: %v", c.conf, errs)
+		}
+	}
+
+	// A comment can have one.
+	if _, a, _ := read("# C:\\time\nservers a.example\n"); !a.Exact {
+		t.Error("a backslash in a comment")
+	}
+	// A line goes on after a backslash, as ntpd reads it.
+	if m, a, _ := read("servers a.example \\\nweight 2 # and a comment \\\nstill the comment\n"); !a.Exact || m.System.NTP == nil || m.System.NTP.Servers[0].Weight != 2 {
+		t.Errorf("continued: %+v %+v", a, m.System.NTP)
+	}
+
+	// No file: ntpd doesn't run, and OPF's would.
+	if _, a, _ := read(""); a.Exact {
+		t.Error("an empty file is exact")
+	}
+	m = &Model{}
+	if a, _ := importNTP(m, ImportSources{}); a.Exact || !strings.Contains(a.Summary, "doesn't run") {
+		t.Errorf("no file: %+v", a)
+	}
+}
+
+// withNTP is a valid model with m's time settings.
+func withNTP(t *testing.T, m *Model) *Model {
+	v, _ := loadSampleModel(t)
+	v.System.NTPServers, v.System.NTP = m.System.NTPServers, m.System.NTP
+	return v
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+// Whatever ntpd.conf holds, what's imported is valid, and OPF's own
+// file for it reads back the same.
+func FuzzImportNTP(f *testing.F) {
+	for _, name := range []string{"router", "stock"} {
+		if data, err := os.ReadFile(filepath.Join("testdata", "import", name, "etc/ntpd.conf")); err == nil {
+			f.Add(string(data))
+		}
+	}
+	f.Add("sensor nmea0 correction -70000 refid on stratum 2 trusted weight 10\nlisten on * rtable 3\nconstraint from \"https://x.example/a\" ::1\n")
+	f.Fuzz(func(t *testing.T, content string) {
+		m := &Model{}
+		importNTP(m, ImportSources{Files: map[string]string{NTPdConfPath: content}})
+		v := &validator{m: m}
+		v.ntp()
+		if len(v.errs) > 0 || ntpSources(m.System) == 0 {
+			t.Fatalf("imported invalid: %v", v.errs)
+		}
+		again := &Model{}
+		a, notes := importNTP(again, ImportSources{Files: map[string]string{NTPdConfPath: header + "\n" + ntpdConf(m.System)}})
+		for _, n := range notes {
+			if n.Kind == NoteLost && n.Line != 0 {
+				t.Fatalf("OPF's own file: %+v", n)
+			}
+		}
+		if !a.Exact {
+			t.Fatalf("OPF's own file isn't exact: %+v", notes)
+		}
+		x, _ := json.Marshal(m.System)
+		y, _ := json.Marshal(again.System)
+		if string(x) != string(y) {
+			t.Fatalf("read back\n%s\n%s", x, y)
+		}
 	})
 }

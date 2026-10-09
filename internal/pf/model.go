@@ -52,10 +52,14 @@ var EventKinds = []string{"opf", "link", "address", "gateway", "device", "vpn", 
 const MaxWebhooks = 16
 
 type SystemSettings struct {
-	Hostname   string   `json:"hostname"`
-	Domain     string   `json:"domain"`
-	Timezone   string   `json:"timezone"`
+	Hostname string `json:"hostname"`
+	Domain   string `json:"domain"`
+	Timezone string `json:"timezone"`
+	// NTPServers are ntpd's time servers, each a name or address
+	// whose every address it uses (servers): the common case.
 	NTPServers []string `json:"ntpServers"`
+	// NTP is the rest of ntpd.conf: see ntpd.go.
+	NTP *NTPSettings `json:"ntp,omitempty"`
 	// Graphs caps how many of each thing the graphs keep a history of;
 	// unset, OPF's defaults (appliance.GraphDefaults).
 	Graphs *GraphLimits `json:"graphs,omitempty"`

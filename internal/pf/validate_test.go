@@ -62,6 +62,14 @@ func TestValidateCatchesProblems(t *testing.T) {
 		{"peer name with a quote (wgdescr)", "interfaces[3].wireguard.peers[0].name", func(m *Model) { wg(m, 3).Peers[0].Name = `Priya" wgpeer x` }},
 		{"peer key that isn't a key", "interfaces[3].wireguard.peers[0].publicKey", func(m *Model) { wg(m, 3).Peers[0].PublicKey = "x wgaip 0.0.0.0/0" }},
 		{"peer endpoint with extra words", "interfaces[4].wireguard.peers[0].endpoint", func(m *Model) { wg(m, 4).Peers[0].Endpoint = "a.example:51820 wgpka 1" }},
+		{"peer endpoint with a zone holding a space", "interfaces[4].wireguard.peers[0].endpoint", func(m *Model) { wg(m, 4).Peers[0].Endpoint = "[fe80::1%em0 wgpka 1]:51820" }},
+		{"time server with a zone holding a quote (ntpd.conf)", "system.ntpServers[0]", func(m *Model) { m.System.NTPServers[0] = `fe80::1%"` }},
+		{"time sensor that isn't a device", "system.ntp.sensors[0].device", func(m *Model) { m.System.NTP = &NTPSettings{Sensors: []NTPSensor{{Device: "nmea0 trusted"}}} }},
+		{"constraint URL with a quote", "system.ntp.constraints[0].url", func(m *Model) {
+			m.System.NTP = &NTPSettings{Constraints: []NTPConstraint{{URL: `https://a.example/"x`}}}
+		}},
+		{"two IPv4 query addresses", "system.ntp.queryFrom[1]", func(m *Model) { m.System.NTP = &NTPSettings{QueryFrom: []string{"192.0.2.1", "192.0.2.2"}} }},
+		{"no time source", "system.ntpServers", func(m *Model) { m.System.NTPServers = nil }},
 		{"alias named like OPF's own table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "opf_local" }},
 		{"alias named like the bogons table", "firewall.aliases[0].name", func(m *Model) { m.Firewall.Aliases[0].Name = "bogons" }},
 		{"a user tag in OPF's namespace", "firewall.rules[2].tag", func(m *Model) { m.Firewall.Rules[2].Tag = "opf_nonat" }},

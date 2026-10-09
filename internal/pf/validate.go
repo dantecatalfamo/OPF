@@ -183,9 +183,14 @@ func (v *validator) domain(path, s string) {
 	}
 }
 
-// host is a host name, domain name or IP address.
+// host is a host name, domain name or IP address. Not one with a zone
+// (fe80::1%em0): netip takes any text for the zone, quotes and spaces
+// too, and the files these go in have no use for one.
 func (v *validator) host(path, s string) {
-	if _, err := netip.ParseAddr(s); err == nil {
+	if a, err := netip.ParseAddr(s); err == nil {
+		if a.Zone() != "" {
+			v.fail(path, "%q has a zone; give the address without it", s)
+		}
 		return
 	}
 	v.domain(path, s)
@@ -364,9 +369,10 @@ func (v *validator) system() {
 	if s.Timezone != "" && (len(s.Timezone) > 64 || !timezoneRE.MatchString(s.Timezone)) {
 		v.fail("system.timezone", "%q isn't a time zone name", s.Timezone)
 	}
-	if len(s.NTPServers) == 0 {
-		v.fail("system.ntpServers", "needs at least one server")
+	if ntpSources(s) == 0 {
+		v.fail("system.ntpServers", "needs at least one time server or sensor")
 	}
+	v.ntp()
 	// Areas left as they're configured by hand have OPF's own settings
 	// for them off, so nothing of OPF's depends on them.
 	left := map[string]bool{}
@@ -384,9 +390,6 @@ func (v *validator) system() {
 	}
 	if left[AreaDNS] && v.m.DNS.Enabled {
 		v.fail("dns.enabled", "the resolver is configured by hand; OPF's is off until it's handed over")
-	}
-	for i, n := range s.NTPServers {
-		v.host(at("system.ntpServers", i), n)
 	}
 	if d := s.DNS; d != nil {
 		v.oneOf("system.dns.mode", string(d.Mode), string(SystemDNSWAN), string(SystemDNSSelf), string(SystemDNSServers))
