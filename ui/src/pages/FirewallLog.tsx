@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Alert, Anchor, Badge, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { Alert, Anchor, Card, Group, SegmentedControl, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowRight, IconSearch } from '@tabler/icons-react';
 import { useStore } from '../model/store';
@@ -45,13 +45,13 @@ export function LogRule({ e, model }: { e: FirewallLogEntry; model: Model }) {
 
 const protoOf = (e: FirewallLogEntry) => (e.proto ? protoGroup(e.proto) : '');
 
-/** Its protocol and pf's way: in or out on an interface. */
+/** pf's way, in or out on an interface, and its protocol. */
 function LogWay({ e }: { e: FirewallLogEntry }) {
   const { applied } = useStore();
   return (
     <Group gap={8} wrap="nowrap">
-      {e.proto ? <ProtoBadge proto={protoOf(e)} /> : <Badge size="sm" variant="light" color="gray" w={52}>?</Badge>}
       <DirLabel dir={e.direction}>{e.direction === 'in' ? 'In' : 'Out'} on {deviceName(applied, e.iface)}</DirLabel>
+      {e.proto && <ProtoBadge proto={protoOf(e)} />}
     </Group>
   );
 }
@@ -66,12 +66,16 @@ function LogEnd({ end, names, devices }: { end?: string; names: Map<string, stri
   );
 }
 
-const LogAction = ({ e }: { e: FirewallLogEntry }) => <Badge color={actionColor[e.action] ?? 'gray'} variant="light" style={{ flexShrink: 0 }}>{actionText[e.action] ?? e.action}</Badge>;
+/** What pf did with it, in its colour: Blocked, Allowed, Matched. */
+export const LogAction = ({ e }: { e: FirewallLogEntry }) => (
+  <Text span size="sm" fw={500} c={actionColor[e.action] ?? 'dimmed'} style={{ whiteSpace: 'nowrap' }}>{actionText[e.action] ?? e.action}</Text>
+);
 
-function LogTime({ e }: { e: FirewallLogEntry }) {
+/** When, the full date on hover. */
+export function LogTime({ e }: { e: FirewallLogEntry }) {
   return (
     <Tooltip label={new Date(e.time).toLocaleString()}>
-      <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
+      <Text size="xs" c="dimmed" className="num" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)}</Text>
     </Tooltip>
   );
 }
@@ -146,12 +150,11 @@ export function FirewallLog() {
       </Group>
       <Card padding={0}>
         {wide ? (
-          <Table highlightOnHover striped>
+          <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Time</Table.Th>
-                <Table.Th>Action</Table.Th>
-                <Table.Th>Protocol and way</Table.Th>
+                <Table.Th>When</Table.Th>
+                <Table.Th>Direction</Table.Th>
                 <Table.Th>From</Table.Th>
                 <Table.Th>To</Table.Th>
                 <Table.Th>Rule</Table.Th>
@@ -160,8 +163,10 @@ export function FirewallLog() {
             <Table.Tbody>
               {rows.map((e, i) => (
                 <Table.Tr key={`${e.time}-${i}`}>
-                  <Table.Td><LogTime e={e} /></Table.Td>
-                  <Table.Td><LogAction e={e} /></Table.Td>
+                  <Table.Td>
+                    <LogAction e={e} />
+                    <LogTime e={e} />
+                  </Table.Td>
                   <Table.Td><LogWay e={e} /></Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}><LogEnd end={e.source} names={names} devices={devices} /></Table.Td>
                   <Table.Td style={{ whiteSpace: 'nowrap' }}>
@@ -178,7 +183,7 @@ export function FirewallLog() {
           <Stack gap={0}>
             {rows.map((e, n) => (
               <Stack key={`${e.time}-${n}`} gap={4} px="md" py="sm" style={n ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
-                <Group gap={8} wrap="wrap" align="flex-start" style={{ rowGap: 2 }}>
+                <Group gap={10} wrap="wrap" align="flex-start" style={{ rowGap: 2 }}>
                   <LogAction e={e} />
                   <LogWay e={e} />
                 </Group>
@@ -189,7 +194,8 @@ export function FirewallLog() {
                 </Group>
                 <LogReason e={e} />
                 <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
-                  <Text size="xs" c="dimmed" className="num" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(e.time)} ·</Text>
+                  <LogTime e={e} />
+                  <Text size="xs" c="dimmed">·</Text>
                   <LogRule e={e} model={applied} />
                 </Group>
               </Stack>

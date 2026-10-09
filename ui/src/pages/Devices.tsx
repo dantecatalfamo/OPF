@@ -23,7 +23,7 @@ import { hostOf, useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
-import { LogRule } from './FirewallLog';
+import { LogAction, LogRule, LogTime } from './FirewallLog';
 import { AllowedBy } from './Connections';
 import { deviceName } from '../lib/labels';
 
@@ -497,11 +497,6 @@ function logView(e: FirewallLogEntry, own: string[]) {
 
 type LogRow = ReturnType<typeof logView> & { e: FirewallLogEntry };
 
-const logAction = (e: FirewallLogEntry) => (
-  <Text span size="sm" fw={500} c={e.action === 'block' ? 'red' : e.action === 'pass' ? 'teal' : 'dimmed'}>
-    {e.action === 'block' ? 'Blocked' : e.action === 'pass' ? 'Allowed' : 'Matched'}
-  </Text>
-);
 
 function LogWay({ r }: { r: LogRow }) {
   return (
@@ -568,8 +563,8 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
               return (
                 <Table.Tr key={r.e.time + i}>
                   <Table.Td>
-                    {logAction(r.e)}
-                    <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(r.e.time)}</Text>
+                    <LogAction e={r.e} />
+                    <LogTime e={r.e} />
                   </Table.Td>
                   <Table.Td><LogWay r={r} /></Table.Td>
                   <Table.Td>
@@ -591,12 +586,13 @@ function FirewallLog({ addresses, showNames }: { addresses: string[]; showNames:
             return (
               <Stack key={r.e.time + i} gap={4} py="sm" style={i ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}>
                 <Group gap={10} wrap="wrap" style={{ rowGap: 2 }}>
-                  {logAction(r.e)}
+                  <LogAction e={r.e} />
                   <LogWay r={r} />
                   {logFar(r)}
                 </Group>
                 <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
-                  <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>{formatLogTime(r.e.time)} · on {deviceName(applied, r.e.iface)} ·</Text>
+                  <LogTime e={r.e} />
+                  <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>· on {deviceName(applied, r.e.iface)} ·</Text>
                   <LogRule e={r.e} model={applied} />
                   {more && <Text size="xs" c="dimmed">· {more}</Text>}
                 </Group>
