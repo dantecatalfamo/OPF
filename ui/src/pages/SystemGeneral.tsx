@@ -16,13 +16,13 @@ import { TimeSettings } from './SystemTime';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
-// OpenBSD's errata page for a release ("7.9" → errata79.html), and a
-// patch's entry on it: each is anchored as p plus syspatch's name for it
+// A patch's entry on OpenBSD's errata page for its release ("7.9" →
+// errata79.html), anchored as p plus syspatch's name for it
 // (#p001_xserver).
-function errataUrl(release?: string, patch?: string): string | undefined {
+function errataUrl(release: string | undefined, patch: string): string | undefined {
   const m = release?.match(/^(\d+)\.(\d+)$/);
   if (!m) return undefined;
-  return `https://www.openbsd.org/errata${m[1]}${m[2]}.html${patch ? `#p${encodeURIComponent(patch)}` : ''}`;
+  return `https://www.openbsd.org/errata${m[1]}${m[2]}.html#p${encodeURIComponent(patch)}`;
 }
 
 // Security patches for the running release, from syspatch -c. Installing
@@ -61,11 +61,6 @@ function Updates() {
             );
           })}
         </List>
-        {errataUrl(sys?.release) && (
-          <Text size="xs" c="dimmed">
-            Each patch links to its entry on <Anchor href={errataUrl(sys?.release)} target="_blank" rel="noreferrer" size="xs">OpenBSD’s errata page for {sys!.release}</Anchor>, which says what it fixes.
-          </Text>
-        )}
         <Text size="xs" c="dimmed">
           You can’t install them from here yet. For now, run <Text span className="mono" size="xs">syspatch</Text> as root on the firewall. Some patches need a reboot afterwards.
         </Text>
