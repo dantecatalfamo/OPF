@@ -8,13 +8,14 @@ import { backend, useStore } from '../model/store';
 import { formatBytes, formatDuration } from '../lib/format';
 import { deviceName } from '../lib/labels';
 import { labelOwner } from '../lib/pfLabels';
-import type { PfState, PfStatesRequest, PfStatesResource } from '../lib/api';
+import type { DeviceInfo, PfState, PfStatesRequest, PfStatesResource } from '../lib/api';
 import { Mono, PageHeader } from '../components/ui';
 import { HostName, NamesSwitch } from '../components/HostName';
 import { useReverseNames, useShowNames } from '../lib/reverseNames';
 import { protoGroup, stateKinds, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
+import { AddressLink, useKnownDevices } from '../components/DeviceLink';
 
 function Proto({ c }: { c: PfState }) {
   const { applied } = useStore();
@@ -26,20 +27,22 @@ function Proto({ c }: { c: PfState }) {
   );
 }
 
-function From({ c, names }: { c: PfState; names: Map<string, string> }) {
+type Ends = { c: PfState; names: Map<string, string>; devices: Map<string, DeviceInfo> };
+
+function From({ c, names, devices }: Ends) {
   return (
     <div>
-      <Mono>{c.source}</Mono>
+      <AddressLink end={c.source} devices={devices} />
       <HostName addr={c.source} names={names} />
       {c.translated && c.direction === 'out' && <Text size="xs" c="dimmed">leaves as <Mono c="dimmed">{c.translated}</Mono></Text>}
     </div>
   );
 }
 
-function To({ c, names }: { c: PfState; names: Map<string, string> }) {
+function To({ c, names, devices }: Ends) {
   return (
     <div>
-      <Mono>{c.destination}</Mono>
+      <AddressLink end={c.destination} devices={devices} />
       <HostName addr={c.destination} names={names} />
       {c.translated && c.direction === 'in' && <Text size="xs" c="dimmed">sent to <Mono c="dimmed">{c.translated}</Mono></Text>}
     </div>
@@ -112,6 +115,7 @@ export function Connections() {
   const rows = (data?.states ?? []).filter((c) => !closed.has(c.id));
   const [showNames, setShowNames] = useShowNames();
   const names = useReverseNames(rows.flatMap((c) => [c.source, c.destination]), showNames);
+  const devices = useKnownDevices();
 
   const close = async (c: PfState) => {
     try {
@@ -192,8 +196,8 @@ export function Connections() {
               {rows.map((c) => (
                 <Table.Tr key={c.id}>
                   <Table.Td><Proto c={c} /></Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><From c={c} names={names} /></Table.Td>
-                  <Table.Td style={{ whiteSpace: 'nowrap' }}><To c={c} names={names} /></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><From c={c} names={names} devices={devices} /></Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}><To c={c} names={names} devices={devices} /></Table.Td>
                   <Table.Td miw={150}><AllowedBy c={c} /></Table.Td>
                   <Table.Td ta="right">
                     <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatDuration(c.ageSec)}</Text>
@@ -213,9 +217,9 @@ export function Connections() {
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                   <Group gap={8} wrap="wrap" align="flex-start" style={{ rowGap: 2 }}>
                     <Proto c={c} />
-                    <From c={c} names={names} />
+                    <From c={c} names={names} devices={devices} />
                     <IconArrowRight size={16} color="var(--mantine-color-dimmed)" style={{ marginTop: 2, flexShrink: 0 }} />
-                    <To c={c} names={names} />
+                    <To c={c} names={names} devices={devices} />
                   </Group>
                   <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
                     <AllowedBy c={c} />
