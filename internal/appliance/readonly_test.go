@@ -4,7 +4,11 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
+
+	"github.com/dantecatalfamo/OPF/internal/config"
+	"github.com/dantecatalfamo/OPF/internal/pf"
 )
 
 // Every API method is either refused or allowed in read-only mode, and
@@ -94,4 +98,29 @@ func reaches(f func() error) (reached bool, err error) {
 func isReadOnly(err error) bool {
 	var e *Error
 	return errors.As(err, &e) && e.Code == CodeReadOnly
+}
+
+// ReadOnlyWhile refuses only while its switch is on: the mock, taken
+// over, stops refusing.
+func TestReadOnlyWhile(t *testing.T) {
+	on := true
+	api := ReadOnlyWhile(nil, func() bool { return on })
+	for _, name := range readOnlyRefused {
+		if reached, err := callZero(t, api, name); reached || !isReadOnly(err) {
+			t.Errorf("%s while on: reached %v, %v", name, reached, err)
+		}
+	}
+	on = false
+	for _, name := range readOnlyRefused {
+		if reached, _ := callZero(t, api, name); !reached {
+			t.Errorf("%s while off didn't reach the API", name)
+		}
+	}
+}
+
+// config.RcReconcile finds OPF's block in rc.conf.local by its marker.
+func TestRcMarkers(t *testing.T) {
+	if config.RcMarker != pf.RcMarker || strings.Contains(pf.RcMarker, "'") {
+		t.Errorf("config's marker %q, pf's %q", config.RcMarker, pf.RcMarker)
+	}
 }

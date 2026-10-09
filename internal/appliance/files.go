@@ -96,7 +96,7 @@ func (m *Manager) fileState() (*fileState, error) {
 	if err != nil {
 		return nil, err
 	}
-	if m.ReadOnly {
+	if m.ReadOnly() {
 		st.onSystem = m.filesOnSystem()
 	}
 	for _, e := range entries {

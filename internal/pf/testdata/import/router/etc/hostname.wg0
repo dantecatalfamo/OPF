@@ -1,0 +1,5 @@
+wgkey uDy4hnEcnLMF2H2gtW0Q5VbhNNlzmGzSKsEvImaEZXQ=
+wgport 51820
+wgpeer gN65BkIKy1eCE9pP1wdc8ROUtkHLF2PfAqYdyYBz6EA= wgaip 10.8.0.2/32
+inet 10.8.0.1/24
+up

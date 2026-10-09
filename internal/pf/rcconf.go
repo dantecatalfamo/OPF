@@ -3,6 +3,7 @@ package pf
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -15,7 +16,8 @@ import (
 // RcPath is where rc.conf.local lives.
 const RcPath = "/etc/rc.conf.local"
 
-const rcMarker = "# Set by OPF from its web interface; the lines above are kept as they are."
+// RcMarker starts OPF's block; config.RcReconcile looks for it too.
+const RcMarker = "# Set by OPF from its web interface; the lines above are kept as they are."
 
 // RcNames are the variables OPF sets, one per daemon in
 // config.RcServices.
@@ -62,9 +64,11 @@ func MergeRcConfLocal(existing string, m *Model) (string, error) {
 	// out wherever rcctl's sorting put them, and so is any other
 	// assignment to a variable OPF now sets, so OPF's is the only one.
 	svcVars := rcServiceNames(m)
+	// A daemon whose area is left alone keeps the admin's line.
+	names := rcNames(m)
 	if existing != "" {
 		for n, line := range strings.Split(strings.TrimSuffix(existing, "\n"), "\n") {
-			if line == rcMarker || isRcServiceLine(line) {
+			if line == RcMarker || isRcServiceLine(line) {
 				continue
 			}
 			if name, _, ok := strings.Cut(strings.TrimSpace(line), "="); ok && svcVars[name] {
@@ -73,9 +77,9 @@ func MergeRcConfLocal(existing string, m *Model) (string, error) {
 				}
 				continue
 			}
-			if rcAssignRE.MatchString(line) {
+			if sub := rcAssignRE.FindStringSubmatch(line); sub != nil && slices.Contains(names, sub[1]) {
 				if strings.HasSuffix(line, `\`) || strings.Count(line, `"`)%2 != 0 || strings.Count(line, `'`)%2 != 0 {
-					return "", fmt.Errorf("line %d of %s sets %s over more than one line; put it on one line", n+1, RcPath, rcAssignRE.FindStringSubmatch(line)[1])
+					return "", fmt.Errorf("line %d of %s sets %s over more than one line; put it on one line", n+1, RcPath, sub[1])
 				}
 				continue
 			}
@@ -92,9 +96,9 @@ func MergeRcConfLocal(existing string, m *Model) (string, error) {
 	if len(kept) > 0 {
 		b.WriteString("\n")
 	}
-	b.WriteString(rcMarker + "\n")
+	b.WriteString(RcMarker + "\n")
 	vars := RcVars(m)
-	for _, name := range RcNames {
+	for _, name := range names {
 		// Plain double quotes: the values are device names (validated to
 		// letters and digits) and NO, so nothing in them is special to sh.
 		fmt.Fprintf(&b, "%s=\"%s\"\n", name, vars[name])
@@ -142,4 +146,23 @@ func RcValues(content string) map[string]string {
 		}
 	}
 	return vals
+}
+
+// RcOwnNames are the variables of OPF's in an rc.conf.local it wrote:
+// those its block sets. A daemon whose area was left alone isn't there,
+// and its line is the admin's to change. Without OPF's block, all of
+// RcNames.
+func RcOwnNames(content string) []string {
+	lines := strings.Split(content, "\n")
+	at := slices.Index(lines, RcMarker)
+	if at < 0 {
+		return RcNames
+	}
+	var out []string
+	for _, line := range lines[at+1:] {
+		if sub := rcAssignRE.FindStringSubmatch(line); sub != nil && !slices.Contains(out, sub[1]) {
+			out = append(out, sub[1])
+		}
+	}
+	return out
 }

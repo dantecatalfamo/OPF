@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -32,7 +33,11 @@ import (
 // runMock serves the API from the seed model. readOnly, it's a machine
 // configured by hand that OPF only monitors: its files are the seed's,
 // but OPF has no configuration of its own.
-func runMock(listen, seedPath string, timeout time.Duration, login string, readOnly bool) error {
+//
+// machine, read-only, is a directory of a machine's own files, laid out
+// as on the machine (internal/pf/testdata/import/router, say), in place
+// of the seed's: a machine configured by hand, to take over.
+func runMock(listen, seedPath string, timeout time.Duration, login string, readOnly bool, machine string) error {
 	host, _, err := net.SplitHostPort(listen)
 	if err != nil {
 		return err
@@ -84,6 +89,22 @@ func runMock(listen, seedPath string, timeout time.Duration, login string, readO
 			return err
 		}
 	}
+	if readOnly && machine != "" {
+		err := filepath.WalkDir(machine, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			rel, _ := filepath.Rel(machine, p)
+			return write("/"+filepath.ToSlash(rel), data, 0644)
+		})
+		if err != nil {
+			return fmt.Errorf("the machine's files: %w", err)
+		}
+	}
 	enc, err := appliance.EncodeModel(&model)
 	if err != nil {
 		return err
@@ -124,7 +145,7 @@ func runMock(listen, seedPath string, timeout time.Duration, login string, readO
 	if err != nil {
 		return err
 	}
-	api.ReadOnly = readOnly
+	api.SetReadOnly(readOnly)
 	// What the system's commands answer: the seed's machine, read-only
 	// as much as when OPF manages it.
 	systemModel := liveModel(api)
@@ -143,7 +164,18 @@ func runMock(listen, seedPath string, timeout time.Duration, login string, readO
 	}, next: run.Dry{Log: log.Default()}}
 	var served appliance.API = api
 	if readOnly {
-		served = appliance.ReadOnlyAPI(api)
+		served = appliance.ReadOnlyWhile(api, api.ReadOnly)
+		// Taken over, the mock leaves read-only mode in place, where OPF
+		// would start again (cmd/opf's finishTakeOver).
+		api.OnTakeOver(func() {
+			time.Sleep(time.Second)
+			if err := api.ResumeTakeOver(); err != nil {
+				log.Printf("mock: taking over: %v", err)
+				return
+			}
+			api.SetReadOnly(false)
+			log.Printf("mock: taken over; no longer read-only")
+		})
 	}
 	srv := web.New(served, ui.Files())
 	if login != "" {

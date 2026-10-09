@@ -70,9 +70,7 @@ func (m *Manager) DNSStats() (*DNSStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Read-only, the machine's own unbound, whatever OPF's
-	// configuration (none) says.
-	if !m.ReadOnly && (model == nil || !model.DNS.Enabled) {
+	if !m.resolverRuns(model) {
 		return res, nil
 	}
 	res.Enabled = true
@@ -106,6 +104,16 @@ func (m *Manager) DNSStats() (*DNSStats, error) {
 		res.MemoryBytes, _ = sysinfo.ParseProcessRSS(out, "unbound")
 	}
 	return res, nil
+}
+
+// resolverRuns says whether there's a resolver to read: OPF's, or the
+// machine's own unbound, configured by hand, when OPF only monitors the
+// machine or leaves the resolver alone (pf.AreaDNS).
+func (m *Manager) resolverRuns(model *pf.Model) bool {
+	if m.ReadOnly() {
+		return true
+	}
+	return model != nil && (model.DNS.Enabled || pf.Unmanaged(model, pf.AreaDNS))
 }
 
 // DNSBlocked is what the response policy zones did, from the lines

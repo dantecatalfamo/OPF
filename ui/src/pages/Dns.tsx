@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Anchor, Badge, Button, Card, Divider, Grid, Group, MultiSelect, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
+import { Alert, Anchor, Badge, Button, Card, Divider, Fieldset, Grid, Group, MultiSelect, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { DnsTools } from './DnsTools';
 import { LocalNames } from './DnsRecords';
@@ -17,6 +17,7 @@ import { DnsBlockedNames, DnsStatsCard } from './DnsActivity';
 import { DnsActivitySettingsCard, DnsActivityTab } from './DnsHistory';
 import { Link, useSearchParams } from 'react-router';
 import { FileLink } from './ConfigFiles';
+import { HandConfigured, handConfigured } from '../components/HandConfigured';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
@@ -275,10 +276,13 @@ export function Dns() {
   const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : 'overview';
   const enabledLists = (dns.blocklists ?? []).filter((l) => l.enabled).length;
   const names = dns.overrides.length + (dns.records ?? []).length;
+  // A resolver configured by hand: OPF's settings for one wait, off.
+  const hand = handConfigured(staged, 'dns');
 
   return (
     <>
       <PageHeader title="DNS resolver" description="Answers name lookups for devices on your networks, and caches the results so browsing feels faster." />
+      <HandConfigured area="dns" />
       <Tabs value={tab} onChange={(v) => setParams(v && v !== 'overview' ? { tab: v } : {}, { replace: true })} keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="overview">Overview</Tabs.Tab>
@@ -297,20 +301,27 @@ export function Dns() {
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="activity">
+          <Fieldset variant="unstyled" p={0} disabled={hand}>
           <DnsActivityTab />
+          </Fieldset>
         </Tabs.Panel>
         <Tabs.Panel value="names">
+          <Fieldset variant="unstyled" p={0} disabled={hand}>
           <Stack gap="md">
             <Card><LocalNames /></Card>
           </Stack>
+          </Fieldset>
         </Tabs.Panel>
         <Tabs.Panel value="settings">
+          <Fieldset variant="unstyled" p={0} disabled={hand}>
           <Stack gap="md">
             <DnsSettingsForm />
             <DnsActivitySettingsCard />
           </Stack>
+          </Fieldset>
         </Tabs.Panel>
         <Tabs.Panel value="blocking">
+          <Fieldset variant="unstyled" p={0} disabled={hand}>
           {/* The lists and your own names, then what they blocked, a list
               that changes by itself. */}
           <Stack gap="md">
@@ -324,9 +335,10 @@ export function Dns() {
             </Grid>
             <DnsBlockedNames />
           </Stack>
+          </Fieldset>
         </Tabs.Panel>
         <Tabs.Panel value="tools">
-          {applied.dns.enabled ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}
+          {applied.dns.enabled || handConfigured(applied, 'dns') ? <DnsTools /> : <Alert color="gray" variant="light">The resolver isn’t running, so there’s nothing to ask.</Alert>}
         </Tabs.Panel>
       </Tabs>
     </>

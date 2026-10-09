@@ -63,6 +63,11 @@ exit 0
 		{"disabled and stopped: nothing", "dhcpd_flags=\"NO\"\nunbound_flags=\"NO\"\n", "", nil},
 		{"file removed by a revert: all off", "", "dhcpd", []string{"stop dhcpd"}},
 		{"other lines kept in the file", "pkg_scripts=\"postgresql\"\nntpd_flags=\"-s\"\ndhcpd_flags=\"em1\"\n", "", []string{"start dhcpd"}},
+		// OPF's block sets unbound only: dhcpd is the admin's, running
+		// as they set it up, and isn't touched.
+		{"a daemon left alone isn't touched", "dhcpd_flags=\"em1\"\n\n" + RcMarker + "\nunbound_flags=\"\"\n", "dhcpd unbound", []string{"restart unbound"}},
+		{"nothing of OPF's in its block", "dhcpd_flags=\"em1\"\nunbound_flags=\"\"\n\n" + RcMarker + "\n", "dhcpd unbound", nil},
+		{"a later line of the admin's still counts", RcMarker + "\nunbound_flags=\"\"\nunbound_flags=NO\n", "unbound", []string{"stop unbound"}},
 	} {
 		if got := run(c.conf, c.running); !slices.Equal(got, c.want) {
 			t.Errorf("%s: rcctl %q, want %q", c.name, got, c.want)

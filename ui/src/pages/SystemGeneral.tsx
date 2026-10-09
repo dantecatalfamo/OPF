@@ -12,6 +12,7 @@ import { useSession } from '../lib/session';
 import { ApiError, type Role, type SessionInfo } from '../lib/api';
 import { SessionRow } from './Users';
 import { FileLink } from './ConfigFiles';
+import { HandConfigured, handConfigured } from '../components/HandConfigured';
 
 const zones = ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Africa/Johannesburg', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'];
 
@@ -190,7 +191,8 @@ export function SystemGeneral() {
                   <TextInput label="Domain" description="Used for local device names" inputWrapperOrder={['label', 'input', 'description', 'error']} {...form.getInputProps('domain')} />
                 </Group>
                 <Select label="Time zone" data={zones} searchable allowDeselect={false} {...form.getInputProps('timezone')} />
-                <TagsInput label="Time servers" {...form.getInputProps('ntpServers')} />
+                <TagsInput label="Time servers" disabled={handConfigured(staged, 'ntp')} {...form.getInputProps('ntpServers')} />
+                <HandConfigured area="ntp" compact />
                 <Group justify="space-between">
                   <Group gap="md"><FileLink path="/etc/myname" /><FileLink path="/etc/ntpd.conf" /></Group>
                   <Button type="submit" disabled={!form.isDirty()}>Save</Button>

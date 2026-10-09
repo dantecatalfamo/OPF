@@ -15,8 +15,9 @@ export interface NavItem {
    *  are about OPF's own configuration, which a machine it only
    *  monitors doesn't have. */
   monitors?: boolean;
-  /** Only in read-only mode. */
-  readOnlyOnly?: boolean;
+  /** Only while OPF doesn't manage the machine yet: read-only, or
+   *  before its first commit. */
+  takeOver?: boolean;
 }
 export interface NavGroup {
   label: string;
@@ -77,7 +78,7 @@ export const nav: NavGroup[] = [
       { label: 'Change history', to: '/system/history', keywords: 'commits revert undo audit changes' },
       { label: 'System logs', to: '/system/logs', keywords: 'syslog messages daemon', monitors: true },
       { label: 'Configuration files', to: '/system/files', keywords: 'files /etc config', monitors: true },
-      { label: 'Take over', to: '/system/take-over', keywords: 'read-only monitor import manage control', monitors: true, readOnlyOnly: true },
+      { label: 'Take over', to: '/system/take-over', keywords: 'read-only monitor import manage control', monitors: true, takeOver: true },
       { label: 'Storage', to: '/system/storage', keywords: 'disk space usage limits size memory', monitors: true },
     ],
   },
@@ -93,15 +94,19 @@ const allItems: (NavItem | NavGroup)[] = nav.flatMap((g): (NavItem | NavGroup)[]
 export const activePath = (path: string) =>
   allPaths.filter((to) => matches(path, to)).sort((a, b) => b.length - a.length)[0];
 
-/** Whether a sidebar item is shown, read-only or not. */
-export const itemShown = (i: NavItem | NavGroup, readOnly: boolean) => (readOnly ? !!i.monitors : !('readOnlyOnly' in i && i.readOnlyOnly));
+/** Whether a sidebar item is shown, read-only or not, and whether OPF
+ *  manages the machine yet. */
+export const itemShown = (i: NavItem | NavGroup, readOnly: boolean, managed = true) => {
+  if ('takeOver' in i && i.takeOver) return readOnly || !managed;
+  return readOnly ? !!i.monitors : true;
+};
 
 /** Whether the page at a path is there, read-only or not: the page of
  *  the sidebar item it's under (a device's page is All devices'). */
-export function pageShown(path: string, readOnly: boolean) {
+export function pageShown(path: string, readOnly: boolean, managed = true) {
   const to = activePath(path);
   const item = allItems.find((i) => i.to === to);
-  return !item || itemShown(item, readOnly);
+  return !item || itemShown(item, readOnly, managed);
 }
 
 /** A tab or a card within a page, for the command palette. */

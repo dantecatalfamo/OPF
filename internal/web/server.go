@@ -145,6 +145,8 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("POST /api/system/updates/check", getter(s, appliance.API.CheckUpdates))
 	s.mux.HandleFunc("GET /api/pf/status", getter(s, appliance.API.PfStatus))
 	s.mux.HandleFunc("GET /api/pf/stats", getter(s, appliance.API.PfStats))
+	s.mux.HandleFunc("POST /api/import", s.importMachine)
+	s.mux.HandleFunc("POST /api/takeover", s.takeOver)
 	s.mux.HandleFunc("GET /api/pf/states", s.pfStates)
 	s.mux.HandleFunc("POST /api/pf/states/kill", s.killState)
 	s.mux.HandleFunc("GET /api/pf/rules/counters", getter(s, appliance.API.RuleCounters))
@@ -960,6 +962,34 @@ func getter[T any](s *Server, get func(appliance.API) (T, error)) http.HandlerFu
 		}
 		writeJSON(w, http.StatusOK, v)
 	}
+}
+
+// importMachine reads the machine's configuration into a model; it's a
+// POST for the admin's choices, but changes nothing.
+func (s *Server) importMachine(w http.ResponseWriter, r *http.Request) {
+	var req appliance.ImportRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	rep, err := s.apiFor(r).Import(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rep)
+}
+
+func (s *Server) takeOver(w http.ResponseWriter, r *http.Request) {
+	var req appliance.TakeOverRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	res, err := s.apiFor(r).TakeOver(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (s *Server) arpTable(w http.ResponseWriter, r *http.Request) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router';
+import { Link, Outlet, useLocation, useSearchParams } from 'react-router';
 import {
   ActionIcon, Alert, Anchor, AppShell, Avatar, Badge, Burger, Button, Group, Kbd, Menu, NavLink, ScrollArea, Text, Tooltip, UnstyledButton,
   useComputedColorScheme, useMantineColorScheme,
@@ -17,6 +17,7 @@ import { offline } from '../lib/api';
 import { useNow } from '../lib/useNow';
 import { activePath, itemShown, nav, pageShown } from '../lib/nav';
 import { useLive } from '../lib/live';
+import { useMode } from '../lib/mode';
 import { CommandPalette } from './CommandPalette';
 import type { Role } from '../lib/api';
 
@@ -25,10 +26,11 @@ const roleLabel: Record<Role, string> = { admin: 'admin', operator: 'operator', 
 function Navigation({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
   const { isAdmin, readOnly } = useRole();
+  const { managed } = useMode();
   const active = activePath(pathname);
   return (
     <>
-      {nav.filter((g) => (g.to ? itemShown(g, readOnly) : g.items!.some((i) => itemShown(i, readOnly)))).map((g) =>
+      {nav.filter((g) => (g.to ? itemShown(g, readOnly, managed) : g.items!.some((i) => itemShown(i, readOnly, managed)))).map((g) =>
         g.to ? (
           <NavLink
             key={g.label}
@@ -50,7 +52,7 @@ function Navigation({ onNavigate }: { onNavigate: () => void }) {
             childrenOffset={30}
             fw={500}
           >
-            {g.items!.filter((i) => (!i.admin || isAdmin) && itemShown(i, readOnly)).map((i) => (
+            {g.items!.filter((i) => (!i.admin || isAdmin) && itemShown(i, readOnly, managed)).map((i) => (
               <NavLink
                 key={i.to}
                 component={Link}
@@ -138,6 +140,17 @@ export function AppLayout() {
 
   // Show the confirmation dialog as soon as a commit starts waiting.
   useEffect(() => setConfirmOpened(!!confirming), [confirming]);
+  // ?review opens the review of what's staged: taking the machine over
+  // lands here, with its import staged.
+  const [params, setParams] = useSearchParams();
+  const { changes } = useStore();
+  useEffect(() => {
+    if (!params.has('review')) return;
+    if (changes.length > 0) review.open();
+    const next = new URLSearchParams(params);
+    next.delete('review');
+    setParams(next, { replace: true });
+  }, [params, changes.length]); // review and setParams are stable
 
   // A link to a card on a page (#limits): scroll to it once it's there,
   // which may be after the page has loaded its data.

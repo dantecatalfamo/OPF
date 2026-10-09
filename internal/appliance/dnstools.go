@@ -54,7 +54,7 @@ func (m *Manager) DNSTool(req DNSToolRequest) (*DNSToolResult, error) {
 	if !ok {
 		return nil, errorf(CodeInvalid, "no resolver tool %q", printable(req.Tool, 40))
 	}
-	if t.change && m.ReadOnly {
+	if t.change && m.ReadOnly() {
 		return nil, errReadOnly
 	}
 	name := strings.TrimSuffix(strings.TrimSpace(strings.ToLower(req.Name)), ".")
@@ -65,7 +65,7 @@ func (m *Manager) DNSTool(req DNSToolRequest) (*DNSToolResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if model == nil || !model.DNS.Enabled {
+	if !m.resolverRuns(model) {
 		return nil, errorf(CodeInvalid, "the resolver isn't running")
 	}
 	ctl := func(args ...string) (string, error) {

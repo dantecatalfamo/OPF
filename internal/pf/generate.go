@@ -1575,6 +1575,10 @@ func GenerateFiles(m *Model) []GeneratedFile {
 		files = append(files, GeneratedFile{Path: "/etc/hostname." + p.Device, Content: GenerateBareParent(p)})
 	}
 
+	// The areas left as they're configured by hand.
+	if left := UnmanagedPaths(m); len(left) > 0 {
+		files = slices.DeleteFunc(files, func(f GeneratedFile) bool { return slices.Contains(left, f.Path) })
+	}
 	return files
 }
 

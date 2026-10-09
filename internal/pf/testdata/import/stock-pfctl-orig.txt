@@ -1,0 +1,4 @@
+set skip on { lo }
+block return all
+pass all flags S/SA
+block return in on ! lo0 proto tcp from any to any port 6000:6010

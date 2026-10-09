@@ -86,7 +86,7 @@ func (m *Manager) RunRefresher(ctx context.Context, interval time.Duration) {
 	defer t.Stop()
 	for {
 		// Read-only, no list is downloaded or loaded (readonly.go).
-		if !m.ReadOnly {
+		if !m.ReadOnly() {
 			m.refreshDue(ctx)
 			m.pruneDownloads()
 		}

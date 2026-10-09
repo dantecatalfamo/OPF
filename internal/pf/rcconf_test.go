@@ -25,7 +25,7 @@ pkg_scripts="postgresql nginx"
 ntpd_flags="-s"
 postgresql_flags="-D /var/postgresql/data"
 
-` + rcMarker + `
+` + RcMarker + `
 dhcpd_flags="em1 vlan20"
 unbound_flags=""
 `
@@ -49,7 +49,7 @@ unbound_flags=""
 		t.Errorf("comment dropped:\n%s", got)
 	}
 	// A system with none gets only OPF's block.
-	if got := GenerateRcConfLocal(m); !strings.HasPrefix(got, rcMarker+"\n") {
+	if got := GenerateRcConfLocal(m); !strings.HasPrefix(got, RcMarker+"\n") {
 		t.Errorf("empty:\n%s", got)
 	}
 }

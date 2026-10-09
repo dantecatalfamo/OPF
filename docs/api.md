@@ -42,7 +42,7 @@ mock server (`opf -mock`) has no accounts unless it's started with
 | `forbidden` | 403 | signed in, but the role doesn't allow it |
 | `rate_limited` | 429 | too many failed sign-ins from this name or address; the message says when to try again |
 | `reauth_required` | 403 | give your password again first (`POST /api/session/reauth`), then repeat the request |
-| `read_only` | 403 | OPF only monitors this machine (`opf -readonly`): nothing that would change it is done, for anyone |
+| `read_only` | 403 | OPF only monitors this machine (`opf -readonly`): nothing that would change it is done, for anyone, but taking it over (`POST /api/takeover`) |
 | `internal` | 500 | logged on the server; the message says only "internal error" |
 
 ## Signing in
@@ -178,6 +178,55 @@ is fine); forgetting cached DNS answers; keeping keys or secrets; and
 making, changing or removing an account, your own password included.
 Everything that only looks still answers, and `GET /api/files` lists the
 machine's own files OPF would manage.
+
+### Taking the machine over
+
+While OPF doesn't manage the machine yet (read-only, or before its
+first commit), it can import the machine's own configuration and take
+it over with it. Admins only; both work read-only, and nothing on the
+machine changes until the first commit is applied.
+
+- `POST /api/import` `{"manage": {"dns": true}}`: the machine's files
+  read into a model, and what taking over would do. `manage` overrides,
+  per area (`dhcp`, `dns`, `ntp`), whether OPF should manage it; an area
+  left out gets the import's suggestion. The answer is
+  `{"fingerprint", "model", "notes", "areas", "files", "ruleset",
+  "rulesetError", "problems"}`:
+  - `notes`, each `{"file", "line", "kind", "text", "message"}`: what
+    the import made of a statement. `kind` is `model` (now OPF's
+    configuration), `kept` (kept as written: a raw rule, custom pf),
+    `left` (left as it is: an interface or area OPF doesn't take over)
+    or `lost` (the first commit loses or changes it).
+  - `areas`, each `{"area", "running", "exact", "suggested", "managed",
+    "summary"}`: `exact` means OPF writes the area's file meaning the
+    same; the import suggests managing it when it's exact or its daemon
+    doesn't run. An area not managed is in the model's
+    `system.unmanaged`: OPF doesn't write its file, or start, stop or
+    restart its daemon, and its own settings for it stay off.
+  - `files`, each `{"path", "desc", "status", "diff"}`: what the first
+    commit does to each file OPF would write: `same`, `changed` or
+    `added`, with a diff from the machine's file to OPF's.
+  - `ruleset`, `{"same", "noCatchAll", "differences", "machine",
+    "opf"}`: pfctl -nvf of the machine's pf.conf against OPF's, with
+    macro definitions, OPF's labels, options set to pf's defaults and the
+    order of tables and options set aside, and OPF's default rules too
+    when one of the machine's rules matches every packet (without one,
+    pf's own default is written out as OPF's first rule). `machine` and
+    `opf` are the rules compared. `rulesetError` says why there's none.
+  - `problems`, as `details`: what stops the machine being taken over.
+  - `fingerprint` names the import: the model and each file as it is
+    and as OPF would write it.
+- `POST /api/takeover` `{"fingerprint", "manage", "acceptDifferences"}`:
+  stages the import as OPF's first change, if it's still the one with
+  that fingerprint (else `conflict`). A ruleset that differs, or
+  couldn't be compared, needs `acceptDifferences`. The answer is
+  `{"staged": {…}}`, the files the admin saw replaced being agreed to
+  until the first commit (staging again doesn't ask, unless one of them
+  changed since). Read-only, it's `{"restarting": true}` instead: OPF
+  saves the import in its state directory and starts again, in place,
+  without `-readonly`; it takes `-readonly` out of `opf_flags`, stages
+  the import, and only then removes the read-only marker. Sessions don't
+  survive it: sign in again.
 
 ### `GET /api/config`
 

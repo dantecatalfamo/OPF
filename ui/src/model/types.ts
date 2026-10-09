@@ -468,6 +468,8 @@ export interface SystemSettings {
   dns?: SystemDns;
   /** Boot settings for base services, written into rc.conf.local; one not here is as the system has it. */
   services?: ServiceSetting[];
+  /** Areas OPF leaves as they're configured by hand: their file isn't written, and their daemon isn't touched. */
+  unmanaged?: ('dhcp' | 'dns' | 'ntp')[];
 }
 
 /** A base service's boot settings: whether it starts at boot, and a daemon's flags (unset: rc.d's defaults), routing table and stop timeout. */

@@ -14,7 +14,7 @@ import {
   ApiError, type ConfigFile, type ConfigFileView, type SessionInfo, type SessionResource, type UsersResource, type ChangeNote, type CommitDetail, type CommitResource, type ConfigResource, type FileChange,
   type DhcpLeasesResource, type LeaseNamesResource, type StagedResource, type StatusResource,
   type ARPTableResource, type RoutingTableResource, type GatewaysResource, type InterfacesResource, type SystemResource, type UpdatesResource,
-  type DnsBlockedResource, type DnsActivityResource, type StorageResource, type DevicesResource, type DeviceInfo, type ReverseNamesResource, type TableEntriesResource, type TableFindResource, type AuthpfSessionsResource, type ServicesResource, type ServiceDetailResource, type TrafficResource, type TrafficDeviceResource, type DnsDeviceActivityResource, type DnsNameActivityResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type PfStatsResource, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
+  type DnsBlockedResource, type DnsActivityResource, type StorageResource, type DevicesResource, type DeviceInfo, type ReverseNamesResource, type TableEntriesResource, type TableFindResource, type AuthpfSessionsResource, type ServicesResource, type ServiceDetailResource, type TrafficResource, type TrafficDeviceResource, type DnsDeviceActivityResource, type DnsNameActivityResource, type MetricsResource, type EventsRequest, type DnsToolName, type DnsToolResult, type SystemLogName, type SystemLogRequest, type SystemLogResource, type WebhookStatus, type WebhookSecretRequest, type EventsResource, type DnsListStatus, type DnsStatsResource, type RefreshState, type TableStatus, type ToolRequest, type ToolRun, type FirewallLogResource, type PfState, type PfStatesResource, type PfStatesRequest, type PfStatusResource, type PfStatsResource, type ImportReport, type TakeOverResult, type RuleCountersResource, type Derived, type GeneratedFile, type PfLine, type RenderTarget, type Rendered,
 } from './api';
 
 const CONFIRM_MS = 60_000;
@@ -271,6 +271,12 @@ export const localApi = {
   checkUpdates: async (): Promise<UpdatesResource> => sampleUpdates(),
   interfaces: async (): Promise<InterfacesResource> => sampleInterfaces(live),
   gateways: async (): Promise<GatewaysResource> => sampleGateways(live),
+  importMachine: async (): Promise<ImportReport> => {
+    throw new ApiError(422, 'unsupported', 'The preview has no machine to import: on a firewall OPF only monitors, this reads its configuration.');
+  },
+  takeOver: async (): Promise<TakeOverResult> => {
+    throw new ApiError(422, 'unsupported', 'The preview has no machine to take over.');
+  },
   pfStats: async (): Promise<PfStatsResource> => ({ at: new Date().toISOString(), limits: {}, used: {}, timeouts: [], interfaces: [], errors: ['The preview has no packet filter: on a firewall, this is everything pf counts.'] }),
   pfStatus: async (): Promise<PfStatusResource> => samplePfStatus(samplePfStates(live, closedStates).states.length),
   pfStates: async (r: PfStatesRequest = {}): Promise<PfStatesResource> => {

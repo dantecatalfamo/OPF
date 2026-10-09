@@ -69,6 +69,19 @@ func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 	}
 	var out string
 	switch {
+	case len(argv) == 3 && argv[0] == "pfctl" && argv[1] == "-nvf":
+		o, err := mockPfctlParse(argv[2])
+		return []byte(o), err
+	case cmd == "ifconfig egress":
+		m, err := s.model()
+		if err != nil {
+			return nil, err
+		}
+		for _, i := range m.Interfaces {
+			if i.Role == pf.RoleWAN && i.Enabled {
+				out += i.Device + ": flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tgroups: egress\n"
+			}
+		}
 	case cmd == "sysctl kern.cp_time":
 		out = "kern.cp_time=" + s.cpTime(t)
 	case cmd == "sysctl kern.cp_time vm.loadavg hw.physmem": // the collector's

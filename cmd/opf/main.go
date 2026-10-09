@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -59,6 +60,7 @@ func main() {
 	tlsMode := flag.String("tls", "auto", "serve HTTPS: on, off (only on a loopback address, for ssh -L), or auto (on unless the address is loopback)")
 	mock := flag.Bool("mock", false, "serve the web UI's API from a sample model in a scratch directory, logging commands instead of running them (for frontend development)")
 	seed := flag.String("seed", "ui/src/model/sample-model.json", "model the mock server starts from")
+	mockMachine := flag.String("mock-machine", "", "with -mock -readonly, a directory of a machine's own files (laid out as on it) to monitor and take over, in place of the seed's")
 	mockLogin := flag.String("mock-login", "", "with -mock, require signing in, as name:password (an admin); without it the mock has no accounts")
 	readOnly := flag.Bool("readonly", false, "only monitor this machine: change nothing on it, and refuse every change through the web UI (kept on in the state directory until the machine is taken over)")
 	watchdog := flag.String("watchdog", "", "run as the watchdog of the commit with this id (OPF starts these itself)")
@@ -72,7 +74,7 @@ func main() {
 				addr = *listen
 			}
 		})
-		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin, *readOnly))
+		log.Fatal(runMock(addr, *seed, *timeout, *mockLogin, *readOnly, *mockMachine))
 	}
 
 	var runner run.Runner = run.Exec{}
@@ -120,9 +122,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if ro {
-		log.Printf("read-only: monitoring this machine, changing nothing on it (%s)", filepath.Join(*stateDir, appliance.ReadOnlyMarker))
-	}
 	// A watchdog for each commit that waits, in case OPF dies first.
 	var watchdogArgs []string
 	flag.Visit(func(f *flag.Flag) {
@@ -151,7 +150,13 @@ func main() {
 		log.Fatal(err)
 	}
 	api.Actions = runner // dry-run with -dry
-	api.ReadOnly = ro    // and read-only, nothing runs at all
+	if appliance.TakeOverPending(*stateDir) {
+		ro = finishTakeOver(api, runner, *stateDir, ro, *readOnly)
+	}
+	api.SetReadOnly(ro) // and read-only, nothing runs at all
+	if ro {
+		log.Printf("read-only: monitoring this machine, changing nothing on it (%s)", filepath.Join(*stateDir, appliance.ReadOnlyMarker))
+	}
 	leasesFile := filepath.Join(*root, leases.Path)
 
 	// Who can sign in: the system's accounts in OPF's groups, which are
@@ -226,6 +231,18 @@ func main() {
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	// Taking the machine over from read-only mode stops OPF, which then
+	// starts again in place, out of its sandbox (appliance.TakeOver).
+	runCtx, stopRun := context.WithCancel(sigCtx)
+	defer stopRun()
+	takingOver := make(chan struct{})
+	if ro {
+		api.OnTakeOver(func() {
+			time.Sleep(time.Second) // for the answer to reach the browser
+			close(takingOver)
+			stopRun()
+		})
+	}
 
 	// DHCP clients' names in DNS, when the model asks for them.
 	var resolver leases.Resolver = leases.Unbound{Runner: runner, Config: "/var/unbound/etc/unbound.conf"}
@@ -246,7 +263,7 @@ func main() {
 		scheme = "https"
 	}
 	log.Printf("listening on %s://%s", scheme, ln.Addr())
-	err = privsep.RunParent(sigCtx, privsep.ParentOptions{
+	err = privsep.RunParent(runCtx, privsep.ParentOptions{
 		API:        api,
 		Accounts:   privsep.ServeOptions{Sessions: sessions, Admin: admin, Audit: audit, TLS: tlsPair},
 		Listener:   lf,
@@ -271,9 +288,96 @@ func main() {
 		}
 		cancel()
 	}
+	select {
+	case <-takingOver:
+		startAgain(exe)
+	default:
+	}
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+// startAgain execs OPF again, without -readonly, to finish taking the
+// machine over (finishTakeOver). An exec drops the sandbox, and every
+// descriptor (the listener, the state directory's lock) is close-on-exec.
+func startAgain(exe string) {
+	args := append([]string{os.Args[0]}, withoutReadOnly(os.Args[1:])...)
+	log.Printf("starting again out of read-only mode: %s", strings.Join(args, " "))
+	err := syscall.Exec(exe, args, os.Environ())
+	log.Fatalf("starting again: %v", err)
+}
+
+// withoutReadOnly is a command line without -readonly.
+func withoutReadOnly(args []string) []string {
+	var out []string
+	for _, a := range args {
+		name, val, hasVal := strings.Cut(strings.TrimLeft(a, "-"), "=")
+		if strings.HasPrefix(a, "-") && name == "readonly" {
+			if on, err := strconv.ParseBool(val); !hasVal || (err == nil && on) {
+				continue
+			}
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// finishTakeOver finishes taking the machine over after OPF started again
+// out of read-only mode (startAgain): -readonly comes out of
+// rc.conf.local's opf_flags first, so rc doesn't start OPF read-only
+// again; then the import is staged; and only then does the read-only
+// marker go. Anything failing leaves the marker, and OPF read-only. It
+// returns whether OPF is read-only.
+func finishTakeOver(api *appliance.Manager, runner run.Runner, stateDir string, ro, flagged bool) bool {
+	discard := func() { os.Remove(filepath.Join(stateDir, appliance.TakeOverFile)) }
+	switch {
+	case !ro:
+		// Not read-only: a leftover, which the managed OPF doesn't need.
+		discard()
+		return false
+	case flagged:
+		// Started with -readonly again by hand: that's the admin's word.
+		log.Printf("taking over: started with -readonly, so the machine isn't taken over")
+		discard()
+		return true
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := dropReadOnlyFlag(ctx, runner); err != nil {
+		log.Printf("taking over: %v; still read-only", err)
+		discard()
+		return true
+	}
+	if err := api.ResumeTakeOver(); err != nil {
+		log.Printf("taking over: staging the machine's configuration: %v; still read-only", err)
+		return true
+	}
+	if err := os.Remove(filepath.Join(stateDir, appliance.ReadOnlyMarker)); err != nil {
+		log.Printf("taking over: %v; still read-only", err)
+		return true
+	}
+	log.Printf("taken over: no longer read-only; the machine's configuration is staged, to review and commit")
+	return false
+}
+
+// dropReadOnlyFlag takes -readonly out of opf_flags in rc.conf.local,
+// with rcctl. OPF started some other way has none there.
+func dropReadOnlyFlag(ctx context.Context, runner run.Runner) error {
+	out, err := runner.Run(ctx, "rcctl", "get", "opf", "flags")
+	if err != nil {
+		return nil // not rc's
+	}
+	flags := strings.Fields(strings.TrimSpace(string(out)))
+	kept := withoutReadOnly(flags)
+	if len(kept) == len(flags) {
+		return nil
+	}
+	if _, err := runner.Run(ctx, append([]string{"rcctl", "set", "opf", "flags"}, kept...)...); err != nil {
+		return fmt.Errorf("taking -readonly out of opf_flags (rcctl set opf flags): %w", err)
+	}
+	log.Printf("taking over: opf_flags is now %q", strings.Join(kept, " "))
+	return nil
 }
 
 // sendWebhook is the webhook sender: started by the parent as the

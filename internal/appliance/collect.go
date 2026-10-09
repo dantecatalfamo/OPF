@@ -293,7 +293,7 @@ func (m *Manager) sample(now time.Time) {
 	m.readDNSActivity(model, now)
 	// Read-only, nothing the model asks for is kept up: these change
 	// the machine (pf's tables, resolvd, accounts).
-	if !m.ReadOnly {
+	if !m.ReadOnly() {
 		m.readTraffic(model, now)
 		m.applySystemDNS(model) // resolvd forgets it when it restarts
 		m.expireTables(model, now)
@@ -353,7 +353,7 @@ func (m *Manager) sample(now time.Time) {
 	}
 
 	// DNS, when the resolver runs.
-	if model != nil && model.DNS.Enabled {
+	if m.resolverRuns(model) {
 		if out, err := m.read("unbound-control", "-c", unboundConf, "stats_noreset"); err == nil {
 			if s, ok := sysinfo.ParseUnboundStats(out); ok {
 				t := time.Now()

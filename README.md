@@ -157,9 +157,19 @@ makes its sign-in groups on first start; give someone a role with
 `usermod -G _opfadmin <name>`.
 
 Read-only is kept in `/var/opf/readonly`, so starting OPF later without
-the flag doesn't hand it control. Taking the machine over (System ›
-Take over) means importing its configuration first, which is next on
-the roadmap.
+the flag doesn't hand it control.
+
+To hand it control later, use System › Take over. OPF imports the
+machine's configuration (interfaces, pf.conf, DHCP, the resolver, time
+servers) and shows what it understood. pf.conf's rules keep their order
+and meaning: what OPF can't show in its own forms stays as written.
+pfctl then checks that the pf.conf OPF would write loads as the same
+ruleset, and every file's diff is shown. A DHCP server, resolver or time
+setup OPF can't write the same way can stay as it is, until you hand it
+over on its page. Taking over restarts OPF out of read-only mode and
+stages the import as its first change. Nothing on the machine changes
+until you apply that change, which, like any other, undoes itself
+unless you confirm it.
 
 ## Development
 

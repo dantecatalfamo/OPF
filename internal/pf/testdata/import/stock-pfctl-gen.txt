@@ -1,0 +1,14 @@
+wan = "vio0"
+set block-policy drop
+set state-policy floating
+set optimization normal
+set limit states 100000
+set syncookies never
+set skip on { lo }
+set loginterface none
+block drop all label "opf:builtin:default-block"
+pass out inet all flags S/SA label "opf:builtin:self-out"
+pass out inet6 all flags S/SA label "opf:builtin:self-out"
+block return all label "opf:rule:imp1"
+pass all flags S/SA label "opf:rule:imp2"
+block return in on ! lo0 proto tcp from any to any port 6000:6010

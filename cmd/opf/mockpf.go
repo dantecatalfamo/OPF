@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/netip"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -398,3 +400,42 @@ adaptive.start            60000 states
 adaptive.end             120000 states
 src.track                     0s
 `
+
+// mockPfctlParse stands in for pfctl -nvf, which the mock has no pf to
+// run: the file's statements as pfctl would print them, roughly. Macros
+// are expanded and comments, continuations and blank space taken out,
+// but lists aren't made into rules, and a rule isn't rewritten the way
+// pfctl writes it. So the import's check of the ruleset finds the
+// differences in wording a real pfctl wouldn't: it's for seeing the
+// page, not for trusting the answer.
+func mockPfctlParse(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("pfctl: %s: %w", path, err)
+	}
+	text := strings.ReplaceAll(string(data), "\\\n", " ")
+	macros := map[string]string{}
+	macroRE := regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(.*)"$`)
+	useRE := regexp.MustCompile(`\$([A-Za-z_][A-Za-z0-9_]*)`)
+	var b strings.Builder
+	for _, line := range strings.Split(text, "\n") {
+		if i := strings.IndexByte(line, '#'); i >= 0 {
+			line = line[:i]
+		}
+		line = strings.Join(strings.Fields(line), " ")
+		if line == "" {
+			continue
+		}
+		line = useRE.ReplaceAllStringFunc(line, func(m string) string {
+			if v, ok := macros[m[1:]]; ok {
+				return v
+			}
+			return m
+		})
+		if sub := macroRE.FindStringSubmatch(line); sub != nil {
+			macros[sub[1]] = sub[2]
+		}
+		b.WriteString(line + "\n")
+	}
+	return b.String(), nil
+}

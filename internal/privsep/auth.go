@@ -65,6 +65,9 @@ var methodRoles = map[string]auth.Role{
 	"Confirm":       auth.RoleOperator, "Revert": auth.RoleOperator,
 	// Changing the configuration.
 	"Stage": auth.RoleAdmin, "Discard": auth.RoleAdmin, "Commit": auth.RoleAdmin,
+	// Reading every configuration file into a model, and taking the
+	// machine over with it.
+	"Import": auth.RoleAdmin, "TakeOver": auth.RoleAdmin,
 	"SetWebhookSecret": auth.RoleAdmin, "NewTunnelKey": auth.RoleAdmin, "ImportTunnelKey": auth.RoleAdmin, "NewDeviceKey": auth.RoleAdmin, "SetPresharedKey": auth.RoleAdmin,
 	// Who can sign in, which also asks for the password again
 	// (allowRecent).
@@ -92,7 +95,7 @@ func (s *Service) allow(method string, c callInfo, r *Result) *auth.Session {
 		r.Err = &appliance.Error{Code: appliance.CodeForbidden, Message: "not allowed"}
 		return nil
 	}
-	if s.api != nil && s.api.ReadOnly && readOnlyRefused(method) {
+	if s.api != nil && s.api.ReadOnly() && readOnlyRefused(method) {
 		r.Err = appliance.ReadOnlyError()
 		return nil
 	}

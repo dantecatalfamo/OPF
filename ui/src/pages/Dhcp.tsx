@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ActionIcon, Alert, Badge, Button, Card, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Fieldset, Grid, Group, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, Tabs, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertTriangle, IconBookmark, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, newId, useStore } from '../model/store';
@@ -13,6 +13,7 @@ import { poolSize } from '../lib/ip';
 import { HistoryCard } from '../components/HistoryChart';
 import { FileLink } from './ConfigFiles';
 import { DeviceLink, macKey } from '../components/DeviceLink';
+import { HandConfigured, handConfigured } from '../components/HandConfigured';
 
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
@@ -188,7 +189,8 @@ export function Dhcp() {
   const ifaces = staged.interfaces.filter((i) => i.ipv4.mode === 'static' && i.role !== 'wan' && i.role !== 'vpn');
   const currentId = params.get('iface') ?? scopes[0]?.iface ?? ifaces[0]?.id;
   const iface = ifaces.find((i) => i.id === currentId) ?? ifaces[0];
-  const scope = scopes.find((s) => s.iface === iface.id);
+  const scope = iface && scopes.find((s) => s.iface === iface.id);
+  const hand = handConfigured(staged, 'dhcp');
   const [modal, setModal] = useState<{ open: boolean; initial: Partial<Reservation> | null }>({ open: false, initial: null });
 
   const enable = () =>
@@ -199,11 +201,21 @@ export function Dhcp() {
 
   const { data: leaseData, failed: leasesFailed } = useDhcpLeases();
   const now = useNow(30_000);
-  const ifaceLeases = (leaseData?.leases ?? []).filter((l) => l.iface === iface.id);
+  const ifaceLeases = (leaseData?.leases ?? []).filter((l) => l.iface === iface?.id);
 
+  if (!iface) {
+    return (
+      <>
+        <PageHeader title="DHCP server" description="Hands out addresses to devices as they join each network." />
+        <HandConfigured area="dhcp" />
+        <Card><Empty>No inside network has a fixed address, which a DHCP server needs.</Empty></Card>
+      </>
+    );
+  }
   return (
     <>
       <PageHeader title="DHCP server" description="Hands out addresses to devices as they join each network." />
+      <HandConfigured area="dhcp" />
       <Tabs value={iface.id} onChange={(v) => v && navigate(`?iface=${v}`)} mb="md">
         <Tabs.List>
           {ifaces.map((i) => (
@@ -212,6 +224,7 @@ export function Dhcp() {
         </Tabs.List>
       </Tabs>
 
+      <Fieldset variant="unstyled" p={0} disabled={hand}>
       {!scope ? (
         <Card>
           <Stack align="flex-start">
@@ -321,6 +334,7 @@ export function Dhcp() {
           </Grid>
         </Stack>
       )}
+      </Fieldset>
       {scope && <ReservationModal opened={modal.open} onClose={() => setModal((m) => ({ ...m, open: false }))} iface={iface} scope={scope} initial={modal.initial} />}
     </>
   );

@@ -367,6 +367,24 @@ func (v *validator) system() {
 	if len(s.NTPServers) == 0 {
 		v.fail("system.ntpServers", "needs at least one server")
 	}
+	// Areas left as they're configured by hand have OPF's own settings
+	// for them off, so nothing of OPF's depends on them.
+	left := map[string]bool{}
+	for i, a := range s.Unmanaged {
+		p := at("system.unmanaged", i)
+		v.oneOf(p, a, Areas...)
+		v.unique(p, left, a, "area")
+	}
+	if left[AreaDHCP] {
+		for i, sc := range v.m.DHCP {
+			if sc.Enabled {
+				v.fail(at("dhcp", i)+".enabled", "the DHCP server is configured by hand; OPF's scopes are off until it's handed over")
+			}
+		}
+	}
+	if left[AreaDNS] && v.m.DNS.Enabled {
+		v.fail("dns.enabled", "the resolver is configured by hand; OPF's is off until it's handed over")
+	}
 	for i, n := range s.NTPServers {
 		v.host(at("system.ntpServers", i), n)
 	}

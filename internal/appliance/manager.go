@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -65,10 +66,10 @@ type Manager struct {
 	// commit, such as ending a connection. If nil, Runner is used; -dry
 	// makes it log them instead.
 	Actions run.Runner
-	// ReadOnly: OPF only watches this machine (readonly.go). Actions
+	// readOnly: OPF only watches this machine (readonly.go). Actions
 	// refuse everything, and nothing that would change the system runs
 	// in the background; the API is wrapped by ReadOnlyAPI as well.
-	ReadOnly bool
+	readOnly atomic.Bool
 
 	// DNSLog is unbound's log file while DNS activity is kept; empty,
 	// pf.DNSLogPath. The mock's is in its scratch directory.
@@ -124,10 +125,21 @@ type Manager struct {
 	updMu      sync.Mutex
 	upd        *UpdatesStatus
 	updRunning bool
+
+	// takeOverHook starts OPF again out of read-only mode (takeover.go).
+	takeOverHook func()
 }
 
+// ReadOnly says whether OPF only watches this machine (readonly.go).
+func (m *Manager) ReadOnly() bool { return m.readOnly.Load() }
+
+// SetReadOnly makes OPF only watch this machine, or not. It's set
+// before OPF starts, and taking over turns it off in the mock, which
+// starts again in place of re-executing.
+func (m *Manager) SetReadOnly(on bool) { m.readOnly.Store(on) }
+
 func (m *Manager) actions() run.Runner {
-	if m.ReadOnly {
+	if m.ReadOnly() {
 		return run.Refuse{Log: log.Default()}
 	}
 	if m.Actions != nil {
@@ -392,7 +404,7 @@ func (m *Manager) Status() (*Status, error) {
 	if err != nil {
 		return nil, apiError(err)
 	}
-	st := &Status{Live: live, Release: m.osRelease(), ReadOnly: m.ReadOnly, Managed: live != NoVersion}
+	st := &Status{Live: live, Release: m.osRelease(), ReadOnly: m.ReadOnly(), Managed: live != NoVersion}
 	if data, staged, err := m.stagedModel(); err != nil {
 		return nil, apiError(err)
 	} else if staged {
@@ -495,60 +507,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		return nil, err
 	}
 
-	gen := generated(req.Model)
+	gen, err := m.planned(req.Model)
+	if err != nil {
+		return nil, err
+	}
 	liveGen := map[string]string{}
 	if liveModel != nil {
-		liveGen = generated(liveModel)
+		liveGen = m.plannedLive(liveModel)
 	}
-	// rc.conf.local is shared with the admin and rcctl: OPF's lines are
-	// set in the file as it is, and everything else in it is kept.
 	var problems []Detail
-	rcDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.RcPath).Name)
-	if err != nil {
-		return nil, err
-	}
-	merged, err := pf.MergeRcConfLocal(string(rcDisk), req.Model)
-	if err != nil {
-		return nil, &Error{Code: CodeUnsupported, Message: "OPF can't set its lines in rc.conf.local", Details: []Detail{{Path: pf.RcPath, Message: err.Error()}}}
-	}
-	gen[pf.RcPath] = merged
-	if liveModel != nil {
-		if merged, err := pf.MergeRcConfLocal(string(rcDisk), liveModel); err == nil {
-			liveGen[pf.RcPath] = merged
-		}
-	}
-	// So is sysctl.conf.
-	sysctlDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SysctlPath).Name)
-	if err != nil {
-		return nil, err
-	}
-	gen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), req.Model)
-	if liveModel != nil {
-		liveGen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), liveModel)
-	}
-	// And /etc/hosts.
-	hostsDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.HostsPath).Name)
-	if err != nil {
-		return nil, err
-	}
-	gen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), req.Model)
-	if liveModel != nil {
-		liveGen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), liveModel)
-	}
-	// And sshd_config, for sign-in access's block. OPF never makes one:
-	// without it there's no sshd to sign in to.
-	sshdDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SshdPath).Name)
-	if err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(string(sshdDisk)) != "" {
-		gen[pf.SshdPath] = pf.MergeSshdConfig(string(sshdDisk), req.Model)
-		if liveModel != nil {
-			liveGen[pf.SshdPath] = pf.MergeSshdConfig(string(sshdDisk), liveModel)
-		}
-	} else if pf.AuthpfOn(req.Model) {
-		return nil, &Error{Code: CodeUnsupported, Message: "sign-in access needs sshd", Details: []Detail{{Path: pf.SshdPath, Message: "there's no sshd_config to add the sign-in accounts' settings to"}}}
-	}
 	// What OPF last left in each file, from history; a file no commit
 	// has touched yet is judged against what the applied model
 	// generates, the best there is.
@@ -586,13 +553,15 @@ func (m *Manager) stage(req StageRequest) (*Staged, error) {
 		// What OPF last wrote there, if anything. Not what it would
 		// write now: after an upgrade that changes a generator, that
 		// differs from every file it wrote before.
-		if _, _, outside := outsideChange(path, disk, onDisk, written, liveGen); outside && !slices.Contains(req.Overwrite, path) {
+		if _, _, outside := outsideChange(path, disk, onDisk, written, liveGen); outside && !slices.Contains(req.Overwrite, path) &&
+			!(liveVersion == NoVersion && m.acceptedAtTakeOver(path, disk)) {
 			problems = append(problems, Detail{Path: path, Message: "changed outside OPF; list it in overwrite to replace it"})
 		}
 	}
+	left := pf.UnmanagedPaths(req.Model)
 	for path := range liveGen {
-		if _, still := gen[path]; still {
-			continue
+		if _, still := gen[path]; still || slices.Contains(left, path) {
+			continue // still generated, or now the admin's
 		}
 		f, err := m.store.LookupPath(path)
 		if err != nil {
@@ -707,7 +676,14 @@ func outsideChange(path string, disk []byte, onDisk bool, written map[string]wri
 	case pf.RcPath:
 		// The rest isn't OPF's, and a missing file means rc.conf's
 		// defaults.
-		outside = wrote && (!maps.Equal(pf.RcValues(string(disk)), pf.RcValues(string(prev))) || !slices.Equal(pf.RcServiceValues(string(disk)), pf.RcServiceValues(string(prev))))
+		// Of the daemons' variables, only those OPF set: one whose area
+		// is left alone is the admin's.
+		d, p := pf.RcValues(string(disk)), pf.RcValues(string(prev))
+		changed := false
+		for _, n := range pf.RcOwnNames(string(prev)) {
+			changed = changed || d[n] != p[n]
+		}
+		outside = wrote && (changed || !slices.Equal(pf.RcServiceValues(string(disk)), pf.RcServiceValues(string(prev))))
 	case pf.SysctlPath:
 		outside = wrote && !maps.Equal(pf.SysctlValues(string(disk)), pf.SysctlValues(string(prev)))
 	case pf.SshdPath:
@@ -731,6 +707,60 @@ func outsideChange(path string, disk []byte, onDisk bool, written map[string]wri
 		outside = false
 	}
 	return prev, wrote, outside
+}
+
+// planned is what OPF would write for a model: what it generates, with
+// its lines set in the files it shares with the admin (rc.conf.local,
+// sysctl.conf, /etc/hosts, sshd_config) as they are on the machine.
+func (m *Manager) planned(model *pf.Model) (map[string]string, error) {
+	return m.plan(model, true)
+}
+
+// plannedLive is planned for the applied model, which was staged once
+// already: a shared file it can't set its lines in now is left as
+// generated.
+func (m *Manager) plannedLive(model *pf.Model) map[string]string {
+	gen, _ := m.plan(model, false)
+	return gen
+}
+
+func (m *Manager) plan(model *pf.Model, strict bool) (map[string]string, error) {
+	gen := generated(model)
+	// rc.conf.local is shared with the admin and rcctl: OPF's lines are
+	// set in the file as it is, and everything else in it is kept.
+	rcDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.RcPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	if merged, err := pf.MergeRcConfLocal(string(rcDisk), model); err == nil {
+		gen[pf.RcPath] = merged
+	} else if strict {
+		return nil, &Error{Code: CodeUnsupported, Message: "OPF can't set its lines in rc.conf.local", Details: []Detail{{Path: pf.RcPath, Message: err.Error()}}}
+	}
+	// So is sysctl.conf.
+	sysctlDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SysctlPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	gen[pf.SysctlPath] = pf.MergeSysctlConf(string(sysctlDisk), model)
+	// And /etc/hosts.
+	hostsDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.HostsPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	gen[pf.HostsPath] = pf.MergeHosts(string(hostsDisk), model)
+	// And sshd_config, for sign-in access's block. OPF never makes one:
+	// without it there's no sshd to sign in to.
+	sshdDisk, _, err := m.store.Live(mustLookupPath(m.store, pf.SshdPath).Name)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(string(sshdDisk)) != "" {
+		gen[pf.SshdPath] = pf.MergeSshdConfig(string(sshdDisk), model)
+	} else if pf.AuthpfOn(model) && strict {
+		return nil, &Error{Code: CodeUnsupported, Message: "sign-in access needs sshd", Details: []Detail{{Path: pf.SshdPath, Message: "there's no sshd_config to add the sign-in accounts' settings to"}}}
+	}
+	return gen, nil
 }
 
 func generated(model *pf.Model) map[string]string {

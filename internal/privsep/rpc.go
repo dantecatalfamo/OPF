@@ -126,6 +126,14 @@ type (
 		Result
 		Stats *appliance.PfStats
 	}
+	ImportReply struct {
+		Result
+		Report *appliance.ImportReport
+	}
+	TakeOverReply struct {
+		Result
+		TakeOver *appliance.TakeOverResult
+	}
 	RuleCountersReply struct {
 		Result
 		Counters *appliance.RuleCounters
@@ -400,6 +408,30 @@ func (s *Service) PfStats(c Call[None], r *PfStatsReply) error {
 	var err error
 	r.Stats, err = s.api.PfStats()
 	r.set("PfStats", err)
+	return nil
+}
+
+func (s *Service) Import(c Call[appliance.ImportRequest], r *ImportReply) error {
+	if s.allow("Import", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Report, err = s.api.Import(c.Args)
+	r.set("Import", err)
+	return nil
+}
+
+func (s *Service) TakeOver(c Call[appliance.TakeOverRequest], r *TakeOverReply) error {
+	sess := s.allow("TakeOver", c, &r.Result)
+	if sess == nil {
+		return nil
+	}
+	var err error
+	r.TakeOver, err = s.api.TakeOverBy(c.Args, sess.User)
+	r.set("TakeOver", err)
+	if err == nil {
+		s.audit(sess.User, "took this machine over: its configuration is imported and staged")
+	}
 	return nil
 }
 
@@ -1163,6 +1195,24 @@ func (c *Client) CheckUpdates() (*appliance.UpdatesStatus, error) {
 		s.Patches = nonNil(s.Patches)
 	}
 	return r.Updates, err
+}
+
+func (c *Client) Import(req appliance.ImportRequest) (*appliance.ImportReport, error) {
+	var r ImportReply
+	err := c.call("Import", req, &r)
+	if p := r.Report; p != nil {
+		p.Notes, p.Areas, p.Files, p.Problems = nonNil(p.Notes), nonNil(p.Areas), nonNil(p.Files), nonNil(p.Problems)
+		if p.Ruleset != nil {
+			p.Ruleset.Differences, p.Ruleset.Machine, p.Ruleset.OPF = nonNil(p.Ruleset.Differences), nonNil(p.Ruleset.Machine), nonNil(p.Ruleset.OPF)
+		}
+	}
+	return r.Report, err
+}
+
+func (c *Client) TakeOver(req appliance.TakeOverRequest) (*appliance.TakeOverResult, error) {
+	var r TakeOverReply
+	err := c.call("TakeOver", req, &r)
+	return r.TakeOver, err
 }
 
 func (c *Client) PfStats() (*appliance.PfStats, error) {

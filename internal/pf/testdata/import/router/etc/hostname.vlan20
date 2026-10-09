@@ -1,0 +1,4 @@
+vnetid 20 parent em2
+inet 10.20.0.1/24
+description "IoT"
+up

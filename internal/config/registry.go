@@ -436,6 +436,9 @@ for af in inet inet6; do
 done
 exec sh /etc/netstart "$if"`
 
+// RcMarker starts OPF's block in rc.conf.local; it's pf.RcMarker.
+const RcMarker = "# Set by OPF from its web interface; the lines above are kept as they are."
+
 // RcServices are the daemons whose rc.conf.local lines OPF writes
 // (pf.GenerateRcConfLocal), and so the ones RcReconcile manages.
 var RcServices = []string{"dhcpd", "unbound"}
@@ -447,9 +450,20 @@ var RcServices = []string{"dhcpd", "unbound"}
 // lines aren't OPF's. The file may be gone after a revert, which leaves
 // them all disabled, as they are by default. Any failure fails the
 // commit, which is then reverted.
+//
+// Of a file with OPF's block (RcMarker), only the daemons the block sets
+// are brought in line: one OPF leaves as it's configured by hand
+// (pf.Unmanaged) isn't there, and is left as it is. A file without the
+// block, the admin's own put back by a revert, brings them all in line.
 var RcReconcile = `set -e
-if [ -f "$1" ]; then eval "$(grep -E '^[[:space:]]*(` + strings.Join(RcServices, "|") + `)_flags=' "$1" || true)"; fi
-for s in ` + strings.Join(RcServices, " ") + `; do
+svcs="` + strings.Join(RcServices, " ") + `"
+if [ -f "$1" ]; then
+	eval "$(grep -E '^[[:space:]]*(` + strings.Join(RcServices, "|") + `)_flags=' "$1" || true)"
+	if grep -qxF '` + RcMarker + `' "$1"; then
+		svcs=$(awk -v m='` + RcMarker + `' 'f && /^[[:space:]]*(` + strings.Join(RcServices, "|") + `)_flags=/ { sub(/^[[:space:]]*/, ""); sub(/_flags=.*/, ""); if (!seen[$0]++) print } $0 == m { f = 1 }' "$1")
+	fi
+fi
+for s in $svcs; do
 	eval "f=\${${s}_flags-NO}"
 	if [ "$f" = NO ]; then
 		if rcctl check "$s" >/dev/null 2>&1; then rcctl stop "$s"; fi

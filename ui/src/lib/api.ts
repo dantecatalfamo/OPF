@@ -354,6 +354,76 @@ export interface PfInterfaceStats {
   outBlock: PfCount;
 }
 
+/** An area OPF can leave as it's configured by hand. */
+export type Area = 'dhcp' | 'dns' | 'ntp';
+
+/** Something an import says about a file: what's now OPF's configuration
+ *  (model), kept as written (kept), left as it is (left), or what the
+ *  first commit loses or changes (lost). */
+export interface ImportNote {
+  file: string;
+  line?: number;
+  kind: 'model' | 'kept' | 'left' | 'lost';
+  text?: string;
+  message: string;
+}
+
+/** How an area was imported: whether its daemon runs, whether OPF writes
+ *  its file meaning the same (exact), what the import suggests, and what
+ *  it did. */
+export interface ImportArea {
+  area: Area;
+  running: boolean;
+  exact: boolean;
+  suggested: boolean;
+  managed: boolean;
+  summary: string;
+}
+
+/** What the first commit does to a file: leaves it, changes it, makes it. */
+export interface ImportFile {
+  path: string;
+  desc: string;
+  status: 'same' | 'changed' | 'added';
+  diff?: string;
+}
+
+/** The machine's ruleset against the one from OPF's pf.conf, as pfctl reads them. */
+export interface PfComparison {
+  same: boolean;
+  noCatchAll?: boolean;
+  differences: string[];
+  machine: string[];
+  opf: string[];
+}
+
+/** POST /api/import: the machine's configuration as OPF's model, and what taking it over would do. */
+export interface ImportReport {
+  fingerprint: string;
+  model: Model;
+  notes: ImportNote[];
+  areas: ImportArea[];
+  files: ImportFile[];
+  ruleset?: PfComparison;
+  rulesetError?: string;
+  problems: ErrorDetail[];
+}
+
+export interface ImportRequest {
+  manage?: Partial<Record<Area, boolean>>;
+}
+
+export interface TakeOverRequest extends ImportRequest {
+  fingerprint: string;
+  acceptDifferences?: boolean;
+}
+
+/** POST /api/takeover: staged now, or (read-only) OPF starting again to stage it. */
+export interface TakeOverResult {
+  restarting?: boolean;
+  staged?: StagedResource;
+}
+
 /** GET /api/pf/stats: everything pf counts. Totals are since pf was
  *  enabled; a page works out rates between two answers by `at`. */
 export interface PfStatsResource {
@@ -1082,6 +1152,8 @@ export const api = {
   gateways: () => request<GatewaysResource>('GET', '/network/gateways'),
   pfStatus: () => request<PfStatusResource>('GET', '/pf/status'),
   pfStats: () => request<PfStatsResource>('GET', '/pf/stats'),
+  importMachine: (r: ImportRequest = {}) => request<ImportReport>('POST', '/import', r),
+  takeOver: (r: TakeOverRequest) => request<TakeOverResult>('POST', '/takeover', r),
   pfStates: (r: PfStatesRequest = {}) => {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);

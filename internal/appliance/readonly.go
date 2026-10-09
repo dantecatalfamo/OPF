@@ -8,7 +8,7 @@ import "slices"
 //
 //   - ReadOnlyAPI refuses every API method that would change the
 //     machine (readOnlyRefused), here and in the privileged process.
-//   - Manager.ReadOnly makes the runner for changes refuse everything
+//   - Manager.ReadOnly() makes the runner for changes refuse everything
 //     (run.Refuse), and stops the background work that changes things:
 //     downloading lists, expiring table entries, sign-in accounts,
 //     the traffic table, the firewall's own DNS servers.
@@ -55,6 +55,10 @@ var readOnlyAllowed = []string{
 	"DNSActivity", "DNSDeviceActivity", "DNSNameActivity", "ForgetDNSActivity",
 	"Traffic", "TrafficDevice", "ForgetTraffic", "Metrics", "Events", "SystemLog",
 	"Webhooks", "NewDeviceKey", "TestWebhook",
+	// Importing only reads; taking over is the way out of read-only
+	// mode, and writes only the state directory before OPF starts again
+	// (takeover.go).
+	"Import", "TakeOver",
 }
 
 // ReadOnlyRefuses says whether read-only mode refuses an API method
@@ -67,35 +71,122 @@ func ReadOnlyRefuses(method string) bool {
 
 // ReadOnlyAPI is api with everything that would change the machine
 // refused.
-func ReadOnlyAPI(api API) API { return readOnlyAPI{api} }
+func ReadOnlyAPI(api API) API { return readOnlyAPI{API: api} }
 
-type readOnlyAPI struct{ API }
+// ReadOnlyWhile is api with everything that would change the machine
+// refused while on says so: the mock's, which leaves read-only mode in
+// place when it's taken over.
+func ReadOnlyWhile(api API, on func() bool) API { return readOnlyAPI{API: api, on: on} }
 
-func (readOnlyAPI) Stage(StageRequest) (*Staged, error)       { return nil, errReadOnly }
-func (readOnlyAPI) Discard() error                            { return errReadOnly }
-func (readOnlyAPI) Commit(CommitRequest) (*Commit, error)     { return nil, errReadOnly }
-func (readOnlyAPI) Confirm(string) (*Commit, error)           { return nil, errReadOnly }
-func (readOnlyAPI) Revert(string) (*Commit, error)            { return nil, errReadOnly }
-func (readOnlyAPI) KillState(KillStateRequest) error          { return errReadOnly }
-func (readOnlyAPI) TableChange(TableChangeRequest) error      { return errReadOnly }
-func (readOnlyAPI) RefreshAlias(string) (*TableStatus, error) { return nil, errReadOnly }
-func (readOnlyAPI) RefreshDNSList(string) (*DNSListStatus, error) {
-	return nil, errReadOnly
+type readOnlyAPI struct {
+	API
+	on func() bool // nil: always
 }
-func (readOnlyAPI) AuthpfEnd(AuthpfEndRequest) error { return errReadOnly }
-func (readOnlyAPI) SetWebhookSecret(string, WebhookSecretRequest) (*WebhookSecretResult, error) {
-	return nil, errReadOnly
+
+func (r readOnlyAPI) refuse() bool { return r.on == nil || r.on() }
+
+func (r readOnlyAPI) Stage(req StageRequest) (*Staged, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.Stage(req)
 }
-func (readOnlyAPI) NewTunnelKey() (string, error)          { return "", errReadOnly }
-func (readOnlyAPI) ImportTunnelKey(string) (string, error) { return "", errReadOnly }
-func (readOnlyAPI) SetPresharedKey(PresharedKeyRequest) (*PresharedKey, error) {
-	return nil, errReadOnly
+
+func (r readOnlyAPI) Discard() error {
+	if r.refuse() {
+		return errReadOnly
+	}
+	return r.API.Discard()
+}
+
+func (r readOnlyAPI) Commit(req CommitRequest) (*Commit, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.Commit(req)
+}
+
+func (r readOnlyAPI) Confirm(id string) (*Commit, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.Confirm(id)
+}
+
+func (r readOnlyAPI) Revert(id string) (*Commit, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.Revert(id)
+}
+
+func (r readOnlyAPI) KillState(req KillStateRequest) error {
+	if r.refuse() {
+		return errReadOnly
+	}
+	return r.API.KillState(req)
+}
+
+func (r readOnlyAPI) TableChange(req TableChangeRequest) error {
+	if r.refuse() {
+		return errReadOnly
+	}
+	return r.API.TableChange(req)
+}
+
+func (r readOnlyAPI) RefreshAlias(id string) (*TableStatus, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.RefreshAlias(id)
+}
+
+func (r readOnlyAPI) RefreshDNSList(id string) (*DNSListStatus, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.RefreshDNSList(id)
+}
+
+func (r readOnlyAPI) AuthpfEnd(req AuthpfEndRequest) error {
+	if r.refuse() {
+		return errReadOnly
+	}
+	return r.API.AuthpfEnd(req)
+}
+
+func (r readOnlyAPI) SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.SetWebhookSecret(id, req)
+}
+
+func (r readOnlyAPI) NewTunnelKey() (string, error) {
+	if r.refuse() {
+		return "", errReadOnly
+	}
+	return r.API.NewTunnelKey()
+}
+
+func (r readOnlyAPI) ImportTunnelKey(key string) (string, error) {
+	if r.refuse() {
+		return "", errReadOnly
+	}
+	return r.API.ImportTunnelKey(key)
+}
+
+func (r readOnlyAPI) SetPresharedKey(req PresharedKeyRequest) (*PresharedKey, error) {
+	if r.refuse() {
+		return nil, errReadOnly
+	}
+	return r.API.SetPresharedKey(req)
 }
 
 // ServiceAction only checks a service: starting, stopping and
 // restarting are changes.
 func (r readOnlyAPI) ServiceAction(req ServiceActionRequest) (*ServiceActionResult, error) {
-	if req.Action != "check" {
+	if req.Action != "check" && r.refuse() {
 		return nil, errReadOnly
 	}
 	return r.API.ServiceAction(req)
@@ -103,7 +194,7 @@ func (r readOnlyAPI) ServiceAction(req ServiceActionRequest) (*ServiceActionResu
 
 // DNSTool only looks: forgetting cached answers changes unbound.
 func (r readOnlyAPI) DNSTool(req DNSToolRequest) (*DNSToolResult, error) {
-	if t, ok := dnsTools[req.Tool]; !ok || t.change {
+	if t, ok := dnsTools[req.Tool]; (!ok || t.change) && r.refuse() {
 		return nil, errReadOnly
 	}
 	return r.API.DNSTool(req)

@@ -47,6 +47,8 @@ type API interface {
 	CheckUpdates() (*UpdatesStatus, error)
 	PfStatus() (*PfStatus, error)
 	PfStats() (*PfStats, error)
+	Import(ImportRequest) (*ImportReport, error)
+	TakeOver(TakeOverRequest) (*TakeOverResult, error)
 	PfStates(PfStatesRequest) (*PfStates, error)
 	KillState(KillStateRequest) error
 	RuleCounters() (*RuleCounters, error)
@@ -379,6 +381,59 @@ type PfStatus struct {
 	// interface over the last few seconds.
 	BlockedPerSec *float64 `json:"blockedPerSec,omitempty"`
 	Errors        []string `json:"errors"`
+}
+
+// ImportRequest is the admin's choices for an import: which areas
+// OPF should manage (pf.ImportOptions.Manage).
+type ImportRequest struct {
+	Manage map[string]bool `json:"manage,omitempty"`
+}
+
+// ImportReport is the machine's configuration imported into OPF's
+// model, and what taking it over would do.
+type ImportReport struct {
+	// Fingerprint names this import: its model and the files as they
+	// are and as OPF would write them. Taking over takes it, so what's
+	// staged is what the admin saw.
+	Fingerprint string          `json:"fingerprint"`
+	Model       *pf.Model       `json:"model"`
+	Notes       []pf.ImportNote `json:"notes"`
+	Areas       []pf.ImportArea `json:"areas"`
+	// Files are what the first commit does to each file OPF would
+	// write.
+	Files []ImportFile `json:"files"`
+	// Ruleset compares the ruleset pfctl reads from the machine's
+	// pf.conf with the one from OPF's; nil when pfctl couldn't
+	// (RulesetError).
+	Ruleset      *pf.PfComparison `json:"ruleset,omitempty"`
+	RulesetError string           `json:"rulesetError,omitempty"`
+	// Problems stop the machine being taken over as it is.
+	Problems []Detail `json:"problems"`
+}
+
+// ImportFile is what the first commit after an import would do to a
+// file: leave it ("same"), change it ("changed") or make it ("added").
+type ImportFile struct {
+	Path   string `json:"path"`
+	Desc   string `json:"desc"`
+	Status string `json:"status"`
+	Diff   string `json:"diff,omitempty"`
+}
+
+// TakeOverRequest takes the machine over with the import the admin saw.
+type TakeOverRequest struct {
+	ImportRequest
+	Fingerprint string `json:"fingerprint"`
+	// AcceptDifferences takes over though the ruleset OPF would write
+	// differs from the machine's, or couldn't be compared.
+	AcceptDifferences bool `json:"acceptDifferences,omitempty"`
+}
+
+// TakeOverResult is how taking over went: staged now, or, read-only,
+// OPF starting again to stage it.
+type TakeOverResult struct {
+	Restarting bool    `json:"restarting,omitempty"`
+	Staged     *Staged `json:"staged,omitempty"`
 }
 
 // PfStats is everything pf counts: pfctl -s info's tables and counters,

@@ -302,7 +302,7 @@ func TestReadOnlyRefusesChanges(t *testing.T) {
 	api := newAPI(t)
 	r := &recordRunner{}
 	api.Runner = r
-	api.ReadOnly = true
+	api.SetReadOnly(true)
 	c := newClient(t, api)
 	st, err := c.Status()
 	if err != nil || !st.ReadOnly || !st.Managed {

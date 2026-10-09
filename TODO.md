@@ -279,7 +279,8 @@ In order. Each step's details are in the section it points to.
    and `vm.sh log` reach its serial console, which still works when a
    commit cuts the network; root's password is in `root-password`
    there.
-3. **Import** (Parser and import), then the first-run wizard.
+3. **Import** (Parser and import): done, with taking over from
+   read-only; next, the first-run wizard.
 4. **Live data** (Live data and monitoring): the pages read the real
    system now; what's left is history over time and the rest of the
    diagnostics.
@@ -516,24 +517,47 @@ In order. Each step's details are in the section it points to.
 Principle 4: install OPF on a configured system and change nothing
 until the admin does.
 
-- [ ] **Import:** parse existing `pf.conf` (`ParsePfConf`),
-      `hostname.if`, `dhcpd.conf`, `unbound.conf` and so on into the
-      model. Handle hand-written configs with comments, includes, macros
-      and features OPF doesn't model, which stay raw. Tests in Testing.
-- [ ] Build the model's interfaces first: rules naming devices
-      (`on em0`) only become guided rules when the device is in the
-      model; otherwise they stay raw.
-- [ ] Reject invalid UTF-8 with a clear error. `encoding/json` replaces
-      it with U+FFFD, so even raw rules would change when `config.json`
-      is saved.
+- [x] **Import** (`pf.Import`, System › Take over): hostname.if,
+      myname, mygate, pf.conf, dhcpd.conf, unbound.conf, ntpd.conf and
+      rc.conf.local into the model, interfaces first (named after the
+      file's macros for them, the WAN from the egress group). pf.conf's
+      statements keep their order: a rule is guided only where the
+      generator writes it in the same place, the rest raw; macros,
+      tables and options OPF lacks go to custom pf's options; a comment
+      above or after a rule is its description. pfctl -nvf of the
+      machine's pf.conf and OPF's must match (`pf.ComparePfRulesets`,
+      which sets aside labels, macros, defaulted options and OPF's
+      default rules when a rule matches every packet, writing pf's
+      default out when none does). Tried on 7.9 with a stock install's
+      and a hand-written router's pf.conf, and taken over on the VM in
+      a second, dry OPF: imported in the sandbox, restarted in place,
+      staged, files untouched. Fuzzed.
+  - [x] Areas OPF can't write the same way (DHCP, the resolver, time
+        servers) can be left as they are (`system.unmanaged`): no file,
+        no daemon touched, the admin's rc.conf.local line kept, and the
+        page hands it over. dhcpd_flags that don't match the scopes make
+        DHCP inexact, so it's left alone unless the admin says.
+  - [ ] Every interface gets a description line (its name), which a
+        hand-written hostname.if often lacks; and `set skip on lo` is
+        always written. Both are shown as changes; let the model leave
+        them out.
+  - [ ] WireGuard interfaces aren't imported: the key would have to
+        move to OPF's key files (ImportTunnelKey) and the hostname.if
+        read `wgkey` from there. Nor are interfaces with lines OPF lacks
+        (`-inet6`, `lladdr`, aliases, `!` commands), carp, trunks, PPPoE.
+  - [ ] ntpd: a stock ntpd.conf has `server`, `sensor` and
+        `constraint` lines, so it's left alone. Model them.
+  - [ ] unbound: a running resolver is always left alone by default:
+        import listen addresses, access control and local data so a
+        common one can be written the same way.
+  - [ ] Include files (`include`) stay a raw line: what they hold
+        isn't taken over or shown.
+  - [ ] The mock's pfctl -nvf is a stand-in (macros expanded, nothing
+        rewritten), so the mock always shows differences.
+- [ ] Invalid UTF-8: Validate refuses it, so the import lists it as a
+      problem and can't take over; say which line, and why.
 - [ ] Rules with their own label stay raw (the guided form's label is
       its id). Offer to turn those labels into descriptions.
-- [ ] `rc.conf.local`: nothing to import but OPF's own lines, since the
-      rest of the file is kept as it is. Import must derive DHCP and DNS
-      from their config files and check `dhcpd_flags` and
-      `unbound_flags` agree (dhcpd enabled on exactly the devices with
-      a scope, unbound on when DNS is), and ask the admin when they
-      don't rather than change what's running.
 - [x] **Read-only mode** (`opf -readonly`): OPF monitors a machine
       configured by hand and changes nothing. Kept in four places: the
       API refuses every change (`appliance.ReadOnlyAPI`, with a test
@@ -546,21 +570,22 @@ until the admin does.
       `egress` group, services come from rcctl), and Configuration files
       lists the machine's own files. Tried on the VM beside the managed
       OPF: every change refused, nothing run.
-  - [ ] **Take over from read-only** (System › Take over, locked now):
-        "Import and take over" runs the import below, shows what it
-        understood (rule by rule, raw what it can't model), then the
-        first commit, which must leave every file as it was (a diff of
-        nothing but OPF's header and normalization) before the admin's
-        own change. Then the marker goes, and OPF restarts out of the
-        sandbox (re-exec: unveil can't be widened in place). A machine
-        OPF managed before (`managed` in status) only needs the marker
-        removed and a restart; the page says how, by hand, for now.
+  - [x] **Take over from read-only**: the import is saved in the state
+        directory and OPF re-execs itself without -readonly (unveil
+        can't be widened in place), takes -readonly out of opf_flags,
+        stages the import, and only then removes the marker; a failure
+        leaves it read-only. The files the admin saw replaced stay agreed
+        to until the first commit, while they're unchanged. A machine
+        OPF managed before only needs the marker removed and a restart;
+        the page says how, by hand.
   - [ ] Read-only pages that still read OPF's model: DHCP leases and DNS
         stats pages are hidden (their configuration tabs crash on the
         empty model); show their live halves (leases, unbound's
         counters) on their own.
 - [ ] First-run wizard: detect existing configs and offer to import them;
-      set up WAN, LAN and the admin password.
+      set up WAN, LAN and the admin password. System › Take over already
+      imports on a fresh install before its first commit (not only
+      read-only); the wizard should lead there.
   - [ ] A URL alias's list must download before the first commit that
         uses it, so on a box that isn't online yet (the commit setting up
         the WAN is the one that would bring it online) the commit is

@@ -66,6 +66,9 @@ type SystemSettings struct {
 	// (services.go), each written into rc.conf.local; one not here is
 	// as the system has it.
 	Services []ServiceSetting `json:"services,omitempty"`
+	// Unmanaged are the areas (AreaDHCP, AreaDNS, AreaNTP) OPF leaves as
+	// they're configured by hand: see unmanaged.go.
+	Unmanaged []string `json:"unmanaged,omitempty"`
 }
 
 // SystemDNS is the firewall's own DNS client: /etc/resolv.conf.
