@@ -16,6 +16,7 @@ import { protoGroup, stateKinds, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 import { AddressLink, useKnownDevices } from '../components/DeviceLink';
+import { StartedTip } from '../components/StartedTip';
 
 function Proto({ c }: { c: PfState }) {
   const { applied } = useStore();
@@ -201,7 +202,7 @@ export function Connections() {
                   <Table.Td style={{ whiteSpace: 'nowrap' }}><To c={c} names={names} devices={devices} /></Table.Td>
                   <Table.Td miw={150}><AllowedBy c={c} /></Table.Td>
                   <Table.Td ta="right">
-                    <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatDuration(c.ageSec)}</Text>
+                    <Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}><StartedTip ageSec={c.ageSec}>{formatDuration(c.ageSec)}</StartedTip></Text>
                     <State c={c} />
                   </Table.Td>
                   <Table.Td ta="right"><Text size="sm" className="num" style={{ whiteSpace: 'nowrap' }}>{formatBytes(c.bytes)}</Text></Table.Td>
@@ -224,7 +225,7 @@ export function Connections() {
                   </Group>
                   <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
                     <AllowedBy c={c} />
-                    <Text size="xs" c="dimmed" className="num">· {formatDuration(c.ageSec)} · {formatBytes(c.bytes)} ·</Text>
+                    <Text size="xs" c="dimmed" className="num">· <StartedTip ageSec={c.ageSec}>{formatDuration(c.ageSec)}</StartedTip> · {formatBytes(c.bytes)} ·</Text>
                     <State c={c} />
                   </Group>
                 </Stack>

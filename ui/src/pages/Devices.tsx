@@ -24,6 +24,7 @@ import { protoGroup, stateWord } from '../lib/connections';
 import { StateTip } from '../components/StateTip';
 import { DirLabel, ProtoBadge } from '../components/ConnBadges';
 import { LogAction, LogRule, LogTime } from './FirewallLog';
+import { StartedTip } from '../components/StartedTip';
 import { AllowedBy } from './Connections';
 import { deviceName } from '../lib/labels';
 
@@ -422,7 +423,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                   <Table.Td>{state(c, 'sm')}</Table.Td>
                   <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }}>
                     <Text size="sm" className="num">{formatBytes(c.bytes)}</Text>
-                    <Text size="xs" c="dimmed">{formatDuration(c.ageSec)}</Text>
+                    <Text size="xs" c="dimmed"><StartedTip ageSec={c.ageSec}>{formatDuration(c.ageSec)}</StartedTip></Text>
                   </Table.Td>
                 </Table.Tr>
               );
@@ -442,7 +443,7 @@ function Connections({ addresses, showNames }: { addresses: string[]; showNames:
                 {more && <Text size="xs" c="dimmed">{more}</Text>}
                 <Group gap={6} wrap="wrap" style={{ rowGap: 2 }}>
                   {state(c, 'xs')}
-                  <Text size="xs" c="dimmed" className="num" style={{ whiteSpace: 'nowrap' }}>· {formatBytes(c.bytes)} · {formatDuration(c.ageSec)}</Text>
+                  <Text size="xs" c="dimmed" className="num" style={{ whiteSpace: 'nowrap' }}>· {formatBytes(c.bytes)} · <StartedTip ageSec={c.ageSec}>{formatDuration(c.ageSec)}</StartedTip></Text>
                 </Group>
               </Stack>
             );

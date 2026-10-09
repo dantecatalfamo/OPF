@@ -12,6 +12,7 @@ import { HistoryChart } from '../components/HistoryChart';
 import { formatBits, formatBytes, formatCount, formatDuration, formatLogTime } from '../lib/format';
 import { deviceName } from '../lib/labels';
 import { PageHeader, SectionTitle, StatusDot, Mono } from '../components/ui';
+import { StartedTip } from '../components/StartedTip';
 
 function Tile({ icon: Icon, label, value, detail, state }: {
   icon: typeof IconWorld; label: string; value: string; detail: string; state: 'ok' | 'warn' | 'bad';
@@ -105,7 +106,7 @@ export function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        description={sys ? `OpenBSD ${sys.release} on ${hardware}.${sys.bootedAt ? ` Up for ${formatDuration((Date.now() - Date.parse(sys.bootedAt)) / 1000)}.` : ''}` : 'Reading the system…'}
+        description={sys ? <>OpenBSD {sys.release} on {hardware}.{sys.bootedAt && <> <StartedTip at={sys.bootedAt} label="Up since">Up for {formatDuration((Date.now() - Date.parse(sys.bootedAt)) / 1000)}.</StartedTip></>}</> : 'Reading the system…'}
       />
 
       <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 5 }} spacing="md" mb="md">
