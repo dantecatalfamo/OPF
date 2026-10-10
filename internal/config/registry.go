@@ -225,7 +225,7 @@ func DefaultFiles() []File {
 		{
 			Name: "pf.conf", Path: "/etc/pf.conf",
 			Desc:    "Packet filter rules",
-			Check:   []string{"pfctl", "-n", "-f", "{}"},
+			Check:   []string{"sh", "-c", PfCheck, "sh", "{}"},
 			Apply:   []string{"pfctl", "-f", "{}"},
 			Confirm: true,
 			Mode:    0600,
@@ -393,6 +393,24 @@ unbound-checkconf "$tmp"`
 
 // authpfNameMatch is a sign-in login (pf.AuthpfNameRE).
 const authpfNameMatch = `[a-z][a-z0-9-]{0,30}`
+
+// PfCheck checks a pf.conf, $1, with pfctl -n. pfctl refuses a routing
+// table that doesn't exist, and a way out's table (pf.ExitRTable) only
+// comes to be when its hostname.wgN adds its route: in the same commit,
+// applied before pf.conf. So a table that isn't there yet is checked as
+// table 0, in a copy; loading the file (pfctl -f) still fails if it's
+// missing then, and the commit is reverted.
+var PfCheck = `missing=$(grep -o 'rtable [0-9][0-9]*' "$1" | sort -u | while read -r _ n; do
+	route -T "$n" -n show -inet >/dev/null 2>&1 || echo "$n"
+done)
+[ -z "$missing" ] && exec pfctl -n -f "$1"
+tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp"' EXIT
+awk -v missing="$missing" 'BEGIN { n = split(missing, a, "\n"); for (i = 1; i <= n; i++) m[a[i]] = 1 }
+	{ for (i = 1; i < NF; i++) if ($i == "rtable" && ($(i + 1) in m)) $(i + 1) = 0; print }' "$1" > "$tmp"
+out=$(pfctl -n -f "$tmp" 2>&1); st=$?
+[ -n "$out" ] && printf '%s\n' "$out" | sed "s|$tmp|$1|g"
+exit $st`
 
 // AuthpfRulesCheck checks a session's rules as authpf loads them: into
 // an anchor of their own, with $user_ip and $user_id defined.
