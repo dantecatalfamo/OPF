@@ -14,6 +14,7 @@ import { formatAgo, formatBytes } from '../lib/format';
 import { isIPv4 } from '../lib/ip';
 import { Mono, SectionTitle } from '../components/ui';
 import { DeleteInterface } from '../components/DeleteInterface';
+import { PeerNameCheck } from '../components/PeerNameCheck';
 import { Copyable, withTunnel } from './WireGuard';
 import { FileLink } from './ConfigFiles';
 
@@ -175,6 +176,7 @@ export function AddExit({ opened, onClose, onAdded }: { opened: boolean; onClose
               {c.dns.length > 0 && <>, its DNS <Mono>{c.dns.join(', ')}</Mono></>}{c.presharedKey ? ', with a preshared key' : ''}.
             </Text>
           )}
+          {c && <PeerNameCheck endpoint={c.endpoint} />}
           <TextInput label="Name" {...form.getInputProps('name')} />
           <MultiSelect label="Networks that leave through it"
             data={insides.map((i) => ({ value: i.id, label: taken.has(i.id) ? `${i.name} (leaves through ${taken.get(i.id)})` : i.name, disabled: taken.has(i.id) }))}
@@ -232,6 +234,7 @@ export function ExitSettings({ tunnel, onDeleted }: { tunnel: Tunnel; onDeleted:
         <Stack gap="md">
           <TextInput label="Name" {...form.getInputProps('name')} />
           <TextInput label="Provider’s server" spellCheck={false} {...form.getInputProps('endpoint')} />
+          <PeerNameCheck endpoint={form.values.endpoint} />
           <MultiSelect label="Networks that leave through it"
             data={insides.map((i) => ({ value: i.id, label: taken.has(i.id) ? `${i.name} (leaves through ${taken.get(i.id)})` : i.name, disabled: taken.has(i.id) }))}
             {...form.getInputProps('from')} />

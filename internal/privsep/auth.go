@@ -53,6 +53,8 @@ var methodRoles = map[string]auth.Role{
 	// Running things, and keeping or undoing a commit.
 	"CheckUpdates": auth.RoleOperator, "KillState": auth.RoleOperator,
 	"StartTool": auth.RoleOperator, "ToolRun": auth.RoleOperator, "CancelTool": auth.RoleOperator,
+	// Asks the network, as the diagnostic tools do.
+	"LookupHost":   auth.RoleOperator,
 	"RefreshAlias": auth.RoleOperator, "RefreshDNSList": auth.RoleOperator, "TestWebhook": auth.RoleOperator,
 	// What a table holds now, as a rule's overload would change it; the
 	// configuration (which tables there are) needs admin.

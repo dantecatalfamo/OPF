@@ -633,6 +633,19 @@ func sysRcctlFormats() []Format {
 	}
 }
 
+// --- getent hosts (usr.bin/getent/getent.c: hostsaddrinfo) ---
+
+// getaddrinfo(name, AF_UNSPEC, SOCK_DGRAM), as ifconfig's wgendpoint
+// asks it, then a "%-39s %s\n" line for each address and the name, the
+// address "# unknown" when getnameinfo can't print it. Nothing, and
+// exit 2, when getaddrinfo fails: no such name or no answer alike.
+func sysGetentFormat() Format {
+	return Format{Command: "getent hosts *", Fixture: "getent_hosts.txt", Lines: []Line{
+		L("address", `[0-9A-Fa-f.:]{2,39} +\S+`),
+		L("unknown", `# unknown +\S+`),
+	}}
+}
+
 // --- syspatch -c (usr.sbin/syspatch/syspatch.sh: ls_missing, err) ---
 
 func sysSyspatchFormat() Format {
@@ -822,6 +835,7 @@ func init() {
 		Format{Command: "dmesg", Fixture: "dmesg.txt", Free: true},
 		Format{Command: "tail -n * *", Fixture: "tail_syslog.txt", Lines: sysSyslogLines()},
 		sysSyspatchFormat(),
+		sysGetentFormat(),
 		sysFtpFormat(),
 		sysEncryptFormat(),
 		Format{Command: "tool ping", Fixture: "tool_ping.txt", Lines: sysPingLines("ping")},

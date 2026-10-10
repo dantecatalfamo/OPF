@@ -455,6 +455,7 @@ func TestSystemFormatsServicesAndPatches(t *testing.T) {
 	sysCheck(t, "rcctl check *", "stopped", "unbound(failed)\n")
 	sysCheck(t, "rcctl check *", "special", "rcctl: \"pf\" is a special variable, no rc.d(8) script\n")
 	sysCheck(t, "rcctl get opf flags", "sample", "-readonly\n")
+	sysCheck(t, "getent hosts *", "sample", "192.0.2.81                              vpn.example.net\n2001:db8::81                            vpn.example.net\n")
 	if len(Formats["rcctl ls all"].Check("Foo\n")) == 0 {
 		t.Error("rcctl ls takes a name services.go's serviceNameRE drops")
 	}

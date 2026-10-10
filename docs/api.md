@@ -679,6 +679,13 @@ unbound first starts.
   change to the configuration. `name` is a DNS name; `invalid` when it
   isn't, the tool isn't one, or the resolver isn't running, and
   `internal` when unbound-control doesn't answer.
+- `POST /api/dns/lookup-host` with `{"name"}` (operator): looks a host
+  name up as the firewall's own programs do (`getent hosts`: the hosts
+  file, then the servers in resolv.conf), for a WireGuard peer's name as
+  it's entered, which netstart looks up on every commit. The answer is
+  `{"addresses", "seconds", "error"}`: no addresses for no such name,
+  and `error` when there was no answer within 8 s. `invalid` when
+  `name` isn't a host name (an address isn't).
 
 ### History
 

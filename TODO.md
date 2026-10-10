@@ -2212,7 +2212,12 @@ Found by the suite on 7.9, open:
 - [ ] A commit with WireGuard peers named by host name hangs in
       netstart while their names don't resolve (no DNS, or DNS through
       the resolver the commit is changing), until the commit's two
-      minutes run out and it's reverted.
+      minutes run out and it's reverted. A peer's name, and a way
+      out's, is now looked up as it's entered (`POST
+      /api/dns/lookup-host`, `getent hosts`, as ifconfig looks it up),
+      with a warning when the firewall can't, or when it's slow. Still
+      open: a name that stops resolving later, and DNS through the
+      resolver the commit restarts.
 - [ ] An inside network addressed by DHCP is `$id:network` in
       `<opf_local>` (split tunnels' table), which pfctl resolves when it
       loads the rules: without a lease yet the whole ruleset fails

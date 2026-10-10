@@ -789,6 +789,13 @@ export interface MetricsResource {
 
 export type DnsToolName = 'lookup' | 'cache' | 'local' | 'flush' | 'flush_zone' | 'flush_bogus' | 'flush_negative';
 
+/** A host name's addresses as the firewall looks it up (POST /api/dns/lookup-host): none for no such name; error when no answer came in time. */
+export interface HostLookup {
+  addresses: string[];
+  seconds: number;
+  error?: string;
+}
+
 /** What a resolver tool printed (POST /api/dns/tools). */
 export interface DnsToolResult {
   lines: string[];
@@ -1192,6 +1199,7 @@ export const api = {
   setWebhookSecret: (id: string, r: WebhookSecretRequest) => request<WebhookStatus & { key?: string }>('PUT', `/webhooks/${enc(id)}/secret`, r),
   testWebhook: (id: string) => request<WebhookStatus>('POST', `/webhooks/${enc(id)}/test`),
   dnsTool: (tool: DnsToolName, name?: string) => request<DnsToolResult>('POST', '/dns/tools', { tool, ...(name ? { name } : {}) }),
+  lookupHost: (name: string) => request<HostLookup>('POST', '/dns/lookup-host', { name }),
   systemLog: (log: SystemLogName, r: SystemLogRequest = {}) => {
     const q = new URLSearchParams();
     if (r.query) q.set('q', r.query);

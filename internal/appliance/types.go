@@ -84,6 +84,8 @@ type API interface {
 	Events(EventsRequest) (*Events, error)
 	SystemLog(SystemLogRequest) (*SystemLog, error)
 	DNSTool(DNSToolRequest) (*DNSToolResult, error)
+	// LookupHost looks a host name up as the firewall does (hostlookup.go).
+	LookupHost(HostLookupRequest) (*HostLookupResult, error)
 	Webhooks() ([]WebhookStatus, error)
 	SetWebhookSecret(id string, req WebhookSecretRequest) (*WebhookSecretResult, error)
 	// NewTunnelKey makes a WireGuard tunnel's key pair, keeping the

@@ -67,6 +67,9 @@ func (s mockSystem) Run(ctx context.Context, argv ...string) ([]byte, error) {
 			}
 		}
 	}
+	if len(argv) == 3 && argv[0] == "getent" && argv[1] == "hosts" {
+		return mockGetent(ctx, argv[2])
+	}
 	var out string
 	switch {
 	case len(argv) == 3 && argv[0] == "pfctl" && argv[1] == "-nvf":
@@ -513,4 +516,22 @@ func mockList(url string) string {
 		}
 	}
 	return b.String()
+}
+
+// mockGetent looks a name up for the mock: a name with "nonexistent"
+// in it has no address, one with "unreachable" waits for an answer that
+// doesn't come (as with no DNS server answering), and any other has a
+// made-up documentation address.
+func mockGetent(ctx context.Context, name string) ([]byte, error) {
+	switch {
+	case strings.Contains(name, "nonexistent"):
+		time.Sleep(200 * time.Millisecond)
+		return nil, fmt.Errorf("getent hosts %s: exit status 2", name)
+	case strings.Contains(name, "unreachable"):
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	h := fnv.New32a()
+	h.Write([]byte(name))
+	return []byte(fmt.Sprintf("203.0.113.%-31d %s\n", 1+h.Sum32()%254, name)), nil
 }

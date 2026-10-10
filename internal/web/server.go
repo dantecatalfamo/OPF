@@ -29,6 +29,7 @@
 //	GET    /api/pf/rules/counters         each labelled rule's counters
 //	GET    /api/logs/firewall             packets pf logged, newest first
 //	POST   /api/dns/reverse               the names of addresses (PTR), from the firewall's resolver
+//	POST   /api/dns/lookup-host           a host name's addresses, as the firewall looks it up
 //	GET    /api/firewall/tables           URL aliases' downloaded lists
 //	POST   /api/firewall/aliases/{name}/refresh  download one again and load it
 //	GET    /api/firewall/tables/{name}/entries  what a table alias holds now, ?q=&offset=&limit=
@@ -188,6 +189,7 @@ func New(api appliance.API, ui fs.FS) *Server {
 	s.mux.HandleFunc("GET /api/events", s.events)
 	s.mux.HandleFunc("GET /api/logs/system/{log}", s.systemLog)
 	s.mux.HandleFunc("POST /api/dns/tools", s.dnsTool)
+	s.mux.HandleFunc("POST /api/dns/lookup-host", s.lookupHost)
 	s.mux.HandleFunc("GET /api/webhooks", getter(s, func(api appliance.API) (webhooksBody, error) {
 		w, err := api.Webhooks()
 		return webhooksBody{w}, err
@@ -675,6 +677,19 @@ func (s *Server) dnsTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := s.apiFor(r).DNSTool(req)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) lookupHost(w http.ResponseWriter, r *http.Request) {
+	var req appliance.HostLookupRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	res, err := s.apiFor(r).LookupHost(req)
 	if err != nil {
 		fail(w, err)
 		return

@@ -19,6 +19,7 @@ import { fromInt, isCIDR, isIPv4, network, toInt } from '../lib/ip';
 import { Mono, PageHeader, SectionTitle, StatusDot } from '../components/ui';
 import { DeviceLink } from '../components/DeviceLink';
 import { DeleteInterface } from '../components/DeleteInterface';
+import { PeerNameCheck } from '../components/PeerNameCheck';
 import { AddExit, ExitFlow, ExitSettings } from './WireGuardExit';
 import { FileLink } from './ConfigFiles';
 
@@ -308,6 +309,7 @@ function AddPeer({ tunnel, opened, onClose }: { tunnel: Tunnel; opened: boolean;
               <>
                 <TagsInput label="Networks behind this router" placeholder="10.30.0.0/16" {...form.getInputProps('networks')} />
                 <TextInput label="Its public address" description="Optional. Lets OPF start the connection." placeholder="branch.example.net:51820" {...form.getInputProps('endpoint')} />
+                <PeerNameCheck endpoint={v.endpoint} />
               </>
             )}
             <Checkbox label="Add a preshared key" description="A second secret that the device and the tunnel share, on top of their keys. It protects the connection if their keys are ever broken, for example by quantum computers. The firewall makes and keeps it, and shows it once, in the device’s configuration."

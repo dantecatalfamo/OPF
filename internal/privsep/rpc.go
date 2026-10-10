@@ -182,6 +182,10 @@ type (
 		Result
 		Output *appliance.DNSToolResult
 	}
+	HostLookupReply struct {
+		Result
+		Lookup *appliance.HostLookupResult
+	}
 	SystemLogReply struct {
 		Result
 		Log *appliance.SystemLog
@@ -678,6 +682,16 @@ func (s *Service) DNSTool(c Call[appliance.DNSToolRequest], r *DNSToolReply) err
 	var err error
 	r.Output, err = s.api.DNSTool(a)
 	r.set("DNSTool", err)
+	return nil
+}
+
+func (s *Service) LookupHost(c Call[appliance.HostLookupRequest], r *HostLookupReply) error {
+	if s.allow("LookupHost", c, &r.Result) == nil {
+		return nil
+	}
+	var err error
+	r.Lookup, err = s.api.LookupHost(c.Args)
+	r.set("LookupHost", err)
 	return nil
 }
 
@@ -1415,6 +1429,15 @@ func (c *Client) DNSTool(req appliance.DNSToolRequest) (*appliance.DNSToolResult
 		t.Lines = nonNil(t.Lines)
 	}
 	return r.Output, err
+}
+
+func (c *Client) LookupHost(req appliance.HostLookupRequest) (*appliance.HostLookupResult, error) {
+	var r HostLookupReply
+	err := c.call("LookupHost", req, &r)
+	if l := r.Lookup; l != nil {
+		l.Addresses = nonNil(l.Addresses)
+	}
+	return r.Lookup, err
 }
 
 func (c *Client) SystemLog(req appliance.SystemLogRequest) (*appliance.SystemLog, error) {

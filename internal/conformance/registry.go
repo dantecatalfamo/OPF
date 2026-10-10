@@ -167,6 +167,7 @@ var Commands = []Command{
 	cmd(Read, "appliance services", "TestServices", "rcctl get *"),
 	cmd(Change, "config commit (reload, restart); appliance services (start, stop, restart, reload)", "TestServices", "rcctl * *"),
 	cmd(Read, "cmd/opf (leaving read-only mode)", "TestServices", "rcctl get opf flags"),
+	cmd(Read, "appliance hostlookup (a WireGuard peer's name, as it's entered)", "TestSystemDNS", "getent hosts *"),
 	cmd(Change, "cmd/opf (leaving read-only mode)", "TestServices", "rcctl set opf flags ..."),
 
 	// Accounts and sign-in (internal/auth, internal/appliance authpf).

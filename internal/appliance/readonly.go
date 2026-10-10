@@ -49,7 +49,7 @@ var readOnlyAllowed = []string{
 	"LeaseNames", "DHCPLeases", "ARPTable", "RoutingTable", "System", "Interfaces", "Gateways",
 	"Files", "File", "Updates", "CheckUpdates",
 	"PfStatus", "PfStats", "PfStates", "RuleCounters", "FirewallLog",
-	"StartTool", "ToolRun", "CancelTool",
+	"StartTool", "ToolRun", "CancelTool", "LookupHost",
 	"Tables", "TableEntries", "TableFind", "AuthpfSessions", "Services", "Service",
 	"DNSLists", "DNSStats", "DNSBlocked", "Storage", "Devices", "Device",
 	"DNSActivity", "DNSDeviceActivity", "DNSNameActivity", "ForgetDNSActivity",
