@@ -1018,3 +1018,24 @@ func TestUnboundRestartsWhenItsLoggingChanges(t *testing.T) {
 		t.Errorf("back to syslog: %v", got)
 	}
 }
+
+// A pattern's instance whose name has slashes (an authpf user's rules)
+// can be checked and compared through a temporary copy.
+func TestTemporaryCopyOfNestedInstance(t *testing.T) {
+	root := t.TempDir()
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: DefaultFiles(), Runner: &fakeRunner{}, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const name = "authpf/users/alice/authpf.rules"
+	if _, err := s.Lookup(name); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.CheckContent(context.Background(), name, []byte("pass in quick from $user_ip\n")); err != nil {
+		t.Errorf("CheckContent: %v", err)
+	}
+	writeLive(t, root, "/etc/authpf/users/alice/authpf.rules", "pass\n")
+	if _, err := s.DiffWith(name, []byte("block\n"), "a", "b"); err != nil {
+		t.Errorf("DiffWith: %v", err)
+	}
+}

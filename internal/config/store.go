@@ -525,7 +525,7 @@ func (s *Store) CheckContent(ctx context.Context, name string, data []byte) (out
 	if f.Check == nil {
 		return "No checker is available for this file.", true, nil
 	}
-	tmp, err := os.CreateTemp(filepath.Join(s.dir, "tmp"), f.Name+".*")
+	tmp, err := os.CreateTemp(filepath.Join(s.dir, "tmp"), tempName(f))
 	if err != nil {
 		return "", false, err
 	}
@@ -581,7 +581,7 @@ func (s *Store) DiffWith(name string, content []byte, labelA, labelB string) (st
 	if err != nil {
 		return "", err
 	}
-	tmp, err := os.CreateTemp(filepath.Join(s.dir, "tmp"), f.Name+".*")
+	tmp, err := os.CreateTemp(filepath.Join(s.dir, "tmp"), tempName(f))
 	if err != nil {
 		return "", err
 	}
@@ -683,3 +683,8 @@ func writeFileAtomic(path string, data []byte, mode fs.FileMode) error {
 	}
 	return os.Rename(tmp.Name(), path)
 }
+
+// tempName is the pattern for a temporary copy of f: a pattern's
+// instance can have slashes in its name (authpf/users/alice/authpf.rules),
+// which CreateTemp refuses.
+func tempName(f File) string { return strings.ReplaceAll(f.Name, "/", "_") + ".*" }
