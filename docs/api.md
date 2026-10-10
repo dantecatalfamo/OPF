@@ -223,8 +223,10 @@ machine changes until the first commit is applied.
   `{"staged": {…}}`, the files the admin saw replaced being agreed to
   until the first commit (staging again doesn't ask, unless one of them
   changed since). Read-only, it's `{"restarting": true}` instead: OPF
-  saves the import in its state directory and starts again, in place,
-  without `-readonly`; it takes `-readonly` out of `opf_flags`, stages
+  saves the import in its state directory and starts again without
+  `-readonly`: started by rc, it takes `-readonly` out of `opf_flags`
+  and leaves the restart to `rcctl restart opf`, so rc knows the OPF it
+  starts; otherwise it starts again in place. Started again, it stages
   the import, and only then removes the read-only marker. Sessions don't
   survive it: sign in again.
 

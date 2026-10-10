@@ -2190,13 +2190,15 @@ newsyslog's ISO 8601 line.
 
 Found by the suite on 7.9, open:
 
-- [ ] After a take-over, rc can't find OPF: rc.subr matches a running
-      daemon against the command line saved in `/var/run/rc.d/opf` when
-      it started it (`-readonly …`), and OPF starts itself again
-      without `-readonly`. `rcctl check opf` says failed, `rcctl stop
-      opf` leaves it running, `rcctl restart opf` starts a second one,
-      which waits for the first's lock. Proposed: hand the restart to
-      a detached `rcctl restart opf` when rc started OPF.
+- [x] After a take-over, rc couldn't find OPF: rc.subr matches a
+      running daemon against the command line saved in
+      `/var/run/rc.d/opf` when it started it (`-readonly …`), and OPF
+      started itself again without `-readonly`. `rcctl check opf` said
+      failed, `rcctl stop opf` left it running, `rcctl restart opf`
+      started a second one, which waited for the first's lock. Now, when
+      `rcctl check opf` finds this OPF, it takes `-readonly` out of
+      `opf_flags` and hands the restart to a detached `rcctl restart
+      opf`; started some other way, it still starts again in place.
 - [x] `num-threads: 2` (with DNS blocklists) made unbound run two
       processes on OpenBSD, which builds it without threads. Then
       `auth_zone_reload` reached only the first one (remote.c returns

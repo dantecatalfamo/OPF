@@ -232,7 +232,8 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	// Taking the machine over from read-only mode stops OPF, which then
-	// starts again in place, out of its sandbox (appliance.TakeOver).
+	// starts again without -readonly, out of its sandbox
+	// (appliance.TakeOver, restartWithRC).
 	runCtx, stopRun := context.WithCancel(sigCtx)
 	defer stopRun()
 	takingOver := make(chan struct{})
@@ -290,12 +291,63 @@ func main() {
 	}
 	select {
 	case <-takingOver:
+		if !*dry {
+			restartWithRC(runner)
+		}
 		startAgain(exe)
 	default:
 	}
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+// restartWithRC hands the restart out of read-only mode to rc when rc
+// started OPF. rc.subr finds a running daemon by the command line it
+// saved in /var/run/rc.d/opf when it started it, with -readonly: OPF
+// starting itself again without it would leave rc unable to check,
+// stop or restart it. So -readonly comes out of opf_flags first and a
+// detached rcctl restart stops this OPF and starts the managed one,
+// which takes the state directory's lock once this one is gone. It
+// returns only if rc didn't start OPF, or the restart didn't stop it,
+// for OPF to start again itself.
+func restartWithRC(runner run.Runner) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if _, err := runner.Run(ctx, "rcctl", "check", "opf"); err != nil {
+		return // rc didn't start this OPF
+	}
+	if err := dropReadOnlyFlag(ctx, runner); err != nil {
+		log.Printf("taking over: %v; starting again in place", err)
+		return
+	}
+	cmd := exec.Command("rcctl", "restart", "opf")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
+	// rc stops OPF with SIGTERM, which now ends it.
+	signal.Reset(syscall.SIGINT, syscall.SIGTERM)
+	if err := cmd.Start(); err != nil {
+		log.Printf("taking over: rcctl restart opf: %v; starting again in place", err)
+		return
+	}
+	log.Printf("taking over: rcctl restart opf, to start again without -readonly")
+	// rc.subr waits daemon_timeout (30 s) before it kills.
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Minute):
+	}
+	// Still here: rc didn't stop this OPF. If it started the managed one
+	// anyway (its command line has no -readonly, so it's what rc
+	// checks now), that one waits for the lock: leave it to it.
+	cctx, ccancel := context.WithTimeout(context.Background(), time.Minute)
+	defer ccancel()
+	if _, err := runner.Run(cctx, "rcctl", "check", "opf"); err == nil {
+		log.Printf("taking over: rc started OPF again; this one stops")
+		os.Exit(0)
+	}
+	log.Printf("taking over: rcctl restart opf didn't restart OPF; starting again in place")
 }
 
 // startAgain execs OPF again, without -readonly, to finish taking the
