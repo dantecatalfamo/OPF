@@ -925,7 +925,7 @@ func TestPfOptions(t *testing.T) {
 	id := uint32(7)
 	o := &m.Firewall.Options
 	o.SyncookiesStart, o.SyncookiesEnd = n(40), n(20)
-	o.Limits = Limits{SrcNodes: n(20000), TableEntries: n(500000), Anchors: n(1024)}
+	o.Limits = Limits{SrcNodes: n(20000), TableEntries: n(500000), PktdelayPkts: n(5000), Anchors: n(1024)}
 	o.Timeouts = map[string]int{"tcp.established": 3600, "adaptive.start": 60000, "adaptive.end": 120000}
 	o.StateDefaults = []string{"no-sync", "pflow"}
 	o.Reassemble, o.ReassembleNoDf = "yes", true
@@ -940,7 +940,9 @@ func TestPfOptions(t *testing.T) {
 	conf = GeneratePfConf(m)
 	for _, want := range []string{
 		"set ruleset-optimization basic\n",
-		"set limit { states 100000, src-nodes 20000, table-entries 500000, anchors 1024 }\n",
+		// pktdelay-pkts as pfctl spells it (pf_limits in pfctl.c), or it
+		// refuses the ruleset: "Bad pool name".
+		"set limit { states 100000, src-nodes 20000, table-entries 500000, pktdelay-pkts 5000, anchors 1024 }\n",
 		"set timeout { tcp.established 3600, adaptive.start 60000, adaptive.end 120000 }\n",
 		"set syncookies adaptive (start 40%, end 20%)\n",
 		"set state-defaults no-sync, pflow\n",

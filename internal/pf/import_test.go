@@ -582,3 +582,19 @@ func TestServeTime(t *testing.T) {
 		}
 	}
 }
+
+// set limit's pools as pfctl matches them: by its own names, ignoring
+// case.
+func TestImportSetLimit(t *testing.T) {
+	m := &Model{}
+	if !importSetOption(m, "set limit { STATES 5000, pktdelay-pkts 77, Table-Entries 9 }") {
+		t.Fatal("not imported")
+	}
+	l := m.Firewall.Options.Limits
+	if m.Firewall.Options.MaxStates != 5000 || l.PktdelayPkts == nil || *l.PktdelayPkts != 77 || l.TableEntries == nil || *l.TableEntries != 9 {
+		t.Errorf("%+v %+v", m.Firewall.Options, l)
+	}
+	if importSetOption(&Model{}, "set limit pktdelay_pkts 1") {
+		t.Error("imported a pool pfctl doesn't have")
+	}
+}

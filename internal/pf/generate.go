@@ -1802,18 +1802,22 @@ func splitPeers(m *Model) []splitTunnel {
 	return out
 }
 
+// LimitNames are `set limit`'s pools, as pfctl names them (pf_limits in
+// pfctl.c; it matches them ignoring case): states, then the Limits
+// fields in this order.
+var LimitNames = []string{"states", "src-nodes", "frags", "tables", "table-entries", "pktdelay-pkts", "anchors"}
+
+// pointers are the Limits fields, in LimitNames' order after states.
+func (l *Limits) pointers() []**int {
+	return []**int{&l.SrcNodes, &l.Frags, &l.Tables, &l.TableEntries, &l.PktdelayPkts, &l.Anchors}
+}
+
 // pfLimits are the `set limit` values: states always, the rest when set.
 func pfLimits(o FirewallOptions) []string {
 	out := []string{fmt.Sprintf("states %d", o.MaxStates)}
-	for _, l := range []struct {
-		name string
-		v    *int
-	}{
-		{"src-nodes", o.Limits.SrcNodes}, {"frags", o.Limits.Frags}, {"tables", o.Limits.Tables},
-		{"table-entries", o.Limits.TableEntries}, {"pktdelay_pkts", o.Limits.PktdelayPkts}, {"anchors", o.Limits.Anchors},
-	} {
-		if l.v != nil {
-			out = append(out, fmt.Sprintf("%s %d", l.name, *l.v))
+	for i, v := range o.Limits.pointers() {
+		if *v != nil {
+			out = append(out, fmt.Sprintf("%s %d", LimitNames[i+1], **v))
 		}
 	}
 	return out

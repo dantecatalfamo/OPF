@@ -543,21 +543,13 @@ func importSetOption(m *Model, text string) bool {
 			if err != nil || n < 0 {
 				return false
 			}
-			switch p[0] {
-			case "states":
+			// pfctl matches the pool's name ignoring case.
+			i := slices.Index(LimitNames, strings.ToLower(p[0]))
+			switch {
+			case i == 0:
 				states = n
-			case "src-nodes":
-				l.SrcNodes = &n
-			case "frags":
-				l.Frags = &n
-			case "tables":
-				l.Tables = &n
-			case "table-entries":
-				l.TableEntries = &n
-			case "pktdelay_pkts":
-				l.PktdelayPkts = &n
-			case "anchors":
-				l.Anchors = &n
+			case i > 0:
+				*l.pointers()[i-1] = &n
 			default:
 				return false
 			}
