@@ -58,8 +58,10 @@ var (
 	opfLabelRE    = regexp.MustCompile(` label "` + regexp.QuoteMeta(labelPrefix) + `[^"]*"`)
 	builtinRE     = regexp.MustCompile(` label "` + regexp.QuoteMeta(Label(LabelBuiltin, "")) + `[^"]*"`)
 	// A rule that matches every packet, as pfctl prints it: no
-	// direction, interface, family, protocol or address.
-	catchAllRE = regexp.MustCompile(`^(?:block(?: (?:drop|return|return-rst(?: \(ttl \d+\))?|return-icmp(?:6)?(?: \([^)]*\))?))?|pass)(?: log(?: \([^)]*\))?)?(?: quick)? all(?: flags \S+)?(?: (?:keep|modulate|synproxy) state(?: \([^)]*\))?| no state)?(?: label "[^"]*")?$`)
+	// direction, interface, family, protocol or address. pfctl writes
+	// return-rst's ttl and return-icmp's codes without a space before
+	// the parenthesis (print_rule).
+	catchAllRE = regexp.MustCompile(`^(?:block(?: (?:drop|return|return-rst(?: ?\(ttl \d+\))?|return-icmp(?:6)?(?: ?\([^)]*\))?))?|pass)(?: log(?: \([^)]*\))?)?(?: quick)? all(?: flags \S+)?(?: (?:keep|modulate|synproxy) state(?: \([^)]*\))?| no state)?(?: label "[^"]*")?$`)
 	// Lines pfctl -v prints that aren't the ruleset.
 	pfNoiseRE = regexp.MustCompile(`^Loaded \d+ passive OS fingerprints$`)
 )

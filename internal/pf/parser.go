@@ -411,14 +411,22 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 			} else if p.checkKeyword("return-rst") {
 				p.advance()
 				rule.BlockReturn = BlockReturnRST
-				// Check for ttl
-				if p.checkKeyword("ttl") {
+				// (ttl n); pfctl refuses ttl without the parentheses.
+				if p.check(TokenLParen) {
 					p.advance()
-					if n, ok := p.expectInt(); ok {
+					if _, ok := p.expectKeyword("ttl"); !ok {
+						p.notForm = true
+					} else if n, ok := p.expectInt(); ok {
 						rule.ReturnRstTTL = &n
 					} else {
 						p.notForm = true
 					}
+					if _, ok := p.expect(TokenRParen); !ok {
+						p.notForm = true
+					}
+				} else if p.checkKeyword("ttl") {
+					p.notForm = true
+					p.advance()
 				}
 			} else if p.checkKeyword("return-icmp") {
 				p.advance()

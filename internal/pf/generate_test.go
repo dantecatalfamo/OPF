@@ -235,7 +235,7 @@ func TestGenerateRule_BlockReturn(t *testing.T) {
 		expected    string
 	}{
 		{"return-rst", BlockReturnRST, nil, "block return-rst"},
-		{"return-rst with ttl", BlockReturnRST, intP(64), "block return-rst ttl 64"},
+		{"return-rst with ttl", BlockReturnRST, intP(64), "block return-rst (ttl 64)"},
 		{"return-icmp", BlockReturnICMP, nil, "block return-icmp"},
 	}
 

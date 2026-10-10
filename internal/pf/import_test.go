@@ -330,7 +330,8 @@ func TestComparePfRulesets(t *testing.T) {
 	if r := ComparePfRulesets(noCatch, explicit, true); !r.Same {
 		t.Errorf("with the default written out: %q", r.Differences)
 	}
-	for _, rule := range []string{"block drop all", "block return all", "pass all flags S/SA", "pass all no state", "block drop log all", "pass quick all flags S/SA keep state"} {
+	for _, rule := range []string{"block drop all", "block return all", "pass all flags S/SA", "pass all no state", "block drop log all", "pass quick all flags S/SA keep state",
+		"block return-rst(ttl 64) all", "block return-icmp(port-unr, port-unr) all"} {
 		if !catchAllRE.MatchString(rule) {
 			t.Errorf("%q matches every packet", rule)
 		}

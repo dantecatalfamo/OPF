@@ -234,7 +234,7 @@ func TestParseRule_RoundTrip(t *testing.T) {
 		"pass in proto tcp from any to any port 8000:8080 flags /SA modulate state (max 10, sloppy, if-bound)",
 		"pass in proto udp to any port 53 keep state (sloppy, pflow)",
 		"pass in on $lan from $lan:network to any route-to 10.8.0.10 reply-to 10.8.0.10 rtable 2",
-		"block return-rst ttl 5 in proto tcp all",
+		"block return-rst (ttl 5) in proto tcp all",
 		"block return-icmp6 (port-unr) in inet6 all",
 		"pass in proto icmp all icmp-type echoreq",
 		"pass in proto icmp6 all icmp6-type neighbrsol",

@@ -317,7 +317,7 @@ func TestTokenizer_NATRule(t *testing.T) {
 }
 
 func TestTokenizer_BlockReturn(t *testing.T) {
-	input := `block return-rst ttl 64 in on $wan`
+	input := `block return-rst (ttl 64) in on $wan`
 	tokens := Tokenize(input)
 
 	expectedKeywords := []string{"block", "return-rst", "ttl", "in", "on"}

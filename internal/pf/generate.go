@@ -160,7 +160,7 @@ func generateFormRule(r *Rule, m *Model) string {
 		case BlockReturnRST:
 			action = "block return-rst"
 			if r.ReturnRstTTL != nil {
-				action += fmt.Sprintf(" ttl %d", *r.ReturnRstTTL)
+				action += fmt.Sprintf(" (ttl %d)", *r.ReturnRstTTL) // parse.y: RETURNRST '(' TTL NUMBER ')'
 			}
 		case BlockReturnICMP:
 			action = "block return-icmp"
