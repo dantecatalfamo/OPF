@@ -65,6 +65,7 @@ rcctl check *: TestServices
 rcctl get *: TestServices
 rcctl * *: TestApply
 rcctl get opf flags: TestServices
+getent hosts *: TestSystemDNS
 rcctl set opf flags ...: TestServices
 groupadd -g * *: TestAccounts
 groupdel *: TestAccounts

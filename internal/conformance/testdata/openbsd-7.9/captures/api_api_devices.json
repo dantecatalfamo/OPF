@@ -303,13 +303,13 @@
           "expires": "19m40s",
           "iface": "pair0",
           "ip": "192.168.1.60",
-          "mac": "fe:e1:ba:d3:db:da"
+          "mac": "fe:e1:ba:d3:e6:06"
         }
       ],
-      "firstSeen": "2026-10-10T00:28:49.784411766Z",
-      "key": "mac:fe:e1:ba:d3:db:da",
+      "firstSeen": "2026-10-10T19:25:53.234668307Z",
+      "key": "mac:fe:e1:ba:d3:e6:06",
       "kind": "device",
-      "mac": "fe:e1:ba:d3:db:da",
+      "mac": "fe:e1:ba:d3:e6:06",
       "networks": [
         {
           "device": "pair0",

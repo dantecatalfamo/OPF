@@ -1,2 +1,2 @@
 traceroute6 to ::1 (::1), 1 hops max, 60 byte packets
- 1  ::1  5.04 ms  10.528 ms  5 ms
+ 1  ::1  5.292 ms  10.56 ms  5.564 ms

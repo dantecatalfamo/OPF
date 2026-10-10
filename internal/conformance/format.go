@@ -56,7 +56,11 @@ func (f Format) Check(out string) []string {
 	var problems []string
 	seen := map[string]bool{}
 	unknown := 0
-	for i, l := range strings.Split(strings.TrimSuffix(out, "\n"), "\n") {
+	var lines []string // none for no output, not one empty line
+	if out != "" {
+		lines = strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	}
+	for i, l := range lines {
 		matched := false
 		for _, k := range f.Lines {
 			if k.RE.MatchString(l) {

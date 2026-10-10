@@ -1,411 +1,411 @@
 @0 match in all scrub (no-df random-id min-ttl 5 reassemble tcp max-mss 1440)
-  [ Evaluations: 41        Packets: 29        Bytes: 2246        States: 1     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@1 match in on pair0 from <opf_hosts:9> to any label "opf:traffic:lan"
-  [ Evaluations: 10        Packets: 27        Bytes: 2078        States: 1     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@2 match out on pair0 from any to <opf_hosts:9> label "opf:traffic:lan"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@3 match in on pair0 from ! <opf_hosts:9> to any label "opf:traffic-unknown:lan"
-  [ Evaluations: 10        Packets: 2         Bytes: 168         States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@4 match in on vlan20 from <opf_hosts:9> to any label "opf:traffic:iot"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@5 match out on vlan20 from any to <opf_hosts:9> label "opf:traffic:iot"
+  [ Evaluations: 37        Packets: 30        Bytes: 2310        States: 1     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@1 match in on pair0 from <opf_hosts:8> to any label "opf:traffic:lan"
+  [ Evaluations: 10        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@2 match out on pair0 from any to <opf_hosts:8> label "opf:traffic:lan"
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@3 match in on pair0 from ! <opf_hosts:8> to any label "opf:traffic-unknown:lan"
+  [ Evaluations: 10        Packets: 30        Bytes: 2310        States: 1     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@4 match in on vlan20 from <opf_hosts:8> to any label "opf:traffic:iot"
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@5 match out on vlan20 from any to <opf_hosts:8> label "opf:traffic:iot"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@6 match in on vlan20 from ! <opf_hosts:9> to any label "opf:traffic-unknown:iot"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@6 match in on vlan20 from ! <opf_hosts:8> to any label "opf:traffic-unknown:iot"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@7 match in on vether1 from <opf_hosts:9> to any label "opf:traffic:lab"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@8 match out on vether1 from any to <opf_hosts:9> label "opf:traffic:lab"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@7 match in on vether1 from <opf_hosts:8> to any label "opf:traffic:lab"
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@8 match out on vether1 from any to <opf_hosts:8> label "opf:traffic:lab"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@9 match in on vether1 from ! <opf_hosts:9> to any label "opf:traffic-unknown:lab"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@9 match in on vether1 from ! <opf_hosts:8> to any label "opf:traffic-unknown:lab"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@10 match in on wg0 from <opf_hosts:9> to any label "opf:traffic:remote"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@11 match out on wg0 from any to <opf_hosts:9> label "opf:traffic:remote"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@10 match in on wg0 from <opf_hosts:8> to any label "opf:traffic:remote"
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@11 match out on wg0 from any to <opf_hosts:8> label "opf:traffic:remote"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@12 match in on wg0 from ! <opf_hosts:9> to any label "opf:traffic-unknown:remote"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@12 match in on wg0 from ! <opf_hosts:8> to any label "opf:traffic-unknown:remote"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@13 match in on wg1 from <opf_hosts:9> to any label "opf:traffic:sites"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@14 match out on wg1 from any to <opf_hosts:9> label "opf:traffic:sites"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@13 match in on wg1 from <opf_hosts:8> to any label "opf:traffic:sites"
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@14 match out on wg1 from any to <opf_hosts:8> label "opf:traffic:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@15 match in on wg1 from ! <opf_hosts:9> to any label "opf:traffic-unknown:sites"
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@15 match in on wg1 from ! <opf_hosts:8> to any label "opf:traffic-unknown:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @16 match out from (self:15) to any label "opf:traffic-self:firewall"
-  [ Evaluations: 41        Packets: 91        Bytes: 6568        States: 25    ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 37        Packets: 87        Bytes: 6312        States: 20    ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @17 match out on vio0 inet from 192.168.1.128/25 to 203.0.113.0/24 label "opf:nat:nat-none" tag opf_nonat
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @18 match out on vether0 inet from (pair0:network:1) to any label "opf:auto-nat:lan" nat-to (vether0:0:1)
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @19 match out on vether0 inet from (vlan20:network:1) to any label "opf:auto-nat:iot" nat-to (vether0:0:1)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @20 match out on vether0 inet from (vether1:network:1) to any label "opf:auto-nat:lab" nat-to (vether0:0:1)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @21 match out on vether0 inet from (wg0:network:1) to any label "opf:auto-nat:remote" nat-to (vether0:0:1)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @22 match out on vether0 inet from (wg1:network:1) to any label "opf:auto-nat:sites" nat-to (vether0:0:1)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @23 match out on vether0 inet from (wg2:network:1) to any label "opf:auto-nat:provider" nat-to (vether0:0:1)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @24 match out on vio0 inet from (pair0:network:1) to any label "opf:auto-nat:lan" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 31        Packets: 10        Bytes: 840         States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 10        Bytes: 840         States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @25 match out on vio0 inet from (vlan20:network:1) to any label "opf:auto-nat:iot" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 16        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @26 match out on vio0 inet from (vether1:network:1) to any label "opf:auto-nat:lab" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 16        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @27 match out on vio0 inet from (wg0:network:1) to any label "opf:auto-nat:remote" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 16        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @28 match out on vio0 inet from (wg1:network:1) to any label "opf:auto-nat:sites" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 16        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @29 match out on vio0 inet from (wg2:network:1) to any label "opf:auto-nat:provider" ! tagged opf_nonat nat-to (vio0:0:1)
-  [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 16        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @30 match out on pair0 inet from (vlan20:network:1) to any label "opf:auto-nat:iot" nat-to (pair0:0:1)
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @31 match out on pair0 inet from (vether1:network:1) to any label "opf:auto-nat:lab" nat-to (pair0:0:1)
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @32 match out on pair0 inet from (wg0:network:1) to any label "opf:auto-nat:remote" nat-to (pair0:0:1)
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @33 match out on pair0 inet from (wg1:network:1) to any label "opf:auto-nat:sites" nat-to (pair0:0:1)
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @34 match out on pair0 inet from (wg2:network:1) to any label "opf:auto-nat:provider" nat-to (pair0:0:1)
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @35 match out on vether0 inet from (pair0:network:1) to any label "opf:nat:nat-addr" nat-to 198.51.100.10 static-port
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
-@36 match out on vether0 inet from (vlan20:network:1) to any label "opf:nat:nat-hash" nat-to 198.51.100.32/28 source-hash 0xb6d597dad2fa43620e5b528274eff8b4
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
+@36 match out on vether0 inet from (vlan20:network:1) to any label "opf:nat:nat-hash" nat-to 198.51.100.32/28 source-hash 0x3ab9ea3ff00de0aa6b12f15618b74114
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @37 match out on vether0 inet from 172.16.5.0/24 to any label "opf:nat:nat-random" nat-to 198.51.100.48/28 random
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @38 match out on vio0 inet from 192.168.1.20 to any label "opf:nat:nat-rr" ! tagged opf_nonat nat-to (vio0:0:1) round-robin
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @39 match out on wg2 inet from (vlan20:network:1) to any label "opf:exit:provider" nat-to (wg2:0:1)
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @40 match out on wg0 inet from (pair0:network:1) to (wg0:network:1) label "opf:vpn-in:remote" nat-to (wg0:0:1)
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @41 block return log all label "opf:builtin:default-block"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @42 pass out inet all flags S/SA keep state (no-sync, if-bound, pflow) label "opf:builtin:self-out"
-  [ Evaluations: 41        Packets: 41        Bytes: 2368        States: 22    ]
-  [ Inserted: uid 0 pid 68202 State Creations: 22    ]
+  [ Evaluations: 37        Packets: 37        Bytes: 2112        States: 17    ]
+  [ Inserted: uid 0 pid 9314 State Creations: 18    ]
 @43 pass out inet6 all flags S/SA keep state (no-sync, if-bound, pflow) label "opf:builtin:self-out"
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @44 pass in on pair0 inet proto udp from (pair0:network:1) to (pair0:1) port = 123 keep state (no-sync, if-bound, pflow) label "opf:ntp:lan"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @45 pass in on vlan20 inet proto udp from (vlan20:network:1) to (vlan20:1) port = 123 keep state (no-sync, if-bound, pflow) label "opf:ntp:iot"
-  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 29        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @46 pass in quick on pair0 proto tcp from any to (pair0:1) port = 443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:builtin:anti-lockout"
-  [ Evaluations: 41        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @47 pass in quick on pair0 proto tcp from any to (pair0:1) port = 22 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:builtin:anti-lockout"
-  [ Evaluations: 2         Packets: 7         Bytes: 398         States: 1     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 1     ]
+  [ Evaluations: 2         Packets: 8         Bytes: 462         States: 1     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 1     ]
 @48 block drop in log quick on ! vether0 inet from 198.51.100.0/24 to any label "opf:antispoof:edge"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @49 block drop in log quick inet from 198.51.100.2 to any label "opf:antispoof:edge"
   [ Evaluations: 11        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @50 block drop in log quick on ! pair0 inet from 192.168.1.0/24 to any label "opf:antispoof:lan"
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @51 block drop in log quick inet from 192.168.1.1 to any label "opf:antispoof:lan"
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @52 block return in log quick on vether0 from <private:3> to any label "opf:builtin:block-private"
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @53 block return in log quick on vether0 from <bogons:7> to any label "opf:builtin:block-bogons"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @54 block return in log quick on wg0 inet from 10.8.0.3 to ! <opf_local:8> label "opf:split-tunnel:remote"
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @55 block return in log quick on wg0 inet from 10.8.0.4 to ! <opf_local:8> label "opf:split-tunnel:remote"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @56 block return in log quick on wg1 inet from 10.9.0.3 to ! <opf_local:8> label "opf:split-tunnel:sites"
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @57 match in on vlan20 inet from (vlan20:network:1) to ! <opf_local:8> scrub (max-mss 1380) label "opf:exit:provider" rtable 202
   [ Evaluations: 9         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @58 match in on vlan20 from any to (self:15) label "opf:exit:provider" rtable 0
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @59 block return out log quick on vether0 all received-on vlan20 label "opf:exit:provider"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @60 block return out log quick on vio0 all received-on vlan20 label "opf:exit:provider"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @61 block return out log quick on pair0 all received-on vlan20 label "opf:exit:provider"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @62 block return in log quick on wg0 inet from 10.8.0.5 to ! (wg0:network:1) label "opf:vpn-only:remote"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @63 block return in log quick on wg0 inet proto tcp from 10.8.0.5 to (wg0:1) port != 53 label "opf:vpn-only:remote"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @64 block return in log quick on wg0 inet proto udp from 10.8.0.5 to (wg0:1) port != 53 label "opf:vpn-only:remote"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @65 block return in log quick on wg1 inet from 10.9.0.4 to ! (wg1:network:1) label "opf:vpn-only:sites"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @66 block return in log quick on wg1 inet from 10.9.0.5 to ! (wg1:network:1) label "opf:vpn-only:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @67 block return in log quick on wg1 inet proto tcp from 10.9.0.4 to (wg1:1) port != 53 label "opf:vpn-only:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @68 block return in log quick on wg1 inet proto tcp from 10.9.0.5 to (wg1:1) port != 53 label "opf:vpn-only:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @69 block return in log quick on wg1 inet proto udp from 10.9.0.4 to (wg1:1) port != 53 label "opf:vpn-only:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @70 block return in log quick on wg1 inet proto udp from 10.9.0.5 to (wg1:1) port != 53 label "opf:vpn-only:sites"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @71 pass in quick on pair0 proto tcp from any to (pair0:1) port = 22 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:authpf:lan"
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @72 pass in quick on vio0 proto tcp from any to (vio0:1) port = 22 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:authpf:wan"
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @73 anchor "authpf/*" all
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @74 pass in log quick on vio0 inet proto tcp from any to (vio0:1) port = 8443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @75 pass in log quick on vio0 inet proto udp from any to (vio0:1) port = 8443 keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @76 pass in quick on pair0 inet proto tcp from (pair0:network:1) to (vio0:1) port = 8443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
   [ Evaluations: 20        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @77 pass in quick on pair0 inet proto udp from (pair0:network:1) to (vio0:1) port = 8443 keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
   [ Evaluations: 8         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @78 match out on pair0 inet proto tcp from (pair0:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (pair0:1) round-robin
-  [ Evaluations: 29        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 25        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @79 match out on pair0 inet proto udp from (pair0:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (pair0:1) round-robin
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @80 pass in quick on vlan20 inet proto tcp from (vlan20:network:1) to (vio0:1) port = 8443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @81 pass in quick on vlan20 inet proto udp from (vlan20:network:1) to (vio0:1) port = 8443 keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @82 match out on vlan20 inet proto tcp from (vlan20:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (vlan20:1) round-robin
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @83 match out on vlan20 inet proto udp from (vlan20:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (vlan20:1) round-robin
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @84 pass in quick on vether1 inet proto tcp from (vether1:network:1) to (vio0:1) port = 8443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @85 pass in quick on vether1 inet proto udp from (vether1:network:1) to (vio0:1) port = 8443 keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-web" rdr-to 192.168.1.10 port 443
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @86 match out on vether1 inet proto tcp from (vether1:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (vether1:1) round-robin
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @87 match out on vether1 inet proto udp from (vether1:network:1) to 192.168.1.10 port = 443 label "opf:forward:fwd-web" nat-to (vether1:1) round-robin
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @88 pass in quick on vether0 inet proto udp from 203.0.113.0/24 to (vether0:1) port 10000:10010 keep state (no-sync, if-bound, pflow) label "opf:forward:fwd-range" rdr-to 192.168.1.11 port 10000
-  [ Evaluations: 40        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 36        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @89 pass in quick on pair0 inet proto icmp all icmp-type echoreq keep state (no-sync, if-bound, pflow)
-  [ Evaluations: 38        Packets: 22        Bytes: 1848        States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 3     ]
+  [ Evaluations: 34        Packets: 22        Bytes: 1848        States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 3     ]
 @90 pass out quick on pair0 inet proto icmp all keep state (no-sync, if-bound, pflow)
   [ Evaluations: 2         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @91 match out log (all) on pair0 inet all set (prio 1) label "opf:rule:float-tag" tag bulk
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @92 match out log (all) on vlan20 inet all set (prio 1) label "opf:rule:float-tag" tag bulk
-  [ Evaluations: 31        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @93 match out log (all) on egress inet all set (prio 1) label "opf:rule:float-tag" tag bulk
-  [ Evaluations: 31        Packets: 44        Bytes: 3155        States: 18    ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 27        Packets: 39        Bytes: 2835        States: 13    ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @94 pass inet proto icmp all icmp-type echoreq keep state (no-sync, if-bound, pflow) label "opf:rule:float-ping"
-  [ Evaluations: 37        Packets: 50        Bytes: 4200        States: 3     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 9     ]
+  [ Evaluations: 33        Packets: 50        Bytes: 4200        States: 3     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 9     ]
 @95 pass in on wg proto udp from any to (self:15) port = 53 keep state (no-sync, if-bound, pflow) label "opf:rule:float-group"
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @96 pass quick on lo0 all flags S/SA keep state (no-sync, if-bound, pflow)
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @97 pass in quick on vio0 inet proto tcp from 100.64.0.0/10 to (self:12) port = 22 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:conformance-ssh"
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @98 pass in quick on pair0 inet proto tcp from (pair0:network:1) port 1024:65535 to any port = 80 flags S/SA keep state (max 5000, source-track rule, max-src-conn 100, max-src-conn-rate 50/5, overload <abusers> flush global, if-bound, adaptive.start 3000, adaptive.end 6000, src.track 5) label "opf:rule:lan-web"
   [ Evaluations: 17        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @99 pass in quick on pair0 inet proto tcp from (pair0:network:1) port 1024:65535 to any port = 443 flags S/SA keep state (max 5000, source-track rule, max-src-conn 100, max-src-conn-rate 50/5, overload <abusers> flush global, if-bound, adaptive.start 3000, adaptive.end 6000, src.track 5) label "opf:rule:lan-web"
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @100 pass in quick on pair0 inet proto tcp from (pair0:network:1) port 1024:65535 to any port = 443 flags S/SA keep state (max 5000, source-track rule, max-src-conn 100, max-src-conn-rate 50/5, overload <abusers> flush global, if-bound, adaptive.start 3000, adaptive.end 6000, src.track 5) label "opf:rule:lan-web"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @101 pass in on pair0 proto tcp from any to any port = 25 flags S/SA keep state (source-track rule, max-src-conn 10, overload <abusers>, if-bound) label "opf:rule:lan-overload"
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @102 pass in log on pair0 inet proto tcp from 192.168.1.0/24 to 198.51.100.80 port = 80 flags any modulate state (if-bound) label "opf:rule:lan-list"
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @103 pass in log on pair0 inet proto tcp from 192.168.1.0/24 to 198.51.100.80 port = 443 flags any modulate state (if-bound) label "opf:rule:lan-list"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @104 pass in log on pair0 inet proto tcp from 192.168.1.0/24 to 198.51.100.80 port = 8443 flags any modulate state (if-bound) label "opf:rule:lan-list"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @105 pass in on pair0 proto udp from any port > 1023 to any port 8000:8080 keep state (sloppy, pflow) label "opf:rule:lan-range"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @106 pass in on pair0 proto tcp from any to (self:15) port = 22 flags S/FSRA synproxy state (if-bound) label "opf:rule:lan-synproxy"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @107 pass out on pair0 proto udp from (self:15) to any port = 123 no state label "opf:rule:lan-nostate"
-  [ Evaluations: 26        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 22        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @108 pass in on pair0 proto tcp from any os "OpenBSD" to <office_hosts:3> flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-os"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @109 pass in on pair0 inet proto tcp from (pair0:network:1) to 203.0.113.0/24 port = 443 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-route" route-to 198.51.100.1
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @110 pass in on pair0 proto tcp from any to <office_nets:2> port = 53 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-tcpudp"
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @111 pass in on pair0 proto udp from any to <office_nets:2> port = 53 keep state (no-sync, if-bound, pflow) label "opf:rule:lan-tcpudp"
   [ Evaluations: 5         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @112 pass in on pair0 inet6 proto ipv6-icmp all icmp6-type echoreq keep state (no-sync, if-bound, pflow) label "opf:rule:lan-v6"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @113 pass in on pair0 inet proto esp from 192.168.1.30 to 198.51.100.30 keep state (no-sync, if-bound, pflow) label "opf:rule:lan-esp"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @114 pass out on pair0 proto gre all keep state (no-sync, if-bound, pflow) label "opf:rule:lan-gre" once
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @115 match in on pair0 proto tcp all probability 50% label "opf:rule:lan-sample" tag sampled tagged bulk
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @116 match in on pair0 inet from (pair0:network:1) to 10.99.0.0/16 label "opf:rule:lan-rtable" rtable 0
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @117 pass in on pair0 from <authpf_users:0> to (vlan20:network:1) flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-users"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @118 pass in on pair0 from (pair0:network:0:1) to (egress:network:1) flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-noalias"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @119 pass in on pair0 inet6 from any to ::1 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-loopback"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @120 pass in on pair0 inet from any to 127.0.0.1 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:lan-loopback"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @121 pass in on pair0 proto udp from any to (pair0:broadcast:1) port 137:138 keep state (no-sync, if-bound, pflow) label "opf:rule:lan-broadcast"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @122 block return in quick on pair0 proto tcp from any to any port = 23 label "opf:rule:lan-reject"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @123 block return in on pair0 inet from 192.168.1.66 to any label "opf:rule:lan-drop"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @124 block return in on pair0 inet from ! 192.168.1.67 to ! 10.0.0.0/8 label "opf:rule:lan-block"
   [ Evaluations: 6         Packets: 4         Bytes: 285         States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @125 block return in on pair0 from any to ! <office_nets:2> label "opf:rule:lan-return"
   [ Evaluations: 6         Packets: 2         Bytes: 58          States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @126 block return-rst(ttl 64) in on pair0 proto tcp from any to any port = 25 label "opf:rule:lan-rst-ttl"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @127 block return-rst in on pair0 proto tcp from any to any port = 26 label "opf:rule:lan-rst"
   [ Evaluations: 1         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @128 block return-icmp(port-unr) in on pair0 inet proto udp from any to any port = 69 label "opf:rule:lan-icmp-code"
   [ Evaluations: 6         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @129 block return-icmp(port-unr) in on pair0 inet proto udp from any to any port = 70 label "opf:rule:lan-icmp"
   [ Evaluations: 5         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @130 block return-icmp6(port-unr) in on pair0 inet6 proto udp from any to any port = 69 label "opf:rule:lan-icmp6-code"
   [ Evaluations: 5         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @131 block return-icmp6(port-unr) in on pair0 inet6 proto udp from any to any port = 70 label "opf:rule:lan-icmp6"
   [ Evaluations: 0         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @132 pass in on pair0 inet proto udp from any to 224.0.0.251 port = 5353 keep state (no-sync, if-bound, pflow)
   [ Evaluations: 5         Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @133 pass in on vlan20 inet from (vlan20:network:1) to 203.0.113.0/24 flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:iot-reply" reply-to 198.51.100.1
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @134 pass in on wg0 from (wg0:peer:*) to (pair0:network:1) flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:remote-peer"
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @135 pass in on wg1 inet from 10.20.0.0/16 to (pair0:network:1) flags S/SA keep state (no-sync, if-bound, pflow) label "opf:rule:sites-in"
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]
 @136 block return in log quick on vlan20 proto tcp from any to any port = 23
-  [ Evaluations: 37        Packets: 0         Bytes: 0           States: 0     ]
-  [ Inserted: uid 0 pid 68202 State Creations: 0     ]
+  [ Evaluations: 33        Packets: 0         Bytes: 0           States: 0     ]
+  [ Inserted: uid 0 pid 9314 State Creations: 0     ]

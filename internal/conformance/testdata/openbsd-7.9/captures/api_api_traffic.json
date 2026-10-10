@@ -4,53 +4,38 @@
     "firewall": {
       "kind": "firewall",
       "name": "This firewall"
-    },
-    "mac:fe:e1:ba:d3:db:da": {
-      "kind": "device",
-      "mac": "fe:e1:ba:d3:db:da"
     }
   },
   "devices": [
     {
       "key": "firewall",
-      "received": 2330,
-      "receivedPackets": 32,
-      "sent": 4238,
-      "sentPackets": 59
-    },
-    {
-      "key": "mac:fe:e1:ba:d3:db:da",
-      "received": 1030,
-      "receivedPackets": 13,
-      "sent": 1048,
-      "sentPackets": 14
+      "received": 2382,
+      "receivedPackets": 33,
+      "sent": 3930,
+      "sentPackets": 54
     }
   ],
   "enabled": true,
   "firewall": {
-    "received": 2330,
-    "receivedPackets": 32,
-    "sent": 4238,
-    "sentPackets": 59
+    "received": 2382,
+    "receivedPackets": 33,
+    "sent": 3930,
+    "sentPackets": 54
   },
   "hours": [
     {
-      "received": 1030,
-      "receivedPackets": 13,
-      "sent": 1048,
-      "sentPackets": 14,
-      "start": "2026-10-10T00:00:00Z",
-      "unknown": 168
+      "received": 0,
+      "sent": 0,
+      "start": "2026-10-10T19:00:00Z",
+      "unknown": 2310
     }
   ],
   "maxDevices": 100,
   "savedBytes": 0,
   "since": "2026-10-10T00:00:00Z",
   "total": {
-    "received": 1030,
-    "receivedPackets": 13,
-    "sent": 1048,
-    "sentPackets": 14
+    "received": 0,
+    "sent": 0
   },
-  "unknown": 168
+  "unknown": 2310
 }

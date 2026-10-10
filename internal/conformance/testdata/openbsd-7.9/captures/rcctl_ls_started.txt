@@ -2,6 +2,7 @@ cron
 dhcpd
 dhcpleased
 ntpd
+opf
 pflogd
 resolvd
 slaacd

@@ -1,24 +1,24 @@
-Status: Enabled for 0 days 00:13:01           Debug: notice
+Status: Enabled for 0 days 00:13:08           Debug: notice
 
 Hostid:   0x00000001
 Checksum: 0xaab2b0bffdbe0f6724ff6ca95224860f
 
 Interface Stats for pair0             IPv4             IPv6
-  Bytes In                            1475                0
-  Bytes Out                           1114                0
+  Bytes In                            1487                0
+  Bytes Out                           1166                0
   Packets In
     Passed                              15                0
     Blocked                              6                0
   Packets Out
-    Passed                              14                0
+    Passed                              15                0
     Blocked                              0                0
 
 State Table                          Total             Rate
-  current entries                       36               
-  half-open tcp                         13               
-  searches                           44216           56.6/s
-  inserts                              206            0.3/s
-  removals                             170            0.2/s
+  current entries                       30               
+  half-open tcp                          7               
+  searches                           44281           56.2/s
+  inserts                              204            0.3/s
+  removals                             174            0.2/s
 Source Tracking Table
   current entries                        0               
   searches                               0            0.0/s
@@ -30,7 +30,7 @@ Fragments
   inserts                                0            0.0/s
   removals                               0            0.0/s
 Counters
-  match                                233            0.3/s
+  match                                227            0.3/s
   bad-offset                             0            0.0/s
   fragment                               0            0.0/s
   short                                  1            0.0/s
@@ -38,7 +38,7 @@ Counters
   memory                                 0            0.0/s
   bad-timestamp                          0            0.0/s
   congestion                             0            0.0/s
-  ip-option                              2            0.0/s
+  ip-option                              1            0.0/s
   proto-cksum                            0            0.0/s
   state-mismatch                         0            0.0/s
   state-insert                           0            0.0/s

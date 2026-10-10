@@ -1,7 +1,7 @@
 ls: /var/log/daemon.0.gz: No such file or directory
 ls: /var/log/messages.0.gz: No such file or directory
--rw-r-----  1 0  0   1691 Oct 10 00:29 /var/log/authlog
--rw-r-----  1 0  0   6646 Oct 10 00:29 /var/log/daemon
--rw-r-----  1 0  0   2346 Oct 10 00:18 /var/log/maillog
--rw-r--r--  1 0  0  11055 Oct 10 00:29 /var/log/messages
--rw-------  1 0  0    376 Oct 10 00:29 /var/log/pflog
+-rw-r-----  1 0  0   1565 Oct 10 19:26 /var/log/authlog
+-rw-r-----  1 0  0   6536 Oct 10 19:26 /var/log/daemon
+-rw-r-----  1 0  0   2346 Oct 10 19:15 /var/log/maillog
+-rw-r--r--  1 0  0  11052 Oct 10 19:26 /var/log/messages
+-rw-------  1 0  0    200 Oct 10 19:26 /var/log/pflog

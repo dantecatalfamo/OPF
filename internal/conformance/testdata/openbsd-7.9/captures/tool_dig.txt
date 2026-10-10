@@ -3,7 +3,7 @@
 ; (1 server found)
 ;; global options: +cmd
 ;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 39004
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 42828
 ;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
 
 ;; OPT PSEUDOSECTION:
@@ -14,7 +14,7 @@
 ;; ANSWER SECTION:
 1.1.168.192.in-addr.arpa. 3600	IN	PTR	gateway.office.arpa.
 
-;; Query time: 12 msec
+;; Query time: 13 msec
 ;; SERVER: 127.0.0.1#53(127.0.0.1)
-;; WHEN: Sat Oct 10 00:30:36 UTC 2026
+;; WHEN: Sat Oct 10 19:31:17 UTC 2026
 ;; MSG SIZE  rcvd: 82

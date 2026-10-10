@@ -2,7 +2,7 @@
   "labels": {
     "opf:antispoof:edge": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
@@ -14,56 +14,56 @@
     },
     "opf:authpf:lan": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
     "opf:authpf:wan": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
     "opf:auto-nat:iot": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
     "opf:auto-nat:lab": {
       "bytes": 0,
-      "evaluations": 20,
+      "evaluations": 16,
       "packets": 0,
       "states": 0
     },
     "opf:auto-nat:lan": {
       "bytes": 840,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 10,
       "states": 0
     },
     "opf:auto-nat:provider": {
       "bytes": 0,
-      "evaluations": 20,
+      "evaluations": 16,
       "packets": 0,
       "states": 0
     },
     "opf:auto-nat:remote": {
       "bytes": 0,
-      "evaluations": 20,
+      "evaluations": 16,
       "packets": 0,
       "states": 0
     },
     "opf:auto-nat:sites": {
       "bytes": 0,
-      "evaluations": 20,
+      "evaluations": 16,
       "packets": 0,
       "states": 0
     },
     "opf:builtin:anti-lockout": {
-      "bytes": 398,
-      "evaluations": 41,
-      "packets": 7,
+      "bytes": 462,
+      "evaluations": 37,
+      "packets": 8,
       "states": 1
     },
     "opf:builtin:block-bogons": {
@@ -80,37 +80,37 @@
     },
     "opf:builtin:default-block": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:builtin:self-out": {
-      "bytes": 2432,
-      "evaluations": 41,
-      "packets": 42,
-      "states": 20
+      "bytes": 2176,
+      "evaluations": 37,
+      "packets": 38,
+      "states": 17
     },
     "opf:exit:provider": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
     "opf:forward:fwd-range": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
     "opf:forward:fwd-web": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
     "opf:nat:nat-addr": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
@@ -122,7 +122,7 @@
     },
     "opf:nat:nat-none": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
@@ -134,49 +134,49 @@
     },
     "opf:nat:nat-rr": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
     "opf:ntp:iot": {
       "bytes": 0,
-      "evaluations": 33,
+      "evaluations": 29,
       "packets": 0,
       "states": 0
     },
     "opf:ntp:lan": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:rule:conformance-ssh": {
       "bytes": 0,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 0,
       "states": 0
     },
     "opf:rule:float-group": {
       "bytes": 0,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 0,
       "states": 0
     },
     "opf:rule:float-ping": {
       "bytes": 4200,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 50,
       "states": 3
     },
     "opf:rule:float-tag": {
-      "bytes": 3219,
-      "evaluations": 31,
-      "packets": 45,
-      "states": 16
+      "bytes": 2899,
+      "evaluations": 27,
+      "packets": 40,
+      "states": 13
     },
     "opf:rule:iot-reply": {
       "bytes": 0,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 0,
       "states": 0
     },
@@ -254,7 +254,7 @@
     },
     "opf:rule:lan-nostate": {
       "bytes": 0,
-      "evaluations": 26,
+      "evaluations": 22,
       "packets": 0,
       "states": 0
     },
@@ -350,13 +350,13 @@
     },
     "opf:rule:remote-peer": {
       "bytes": 0,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 0,
       "states": 0
     },
     "opf:rule:sites-in": {
       "bytes": 0,
-      "evaluations": 37,
+      "evaluations": 33,
       "packets": 0,
       "states": 0
     },
@@ -373,10 +373,10 @@
       "states": 0
     },
     "opf:traffic-self:firewall": {
-      "bytes": 6632,
-      "evaluations": 41,
-      "packets": 92,
-      "states": 23
+      "bytes": 6376,
+      "evaluations": 37,
+      "packets": 88,
+      "states": 20
     },
     "opf:traffic-unknown:iot": {
       "bytes": 0,
@@ -391,10 +391,10 @@
       "states": 0
     },
     "opf:traffic-unknown:lan": {
-      "bytes": 168,
+      "bytes": 2310,
       "evaluations": 10,
-      "packets": 2,
-      "states": 0
+      "packets": 30,
+      "states": 1
     },
     "opf:traffic-unknown:remote": {
       "bytes": 0,
@@ -410,49 +410,49 @@
     },
     "opf:traffic:iot": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:traffic:lab": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:traffic:lan": {
-      "bytes": 2078,
-      "evaluations": 41,
-      "packets": 27,
-      "states": 1
+      "bytes": 0,
+      "evaluations": 37,
+      "packets": 0,
+      "states": 0
     },
     "opf:traffic:remote": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:traffic:sites": {
       "bytes": 0,
-      "evaluations": 41,
+      "evaluations": 37,
       "packets": 0,
       "states": 0
     },
     "opf:vpn-in:remote": {
       "bytes": 0,
-      "evaluations": 31,
+      "evaluations": 27,
       "packets": 0,
       "states": 0
     },
     "opf:vpn-only:remote": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     },
     "opf:vpn-only:sites": {
       "bytes": 0,
-      "evaluations": 40,
+      "evaluations": 36,
       "packets": 0,
       "states": 0
     }

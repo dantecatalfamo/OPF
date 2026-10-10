@@ -434,21 +434,25 @@ func TestAuthpf(t *testing.T) {
 // resolvd puts first in resolv.conf.
 func TestSystemDNS(t *testing.T) {
 	a := configured(t)
-	// A peer's name as the UI checks it: from /etc/hosts here (the
-	// suite's), then no such name, exit 2 and nothing printed.
-	if out := step(t, "getent hosts *", []string{"getent", "hosts", "vpn.example.net"}); !strings.Contains(out, "192.0.2.81") {
-		t.Errorf("getent hosts vpn.example.net: %q", out)
-	}
+	// A peer's name as the UI checks it: no such name, exit 2 and
+	// nothing printed (offline, after the resolver gives up), then one
+	// from /etc/hosts here (the suite's), saved last.
 	if out := step(t, "getent hosts *", []string{"getent", "hosts", "nosuch.invalid"}, 2); out != "" {
 		t.Errorf("getent hosts for no such name printed %q", out)
+	}
+	if out := step(t, "getent hosts *", []string{"getent", "hosts", "vpn.example.net"}); !strings.Contains(out, "192.0.2.81") {
+		t.Errorf("getent hosts vpn.example.net: %q", out)
 	}
 	var found appliance.HostLookupResult
 	if err := a.do("POST", "/api/dns/lookup-host", appliance.HostLookupRequest{Name: "vpn.example.net"}, &found); err != nil || !slices.Contains(found.Addresses, "192.0.2.81") || found.Error != "" {
 		t.Errorf("OPF's lookup of vpn.example.net: %+v, %v", found, err)
 	}
+	// Offline, no server answers for a name the hosts file hasn't: OPF
+	// says so after its 8 s, as netstart would wait.
 	var none appliance.HostLookupResult
-	if err := a.do("POST", "/api/dns/lookup-host", appliance.HostLookupRequest{Name: "nosuch.invalid"}, &none); err != nil || len(none.Addresses) != 0 || none.Error != "" {
-		t.Errorf("OPF's lookup of nosuch.invalid: %+v, %v", none, err)
+	err := a.do("POST", "/api/dns/lookup-host", appliance.HostLookupRequest{Name: "nosuch.invalid"}, &none)
+	if err != nil || len(none.Addresses) != 0 || (internet() && none.Error != "") || none.Seconds > 10 {
+		t.Errorf("OPF's lookup of nosuch.invalid (internet %v): %+v, %v", internet(), none, err)
 	}
 	step(t, "route nameserver lo0 ...", []string{"route", "nameserver", "lo0", "192.0.2.53"})
 	time.Sleep(2 * time.Second)

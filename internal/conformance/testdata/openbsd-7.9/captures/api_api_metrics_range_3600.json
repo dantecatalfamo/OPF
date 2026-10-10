@@ -2,10 +2,10 @@
   "groups": [
     {
       "itemBytes": 113664,
-      "items": 7,
+      "items": 8,
       "max": 9,
       "name": "system",
-      "series": 7,
+      "series": 8,
       "seriesBytes": 113664
     },
     {
@@ -60,6 +60,7 @@
     "dhcp.lab.leases",
     "dhcp.lan.leases",
     "dns.blocked",
+    "dns.cachehit",
     "dns.queries",
     "gw.gw_edge.loss",
     "gw.gw_wan.loss",

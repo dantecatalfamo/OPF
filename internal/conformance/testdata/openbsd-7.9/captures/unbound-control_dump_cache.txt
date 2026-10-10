@@ -1,1 +1,5 @@
-dump_cache/load_cache is not supported in multi-process operation
+START_RRSET_CACHE
+END_RRSET_CACHE
+START_MSG_CACHE
+END_MSG_CACHE
+EOF

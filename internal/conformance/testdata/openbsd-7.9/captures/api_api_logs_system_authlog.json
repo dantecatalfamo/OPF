@@ -2,90 +2,83 @@
   "lines": [
     {
       "host": "opfconform79",
-      "message": "Connection reset by 192.168.1.60 port 15361 [preauth]",
-      "pid": 71528,
+      "message": "Connection closed by 192.168.1.60 port 38905 [preauth]",
+      "pid": 97469,
       "program": "sshd-session",
-      "time": "2026-10-10T00:28:49Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "error: kex_exchange_identification: read: Connection reset by peer [preauth]",
-      "pid": 71528,
-      "program": "sshd-session",
-      "time": "2026-10-10T00:28:49Z"
+      "time": "2026-10-10T19:25:53Z"
     },
     {
       "host": "opfconform79",
       "message": "Server listening on :: port 22.",
-      "pid": 32003,
+      "pid": 68686,
       "program": "sshd",
-      "time": "2026-10-10T00:28:41Z"
+      "time": "2026-10-10T19:25:45Z"
     },
     {
       "host": "opfconform79",
       "message": "Server listening on 0.0.0.0 port 22.",
-      "pid": 32003,
+      "pid": 68686,
       "program": "sshd",
-      "time": "2026-10-10T00:28:41Z"
+      "time": "2026-10-10T19:25:44Z"
     },
     {
       "host": "opfconform79",
       "message": "Received SIGHUP; restarting.",
-      "pid": 32003,
+      "pid": 68686,
       "program": "sshd",
-      "time": "2026-10-10T00:28:41Z"
+      "time": "2026-10-10T19:25:44Z"
     },
     {
       "host": "opfconform79",
       "message": "conform signed in as admin, from 127.0.0.1",
       "program": "opf",
-      "time": "2026-10-10T00:27:37Z"
+      "time": "2026-10-10T19:24:40Z"
     },
     {
       "host": "opfconform79",
       "message": "conform signed in as admin, from 127.0.0.1",
       "program": "opf",
-      "time": "2026-10-10T00:27:34Z"
+      "time": "2026-10-10T19:24:35Z"
     },
     {
       "host": "opfconform79",
       "message": "conform took this machine over: its configuration is imported and staged",
       "program": "opf",
-      "time": "2026-10-10T00:27:34Z"
+      "time": "2026-10-10T19:24:35Z"
     },
     {
       "host": "opfconform79",
       "message": "conform signed in as admin, from 127.0.0.1",
       "program": "opf",
-      "time": "2026-10-10T00:27:32Z"
+      "time": "2026-10-10T19:24:31Z"
     },
     {
       "host": "opfconform79",
-      "message": "Accepted publickey for root from 100.64.2.2 port 44828 ssh2: ED25519 SHA256:hdDWMbyIP8yFeHJgoBRlJANjqt/2TC807tggDH4288o",
-      "pid": 94706,
+      "message": "Accepted publickey for root from 100.64.2.2 port 47330 ssh2: ED25519 SHA256:hdDWMbyIP8yFeHJgoBRlJANjqt/2TC807tggDH4288o",
+      "pid": 82774,
       "program": "sshd-session",
-      "time": "2026-10-10T00:17:37Z"
+      "time": "2026-10-10T19:14:39Z"
     },
     {
       "host": "opfconform79",
       "message": "Server listening on :: port 22.",
-      "pid": 32003,
+      "pid": 68686,
       "program": "sshd",
-      "time": "2026-10-10T00:17:36Z"
+      "time": "2026-10-10T19:14:35Z"
     },
     {
       "host": "opfconform79",
       "message": "Server listening on 0.0.0.0 port 22.",
-      "pid": 32003,
+      "pid": 68686,
       "program": "sshd",
-      "time": "2026-10-10T00:17:36Z"
+      "time": "2026-10-10T19:14:35Z"
     },
     {
       "host": "opfconform79",
       "message": "fatal: ssh-agent: unveil /usr/X11R6/bin/ssh-askpass: No such file or directory",
-      "pid": 51783,
+      "pid": 48239,
       "program": "ssh-agent",
-      "time": "2026-10-10T00:17:27Z"
+      "time": "2026-10-10T19:14:25Z"
     },
     {
       "host": "opfconform79",
@@ -117,12 +110,12 @@
     }
   ],
   "log": "authlog",
-  "matched": 17,
+  "matched": 16,
   "programs": [
     "opf",
     "ssh-agent",
     "sshd",
     "sshd-session"
   ],
-  "read": 17
+  "read": 16
 }

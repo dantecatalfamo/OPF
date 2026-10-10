@@ -5,13 +5,26 @@
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 2955931599:2955931599(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1865264200[|tcp]\u003e (DF)",
+      "info": "S 2154157392:2154157392(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1844461068[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:48039",
-      "time": "2026-10-10T00:29:08.788323Z"
+      "source": "100.64.2.3:48797",
+      "time": "2026-10-10T19:26:12.288657Z"
+    },
+    {
+      "action": "match",
+      "destination": "9.9.9.9",
+      "direction": "out",
+      "iface": "vio0",
+      "info": "icmp: echo request",
+      "label": "opf:rule:float-tag",
+      "proto": "icmp",
+      "reason": "match",
+      "rule": 93,
+      "source": "100.64.2.3",
+      "time": "2026-10-10T19:26:08.266976Z"
     },
     {
       "action": "match",
@@ -24,19 +37,19 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:29:04.510041Z"
+      "time": "2026-10-10T19:26:08.099625Z"
     },
     {
       "action": "match",
       "destination": "100.64.2.2:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "21923+[|domain]",
+      "info": "51135+[|domain]",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:28254",
-      "time": "2026-10-10T00:29:04.505965Z"
+      "source": "100.64.2.3:46570",
+      "time": "2026-10-10T19:26:08.096583Z"
     },
     {
       "action": "match",
@@ -49,7 +62,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:29:04.157851Z"
+      "time": "2026-10-10T19:26:08.067257Z"
     },
     {
       "action": "match",
@@ -62,71 +75,45 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:29:03.966534Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "icmp: echo request",
-      "label": "opf:rule:float-tag",
-      "proto": "icmp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3",
-      "time": "2026-10-10T00:29:03.749955Z"
+      "time": "2026-10-10T19:26:07.858265Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 74024301:74024301(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2538661839[|tcp]\u003e (DF)",
+      "info": "S 2154157392:2154157392(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1844455048[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:1161",
-      "time": "2026-10-10T00:29:02.81573Z"
+      "source": "100.64.2.3:48797",
+      "time": "2026-10-10T19:26:06.267493Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 2955931599:2955931599(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1865258195[|tcp]\u003e (DF)",
+      "info": "S 3643837415:3643837415(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 379228109[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:48039",
-      "time": "2026-10-10T00:29:02.78707Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 1462776933:1462776933(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 656319474[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:27156",
-      "time": "2026-10-10T00:29:02.765977Z"
+      "source": "100.64.2.3:37088",
+      "time": "2026-10-10T19:26:06.246301Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "21923+[|domain]",
+      "info": "51135+[|domain]",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:14315",
-      "time": "2026-10-10T00:29:01.147601Z"
+      "source": "100.64.2.3:33498",
+      "time": "2026-10-10T19:26:04.749707Z"
     },
     {
       "action": "match",
@@ -139,7 +126,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:29:00.184336Z"
+      "time": "2026-10-10T19:26:04.274009Z"
     },
     {
       "action": "match",
@@ -152,7 +139,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:29:00.178338Z"
+      "time": "2026-10-10T19:26:04.267985Z"
     },
     {
       "action": "match",
@@ -165,7 +152,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:59.983574Z"
+      "time": "2026-10-10T19:26:04.073723Z"
     },
     {
       "action": "match",
@@ -178,7 +165,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:59.976913Z"
+      "time": "2026-10-10T19:26:04.067589Z"
     },
     {
       "action": "match",
@@ -191,7 +178,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:59.763518Z"
+      "time": "2026-10-10T19:26:03.856692Z"
     },
     {
       "action": "match",
@@ -204,7 +191,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:59.75528Z"
+      "time": "2026-10-10T19:26:03.84822Z"
     },
     {
       "action": "match",
@@ -217,109 +204,70 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:57.785791Z"
+      "time": "2026-10-10T19:26:01.368048Z"
     },
     {
       "action": "match",
       "destination": "100.64.2.2:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "21923+[|domain]",
+      "info": "51135+[|domain]",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:27569",
-      "time": "2026-10-10T00:28:57.772583Z"
+      "source": "100.64.2.3:26651",
+      "time": "2026-10-10T19:26:01.358361Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 74024301:74024301(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2538655828[|tcp]\u003e (DF)",
+      "info": "S 3643837415:3643837415(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 379222100[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:1161",
-      "time": "2026-10-10T00:28:56.806497Z"
+      "source": "100.64.2.3:37088",
+      "time": "2026-10-10T19:26:00.238473Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 1462776933:1462776933(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 656313464[|tcp]\u003e (DF)",
+      "info": "S 2728569333:2728569333(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1800476598[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:27156",
-      "time": "2026-10-10T00:28:56.75694Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 1813086129:1813086129(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1618546860[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:18845",
-      "time": "2026-10-10T00:28:53.785688Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 3345256918:3345256918(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3999834145[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:20444",
-      "time": "2026-10-10T00:28:53.725642Z"
+      "source": "100.64.2.3:15454",
+      "time": "2026-10-10T19:25:57.196927Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "21923+[|domain]",
+      "info": "51135+[|domain]",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:15997",
-      "time": "2026-10-10T00:28:52.764211Z"
+      "source": "100.64.2.3:3222",
+      "time": "2026-10-10T19:25:56.335746Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:853",
       "direction": "out",
       "iface": "vio0",
-      "info": "S 3380817190:3380817190(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2230288829[|tcp]\u003e (DF)",
+      "info": "S 28095384:28095384(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 612992175[|tcp]\u003e (DF)",
       "label": "opf:rule:float-tag",
       "proto": "tcp",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:20239",
-      "time": "2026-10-10T00:28:50.75901Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 3735110916:3735110916(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1139393392[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:3081",
-      "time": "2026-10-10T00:28:50.72127Z"
+      "source": "100.64.2.3:33565",
+      "time": "2026-10-10T19:25:54.181518Z"
     },
     {
       "action": "match",
@@ -332,7 +280,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:49.297391Z"
+      "time": "2026-10-10T19:25:52.847918Z"
     },
     {
       "action": "match",
@@ -345,7 +293,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:49.294936Z"
+      "time": "2026-10-10T19:25:52.845458Z"
     },
     {
       "action": "match",
@@ -358,7 +306,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:49.097615Z"
+      "time": "2026-10-10T19:25:52.647656Z"
     },
     {
       "action": "match",
@@ -371,7 +319,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:49.095246Z"
+      "time": "2026-10-10T19:25:52.645096Z"
     },
     {
       "action": "match",
@@ -384,7 +332,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:48.892531Z"
+      "time": "2026-10-10T19:25:52.447956Z"
     },
     {
       "action": "match",
@@ -397,7 +345,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:48.886466Z"
+      "time": "2026-10-10T19:25:52.445363Z"
     },
     {
       "action": "match",
@@ -410,7 +358,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:48.69231Z"
+      "time": "2026-10-10T19:25:52.24304Z"
     },
     {
       "action": "match",
@@ -423,20 +371,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:48.68614Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "icmp: echo request",
-      "label": "opf:rule:float-tag",
-      "proto": "icmp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:48.546138Z"
+      "time": "2026-10-10T19:25:52.237832Z"
     },
     {
       "action": "match",
@@ -449,7 +384,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:48.488893Z"
+      "time": "2026-10-10T19:25:52.042543Z"
     },
     {
       "action": "match",
@@ -462,7 +397,7 @@
       "reason": "match",
       "rule": 93,
       "source": "192.168.1.60",
-      "time": "2026-10-10T00:28:48.481453Z"
+      "time": "2026-10-10T19:25:52.035287Z"
     },
     {
       "action": "match",
@@ -475,7 +410,7 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:48.335935Z"
+      "time": "2026-10-10T19:25:51.985654Z"
     },
     {
       "action": "match",
@@ -488,7 +423,20 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.3",
-      "time": "2026-10-10T00:28:48.127319Z"
+      "time": "2026-10-10T19:25:51.784728Z"
+    },
+    {
+      "action": "match",
+      "destination": "9.9.9.9",
+      "direction": "out",
+      "iface": "vio0",
+      "info": "icmp: echo request",
+      "label": "opf:rule:float-tag",
+      "proto": "icmp",
+      "reason": "match",
+      "rule": 93,
+      "source": "100.64.2.3",
+      "time": "2026-10-10T19:25:51.576451Z"
     },
     {
       "action": "match",
@@ -501,57 +449,44 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:47.725546Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 2790906264:2790906264(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3110103031[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:3201",
-      "time": "2026-10-10T00:28:47.72449Z"
-    },
-    {
-      "action": "match",
-      "destination": "9.9.9.9:853",
-      "direction": "out",
-      "iface": "vio0",
-      "info": "S 896740769:896740769(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 669471966[|tcp]\u003e (DF)",
-      "label": "opf:rule:float-tag",
-      "proto": "tcp",
-      "reason": "match",
-      "rule": 93,
-      "source": "100.64.2.3:14748",
-      "time": "2026-10-10T00:28:47.709403Z"
+      "time": "2026-10-10T19:25:51.309052Z"
     },
     {
       "action": "match",
       "destination": "100.64.2.2:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "13517+% NS? .(17)",
+      "info": "10135+% NS? .(17)",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:21406",
-      "time": "2026-10-10T00:28:47.705831Z"
+      "source": "100.64.2.3:4244",
+      "time": "2026-10-10T19:25:51.296031Z"
+    },
+    {
+      "action": "match",
+      "destination": "9.9.9.9:853",
+      "direction": "out",
+      "iface": "vio0",
+      "info": "S 2985387847:2985387847(0) win 16384 \u003cmss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1542406132[|tcp]\u003e (DF)",
+      "label": "opf:rule:float-tag",
+      "proto": "tcp",
+      "reason": "match",
+      "rule": 93,
+      "source": "100.64.2.3:11500",
+      "time": "2026-10-10T19:25:51.171469Z"
     },
     {
       "action": "match",
       "destination": "9.9.9.9:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "13517+% NS? .(17)",
+      "info": "10135+% NS? .(17)",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:30439",
-      "time": "2026-10-10T00:28:46.671304Z"
+      "source": "100.64.2.3:38027",
+      "time": "2026-10-10T19:25:50.283008Z"
     },
     {
       "action": "match",
@@ -564,42 +499,31 @@
       "reason": "match",
       "rule": 93,
       "source": "100.64.2.2",
-      "time": "2026-10-10T00:28:45.578147Z"
+      "time": "2026-10-10T19:25:48.746023Z"
     },
     {
       "action": "match",
       "destination": "100.64.2.2:53",
       "direction": "out",
       "iface": "vio0",
-      "info": "49336+% NS? .(17)",
+      "info": "58108+% NS? .(17)",
       "label": "opf:rule:float-tag",
       "reason": "match",
       "rule": 93,
-      "source": "100.64.2.3:12131",
-      "time": "2026-10-10T00:28:45.571421Z"
+      "source": "100.64.2.3:41356",
+      "time": "2026-10-10T19:25:48.738259Z"
     },
     {
       "action": "block",
-      "destination": "ff02::1:ffd2:a809",
+      "destination": "ff02::1:ffd2:4ebc",
       "direction": "out",
       "iface": "vether1",
       "info": "HBH icmp6: multicast listener report  [hlim 1]",
       "reason": "ip-option",
       "rule": -1,
       "source": "::",
-      "time": "2026-10-10T00:28:06.549546Z"
-    },
-    {
-      "action": "block",
-      "destination": "ff02::1:ffd2:a809",
-      "direction": "out",
-      "iface": "vether1",
-      "info": "HBH icmp6: multicast listener report  [hlim 1]",
-      "reason": "ip-option",
-      "rule": -1,
-      "source": "::",
-      "time": "2026-10-10T00:28:06.174549Z"
+      "time": "2026-10-10T19:25:10.131086Z"
     }
   ],
-  "rulesSince": "2026-10-10T00:28:00.938411742Z"
+  "rulesSince": "2026-10-10T19:25:04.717465566Z"
 }

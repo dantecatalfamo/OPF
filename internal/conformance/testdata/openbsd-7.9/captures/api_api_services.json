@@ -466,12 +466,12 @@
       "category": "Firewall and VPN",
       "description": "OPF itself: this web interface",
       "enabled": true,
-      "failed": true,
+      "failed": false,
       "kind": "daemon",
       "known": true,
       "managedAt": "/system/general",
       "name": "opf",
-      "running": false
+      "running": true
     },
     {
       "category": "Routing",

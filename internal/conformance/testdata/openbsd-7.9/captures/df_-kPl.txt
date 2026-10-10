@@ -1,5 +1,5 @@
 Filesystem  1024-blocks       Used   Available Capacity Mounted on
-/dev/sd0a       1277950     144912     1069142    12%   /
+/dev/sd0a       1277950     145028     1069026    12%   /
 /dev/sd0e       2025438         18     1924150     1%   /home
-/dev/sd0d       3041454    1571372     1318010    55%   /usr
+/dev/sd0d       3041454    1571458     1317924    55%   /usr
 /dev/sd1a       1009422     689846      269106    72%   /mnt/conformance-sets

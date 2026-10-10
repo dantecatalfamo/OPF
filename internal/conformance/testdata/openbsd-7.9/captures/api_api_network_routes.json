@@ -115,7 +115,7 @@
     {
       "destination": "100.64.2.2",
       "flags": "UHLch",
-      "gateway": "fe:e1:ba:dc:f8:e2",
+      "gateway": "fe:e1:ba:d0:03:42",
       "iface": "vio0",
       "priority": 3,
       "source": "host"
@@ -123,7 +123,7 @@
     {
       "destination": "100.64.2.3",
       "flags": "UHLl",
-      "gateway": "fe:e1:bb:d1:a8:d5",
+      "gateway": "fe:e1:bb:d1:42:99",
       "iface": "vio0",
       "priority": 1,
       "source": "host"
@@ -155,7 +155,7 @@
     {
       "destination": "172.16.5.1",
       "flags": "UHLl",
-      "gateway": "fe:e1:ba:d2:a8:09",
+      "gateway": "fe:e1:ba:d2:4e:bc",
       "iface": "vether1",
       "priority": 1,
       "source": "host"
@@ -179,7 +179,7 @@
     {
       "destination": "192.168.1.1",
       "flags": "UHLl",
-      "gateway": "fe:e1:ba:d0:e4:4f",
+      "gateway": "fe:e1:ba:d0:d9:0a",
       "iface": "pair0",
       "priority": 1,
       "source": "host"
@@ -187,7 +187,7 @@
     {
       "destination": "192.168.1.60",
       "flags": "UHLc",
-      "gateway": "fe:e1:ba:d3:db:da",
+      "gateway": "fe:e1:ba:d3:e6:06",
       "iface": "pair0",
       "priority": 3,
       "source": "host"
@@ -211,7 +211,7 @@
     {
       "destination": "192.168.20.1",
       "flags": "UHLl",
-      "gateway": "fe:e1:bb:d2:84:cd",
+      "gateway": "fe:e1:bb:d2:07:26",
       "iface": "vlan20",
       "priority": 1,
       "source": "host"
@@ -235,7 +235,7 @@
     {
       "destination": "192.168.40.1",
       "flags": "UHLl",
-      "gateway": "fe:e1:bb:d2:84:cd",
+      "gateway": "fe:e1:bb:d2:07:26",
       "iface": "vlan40",
       "priority": 1,
       "source": "host"
@@ -267,7 +267,7 @@
     {
       "destination": "198.51.100.2",
       "flags": "UHLl",
-      "gateway": "fe:e1:ba:d1:38:11",
+      "gateway": "fe:e1:ba:d1:da:7b",
       "iface": "vether0",
       "priority": 1,
       "source": "host"
@@ -373,15 +373,15 @@
     {
       "destination": "fe80::%vether1/64",
       "flags": "UCn",
-      "gateway": "fe80::fce1:baff:fed2:a809%vether1",
+      "gateway": "fe80::fce1:baff:fed2:4ebc%vether1",
       "iface": "vether1",
       "priority": 4,
       "source": "interface"
     },
     {
-      "destination": "fe80::fce1:baff:fed2:a809%vether1",
+      "destination": "fe80::fce1:baff:fed2:4ebc%vether1",
       "flags": "UHLl",
-      "gateway": "fe:e1:ba:d2:a8:09",
+      "gateway": "fe:e1:ba:d2:4e:bc",
       "iface": "vether1",
       "priority": 1,
       "source": "host"
@@ -404,7 +404,7 @@
     {
       "destination": "ff01::%vether1/32",
       "flags": "Um",
-      "gateway": "fe80::fce1:baff:fed2:a809%vether1",
+      "gateway": "fe80::fce1:baff:fed2:4ebc%vether1",
       "iface": "vether1",
       "priority": 4
     },
@@ -426,7 +426,7 @@
     {
       "destination": "ff02::%vether1/32",
       "flags": "Um",
-      "gateway": "fe80::fce1:baff:fed2:a809%vether1",
+      "gateway": "fe80::fce1:baff:fed2:4ebc%vether1",
       "iface": "vether1",
       "priority": 4
     }

@@ -1,6 +1,6 @@
 PING ::1 (::1): 56 data bytes
-64 bytes from ::1: icmp_seq=0 hlim=64 time=4.413 ms
+64 bytes from ::1: icmp_seq=0 hlim=64 time=2.955 ms
 
 --- ::1 ping statistics ---
 1 packets transmitted, 1 packets received, 0.0% packet loss
-round-trip min/avg/max/std-dev = 4.413/4.413/4.413/0.000 ms
+round-trip min/avg/max/std-dev = 2.955/2.955/2.955/0.000 ms

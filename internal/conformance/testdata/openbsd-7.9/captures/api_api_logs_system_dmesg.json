@@ -76,7 +76,7 @@
       "message": "virtio2: irq 6"
     },
     {
-      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:84:cd"
+      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:07:26"
     },
     {
       "message": "virtio2 at pci0 dev 3 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01"
@@ -85,7 +85,7 @@
       "message": "virtio1: irq 5"
     },
     {
-      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:a8:d5"
+      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:42:99"
     },
     {
       "message": "virtio1 at pci0 dev 2 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01"
@@ -133,7 +133,7 @@
       "message": "cpu0: cpuid 1 edx=78ba97f\u003cFPU,VME,DE,PSE,TSC,MSR,PAE,CX8,SEP,PGE,CMOV,PAT,PSE36,CFLUSH,MMX,FXSR,SSE,SSE2\u003e ecx=f6d83203\u003cSSE3,PCLMUL,SSSE3,FMA3,CX16,SSE4.1,SSE4.2,MOVBE,POPCNT,AES,XSAVE,AVX,F16C,RDRAND,HV\u003e"
     },
     {
-      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3814.05 MHz, 06-9e-09"
+      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3807.96 MHz, 06-9e-09"
     },
     {
       "message": "cpu0 at mainbus0: (uniprocessor)"

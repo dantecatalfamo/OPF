@@ -1,1 +1,1 @@
-hw.sensors.vmmci0.timedelta0=-44.171802 secs, OK, Sat Oct 10 00:28:46.589
+hw.sensors.vmmci0.timedelta0=-45.250155 secs, OK, Sat Oct 10 19:25:58.625

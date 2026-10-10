@@ -4,9 +4,33 @@
   "days": 14,
   "detailDays": 3,
   "deviceDays": 7,
-  "devices": [],
+  "deviceInfo": {
+    "firewall": {
+      "kind": "firewall",
+      "name": "This firewall"
+    }
+  },
+  "devices": [
+    {
+      "address": "127.0.0.1",
+      "blocked": 0,
+      "cached": 13,
+      "key": "firewall",
+      "last": "2026-10-10T19:27:18Z",
+      "queries": 19,
+      "servfail": 19
+    }
+  ],
   "enabled": true,
-  "hours": [],
+  "hours": [
+    {
+      "blocked": 0,
+      "cached": 13,
+      "queries": 19,
+      "servfail": 19,
+      "start": "2026-10-10T19:00:00Z"
+    }
+  ],
   "maxDevices": 64,
   "missing": [],
   "names": [],
@@ -15,6 +39,8 @@
   "since": "2026-10-10T00:00:00Z",
   "total": {
     "blocked": 0,
-    "queries": 0
+    "cached": 13,
+    "queries": 19,
+    "servfail": 19
   }
 }
