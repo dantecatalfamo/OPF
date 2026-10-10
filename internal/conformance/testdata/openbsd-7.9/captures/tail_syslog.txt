@@ -1,0 +1,62 @@
+Oct  9 18:35:48 opfconform79 dhcpleased[51]: adding 100.64.2.3 to vio0 (lease from 100.64.2.2)
+Oct  9 18:35:48 opfconform79 dhcpleased[51]: adding nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)
+Oct  9 18:35:48 opfconform79 resolvd[33038]: rebuilding: route proposals
+Oct  9 18:35:48 opfconform79 ntpd[40239]: creating new /var/db/ntpd.drift
+Oct  9 18:35:48 opfconform79 ntpd[52616]: ntp engine ready
+Oct  9 18:35:54 opfconform79 ntpd[40082]: DNS root probe failed 6 times (gave up)
+Oct  9 18:35:54 opfconform79 ntpd[52616]: cancel settime because dns probe failed
+Oct  9 18:36:02 opfconform79 savecore: no core dump
+Oct 10 00:17:27 opfconform79 dhcpleased[92294]: adding 100.64.2.3 to vio0 (lease from 100.64.2.2)
+Oct 10 00:17:27 opfconform79 dhcpleased[92294]: adding nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)
+Oct 10 00:17:27 opfconform79 resolvd[42750]: rebuilding: route proposals
+Oct 10 00:17:27 opfconform79 ntpd[37060]: /var/db/ntpd.drift is empty
+Oct 10 00:17:27 opfconform79 ntpd[88843]: ntp engine ready
+Oct 10 00:17:33 opfconform79 ntpd[48294]: DNS root probe failed 6 times (gave up)
+Oct 10 00:17:33 opfconform79 ntpd[88843]: cancel settime because dns probe failed
+Oct 10 00:17:34 opfconform79 savecore: no core dump
+Oct 10 00:27:27 opfconform79 opf[31666]: opf: 2026/10/10 00:27:27 read-only: monitoring this machine, changing nothing on it (/var/opf/readonly)
+Oct 10 00:27:27 opfconform79 opf[31666]: opf: 2026/10/10 00:27:27 made a self-signed certificate for 127.0.0.1, localhost
+Oct 10 00:27:27 opfconform79 opf[31666]: opf: 2026/10/10 00:27:27 certificate SHA-256 F9:F7:BB:77:0B:60:75:4A:8E:98:EC:8B:85:17:4A:DB:A9:A3:E6:AA:32:6E:B4:77:B1:C0:66:12:3F:0F:A9:EE
+Oct 10 00:27:27 opfconform79 opf[31666]: opf: 2026/10/10 00:27:27 unveil: /etc/authpf/users/* does not exist; skipping
+Oct 10 00:27:28 opfconform79 opf[31666]: opf: 2026/10/10 00:27:28 listening on https://127.0.0.1:8443
+Oct 10 00:27:31 opfconform79 opf[31666]: opf: 2026/10/10 00:27:31 conform signed in as admin, from 127.0.0.1
+Oct 10 00:27:34 opfconform79 opf[31666]: opf: 2026/10/10 00:27:34 taking the machine over: starting again out of read-only mode to stage its configuration
+Oct 10 00:27:34 opfconform79 opf[31666]: opf: 2026/10/10 00:27:34 conform took this machine over: its configuration is imported and staged
+Oct 10 00:27:34 opfconform79 opf[31666]: opf: 2026/10/10 00:27:34 conform signed in as admin, from 127.0.0.1
+Oct 10 00:27:35 opfconform79 opf[31666]: opf: 2026/10/10 00:27:35 starting again out of read-only mode: /usr/local/sbin/opf -listen 127.0.0.1:8443 -tls on
+Oct 10 00:27:35 opfconform79 opf[31666]: opf: 2026/10/10 00:27:35 taking over: opf_flags is now "-listen 127.0.0.1:8443 -tls on"
+Oct 10 00:27:36 opfconform79 opf[31666]: opf: 2026/10/10 00:27:36 taken over: no longer read-only; the machine's configuration is staged, to review and commit
+Oct 10 00:27:36 opfconform79 opf[31666]: opf: 2026/10/10 00:27:36 certificate SHA-256 F9:F7:BB:77:0B:60:75:4A:8E:98:EC:8B:85:17:4A:DB:A9:A3:E6:AA:32:6E:B4:77:B1:C0:66:12:3F:0F:A9:EE
+Oct 10 00:27:37 opfconform79 opf[31666]: opf: 2026/10/10 00:27:37 listening on https://127.0.0.1:8443
+Oct 10 00:27:37 opfconform79 opf[31666]: opf: 2026/10/10 00:27:37 conform signed in as admin, from 127.0.0.1
+Oct 10 00:27:49 opfconform79 ntpd[88843]: ntp engine exiting
+Oct 10 00:27:49 opfconform79 ntpd[84480]: Terminating
+Oct 10 00:27:50 opfconform79 ntpd[82105]: /var/db/ntpd.drift is empty
+Oct 10 00:27:50 opfconform79 ntpd[20084]: ntp engine ready
+Oct 10 00:27:55 opfconform79 opf[31666]: opf watchdog: 2026/10/10 00:27:55 commit 20261010-002747.770 is confirmed; nothing to watch
+Oct 10 00:27:56 opfconform79 ntpd[20568]: DNS root probe failed 4 times (gave up)
+Oct 10 00:27:56 opfconform79 ntpd[20084]: cancel settime because dns probe failed
+Oct 10 00:28:07 opfconform79 opf[31666]: opf: 2026/10/10 00:28:07 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791592087] unbound-control[22021:0] error: connect: No such file or directory for /var/run/unbound.sock
+Oct 10 00:28:07 opfconform79 resolvd[42750]: rebuilding: route proposals
+Oct 10 00:28:07 opfconform79 opf[31666]: opf: 2026/10/10 00:28:07 the firewall's own lookups go to 127.0.0.1, 9.9.9.9 first
+Oct 10 00:28:10 opfconform79 ntpd[20084]: ntp engine exiting
+Oct 10 00:28:22 opfconform79 opf[31666]: opf: 2026/10/10 00:28:22 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791592102] unbound-control[12397:0] error: connect: No such file or directory for /var/run/unbound.sock
+Oct 10 00:28:37 opfconform79 opf[31666]: opf: 2026/10/10 00:28:37 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791592117] unbound-control[42199:0] error: connect: No such file or directory for /var/run/unbound.sock
+Oct 10 00:28:40 opfconform79 ntpd[68483]: /var/db/ntpd.drift is empty
+Oct 10 00:28:40 opfconform79 ntpd[98740]: listening on 192.168.20.1 
+Oct 10 00:28:40 opfconform79 ntpd[98740]: listening on 192.168.1.1 
+Oct 10 00:28:40 opfconform79 ntpd[98740]: listening on 127.0.0.1 rtable 202
+Oct 10 00:28:40 opfconform79 ntpd[98740]: listening on ::1 
+Oct 10 00:28:40 opfconform79 ntpd[98740]: ntp engine ready
+Oct 10 00:28:42 opfconform79 dhcpleased[92294]: adding 100.64.2.3 to vio0 (lease from 100.64.2.2)
+Oct 10 00:28:42 opfconform79 dhcpleased[92294]: adding nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)
+Oct 10 00:28:42 opfconform79 dhcpleased[92294]: deleting nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)
+Oct 10 00:28:42 opfconform79 resolvd[42750]: rebuilding: route proposals
+Oct 10 00:28:42 opfconform79 resolvd[42750]: rebuilding: route proposals
+Oct 10 00:28:46 opfconform79 opf[31666]: opf: 2026/10/10 00:28:46 dns: registering DHCP leases again
+Oct 10 00:28:47 opfconform79 opf[31666]: opf: 2026/10/10 00:28:47 unbound notice: init module 0: respip
+Oct 10 00:28:47 opfconform79 opf[31666]: opf: 2026/10/10 00:28:47 unbound notice: init module 1: validator
+Oct 10 00:28:47 opfconform79 opf[31666]: opf: 2026/10/10 00:28:47 unbound notice: init module 2: iterator
+Oct 10 00:28:47 opfconform79 opf[31666]: opf: 2026/10/10 00:28:47 unbound info: start of service (unbound 1.24.2).
+Oct 10 00:28:47 opfconform79 ntpd[20607]: DNS root probe failed 3 times (gave up)
+Oct 10 00:28:47 opfconform79 ntpd[98740]: cancel settime because dns probe failed

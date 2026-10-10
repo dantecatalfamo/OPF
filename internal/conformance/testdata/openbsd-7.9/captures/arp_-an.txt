@@ -1,0 +1,10 @@
+Host                                 Ethernet Address    Netif Expire    Flags
+100.64.2.2                           fe:e1:ba:dc:f8:e2    vio0 7m18s     
+100.64.2.3                           fe:e1:bb:d1:a8:d5    vio0 permanent l
+172.16.5.1                           fe:e1:ba:d2:a8:09 vether1 permanent l
+192.168.1.1                          fe:e1:ba:d0:e4:4f   pair0 permanent l
+192.168.1.60                         fe:e1:ba:d3:db:da   pair0 19m40s    
+192.168.20.1                         fe:e1:bb:d2:84:cd  vlan20 permanent l
+192.168.40.1                         fe:e1:bb:d2:84:cd  vlan40 permanent l
+198.51.100.1                         (incomplete)      vether0 expired   
+198.51.100.2                         fe:e1:ba:d1:38:11 vether0 permanent l

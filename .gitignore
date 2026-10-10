@@ -1,3 +1,5 @@
 /opf
 /opf.openbsd-*
 /dev/run/
+/internal/conformance/testdata/*/test.log
+/internal/conformance/testdata/*/console.log

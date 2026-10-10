@@ -1,0 +1,195 @@
+-pa-r--	abusers
+	Addresses:   0
+	Cleared:     Thu Jan  1 00:00:00 1970
+	References:  [ Anchors: 0                  Rules: 4                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa-r--	authpf_users
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 1                  ]
+	Evaluations: [ NoMatch: 6                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	bogons
+	Addresses:   7
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 1                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	drop_list
+	Addresses:   2
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	office_hosts
+	Addresses:   3
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 1                  ]
+	Evaluations: [ NoMatch: 1                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	office_nets
+	Addresses:   2
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 3                  ]
+	Evaluations: [ NoMatch: 4                  Match: 8                  ]
+	In/Block:    [ Packets: 2                  Bytes: 58                 ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa-r-C	opf_hosts
+	Addresses:   9
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 15                 ]
+	Evaluations: [ NoMatch: 2                  Match: 18                 ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 15                 Bytes: 1132               ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 14                 Bytes: 1114               ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	opf_local
+	Addresses:   8
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 4                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+c-a-r--	private
+	Addresses:   3
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 1                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_day
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_days
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_hour
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_hours
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_minute
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]
+-pa----	t_minutes
+	Addresses:   0
+	Cleared:     Sat Oct 10 00:28:44 2026
+	References:  [ Anchors: 0                  Rules: 0                  ]
+	Evaluations: [ NoMatch: 0                  Match: 0                  ]
+	In/Block:    [ Packets: 0                  Bytes: 0                  ]
+	In/Match:    [ Packets: 0                  Bytes: 0                  ]
+	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
+	In/XPass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Match:   [ Packets: 0                  Bytes: 0                  ]
+	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]
+	Out/XPass:   [ Packets: 0                  Bytes: 0                  ]

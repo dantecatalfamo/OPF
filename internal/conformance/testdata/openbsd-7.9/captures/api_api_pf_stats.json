@@ -1,0 +1,908 @@
+{
+  "at": "2026-10-10T00:29:09.687413152Z",
+  "errors": [],
+  "info": {
+    "counters": {
+      "bad-offset": 0,
+      "bad-timestamp": 0,
+      "congestion": 0,
+      "fragment": 0,
+      "ip-option": 2,
+      "match": 233,
+      "max states per rule": 0,
+      "max-src-conn": 0,
+      "max-src-conn-rate": 0,
+      "max-src-nodes": 0,
+      "max-src-states": 0,
+      "memory": 0,
+      "no-route": 0,
+      "normalize": 0,
+      "overload flush states": 0,
+      "overload table insertion": 0,
+      "proto-cksum": 0,
+      "short": 1,
+      "src-limit": 0,
+      "state-insert": 0,
+      "state-limit": 0,
+      "state-mismatch": 0,
+      "syncookies sent": 0,
+      "syncookies validated": 0,
+      "synfloods detected": 0,
+      "synproxy": 0,
+      "translate": 0
+    },
+    "debug": "notice",
+    "enabled": true,
+    "enabledFor": 783,
+    "halfOpenTcp": 11,
+    "iface": {
+      "bytesIn": 1475,
+      "bytesOut": 1114,
+      "name": "pair0",
+      "packetsInBlocked": 6,
+      "packetsInPassed": 15,
+      "packetsOutBlocked": 0,
+      "packetsOutPassed": 14
+    },
+    "states": 34,
+    "tables": {
+      "fragments": {
+        "current": 0,
+        "inserts": 0,
+        "removals": 0,
+        "searches": 0
+      },
+      "srcNodes": {
+        "current": 0,
+        "inserts": 0,
+        "removals": 0,
+        "searches": 0
+      },
+      "states": {
+        "current": 34,
+        "inserts": 206,
+        "removals": 172,
+        "searches": 44217
+      }
+    }
+  },
+  "interfaces": [
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "all",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 6,
+      "skip": false,
+      "states": 10
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "carp",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:08Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "egress",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 2,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "enc",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "enc0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": true,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "lo",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": true,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "lo0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 1,
+      "skip": true,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:47Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "lo9",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": true,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:03Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pair",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:03Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 343,
+        "packets": 6
+      },
+      "inPass": {
+        "bytes": 1132,
+        "packets": 15
+      },
+      "name": "pair0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 1114,
+        "packets": 14
+      },
+      "rules": 85,
+      "skip": false,
+      "states": 1
+    },
+    {
+      "cleared": "2026-10-10T00:28:47Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 1434,
+        "packets": 20
+      },
+      "name": "pair1",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 1475,
+        "packets": 21
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 6
+    },
+    {
+      "cleared": "2026-10-10T00:17:27Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflog",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:17:27Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflog0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflow",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflow0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflow1",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "pflow2",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vether",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:05Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vether0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 756,
+        "packets": 9
+      },
+      "rules": 21,
+      "skip": false,
+      "states": 1
+    },
+    {
+      "cleared": "2026-10-10T00:28:06Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vether1",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 2
+      },
+      "outPass": {
+        "bytes": 304,
+        "packets": 5
+      },
+      "rules": 16,
+      "skip": true,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 40910474,
+        "packets": 28861
+      },
+      "name": "vio0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 826702,
+        "packets": 15267
+      },
+      "rules": 29,
+      "skip": false,
+      "states": 16
+    },
+    {
+      "cleared": "2026-10-10T00:29:07Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vio1",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:04Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vlan",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:04Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vlan20",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 32,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:04Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "vlan40",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:06Z",
+      "group": true,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "wg",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 1,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:06Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "wg0",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 19,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:07Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "wg1",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 20,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:08Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "wg2",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 5,
+      "skip": false,
+      "states": 0
+    },
+    {
+      "cleared": "2026-10-10T00:28:09Z",
+      "group": false,
+      "inBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "inPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "name": "wg3",
+      "outBlock": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "outPass": {
+        "bytes": 0,
+        "packets": 0
+      },
+      "rules": 0,
+      "skip": false,
+      "states": 0
+    }
+  ],
+  "limits": {
+    "anchors": 1024,
+    "frags": 30000,
+    "pktdelay-pkts": 20000,
+    "src-nodes": 20000,
+    "states": 200000,
+    "table-entries": 400000,
+    "tables": 2000
+  },
+  "timeouts": [
+    {
+      "name": "tcp.first",
+      "unit": "s",
+      "value": 120
+    },
+    {
+      "name": "tcp.opening",
+      "unit": "s",
+      "value": 5
+    },
+    {
+      "name": "tcp.established",
+      "unit": "s",
+      "value": 86400
+    },
+    {
+      "name": "tcp.closing",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "tcp.finwait",
+      "unit": "s",
+      "value": 30
+    },
+    {
+      "name": "tcp.closed",
+      "unit": "s",
+      "value": 30
+    },
+    {
+      "name": "tcp.tsdiff",
+      "unit": "s",
+      "value": 10
+    },
+    {
+      "name": "udp.first",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "udp.single",
+      "unit": "s",
+      "value": 30
+    },
+    {
+      "name": "udp.multiple",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "icmp.first",
+      "unit": "s",
+      "value": 20
+    },
+    {
+      "name": "icmp.error",
+      "unit": "s",
+      "value": 10
+    },
+    {
+      "name": "other.first",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "other.single",
+      "unit": "s",
+      "value": 30
+    },
+    {
+      "name": "other.multiple",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "frag",
+      "unit": "s",
+      "value": 60
+    },
+    {
+      "name": "interval",
+      "unit": "s",
+      "value": 10
+    },
+    {
+      "name": "adaptive.start",
+      "unit": "states",
+      "value": 120000
+    },
+    {
+      "name": "adaptive.end",
+      "unit": "states",
+      "value": 240000
+    },
+    {
+      "name": "src.track",
+      "unit": "s",
+      "value": 0
+    }
+  ],
+  "used": {
+    "src-nodes": 0,
+    "states": 34,
+    "table-entries": 34,
+    "tables": 15
+  }
+}

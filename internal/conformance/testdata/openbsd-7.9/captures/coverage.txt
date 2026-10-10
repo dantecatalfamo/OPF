@@ -1,0 +1,97 @@
+sysctl kern.osrelease: TestStatusReads
+sysctl kern.hostname kern.osrelease kern.version kern.boottime hw.machine hw.model hw.vendor hw.product hw.ncpuonline hw.physmem vm.loadavg: TestStatusReads
+sysctl kern.cp_time: TestStatusReads
+sysctl kern.cp_time vm.loadavg hw.physmem: TestStatusReads
+sysctl hw.sensors: TestStatusReads
+vmstat -s: TestStatusReads
+swapctl -lk: TestStatusReads
+df -kPl: TestStatusReads
+ntpctl -s all: TestStatusReads
+cat /etc/resolv.conf: TestStatusReads
+ifconfig -A: TestStatusReads
+netstat -ibn: TestStatusReads
+netstat -in: TestStatusReads
+ping -n -q -c 3 -i 0.2 -w 1 -- *: TestStatusReads
+ping6 -n -q -c 3 -i 0.2 -w 1 -- *: TestStatusReads
+ps -A -o rss=,comm=: TestStatusReads
+cat /etc/newsyslog.conf: TestStatusReads
+ls -ln ...: TestStatusReads
+dmesg: TestStatusReads
+tail -n * *: TestStatusReads
+arp -an: TestNetworkReads
+netstat -rnf inet: TestNetworkReads
+netstat -rnf inet6: TestNetworkReads
+ifconfig egress: TestNetworkReads
+route nameserver lo0 ...: TestSystemDNS
+pfctl -v -s info: TestPfReads
+pfctl -s memory: TestPfReads
+pfctl -vvs Tables: TestPfReads
+pfctl -s timeouts: TestPfReads
+pfctl -vv -s Interfaces: TestPfReads
+pfctl -vv -s states: TestPfReads
+pfctl -vv -s rules: TestPfReads
+pfctl -s labels: TestPfReads
+pfctl -s Tables: TestPfReads
+tcpdump -n -e -ttt -r /var/log/pflog: TestPfReads
+pfctl -t * -T show: TestPfTables
+pfctl -t * -T show -v: TestPfTables
+pfctl -t opf_hosts -T show -v: TestPfTables
+pfctl -t * -T * ...: TestPfTables
+pfctl -t opf_hosts -T * ...: TestPfTables
+pfctl -t opf_hosts -T kill: TestPfTables
+pfctl -t * -T replace -f *: TestPfTables
+pfctl -t * -T expire *: TestPfTables
+pfctl -k id -k *: TestPfKillState
+pfctl -nvf *: TestImportCompare
+unbound-control -c /var/unbound/etc/unbound.conf stats_noreset: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf status: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf auth_zone_reload *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf lookup *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf dump_cache: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf list_local_zones: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf list_local_data: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf flush *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf flush_zone *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf flush_bogus: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf flush_negative: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf local_data * * IN A *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf local_data * * IN PTR *: TestUnbound
+unbound-control -c /var/unbound/etc/unbound.conf local_data_remove *: TestUnbound
+unbound-anchor -v -a *: TestUnbound
+rcctl ls on: TestServices
+rcctl ls started: TestServices
+rcctl ls all: TestServices
+rcctl check *: TestServices
+rcctl get *: TestServices
+rcctl * *: TestApply
+rcctl get opf flags: TestServices
+rcctl set opf flags ...: TestServices
+groupadd -g * *: TestAccounts
+groupdel *: TestAccounts
+useradd -m -c * -s * -L default -p * ...: TestAccounts
+usermod -S * *: TestAccounts
+usermod -p * *: TestAccounts
+usermod -Z *: TestAccounts
+usermod -U *: TestAccounts
+userdel -r *: TestAccounts
+encrypt: TestAccounts
+logger -p auth.notice -t opf: TestAccounts
+ps -axww -o pid,lstart,command: TestAuthpf
+pfctl -a authpf -s Anchors: TestAuthpf
+kill -TERM *: TestAuthpf
+pfctl -f {}: TestApply
+dhcpd -n -c {}: TestValidators
+ntpd -n -f {}: TestValidators
+httpd -n -f {}: TestValidators
+sshd -t -f {}: TestValidators
+dhcpleased -n -f {}: TestValidators
+sh -n {}: TestValidators
+pfctl -n -a authpf/opfcheck -D user_ip=192.0.2.1 -D user_id=opfcheck -f {}: TestValidators
+sh -c * sh {} {staged} {root}: TestApply
+unbound-control -c /var/unbound/etc/unbound.conf auth_zone_reload opf-own.: TestUnbound
+sh -c * sh {}: TestApply
+sh -c * sh {*}: TestApply
+sh -c pkill -HUP -x dhcpleased || true: TestApply
+diff -u -L * -L * * *: TestDiff
+ftp -V -o - -- *: NOT RUN: the guest has no internet
+syspatch -c: NOT RUN: the guest has no internet

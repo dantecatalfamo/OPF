@@ -437,6 +437,10 @@ func netstartOrder(name string) int {
 	return 0 // a physical port
 }
 
+// NetstartOrder is netstartOrder for a device, for the conformance
+// suite to compare with the release's netstart.
+func NetstartOrder(dev string) int { return netstartOrder("hostname." + dev) }
+
 // HostnameApply applies /etc/hostname.$1 with netstart. An interface
 // that leaves DHCP or SLAAC for a fixed address keeps its AUTOCONF flag
 // through netstart, and dhcpleased (or slaacd) keeps its lease; when

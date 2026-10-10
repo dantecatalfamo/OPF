@@ -1,0 +1,20 @@
+tcp.first                   120s
+tcp.opening                   5s
+tcp.established           86400s
+tcp.closing                  60s
+tcp.finwait                  30s
+tcp.closed                   30s
+tcp.tsdiff                   10s
+udp.first                    60s
+udp.single                   30s
+udp.multiple                 60s
+icmp.first                   20s
+icmp.error                   10s
+other.first                  60s
+other.single                 30s
+other.multiple               60s
+frag                         60s
+interval                     10s
+adaptive.start           120000 states
+adaptive.end             240000 states
+src.track                     0s

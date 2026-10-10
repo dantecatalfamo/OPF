@@ -1,0 +1,36 @@
+{
+  "candidates": [
+    {
+      "class": "default",
+      "fullName": "OPF sign-in - Alice",
+      "name": "alice",
+      "noPassword": true,
+      "role": "",
+      "shell": true
+    },
+    {
+      "class": "default",
+      "fullName": "OPF sign-in",
+      "name": "bob",
+      "noPassword": true,
+      "role": "",
+      "shell": true
+    },
+    {
+      "class": "default",
+      "fullName": "OPF sign-in",
+      "name": "carol",
+      "noPassword": true,
+      "role": "",
+      "shell": true
+    }
+  ],
+  "users": [
+    {
+      "fullName": "",
+      "name": "conform",
+      "role": "admin",
+      "shell": false
+    }
+  ]
+}

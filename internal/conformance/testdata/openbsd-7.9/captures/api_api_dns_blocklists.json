@@ -1,0 +1,31 @@
+{
+  "lists": [
+    {
+      "allowed": 0,
+      "blocked": 2,
+      "enabled": true,
+      "fetched": "2026-10-10T00:27:58.103054689Z",
+      "id": "ads",
+      "name": "Ads",
+      "refresh": {
+        "everyHours": 24,
+        "next": "2026-10-11T00:27:58.103054689Z"
+      },
+      "skipped": {},
+      "url": "https://lists.example.com/ads.txt"
+    },
+    {
+      "allowed": 0,
+      "blocked": 0,
+      "enabled": false,
+      "id": "old-list",
+      "name": "Old list",
+      "refresh": {
+        "everyHours": 24,
+        "next": "2026-10-10T00:29:30.563775685Z"
+      },
+      "skipped": {},
+      "url": "https://lists.example.com/old.txt"
+    }
+  ]
+}

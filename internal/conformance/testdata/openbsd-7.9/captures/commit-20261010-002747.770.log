@@ -1,0 +1,45 @@
+# install /var/opf/config.json
+# install /etc/hostname.vio0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vio0
+# install /etc/dhcpd.conf
+# install /var/unbound/etc/unbound.conf
+# install /etc/ntpd.conf
+$ rcctl restart ntpd
+ntpd(ok)
+ntpd(ok)
+# install /etc/sysctl.conf
+$ sh -c v=$(sed -n 's/^[[:space:]]*net\.inet\.ip\.forwarding[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$1" 2>/dev/null | tail -n 1); sysctl net.inet.ip.forwarding="${v:-0}" >/dev/null sh /etc/sysctl.conf
+# install /etc/rc.conf.local
+$ sh -c set -e
+svcs="dhcpd unbound"
+if [ -f "$1" ]; then
+	eval "$(grep -E '^[[:space:]]*(dhcpd|unbound)_flags=' "$1" || true)"
+	if grep -qxF '# Set by OPF from its web interface; the lines above are kept as they are.' "$1"; then
+		svcs=$(awk -v m='# Set by OPF from its web interface; the lines above are kept as they are.' 'f && /^[[:space:]]*(dhcpd|unbound)_flags=/ { sub(/^[[:space:]]*/, ""); sub(/_flags=.*/, ""); if (!seen[$0]++) print } $0 == m { f = 1 }' "$1")
+	fi
+fi
+for s in $svcs; do
+	eval "f=\${${s}_flags-NO}"
+	if [ "$f" = NO ]; then
+		if rcctl check "$s" >/dev/null 2>&1; then rcctl stop "$s"; fi
+	elif rcctl check "$s" >/dev/null 2>&1; then
+		rcctl restart "$s"
+	else
+		rcctl start "$s"
+	fi
+done sh /etc/rc.conf.local
+# load /etc/pf.conf from staged copy
+$ pfctl -f /var/opf/history/20261010-002747.770/new/etc/pf.conf
+
+Waiting for confirmation until 00:28:51.
+
+Confirmed by conform.
+# install /etc/pf.conf

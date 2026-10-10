@@ -1,0 +1,12 @@
+cron
+dhcpd
+dhcpleased
+ntpd
+pflogd
+resolvd
+slaacd
+smtpd
+sndiod
+sshd
+syslogd
+unbound

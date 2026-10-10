@@ -199,6 +199,26 @@ diffs, whether confirmation is needed, and the server's objections.
 - Leave out caveats that hold for nearly everything, such as "your own
   rules can still block it" on a setting that adds a pass rule.
 
+**Every assumption about OpenBSD is declared and checked.** A feature
+that runs a command, passes a new flag, parses output, writes a file,
+or relies on a path, account, name or limit from OpenBSD adds it to
+`internal/conformance` in the same change:
+- the command line to `Commands` (or the tool's words to `Tools`), with
+  the suite test that runs it on OpenBSD;
+- a `Format` for any output OPF reads, written from the program's
+  source (every line kind, every name spelled out), not from a sample;
+- a model in `models.go` reaching any new generator code, so its file
+  goes through the real validator;
+- paths, accounts, interface kinds, header limits and source names to
+  `facts.go`, `Constants` or `SourceFacts`.
+The ordinary `go test` enforces most of this: `TestCommandsDeclared`
+reads OPF's source for every command line, `TestDeclarationsChecked`
+wants a suite test and a Format for each, `TestGeneratorCoverage` fails
+on generator code no model reaches, and `TestSourceFacts` compares the
+UI's lists of pf names with the release's. Then run the suite on
+OpenBSD (Testing and verification › Conformance) and commit the new
+captures.
+
 ### Working on it
 
 - **Go 1.25.** Run `make test` (vet plus `go test -race ./...`),
@@ -2116,18 +2136,120 @@ OpenBSD versions:
       versions (missing fields are empty, not crashes). Record the
       supported versions in the README.
 
-Live on-OpenBSD suite:
+### Conformance
 
-- [ ] A harness on an OpenBSD VM that collects real output (`pfctl -s
-      states`, `-s rules -v`, `-s info`, `-s Anchors -v`, `ifconfig -a`,
-      `netstat -rn`, `rcctl ls all` and `get`, `dhcpleasectl show`,
-      `wg show`, `unbound-control stats`), feeds it through every parser,
-      checks deterministic values, and keeps it as new fixtures. It
-      should include busy state tables, many interfaces, complex
-      rulesets and IPv6-heavy setups, validate generated configs with
-      `pfctl -nf -` against the system's, run at least on each release
-      (ideally on every change), and document how the VM differs from a
-      real deployment.
+`internal/conformance` declares every assumption OPF makes about
+OpenBSD and checks it on the release (the rule under Working on it).
+The ordinary `go test` checks the declarations offline: every command
+line in OPF's source is in the registry, each has a suite test and a
+Format, every generator line is reached by a model, and the UI's pf
+names are the release's.
+
+The suite proper runs on OpenBSD, in `*_openbsd_test.go`.
+**It destroys the system it runs on:** it installs OPF, takes the
+machine over, rewrites pf, interfaces, routes, services, users and
+files, and may cut it off the network. It only runs with
+`OPF_CONFORMANCE_DISPOSABLE=I-WILL-LOSE-THIS-SYSTEM`, as root, on a
+machine with `/etc/opf-conformance-disposable`. It never runs on a host
+or a real firewall.
+
+- `scripts/conformance/run.sh opfdev@openbsd-dev setup` installs a
+  clean guest for the host's release with vmd (once per release:
+  signify-verified sets, an autoinstall, SSH by key).
+- `scripts/conformance/run.sh opfdev@openbsd-dev` builds the suite
+  and opf for OpenBSD, runs them in a fresh copy of the guest (its
+  disk is discarded after), and copies what it captured to
+  `internal/conformance/testdata/openbsd-<release>/captures`, with
+  `test.log` and `console.log` beside them (not committed). Review the
+  captures' diff and commit it. `-k` leaves the guest running to look
+  around (`vm.sh ssh`); `-test.run` picks tests.
+- The guest has no internet (vmd's local network, no NAT on the host).
+  The suite stands in for what OPF downloads: its lists come over
+  https from 127.0.0.1, with a CA of the suite's own added to
+  `/etc/ssl/cert.pem`. The tunnels' peer names are in `/etc/hosts`.
+  `TestInternet` is skipped, and says so in `coverage.txt`.
+- The release as installed isn't the release after syspatch: 7.9 ships
+  unbound 1.24.2, and its errata bring 1.26.1, which prints two more
+  counters. Formats accept both (`ubSince126`). Run the suite on a
+  guest before and after `syspatch` when a patch touches a program OPF
+  reads.
+
+For a new release: `setup` with `-r <release>`, run, and fix what
+fails, in OPF (a separate commit for each finding, with the suite's
+evidence in the message) or in a declaration if the suite assumed
+wrong. Then commit the release's `programs.txt` and captures, and
+regenerate pf's keywords from its parse.y (`go generate ./internal/pf`
+with `OPF_SRC`).
+
+Found by the suite on 7.9 and fixed: `return-rst (ttl n)`, the kinds of
+interface ifconfig creates (bpe, erspan, mgre, pair, ppp, rport, sec),
+the trust anchor on a fresh install, pf.conf's check before a way out's
+routing table exists, a failed commit's revert running out of time,
+temporary copies of nested instances (an authpf user's rules), and
+newsyslog's ISO 8601 line.
+
+Found by the suite on 7.9, open:
+
+- [ ] After a take-over, rc can't find OPF: rc.subr matches a running
+      daemon against the command line saved in `/var/run/rc.d/opf` when
+      it started it (`-readonly …`), and OPF starts itself again
+      without `-readonly`. `rcctl check opf` says failed, `rcctl stop
+      opf` leaves it running, `rcctl restart opf` starts a second one,
+      which waits for the first's lock. Proposed: hand the restart to
+      a detached `rcctl restart opf` when rc started OPF.
+- [ ] `num-threads: 2` (with DNS blocklists) makes unbound run two
+      processes on OpenBSD, which builds it without threads. Then
+      `auth_zone_reload` reaches only the first one (remote.c returns
+      before distributing it): a refreshed list is half applied until
+      unbound restarts. `dump_cache` is refused ("not supported in
+      multi-process operation"), so the DNS page's cache tool shows
+      nothing. Proposed: one thread again, and answers pause while a
+      big list reloads.
+- [ ] A commit with WireGuard peers named by host name hangs in
+      netstart while their names don't resolve (no DNS, or DNS through
+      the resolver the commit is changing), until the commit's two
+      minutes run out and it's reverted.
+- [ ] An inside network addressed by DHCP is `$id:network` in
+      `<opf_local>` (split tunnels' table), which pfctl resolves when it
+      loads the rules: without a lease yet the whole ruleset fails
+      ("no IP address found"). The dhcp-inside model shows it.
+- [ ] VLANs are only allowed on physical ports; OpenBSD carries them on
+      aggr, trunk and vether too.
+- [ ] Speed: the suite's commit of the everything model took over
+      7 minutes on the guest; find what's slow.
+
+Found writing the formats from the source, to fix (each with a test):
+
+- [ ] pf: `ParsePfStates` drops states with a `{route-to}` suffix or an
+      `(rdomain)` prefix; anchor states get the wrong label; brace
+      anchors scramble rule counters; the pflog reader drops anchor
+      names with a dot, `(unkn N)` and unknown actions;
+      `ParsePfMemory` skips "unlimited"; `addr@if` entries don't match
+      in bestEntry; the debug level prints as "warn", OPF says
+      "warning"; some handwritten fixtures are wrong.
+- [ ] unbound: a FORMERR reply is read as the name "-";
+      `auth_zone_reload` of a zone with no contents exits 0; lookup
+      prints absolute TTLs.
+- [ ] System: `ParseDf` drops rows with a negative Available; route
+      lines shift on the locked-MTU "L", and flags are cut to 6
+      characters; carp with several vhids, and a vlan with parent none,
+      are misread; `ParseResolvConf` differs from asr (`;` comments,
+      5 name servers); ntpctl's "no peers" reads as not running;
+      newsyslog's `owner.group` and `z` flag; sensor descriptions with
+      ", " or " ("; the hard-coded "unbound" ident; lsLines drops names
+      with capitals; toolOutcomes.ts looks for traceroute's target as a
+      bare address, but with names it's "(addr)".
+- [ ] Models: port forwards accept dash ranges; TCP flags or os with a
+      tcp/udp protocol; a way out's address gets the firewall's PTR; a
+      way out and a masquerading LAN block local traffic.
+- [ ] Elsewhere: a missing resolv.conf is an error; the take-over's
+      diffs hand config.Diff contents where it wants paths; a literal
+      `/etc/authpf/users/*` directory is made at every start (unveil);
+      comments disagree on whether unbound-checkconf reads zone files;
+      hostname.if has no validator; MTU's range is 9000 in the UI and
+      9216 in the backend; the timezone is never applied;
+      login.conf.d isn't read; diff doesn't go through the Runner;
+      `check:tools` isn't in `make test`.
 
 ### Verify on real OpenBSD
 

@@ -1,0 +1,869 @@
+{
+  "lines": [
+    {
+      "host": "opfconform79",
+      "message": "DNS root probe failed 3 times (gave up)",
+      "pid": 20607,
+      "program": "ntpd",
+      "time": "2026-10-10T00:28:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "/var/db/ntpd.drift is empty",
+      "pid": 68483,
+      "program": "ntpd",
+      "time": "2026-10-10T00:28:40Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new user added: name=carol, uid=1004, gid=1004, home=/var/empty, shell=/usr/sbin/authpf",
+      "pid": 58915,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=carol, gid=1004",
+      "pid": 58915,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new user added: name=bob, uid=1003, gid=1003, home=/var/empty, shell=/usr/sbin/authpf",
+      "pid": 94104,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=bob, gid=1003",
+      "pid": 94104,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new user added: name=alice, uid=1002, gid=1002, home=/var/empty, shell=/usr/sbin/authpf",
+      "pid": 48002,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=alice, gid=1002",
+      "pid": 48002,
+      "program": "useradd",
+      "time": "2026-10-10T00:28:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "DNS root probe failed 4 times (gave up)",
+      "pid": 20568,
+      "program": "ntpd",
+      "time": "2026-10-10T00:27:56Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "/var/db/ntpd.drift is empty",
+      "pid": 82105,
+      "program": "ntpd",
+      "time": "2026-10-10T00:27:50Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new user added: name=conform, uid=1001, gid=1001, home=/home/conform, shell=/sbin/nologin",
+      "pid": 23445,
+      "program": "useradd",
+      "time": "2026-10-10T00:27:30Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=conform, gid=1001",
+      "pid": 23445,
+      "program": "useradd",
+      "time": "2026-10-10T00:27:29Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=_opfview, gid=997",
+      "pid": 67417,
+      "program": "groupadd",
+      "time": "2026-10-10T00:27:27Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=_opfoperator, gid=998",
+      "pid": 32014,
+      "program": "groupadd",
+      "time": "2026-10-10T00:27:27Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=_opfadmin, gid=999",
+      "pid": 79659,
+      "program": "groupadd",
+      "time": "2026-10-10T00:27:27Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new user added: name=_opf, uid=1000, gid=1000, home=/var/empty, shell=/sbin/nologin",
+      "pid": 86134,
+      "program": "useradd",
+      "time": "2026-10-10T00:27:20Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "new group added: name=_opf, gid=1000",
+      "pid": 86134,
+      "program": "useradd",
+      "time": "2026-10-10T00:27:20Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "kernel relinking done",
+      "program": "reorder_kernel",
+      "time": "2026-10-10T00:23:30Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "no core dump",
+      "program": "savecore",
+      "time": "2026-10-10T00:17:34Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "DNS root probe failed 6 times (gave up)",
+      "pid": 48294,
+      "program": "ntpd",
+      "time": "2026-10-10T00:17:33Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "/var/db/ntpd.drift is empty",
+      "pid": 37060,
+      "program": "ntpd",
+      "time": "2026-10-10T00:17:27Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "root on sd0a (b61413ddcf083763.a) swap on sd0b dump on sd0b",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus4 at softraid0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "softraid0 at root",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus3 at vscsi0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vscsi0 at root",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "com0: console",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "com0 at isa0 port 0x3f8/8 irq 4: ns8250, no fifo",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "isadma0 at isa0",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "isa0 at mainbus0",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio5: irq 10",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vmmci0 at virtio5",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio5 at pci0 dev 6 function 0 \"OpenBSD VMM Control\" rev 0x00",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd1: 1024MB, 512 bytes/sector, 2097152 sectors",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd1 at scsibus2 targ 0 lun 0: \u003cVirtIO, Block Device, \u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus2 at vioblk1: 1 targets",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio4: irq 9",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vioblk1 at virtio4",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio4 at pci0 dev 5 function 0 \"Qumranet Virtio 1.x Storage\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd0: 12288MB, 512 bytes/sector, 25165824 sectors",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd0 at scsibus1 targ 0 lun 0: \u003cVirtIO, Block Device, \u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus1 at vioblk0: 1 targets",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio3: irq 7",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vioblk0 at virtio3",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio3 at pci0 dev 4 function 0 \"Qumranet Virtio 1.x Storage\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio2: irq 6",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:84:cd",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio2 at pci0 dev 3 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio1: irq 5",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:a8:d5",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio1 at pci0 dev 2 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio0: irq 3",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "viornd0 at virtio0",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio0 at pci0 dev 1 function 0 \"Qumranet Virtio 1.x RNG\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pchb0 at pci0 dev 0 function 0 \"OpenBSD VMM Host\" rev 0x00",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pci0 at mainbus0 bus 0",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pvbus0 at mainbus0: KVM, OpenBSD",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: using VERW MDS workaround",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: smt 0, core 0, package 0, type P",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: 32KB 64b/line 8-way D-cache, 32KB 64b/line 8-way I-cache, 4MB 64b/line 16-way L2 cache, 16MB 64b/line 16-way L3 cache",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: MELTDOWN",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 80000001 edx=24100800\u003cNXE,PAGE1GB,LONG\u003e ecx=121\u003cLAHF,ABM,3DNOWP\u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid d.1 eax=5\u003cXSAVEOPT,XGETBV1\u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 7.0 ebx=9c23a9\u003cFSGSBASE,BMI1,AVX2,SMEP,BMI2,ERMS,RDSEED,ADX,SMAP,CLFLUSHOPT\u003e ecx=4\u003cUMIP\u003e edx=400\u003cMD_CLEAR\u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 1 edx=78ba97f\u003cFPU,VME,DE,PSE,TSC,MSR,PAE,CX8,SEP,PGE,CMOV,PAT,PSE36,CFLUSH,MMX,FXSR,SSE,SSE2\u003e ecx=f6d83203\u003cSSE3,PCLMUL,SSSE3,FMA3,CX16,SSE4.1,SSE4.2,MOVBE,POPCNT,AES,XSAVE,AVX,F16C,RDRAND,HV\u003e",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3814.05 MHz, 06-9e-09",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0 at mainbus0: (uniprocessor)",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "acpi at bios0 not configured",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0: OpenBSD VMM",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0: vendor SeaBIOS version \"1.16.3p12-OpenBSD-vmm\" date 01/01/2011",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0 at mainbus0: SMBIOS rev. 2.4 @ 0xf1d40 (10 entries)",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "mainbus0 at root",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus0 at mpath0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "mpath0 at root",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "random: good seed from bootblocks",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "avail mem = 997670912 (951MB)",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "real mem = 1056940032 (1007MB)",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "    deraadt@amd64.openbsd.org:/usr/src/sys/arch/amd64/compile/GENERIC",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "OpenBSD 7.9 (GENERIC) #399: Wed May  6 13:01:58 MDT 2026",
+      "program": "/bsd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "start",
+      "pid": 2980,
+      "program": "syslogd",
+      "time": "2026-10-10T00:17:26Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "exiting on signal 15",
+      "pid": 59316,
+      "program": "syslogd",
+      "time": "2026-10-09T18:36:10Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "halted (with powerdown) by root",
+      "program": "halt",
+      "time": "2026-10-09T18:36:07Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "no core dump",
+      "program": "savecore",
+      "time": "2026-10-09T18:36:02Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "DNS root probe failed 6 times (gave up)",
+      "pid": 40082,
+      "program": "ntpd",
+      "time": "2026-10-09T18:35:54Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "creating new /var/db/ntpd.drift",
+      "pid": 40239,
+      "program": "ntpd",
+      "time": "2026-10-09T18:35:48Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "root on sd0a (b61413ddcf083763.a) swap on sd0b dump on sd0b",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus3 at softraid0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "softraid0 at root",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus2 at vscsi0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vscsi0 at root",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "com0: console",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "com0 at isa0 port 0x3f8/8 irq 4: ns8250, no fifo",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "isadma0 at isa0",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "isa0 at mainbus0",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio4: irq 9",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vmmci0 at virtio4",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio4 at pci0 dev 5 function 0 \"OpenBSD VMM Control\" rev 0x00",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd0: 12288MB, 512 bytes/sector, 25165824 sectors",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "sd0 at scsibus1 targ 0 lun 0: \u003cVirtIO, Block Device, \u003e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus1 at vioblk0: 1 targets",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio3: irq 7",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vioblk0 at virtio3",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio3 at pci0 dev 4 function 0 \"Qumranet Virtio 1.x Storage\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio2: irq 6",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:7e:2e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio2 at pci0 dev 3 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio1: irq 5",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:5a:6e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio1 at pci0 dev 2 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio0: irq 3",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "viornd0 at virtio0",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "virtio0 at pci0 dev 1 function 0 \"Qumranet Virtio 1.x RNG\" rev 0x01",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pchb0 at pci0 dev 0 function 0 \"OpenBSD VMM Host\" rev 0x00",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pci0 at mainbus0 bus 0",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "pvbus0 at mainbus0: KVM, OpenBSD",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: using VERW MDS workaround",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: smt 0, core 0, package 0, type P",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: 32KB 64b/line 8-way D-cache, 32KB 64b/line 8-way I-cache, 4MB 64b/line 16-way L2 cache, 16MB 64b/line 16-way L3 cache",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: MELTDOWN",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 80000001 edx=24100800\u003cNXE,PAGE1GB,LONG\u003e ecx=121\u003cLAHF,ABM,3DNOWP\u003e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid d.1 eax=5\u003cXSAVEOPT,XGETBV1\u003e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 7.0 ebx=9c23a9\u003cFSGSBASE,BMI1,AVX2,SMEP,BMI2,ERMS,RDSEED,ADX,SMAP,CLFLUSHOPT\u003e ecx=4\u003cUMIP\u003e edx=400\u003cMD_CLEAR\u003e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: cpuid 1 edx=78ba97f\u003cFPU,VME,DE,PSE,TSC,MSR,PAE,CX8,SEP,PGE,CMOV,PAT,PSE36,CFLUSH,MMX,FXSR,SSE,SSE2\u003e ecx=f6d83203\u003cSSE3,PCLMUL,SSSE3,FMA3,CX16,SSE4.1,SSE4.2,MOVBE,POPCNT,AES,XSAVE,AVX,F16C,RDRAND,HV\u003e",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3815.00 MHz, 06-9e-09",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "cpu0 at mainbus0: (uniprocessor)",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "acpi at bios0 not configured",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0: OpenBSD VMM",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0: vendor SeaBIOS version \"1.16.3p12-OpenBSD-vmm\" date 01/01/2011",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "bios0 at mainbus0: SMBIOS rev. 2.4 @ 0xf1d40 (10 entries)",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "mainbus0 at root",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "scsibus0 at mpath0: 256 targets",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "mpath0 at root",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "random: good seed from bootblocks",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "avail mem = 997683200 (951MB)",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "real mem = 1056952320 (1007MB)",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "    deraadt@amd64.openbsd.org:/usr/src/sys/arch/amd64/compile/GENERIC",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "OpenBSD 7.9 (GENERIC) #399: Wed May  6 13:01:58 MDT 2026",
+      "program": "/bsd",
+      "time": "2026-10-09T18:35:47Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "start",
+      "pid": 59316,
+      "program": "syslogd",
+      "time": "2026-10-09T18:35:47Z"
+    }
+  ],
+  "log": "messages",
+  "matched": 138,
+  "programs": [
+    "/bsd",
+    "groupadd",
+    "halt",
+    "ntpd",
+    "reorder_kernel",
+    "savecore",
+    "syslogd",
+    "useradd"
+  ],
+  "read": 138
+}

@@ -1,0 +1,18 @@
+{
+  "entries": [],
+  "filledBy": [
+    {
+      "description": "Web out, limited",
+      "id": "lan-web"
+    },
+    {
+      "description": "",
+      "id": "lan-overload"
+    }
+  ],
+  "kind": "dynamic",
+  "loaded": true,
+  "matching": 0,
+  "table": "abusers",
+  "total": 0
+}

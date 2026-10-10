@@ -1,0 +1,2 @@
+traceroute to 192.168.1.60 (192.168.1.60), 2 hops max, 60 byte packets
+ 2  * * *

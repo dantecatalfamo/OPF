@@ -1,0 +1,857 @@
+{
+  "errors": [],
+  "services": [
+    {
+      "category": "Monitoring and logging",
+      "description": "Process accounting at boot (lastcomm, sa)",
+      "enabled": false,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "accounting",
+      "running": false
+    },
+    {
+      "category": "File sharing",
+      "description": "Mounts NFS file systems on demand",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "amd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Power management: battery, suspend, CPU speed",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "apmd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "BGP routing",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "bgpd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "A looking glass for bgpd, over HTTP",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "bgplgd",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Boot parameters for diskless clients",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "bootparamd",
+      "running": false
+    },
+    {
+      "category": "Monitoring and logging",
+      "description": "Captures packets matching a filter to a file",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "bpflogd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Checks disk quotas at boot",
+      "enabled": true,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "check_quotas",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Runs scheduled jobs (the daily, weekly and monthly scripts)",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "cron",
+      "running": true
+    },
+    {
+      "category": "Network",
+      "description": "DHCPv6 client: asks the ISP for an IPv6 prefix to delegate",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "dhcp6leased",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "DHCP server: hands out addresses on the inside networks",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "managedAt": "/services/dhcp",
+      "name": "dhcpd",
+      "running": true
+    },
+    {
+      "category": "Network",
+      "description": "DHCP client: gets the WAN's address (and others set to DHCP)",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "dhcpleased",
+      "running": true
+    },
+    {
+      "category": "Network",
+      "description": "DHCP relay: passes a network's requests to a server elsewhere",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "dhcrelay",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "DHCPv6 relay",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "dhcrelay6",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "DVMRP multicast routing",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "dvmrpd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "EIGRP routing",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "eigrpd",
+      "running": false
+    },
+    {
+      "category": "File sharing",
+      "description": "FTP server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ftpd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Lets FTP through NAT",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ftpproxy",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Lets FTP through, over IPv6",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ftpproxy6",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "Host access point daemon (IAPP for wireless roaming)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "hostapd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Runs commands when devices are attached or detached",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "hotplugd",
+      "running": false
+    },
+    {
+      "category": "Web and mail",
+      "description": "Web server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "httpd",
+      "running": false,
+      "setting": {
+        "enabled": false,
+        "name": "httpd",
+        "timeout": 60
+      }
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Identification protocol (ident) server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "identd",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "Runs commands when interfaces change state (failover)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ifstated",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "IKEv2 IPsec VPN",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "iked",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Starts small network services when they're asked for",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "inetd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Loads /etc/ipsec.conf's static IPsec flows at boot",
+      "enabled": false,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "ipsec",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "IKEv1 IPsec VPN (older; iked is its successor)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "isakmpd",
+      "running": false
+    },
+    {
+      "category": "File sharing",
+      "description": "iSCSI initiator",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "iscsid",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "LDAP directory server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ldapd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Attaches a line discipline to a serial line (GPS, say)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ldattach",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Logical domain daemon (sparc64)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ldomd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "MPLS label distribution",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ldpd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Relinks system libraries in a random order at boot",
+      "enabled": false,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "library_aslr",
+      "running": false,
+      "setting": {
+        "enabled": false,
+        "name": "library_aslr"
+      }
+    },
+    {
+      "category": "File sharing",
+      "description": "NFS file locking",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "lockd",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Print spooler",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "lpd",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Boots DEC MOP clients",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "mopd",
+      "running": false
+    },
+    {
+      "category": "File sharing",
+      "description": "NFS mount requests",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "mountd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "DVMRP multicast routing (older)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "mrouted",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "Routes multicast at boot, for a multicast router",
+      "enabled": true,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "multicast",
+      "running": false,
+      "setting": {
+        "enabled": true,
+        "name": "multicast"
+      }
+    },
+    {
+      "category": "File sharing",
+      "description": "NFS server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "nfsd",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "PPP server: L2TP and PPPoE for VPN clients",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "npppd",
+      "running": false
+    },
+    {
+      "category": "Name and time",
+      "description": "Authoritative DNS server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "nsd",
+      "running": false
+    },
+    {
+      "category": "Name and time",
+      "description": "Keeps the clock right (and serves time, when set to)",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ntpd",
+      "running": true,
+      "setting": {
+        "enabled": true,
+        "flags": "-v",
+        "name": "ntpd",
+        "rtable": 0,
+        "timeout": 30
+      }
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "OPF itself: this web interface",
+      "enabled": true,
+      "failed": true,
+      "kind": "daemon",
+      "known": true,
+      "managedAt": "/system/general",
+      "name": "opf",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "OSPFv3 routing, for IPv6",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ospf6d",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "OSPF routing",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ospfd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "The packet filter, loaded at boot; OPF needs it",
+      "enabled": true,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "managedAt": "/firewall/settings",
+      "name": "pf",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Writes the packets pf logs to /var/log/pflog (the firewall log)",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "pflogd",
+      "running": true,
+      "setting": {
+        "enabled": true,
+        "name": "pflogd"
+      }
+    },
+    {
+      "category": "File sharing",
+      "description": "RPC port mapper (for NFS and NIS)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "portmap",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "IPv6 router advertisements for the inside networks",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "rad",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "RADIUS server, for VPN and 802.1X logins",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "radiusd",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Reverse ARP, for diskless clients",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "rarpd",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Boots HP diskless clients",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "rbootd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Load balancer and relay, with health checks",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "relayd",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "Writes /etc/resolv.conf from the DNS servers interfaces learn",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "resolvd",
+      "running": true
+    },
+    {
+      "category": "Routing",
+      "description": "RIP routing",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ripd",
+      "running": false
+    },
+    {
+      "category": "Routing",
+      "description": "RIPng routing, for IPv6",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "route6d",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Keeps IPsec state in sync between carp firewalls",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "sasyncd",
+      "running": false
+    },
+    {
+      "category": "Monitoring and logging",
+      "description": "Watches hardware sensors and runs commands at limits",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "sensorsd",
+      "running": false
+    },
+    {
+      "category": "Network",
+      "description": "IPv6 autoconfiguration: addresses from router advertisements",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "slaacd",
+      "running": true
+    },
+    {
+      "category": "Web and mail",
+      "description": "Runs CGI programs for httpd",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "slowcgi",
+      "running": false
+    },
+    {
+      "category": "Web and mail",
+      "description": "Mail server: delivers the system's own mail",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "smtpd",
+      "running": true,
+      "setting": {
+        "enabled": false,
+        "name": "smtpd"
+      }
+    },
+    {
+      "category": "System",
+      "description": "Audio server",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "sndiod",
+      "running": true
+    },
+    {
+      "category": "Monitoring and logging",
+      "description": "SNMP agent, for monitoring systems",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "snmpd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Spam deferral daemon for mail servers",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "spamd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "spamd in blacklist-only mode",
+      "enabled": false,
+      "failed": false,
+      "kind": "boot",
+      "known": true,
+      "name": "spamd_black",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Updates spamd's whitelist from pf's log",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "spamlogd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "SSH server: remote shell access (and sign-in access)",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "sshd",
+      "running": true
+    },
+    {
+      "category": "File sharing",
+      "description": "NFS host status, for locking",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "statd",
+      "running": false
+    },
+    {
+      "category": "Monitoring and logging",
+      "description": "System logging: /var/log, and logs sent elsewhere",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "syslogd",
+      "running": true
+    },
+    {
+      "category": "File sharing",
+      "description": "TFTP server (PXE boot, firmware)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "tftpd",
+      "running": false
+    },
+    {
+      "category": "Firewall and VPN",
+      "description": "Lets TFTP through NAT (PXE boot, phones)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "tftpproxy",
+      "running": false
+    },
+    {
+      "category": "Name and time",
+      "description": "The DNS resolver for the network",
+      "enabled": true,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "managedAt": "/services/dns",
+      "name": "unbound",
+      "running": true
+    },
+    {
+      "category": "Name and time",
+      "description": "A validating resolver for the firewall's own lookups",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "unwind",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Runs virtual machines",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "vmd",
+      "running": false
+    },
+    {
+      "category": "Monitoring and logging",
+      "description": "Keeps the hardware watchdog from resetting the machine",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "watchdogd",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Mouse support on the text console",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "wsmoused",
+      "running": false
+    },
+    {
+      "category": "System",
+      "description": "Graphical login (X)",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "xenodm",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "NIS client",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ypbind",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "Serves LDAP accounts as NIS maps",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ypldap",
+      "running": false
+    },
+    {
+      "category": "Rarely needed",
+      "description": "NIS server",
+      "enabled": false,
+      "failed": false,
+      "kind": "daemon",
+      "known": true,
+      "name": "ypserv",
+      "running": false
+    }
+  ]
+}

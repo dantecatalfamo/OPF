@@ -1,0 +1,20 @@
+
+; <<>> dig 9.10.8-P1 <<>> @127.0.0.1 -x 192.168.1.1 +time=3 +tries=2 +dnssec
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 39004
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags: do; udp: 1232
+;; QUESTION SECTION:
+;1.1.168.192.in-addr.arpa.	IN	PTR
+
+;; ANSWER SECTION:
+1.1.168.192.in-addr.arpa. 3600	IN	PTR	gateway.office.arpa.
+
+;; Query time: 12 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Sat Oct 10 00:30:36 UTC 2026
+;; MSG SIZE  rcvd: 82

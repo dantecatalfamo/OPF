@@ -656,3 +656,7 @@ func importNTP(m *Model, src ImportSources) (ImportArea, []ImportNote) {
 func (n *NTPSettings) empty() bool {
 	return len(n.Servers)+len(n.Sensors)+len(n.Constraints)+len(n.Listen)+len(n.QueryFrom) == 0
 }
+
+// NTPKeywords are ntpd.conf's keywords, for the conformance suite to
+// compare with ntpd's parse.y.
+func NTPKeywords() []string { return slices.Clone(ntpKeywords) }

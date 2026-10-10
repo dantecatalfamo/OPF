@@ -1,0 +1,186 @@
+# install /var/opf/config.json
+# install /etc/myname
+$ sh -c hostname "$(cat "$1")" sh /etc/myname
+# install /etc/hostname.pair0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh pair0
+# install /etc/hostname.vio1
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vio1
+# install /etc/hostname.vlan20
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vlan20
+# install /etc/hostname.vlan40
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vlan40
+# install /etc/hostname.pflow0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh pflow0
+# install /etc/hostname.pflow1
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh pflow1
+# install /etc/hostname.pflow2
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh pflow2
+# install /etc/hostname.vether0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vether0
+# install /etc/hostname.vether1
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vether1
+# install /etc/hostname.wg0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh wg0
+# install /etc/hostname.wg1
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh wg1
+# install /etc/hostname.wg2
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh wg2
+# install /etc/hostname.wg3
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh wg3
+# install /etc/dhcpd.conf
+# install /var/unbound/db/opf-own.rpz
+# install /var/unbound/etc/unbound.conf
+# install /etc/ntpd.conf
+$ rcctl restart ntpd
+ntpd(killed)
+ntpd(ok)
+# install /etc/ssh/sshd_config
+$ rcctl reload sshd
+sshd(ok)
+# install /etc/dhcpleased.conf
+$ sh -c pkill -HUP -x dhcpleased || true
+# install /etc/hosts
+# install /etc/authpf/authpf.conf
+# install /etc/authpf/authpf.rules
+# install /etc/authpf/users/alice/authpf.rules
+# install /etc/authpf/users/bob/authpf.rules
+# install /etc/authpf/authpf.allow
+# install /etc/authpf/authpf.message
+# install /etc/authpf/banned/bob
+# install /etc/authpf/banned/carol
+# install /etc/authpf/keys/alice
+# install /etc/authpf/keys/bob
+# install /etc/sysctl.conf
+$ sh -c v=$(sed -n 's/^[[:space:]]*net\.inet\.ip\.forwarding[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' "$1" 2>/dev/null | tail -n 1); sysctl net.inet.ip.forwarding="${v:-0}" >/dev/null sh /etc/sysctl.conf
+# install /etc/rc.conf.local
+$ sh -c set -e
+svcs="dhcpd unbound"
+if [ -f "$1" ]; then
+	eval "$(grep -E '^[[:space:]]*(dhcpd|unbound)_flags=' "$1" || true)"
+	if grep -qxF '# Set by OPF from its web interface; the lines above are kept as they are.' "$1"; then
+		svcs=$(awk -v m='# Set by OPF from its web interface; the lines above are kept as they are.' 'f && /^[[:space:]]*(dhcpd|unbound)_flags=/ { sub(/^[[:space:]]*/, ""); sub(/_flags=.*/, ""); if (!seen[$0]++) print } $0 == m { f = 1 }' "$1")
+	fi
+fi
+for s in $svcs; do
+	eval "f=\${${s}_flags-NO}"
+	if [ "$f" = NO ]; then
+		if rcctl check "$s" >/dev/null 2>&1; then rcctl stop "$s"; fi
+	elif rcctl check "$s" >/dev/null 2>&1; then
+		rcctl restart "$s"
+	else
+		rcctl start "$s"
+	fi
+done sh /etc/rc.conf.local
+dhcpd(ok)
+unbound(ok)
+# load /etc/pf.conf from staged copy
+$ pfctl -f /var/opf/history/20261010-002800.937/new/etc/pf.conf
+
+Waiting for confirmation until 00:29:46.
+
+Confirmed by conform.
+# install /etc/pf.conf

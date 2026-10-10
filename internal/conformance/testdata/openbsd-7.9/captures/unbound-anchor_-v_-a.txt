@@ -1,0 +1,2 @@
+/var/unbound/db/root.key has content
+fail: the anchor is NOT ok and could not be fixed

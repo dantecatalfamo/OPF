@@ -1,0 +1,8 @@
+vio0: flags=808b43<UP,BROADCAST,RUNNING,PROMISC,ALLMULTI,SIMPLEX,MULTICAST,AUTOCONF4> mtu 1500
+	lladdr fe:e1:bb:d1:a8:d5
+	description: WAN
+	index 1 priority 0 llprio 3
+	groups: egress
+	media: Ethernet autoselect
+	status: active
+	inet 100.64.2.3 netmask 0xfffffffe

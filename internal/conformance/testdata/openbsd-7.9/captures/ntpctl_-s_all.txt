@@ -1,0 +1,19 @@
+0/5 peers valid, 0/1 sensors valid, constraints configured but none available, clock unsynced
+
+peer
+   wt tl st  next  poll          offset       delay      jitter
+not resolved from pool pool.ntp.org
+    1  2  -    0s    0s             ---- peer not valid ----
+not resolved from pool 1.pool.ntp.org
+    1  2  -    0s    0s             ---- peer not valid ----
+not resolved time.example.org
+    5  2  -   12s   15s             ---- peer not valid ----
+192.0.2.123 from pool 192.0.2.123
+    1  2  -    0s    0s             ---- peer not valid ----
+not resolved from pool ntp.example.net
+    2  2  -    0s    0s             ---- peer not valid ----
+
+sensor
+   wt gd st  next  poll          offset  correction
+vmmci0  GPS
+    3  0  1   12s   15s         - sensor not valid -

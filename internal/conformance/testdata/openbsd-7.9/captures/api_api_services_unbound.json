@@ -1,0 +1,22 @@
+{
+  "category": "Name and time",
+  "description": "The DNS resolver for the network",
+  "enabled": true,
+  "failed": false,
+  "kind": "daemon",
+  "known": true,
+  "log": [],
+  "logName": "daemon",
+  "managedAt": "/services/dns",
+  "name": "unbound",
+  "running": true,
+  "vars": {
+    "class": "unbound",
+    "execdir": "",
+    "flags": "-c /var/unbound/etc/unbound.conf",
+    "logger": "",
+    "rtable": "0",
+    "timeout": "30",
+    "user": "root"
+  }
+}

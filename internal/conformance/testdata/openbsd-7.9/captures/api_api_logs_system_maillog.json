@@ -1,0 +1,129 @@
+{
+  "lines": [
+    {
+      "host": "opfconform79",
+      "message": "info: OpenSMTPD 7.9.0 starting",
+      "pid": 67741,
+      "program": "smtpd",
+      "time": "2026-10-10T00:17:36Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b318167c31276a7e mda delivery evpid=aa3807c73fed1f29 from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e rcpt=\u003croot@opfconform79.my.domain\u003e user=root delay=1s result=Ok stat=Delivered",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:10Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b31816760d0e972d smtp disconnected reason=quit",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b31816760d0e972d smtp envelope evpid=aa3807c73fed1f29 from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b31816760d0e972d smtp message msgid=aa3807c7 size=1498 nrcpt=1 proto=ESMTP",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181677de22a3f8 smtp disconnected reason=quit",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b318167907fc6020 mda delivery evpid=a09265ae29a520af from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e rcpt=\u003croot@opfconform79.my.domain\u003e user=root delay=0s result=Ok stat=Delivered",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181677de22a3f8 smtp envelope evpid=a09265ae29a520af from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181677de22a3f8 smtp message msgid=a09265ae size=5449 nrcpt=1 proto=ESMTP",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181677de22a3f8 smtp connected address=local host=opfconform79.my.domain",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b31816760d0e972d smtp connected address=local host=opfconform79.my.domain",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181672bd22b0b9 smtp disconnected reason=quit",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b318167458d05d6f mda delivery evpid=7fc64ecde63e7886 from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e rcpt=\u003croot@opfconform79.my.domain\u003e user=root delay=1s result=Ok stat=Delivered",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:09Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181672bd22b0b9 smtp envelope evpid=7fc64ecde63e7886 from=\u003croot@opfconform79.my.domain\u003e to=\u003croot@opfconform79.my.domain\u003e",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181672bd22b0b9 smtp message msgid=7fc64ecd size=671 nrcpt=1 proto=ESMTP",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "b3181672bd22b0b9 smtp connected address=local host=opfconform79.my.domain",
+      "pid": 48056,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:08Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "info: OpenSMTPD 7.9.0 starting",
+      "pid": 16645,
+      "program": "smtpd",
+      "time": "2026-10-09T18:36:04Z"
+    }
+  ],
+  "log": "maillog",
+  "matched": 17,
+  "programs": [
+    "smtpd"
+  ],
+  "read": 17
+}

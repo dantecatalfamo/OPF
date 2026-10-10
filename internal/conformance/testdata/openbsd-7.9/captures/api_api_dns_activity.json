@@ -1,0 +1,20 @@
+{
+  "blocked": [],
+  "byList": {},
+  "days": 14,
+  "detailDays": 3,
+  "deviceDays": 7,
+  "devices": [],
+  "enabled": true,
+  "hours": [],
+  "maxDevices": 64,
+  "missing": [],
+  "names": [],
+  "perDevice": true,
+  "savedBytes": 0,
+  "since": "2026-10-10T00:00:00Z",
+  "total": {
+    "blocked": 0,
+    "queries": 0
+  }
+}

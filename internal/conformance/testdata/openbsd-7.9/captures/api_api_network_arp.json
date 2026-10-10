@@ -1,0 +1,64 @@
+{
+  "entries": [
+    {
+      "expires": "7m18s",
+      "iface": "vio0",
+      "ip": "100.64.2.2",
+      "mac": "fe:e1:ba:dc:f8:e2"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "vio0",
+      "ip": "100.64.2.3",
+      "mac": "fe:e1:bb:d1:a8:d5"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "vether1",
+      "ip": "172.16.5.1",
+      "mac": "fe:e1:ba:d2:a8:09"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "pair0",
+      "ip": "192.168.1.1",
+      "mac": "fe:e1:ba:d0:e4:4f"
+    },
+    {
+      "expires": "19m40s",
+      "iface": "pair0",
+      "ip": "192.168.1.60",
+      "mac": "fe:e1:ba:d3:db:da"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "vlan20",
+      "ip": "192.168.20.1",
+      "mac": "fe:e1:bb:d2:84:cd"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "vlan40",
+      "ip": "192.168.40.1",
+      "mac": "fe:e1:bb:d2:84:cd"
+    },
+    {
+      "expires": "expired",
+      "iface": "vether0",
+      "ip": "198.51.100.1",
+      "mac": "(incomplete)"
+    },
+    {
+      "expires": "permanent",
+      "flags": "local",
+      "iface": "vether0",
+      "ip": "198.51.100.2",
+      "mac": "fe:e1:ba:d1:38:11"
+    }
+  ]
+}

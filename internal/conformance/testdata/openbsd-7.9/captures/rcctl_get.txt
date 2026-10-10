@@ -1,0 +1,7 @@
+ntpd_class=daemon
+ntpd_execdir=
+ntpd_flags=-v
+ntpd_logger=
+ntpd_rtable=0
+ntpd_timeout=30
+ntpd_user=root

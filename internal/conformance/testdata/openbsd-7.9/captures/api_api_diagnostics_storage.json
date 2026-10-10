@@ -1,0 +1,393 @@
+{
+  "errors": [],
+  "items": [
+    {
+      "current": 227328,
+      "desc": "Connections (pf’s states) and blocked packets",
+      "fixed": "Always kept, at this size.",
+      "group": "graphs",
+      "id": "graphs-firewall",
+      "link": "/monitoring/graphs",
+      "name": "Firewall",
+      "note": "2 series, a month each.",
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 227328,
+      "desc": "Queries, blocks and cache hits, a second",
+      "fixed": "Always kept, at this size.",
+      "group": "graphs",
+      "id": "graphs-dns",
+      "link": "/services/dns",
+      "name": "DNS",
+      "note": "3 series, a month each.",
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 340992,
+      "desc": "CPU, memory, load and the clock’s offset",
+      "fixed": "Always kept, at this size.",
+      "group": "graphs",
+      "id": "graphs-system",
+      "link": "/monitoring/graphs",
+      "name": "System",
+      "note": "4 series, a month each.",
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 3409920,
+      "desc": "Traffic in and out of each",
+      "group": "graphs",
+      "id": "graphs-interfaces",
+      "link": "/monitoring/graphs",
+      "max": 7274496,
+      "name": "Interfaces",
+      "note": "15 of at most 32 recorded, a month each.",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 227328,
+      "desc": "Each one’s latency and loss",
+      "group": "graphs",
+      "id": "graphs-gateways",
+      "link": "/monitoring/graphs",
+      "max": 3637248,
+      "name": "Gateways",
+      "note": "2 of at most 16 recorded, a month each.",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 2045952,
+      "desc": "Each device’s traffic and handshakes",
+      "group": "graphs",
+      "id": "graphs-vpnDevices",
+      "link": "/monitoring/graphs",
+      "max": 21823488,
+      "name": "VPN devices",
+      "note": "9 of at most 64 recorded, a month each.",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 340992,
+      "desc": "Leases in use on each",
+      "group": "graphs",
+      "id": "graphs-dhcpNetworks",
+      "link": "/monitoring/graphs",
+      "max": 3637248,
+      "name": "DHCP networks",
+      "note": "3 of at most 32 recorded, a month each.",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 112128,
+      "desc": "Packets each rule matched",
+      "group": "graphs",
+      "id": "graphs-rules",
+      "link": "/monitoring/graphs",
+      "max": 28032000,
+      "name": "Firewall rules",
+      "note": "2 of at most 500 recorded, a month each.",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 593,
+      "desc": "The same, saved every few minutes and when OPF stops",
+      "group": "opf",
+      "id": "graphs-saved",
+      "link": "/monitoring/graphs",
+      "max": 65427456,
+      "name": "Graphs, saved",
+      "settings": [
+        {
+          "label": "System › General › Graphs",
+          "to": "/system/general#graphs"
+        }
+      ],
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 13,
+      "desc": "Links, addresses, gateways, devices and commits as they happen",
+      "fixed": "Fixed in OPF.",
+      "group": "opf",
+      "id": "events",
+      "link": "/monitoring/events",
+      "max": 5000,
+      "name": "Event log",
+      "note": "The newest are kept, none older than 90 days.",
+      "unit": "entries",
+      "where": "memory"
+    },
+    {
+      "current": 62,
+      "desc": "Counts and top names, for the network and each device",
+      "group": "opf",
+      "id": "dns-activity",
+      "link": "/services/dns?tab=settings",
+      "max": 4430784,
+      "name": "DNS activity",
+      "note": "Saved, about what it takes in memory too. The most is if every list fills every day with 64 devices, the most it keeps apart a day.",
+      "settings": [
+        {
+          "label": "DNS resolver › Settings › Activity",
+          "to": "/services/dns?tab=settings#activity"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory and disk"
+    },
+    {
+      "current": 256,
+      "desc": "unbound's log of every answer, which OPF reads and empties",
+      "group": "opf",
+      "id": "dns-log",
+      "max": 4194304,
+      "name": "Resolver's answers, not yet counted",
+      "note": "Emptied once it passes this and OPF has read it all; it can pass it by what arrives in one collector tick.",
+      "settings": [
+        {
+          "label": "DNS resolver › Settings › Activity",
+          "to": "/services/dns?tab=settings#activity"
+        }
+      ],
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 0,
+      "desc": "What each device sent and received, by hour",
+      "group": "opf",
+      "id": "traffic",
+      "link": "/devices/traffic",
+      "max": 2395008,
+      "name": "Traffic per device",
+      "note": "As last saved. The most is 100 devices, the most it keeps apart, every hour.",
+      "settings": [
+        {
+          "label": "Firewall › Settings › Traffic per device",
+          "to": "/firewall/settings#traffic"
+        }
+      ],
+      "unit": "bytes",
+      "where": "memory and disk"
+    },
+    {
+      "current": 2,
+      "desc": "Every commit, with every file before and after",
+      "fixed": "There's no setting yet: nothing prunes it.",
+      "group": "opf",
+      "id": "history-entries",
+      "link": "/system/history",
+      "name": "Change history",
+      "unbounded": "Every commit is kept: nothing prunes the history yet.",
+      "unit": "entries",
+      "where": "disk"
+    },
+    {
+      "current": 105044,
+      "desc": "The commits' files",
+      "fixed": "There's no setting yet: nothing prunes it.",
+      "group": "opf",
+      "id": "history-bytes",
+      "link": "/system/history",
+      "name": "Change history, on disk",
+      "unbounded": "Grows with every commit.",
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 244,
+      "desc": "Address lists for aliases and DNS blocklists, as OPF keeps them",
+      "group": "opf",
+      "id": "lists",
+      "max": 67108864,
+      "name": "Downloaded lists",
+      "note": "A download over 32 MB is refused; the most is that for each list in use (2).",
+      "settings": [
+        {
+          "label": "DNS resolver › Blocking",
+          "to": "/services/dns?tab=blocking"
+        },
+        {
+          "label": "Firewall › Aliases",
+          "to": "/firewall/aliases"
+        }
+      ],
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 36,
+      "desc": "pf's state table: one entry for each connection through or to the firewall",
+      "group": "pf",
+      "id": "pf-states",
+      "link": "/firewall/connections",
+      "max": 200000,
+      "name": "Connections",
+      "note": "Full, new connections are refused until old ones end.",
+      "settings": [
+        {
+          "label": "Firewall › Settings › Connection tracking",
+          "to": "/firewall/settings#connections"
+        }
+      ],
+      "unit": "entries",
+      "where": "kernel"
+    },
+    {
+      "current": 15,
+      "desc": "Address tables: aliases, blocklists, OPF's own",
+      "group": "pf",
+      "id": "pf-tables",
+      "link": "/firewall/aliases",
+      "max": 2000,
+      "name": "Tables",
+      "settings": [
+        {
+          "label": "Firewall › Settings › Limits",
+          "to": "/firewall/settings#limits"
+        }
+      ],
+      "unit": "entries",
+      "where": "kernel"
+    },
+    {
+      "current": 34,
+      "desc": "Addresses and networks in all the tables together",
+      "group": "pf",
+      "id": "pf-table-entries",
+      "link": "/firewall/aliases",
+      "max": 400000,
+      "name": "Table entries",
+      "note": "Full, a list too big to load fails the commit or refresh that loads it.",
+      "settings": [
+        {
+          "label": "Firewall › Settings › Limits",
+          "to": "/firewall/settings#limits"
+        }
+      ],
+      "unit": "entries",
+      "where": "kernel"
+    },
+    {
+      "current": 376,
+      "desc": "Packets pf logged: blocked ones, and rules set to log",
+      "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
+      "group": "logs",
+      "id": "log-pflog",
+      "link": "/firewall/log",
+      "max": 1024000,
+      "name": "Firewall log",
+      "note": "With its 3 old copies, rotated at 250 KB (newsyslog). They're compressed, so they take less.",
+      "settings": [
+        {
+          "label": "Firewall › Settings › Blocking",
+          "to": "/firewall/settings#blocking"
+        },
+        {
+          "label": "Firewall › Rules (each rule’s log)",
+          "to": "/firewall/rules"
+        }
+      ],
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 6646,
+      "desc": "unbound, dhcpd, ntpd and OPF's own messages",
+      "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
+      "group": "logs",
+      "id": "log-daemon",
+      "link": "/system/logs",
+      "max": 1843200,
+      "name": "Daemon log",
+      "note": "With its 5 old copies, rotated at 300 KB (newsyslog). They're compressed, so they take less.",
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 11055,
+      "desc": "The kernel and most of the system",
+      "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
+      "group": "logs",
+      "id": "log-messages",
+      "link": "/system/logs",
+      "max": 1843200,
+      "name": "System log",
+      "note": "With its 5 old copies, rotated at 300 KB (newsyslog). They're compressed, so they take less.",
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 1691,
+      "desc": "SSH and other logins",
+      "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
+      "group": "logs",
+      "id": "log-authlog",
+      "link": "/system/logs",
+      "name": "Logins",
+      "unbounded": "Rotated by time, not size (newsyslog), so a busy day can make it large.",
+      "unit": "bytes",
+      "where": "disk"
+    },
+    {
+      "current": 51118080,
+      "desc": "OPF's processes, everything above that's in memory included",
+      "group": "disk",
+      "id": "opf-memory",
+      "name": "OPF's memory",
+      "note": "Bounded by what it keeps, above.",
+      "unit": "bytes",
+      "where": "memory"
+    },
+    {
+      "current": 148455424,
+      "desc": "Where OPF keeps its records",
+      "group": "disk",
+      "id": "disk",
+      "max": 1308620800,
+      "name": "Disk (/)",
+      "unit": "bytes",
+      "where": "disk"
+    }
+  ]
+}

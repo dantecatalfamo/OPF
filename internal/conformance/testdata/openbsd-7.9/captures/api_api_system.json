@@ -1,0 +1,96 @@
+{
+  "bootedAt": "2026-10-10T00:16:00Z",
+  "cpu": {
+    "idle": 70.45454545454545,
+    "interrupt": 21.96969696969697,
+    "nice": 0,
+    "spin": 0,
+    "system": 6.0606060606060606,
+    "user": 1.5151515151515151
+  },
+  "cpuModel": "Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz",
+  "cpus": 1,
+  "disks": [
+    {
+      "available": 1094756352,
+      "device": "/dev/sd0a",
+      "mount": "/",
+      "total": 1308620800,
+      "used": 148434944
+    },
+    {
+      "available": 1970329600,
+      "device": "/dev/sd0e",
+      "mount": "/home",
+      "total": 2074048512,
+      "used": 18432
+    },
+    {
+      "available": 1349642240,
+      "device": "/dev/sd0d",
+      "mount": "/usr",
+      "total": 3114448896,
+      "used": 1609084928
+    },
+    {
+      "available": 275564544,
+      "device": "/dev/sd1a",
+      "mount": "/mnt/conformance-sets",
+      "total": 1033648128,
+      "used": 706402304
+    }
+  ],
+  "dns": {
+    "lookup": [
+      "file",
+      "bind"
+    ],
+    "servers": [
+      {
+        "address": "127.0.0.1",
+        "from": "lo0"
+      },
+      {
+        "address": "9.9.9.9",
+        "from": "lo0"
+      }
+    ]
+  },
+  "errors": [],
+  "hostname": "fw.office.arpa",
+  "load": [
+    2.63,
+    2.66,
+    1.79
+  ],
+  "machine": "amd64",
+  "memory": {
+    "active": 98590720,
+    "free": 361549824,
+    "inactive": 278278144,
+    "total": 1056940032
+  },
+  "product": "VMM",
+  "release": "7.9",
+  "sensors": [
+    {
+      "device": "vmmci0",
+      "index": 0,
+      "number": -49.99958,
+      "status": "OK",
+      "type": "timedelta",
+      "unit": "secs",
+      "value": "-49.999580 secs"
+    }
+  ],
+  "swap": {
+    "total": 268435456,
+    "used": 15069184
+  },
+  "time": {
+    "status": "0/5 peers valid, 0/1 sensors valid, constraints configured but none available, clock unsynced",
+    "synced": false
+  },
+  "vendor": "OpenBSD",
+  "version": "OpenBSD 7.9 (GENERIC) #399: Wed May  6 13:01:58 MDT 2026"
+}

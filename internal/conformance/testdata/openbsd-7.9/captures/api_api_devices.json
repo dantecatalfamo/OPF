@@ -1,0 +1,323 @@
+{
+  "devices": [
+    {
+      "addresses": [
+        "10.8.0.4"
+      ],
+      "key": "vpn:p_split2",
+      "kind": "vpn",
+      "name": "Ana laptop",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg0",
+          "id": "remote",
+          "name": "Remote access"
+        }
+      ],
+      "vpn": {
+        "address": "10.8.0.4/32",
+        "clientRoutes": "split",
+        "peer": "p_split2",
+        "rxBytes": 0,
+        "tunnel": "remote",
+        "tunnelName": "Remote access",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "192.168.20.50"
+      ],
+      "key": "mac:00:11:22:33:44:57",
+      "kind": "device",
+      "mac": "00:11:22:33:44:57",
+      "name": "camera",
+      "nameFrom": "reservation",
+      "networks": [
+        {
+          "device": "vlan20",
+          "id": "iot",
+          "name": "IoT"
+        }
+      ],
+      "reservation": {
+        "hostname": "camera",
+        "id": "res3",
+        "ip": "192.168.20.50",
+        "network": "iot"
+      }
+    },
+    {
+      "addresses": [
+        "10.9.0.4"
+      ],
+      "key": "vpn:p_vpn2",
+      "kind": "vpn",
+      "name": "Camera one",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg1",
+          "id": "sites",
+          "name": "Sites"
+        }
+      ],
+      "vpn": {
+        "address": "10.9.0.4/32",
+        "clientRoutes": "vpn",
+        "peer": "p_vpn2",
+        "rxBytes": 0,
+        "tunnel": "sites",
+        "tunnelName": "Sites",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "10.9.0.5"
+      ],
+      "key": "vpn:p_vpn3",
+      "kind": "vpn",
+      "name": "Camera two",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg1",
+          "id": "sites",
+          "name": "Sites"
+        }
+      ],
+      "vpn": {
+        "address": "10.9.0.5/32",
+        "clientRoutes": "vpn",
+        "peer": "p_vpn3",
+        "rxBytes": 0,
+        "tunnel": "sites",
+        "tunnelName": "Sites",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "10.8.0.5"
+      ],
+      "key": "vpn:p_vpn1",
+      "kind": "vpn",
+      "name": "Kiosk",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg0",
+          "id": "remote",
+          "name": "Remote access"
+        }
+      ],
+      "vpn": {
+        "address": "10.8.0.5/32",
+        "clientRoutes": "vpn",
+        "peer": "p_vpn1",
+        "rxBytes": 0,
+        "tunnel": "remote",
+        "tunnelName": "Remote access",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "10.9.0.3"
+      ],
+      "key": "vpn:p_split3",
+      "kind": "vpn",
+      "name": "Lee laptop",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg1",
+          "id": "sites",
+          "name": "Sites"
+        }
+      ],
+      "vpn": {
+        "address": "10.9.0.3/32",
+        "clientRoutes": "split",
+        "peer": "p_split3",
+        "rxBytes": 0,
+        "tunnel": "sites",
+        "tunnelName": "Sites",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "192.168.1.200"
+      ],
+      "key": "mac:00:11:22:33:44:55",
+      "kind": "device",
+      "mac": "00:11:22:33:44:55",
+      "name": "printer",
+      "nameFrom": "reservation",
+      "networks": [
+        {
+          "device": "pair0",
+          "id": "lan",
+          "name": "LAN"
+        }
+      ],
+      "reservation": {
+        "hostname": "printer",
+        "id": "res1",
+        "ip": "192.168.1.200",
+        "network": "lan"
+      }
+    },
+    {
+      "addresses": [
+        "10.8.0.2"
+      ],
+      "key": "vpn:p_full",
+      "kind": "vpn",
+      "name": "Priya phone",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg0",
+          "id": "remote",
+          "name": "Remote access"
+        }
+      ],
+      "vpn": {
+        "address": "10.8.0.2/32",
+        "clientRoutes": "full",
+        "peer": "p_full",
+        "rxBytes": 0,
+        "tunnel": "remote",
+        "tunnelName": "Remote access",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "10.8.0.3"
+      ],
+      "key": "vpn:p_split1",
+      "kind": "vpn",
+      "name": "Sam laptop",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg0",
+          "id": "remote",
+          "name": "Remote access"
+        }
+      ],
+      "vpn": {
+        "address": "10.8.0.3/32",
+        "clientRoutes": "split",
+        "peer": "p_split1",
+        "rxBytes": 0,
+        "tunnel": "remote",
+        "tunnelName": "Remote access",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "192.168.1.201"
+      ],
+      "key": "mac:00:11:22:33:44:56",
+      "kind": "device",
+      "mac": "00:11:22:33:44:56",
+      "name": "scanner",
+      "nameFrom": "reservation",
+      "networks": [
+        {
+          "device": "pair0",
+          "id": "lan",
+          "name": "LAN"
+        }
+      ],
+      "reservation": {
+        "hostname": "scanner",
+        "id": "res2",
+        "ip": "192.168.1.201",
+        "network": "lan"
+      }
+    },
+    {
+      "addresses": [
+        "10.10.0.2"
+      ],
+      "key": "vpn:p_spare",
+      "kind": "vpn",
+      "name": "Spare",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg3",
+          "id": "spare_wg",
+          "name": "Spare tunnel"
+        }
+      ],
+      "vpn": {
+        "address": "10.10.0.2/32",
+        "clientRoutes": "split",
+        "peer": "p_spare",
+        "rxBytes": 0,
+        "tunnel": "spare_wg",
+        "tunnelName": "Spare tunnel",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "10.9.0.2"
+      ],
+      "key": "vpn:p_site",
+      "kind": "vpn",
+      "name": "Warehouse router",
+      "nameFrom": "vpn",
+      "networks": [
+        {
+          "device": "wg1",
+          "id": "sites",
+          "name": "Sites"
+        }
+      ],
+      "vpn": {
+        "address": "10.9.0.2/32",
+        "clientRoutes": "site",
+        "peer": "p_site",
+        "rxBytes": 0,
+        "tunnel": "sites",
+        "tunnelName": "Sites",
+        "txBytes": 0
+      }
+    },
+    {
+      "addresses": [
+        "192.168.1.60"
+      ],
+      "arp": [
+        {
+          "expires": "19m40s",
+          "iface": "pair0",
+          "ip": "192.168.1.60",
+          "mac": "fe:e1:ba:d3:db:da"
+        }
+      ],
+      "firstSeen": "2026-10-10T00:28:49.784411766Z",
+      "key": "mac:fe:e1:ba:d3:db:da",
+      "kind": "device",
+      "mac": "fe:e1:ba:d3:db:da",
+      "networks": [
+        {
+          "device": "pair0",
+          "id": "lan",
+          "name": "LAN"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

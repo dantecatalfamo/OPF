@@ -1,0 +1,727 @@
+{
+  "errors": [],
+  "interfaces": [
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 123850,
+        "rxErrors": 0,
+        "rxPackets": 266,
+        "txBytes": 123850,
+        "txErrors": 0,
+        "txPackets": 266
+      },
+      "flags": [
+        "UP",
+        "LOOPBACK",
+        "RUNNING",
+        "MULTICAST",
+        "LRO"
+      ],
+      "groups": [
+        "lo"
+      ],
+      "ipv4": [
+        "127.0.0.1/8"
+      ],
+      "ipv6": [
+        "::1/128",
+        "fe80::1/64"
+      ],
+      "mtu": 32768,
+      "name": "lo0",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 41315678,
+        "rxErrors": 0,
+        "rxPackets": 28870,
+        "txBytes": 1040439,
+        "txErrors": 0,
+        "txPackets": 15263
+      },
+      "description": "WAN",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "PROMISC",
+        "ALLMULTI",
+        "SIMPLEX",
+        "MULTICAST",
+        "AUTOCONF4"
+      ],
+      "groups": [
+        "egress"
+      ],
+      "ipv4": [
+        "100.64.2.3/31"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:bb:d1:a8:d5",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vio0",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 1776.4227838854374,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 92,
+        "txErrors": 0,
+        "txPackets": 2
+      },
+      "description": "Carries VLAN 20",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "PROMISC",
+        "ALLMULTI",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [],
+      "ipv4": [],
+      "ipv6": [],
+      "mac": "fe:e1:bb:d2:84:cd",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vio1",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "flags": [],
+      "groups": [
+        "enc"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "name": "enc0",
+      "running": false,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": false
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 2930,
+        "txErrors": 0,
+        "txPackets": 41
+      },
+      "flags": [
+        "UP",
+        "RUNNING",
+        "PROMISC"
+      ],
+      "groups": [
+        "pflog"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "mtu": 33136,
+      "name": "pflog0",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 1457.5776688290769,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 1811,
+        "rxErrors": 0,
+        "rxPackets": 22,
+        "txBytes": 1798,
+        "txErrors": 0,
+        "txPackets": 22
+      },
+      "description": "LAN",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [
+        "pair"
+      ],
+      "ipv4": [
+        "192.168.1.1/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:ba:d0:e4:4f",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "pair0",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 42,
+        "txErrors": 0,
+        "txPackets": 1
+      },
+      "description": "IoT",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [
+        "vlan"
+      ],
+      "ipv4": [
+        "192.168.20.1/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:bb:d2:84:cd",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vlan20",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true,
+      "vlan": {
+        "id": 20,
+        "parent": "vio1"
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 42,
+        "txErrors": 0,
+        "txPackets": 1
+      },
+      "description": "Old",
+      "flags": [
+        "BROADCAST",
+        "MULTICAST"
+      ],
+      "groups": [
+        "vlan"
+      ],
+      "ipv4": [
+        "192.168.40.1/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:bb:d2:84:cd",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vlan40",
+      "running": false,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": false,
+      "vlan": {
+        "id": 40,
+        "parent": "vio1"
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 576,
+        "txErrors": 0,
+        "txPackets": 3
+      },
+      "description": "Suite collector",
+      "flags": [
+        "UP",
+        "RUNNING"
+      ],
+      "groups": [
+        "pflow"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "mtu": 1448,
+      "name": "pflow0",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "description": "Lab collector",
+      "flags": [
+        "UP",
+        "RUNNING"
+      ],
+      "groups": [
+        "pflow"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "mtu": 1492,
+      "name": "pflow1",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 192,
+        "txErrors": 0,
+        "txPackets": 1
+      },
+      "description": "Old collector",
+      "flags": [],
+      "groups": [
+        "pflow"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "mtu": 1448,
+      "name": "pflow2",
+      "running": false,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": false
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 126,
+        "txErrors": 0,
+        "txPackets": 3
+      },
+      "description": "Edge",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [
+        "vether"
+      ],
+      "ipv4": [
+        "198.51.100.2/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:ba:d1:38:11",
+      "media": "Ethernet autoselect",
+      "mtu": 1400,
+      "name": "vether0",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 416,
+        "txErrors": 0,
+        "txPackets": 6
+      },
+      "description": "Lab",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST",
+        "AUTOCONF6TEMP",
+        "AUTOCONF6"
+      ],
+      "groups": [
+        "vether"
+      ],
+      "ipv4": [
+        "172.16.5.1/24"
+      ],
+      "ipv6": [
+        "fe80::fce1:baff:fed2:a809/64"
+      ],
+      "mac": "fe:e1:ba:d2:a8:09",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vether1",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "description": "Remote access",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "NOARP",
+        "MULTICAST"
+      ],
+      "groups": [
+        "wg"
+      ],
+      "ipv4": [
+        "10.8.0.1/24"
+      ],
+      "ipv6": [],
+      "mtu": 1420,
+      "name": "wg0",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true,
+      "wireguard": {
+        "peers": [
+          {
+            "allowedIps": [
+              "10.8.0.2/32"
+            ],
+            "description": "Priya phone",
+            "publicKey": "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws=",
+            "rxBytes": 0,
+            "txBytes": 1628
+          },
+          {
+            "allowedIps": [
+              "10.8.0.3/32"
+            ],
+            "description": "Sam laptop",
+            "publicKey": "DAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw=",
+            "rxBytes": 0,
+            "txBytes": 0
+          },
+          {
+            "allowedIps": [
+              "10.8.0.4/32"
+            ],
+            "description": "Ana laptop",
+            "publicKey": "DQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0=",
+            "rxBytes": 0,
+            "txBytes": 0
+          },
+          {
+            "allowedIps": [
+              "10.8.0.5/32"
+            ],
+            "description": "Kiosk",
+            "publicKey": "Dg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4=",
+            "rxBytes": 0,
+            "txBytes": 0
+          }
+        ],
+        "port": 51820,
+        "publicKey": "+dsbD3rnCq83lzZS/65S+OdiV/tBBdcrs6/iSe30nzM="
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "description": "Sites",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "NOARP",
+        "MULTICAST"
+      ],
+      "groups": [
+        "wg"
+      ],
+      "ipv4": [
+        "10.9.0.1/24"
+      ],
+      "ipv6": [],
+      "mtu": 1420,
+      "name": "wg1",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true,
+      "wireguard": {
+        "peers": [
+          {
+            "allowedIps": [
+              "10.21.0.0/16",
+              "10.20.0.0/16",
+              "10.9.0.2/32"
+            ],
+            "description": "Warehouse router",
+            "endpoint": "192.0.2.80:51820",
+            "publicKey": "FRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU=",
+            "rxBytes": 0,
+            "txBytes": 1628
+          },
+          {
+            "allowedIps": [
+              "10.9.0.3/32"
+            ],
+            "description": "Lee laptop",
+            "endpoint": "203.0.113.7:51820",
+            "publicKey": "FhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhY=",
+            "rxBytes": 0,
+            "txBytes": 0
+          },
+          {
+            "allowedIps": [
+              "10.9.0.4/32"
+            ],
+            "description": "Camera one",
+            "publicKey": "FxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxc=",
+            "rxBytes": 0,
+            "txBytes": 0
+          },
+          {
+            "allowedIps": [
+              "10.9.0.5/32"
+            ],
+            "description": "Camera two",
+            "endpoint": "[2001:db8::7]:51820",
+            "publicKey": "GBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBg=",
+            "rxBytes": 0,
+            "txBytes": 0
+          }
+        ],
+        "port": 51821,
+        "publicKey": "2ae1VkzkYuWLIV8plXCBKOFmS7ergADDo474POCfjgQ="
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "description": "Provider",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "NOARP",
+        "MULTICAST"
+      ],
+      "groups": [
+        "wg"
+      ],
+      "ipv4": [
+        "10.66.0.2/32"
+      ],
+      "ipv6": [],
+      "mtu": 1420,
+      "name": "wg2",
+      "running": true,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": true,
+      "wireguard": {
+        "peers": [
+          {
+            "allowedIps": [
+              "0.0.0.0/0"
+            ],
+            "description": "Provider",
+            "endpoint": "192.0.2.81:51820",
+            "publicKey": "Hx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8=",
+            "rxBytes": 0,
+            "txBytes": 1628
+          }
+        ],
+        "port": 11262,
+        "publicKey": "n0+quzL65FqqaFb9azacYBT0rzFS24Kn2l96kZX7Xl8="
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "description": "Spare tunnel",
+      "flags": [
+        "BROADCAST",
+        "NOARP",
+        "MULTICAST"
+      ],
+      "groups": [
+        "wg"
+      ],
+      "ipv4": [
+        "10.10.0.1/24"
+      ],
+      "ipv6": [],
+      "mtu": 1420,
+      "name": "wg3",
+      "running": false,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": false,
+      "wireguard": {
+        "peers": [
+          {
+            "allowedIps": [
+              "10.10.0.2/32"
+            ],
+            "description": "Spare",
+            "publicKey": "KSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSk=",
+            "rxBytes": 0,
+            "txBytes": 0
+          }
+        ],
+        "port": 51822,
+        "publicKey": "CaIecpv/1dm8ETyRreu4JW0m4aW/6NtrSQ777I8r+XM="
+      }
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 1756,
+        "rxErrors": 0,
+        "rxPackets": 21,
+        "txBytes": 1853,
+        "txErrors": 0,
+        "txPackets": 23
+      },
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [
+        "pair"
+      ],
+      "ipv4": [
+        "192.168.1.60/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:ba:d3:db:da",
+      "media": "Ethernet autoselect",
+      "name": "pair1",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 0,
+        "txErrors": 0,
+        "txPackets": 0
+      },
+      "flags": [
+        "LOOPBACK",
+        "MULTICAST",
+        "LRO"
+      ],
+      "groups": [
+        "lo"
+      ],
+      "ipv4": [],
+      "ipv6": [],
+      "name": "lo9",
+      "running": false,
+      "rxBps": 0,
+      "txBps": 0,
+      "up": false
+    }
+  ]
+}

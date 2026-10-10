@@ -1,0 +1,2 @@
+Device      1K-blocks     Used    Avail Capacity  Priority
+/dev/sd0b      262144    14716   247428     6%    0

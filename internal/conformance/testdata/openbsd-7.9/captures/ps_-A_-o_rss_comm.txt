@@ -1,0 +1,41 @@
+   96 init
+  720 slaacd
+  772 slaacd
+  916 slaacd
+  988 dhcpleased
+ 1012 dhcpleased
+  940 dhcpleased
+  748 resolvd
+   24 syslogd
+  888 syslogd
+    8 pflogd
+  644 pflogd
+ 3720 sshd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 sshd-session
+   24 sndiod
+   24 sndiod
+ 1352 sshd-session
+  528 cron
+    8 ksh
+   24 ksh
+32576 conformance.test
+24196 opf
+ 1092 logger
+15512 opf
+ 3684 ntpd
+ 1648 ntpd
+ 2808 ntpd
+ 2764 ntpd
+ 1488 dhcpd
+11444 unbound
+ 8824 unbound
+ 9484 opf
+  460 ps
+   24 getty

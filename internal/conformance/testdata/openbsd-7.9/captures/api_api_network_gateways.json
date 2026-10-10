@@ -1,0 +1,14 @@
+{
+  "gateways": {
+    "gw_edge": {
+      "address": "198.51.100.1",
+      "lossPct": 100,
+      "online": false
+    },
+    "gw_wan": {
+      "address": "9.9.9.9",
+      "lossPct": 100,
+      "online": false
+    }
+  }
+}

@@ -1,0 +1,1 @@
+aggr bpe bridge carp egre enc eoip erspan etherip gif gre lo mgre mpe mpip mpw nvgre pair pflog pflow pfsync ppp pppoe rport sec svlan tap tpmr trunk tun veb vether vlan vport vxlan wg

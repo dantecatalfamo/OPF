@@ -1,0 +1,47 @@
+{
+  "blockedPerSec": 0,
+  "enabled": true,
+  "errors": [],
+  "lastReload": {
+    "at": "2026-10-10T00:28:46.674859325Z",
+    "names": 6,
+    "seconds": 0.996191696
+  },
+  "memoryBytes": 21053440,
+  "queriesPerSec": 0,
+  "stats": {
+    "answers": {
+      "FORMERR": 0,
+      "NOERROR": 0,
+      "NOTIMPL": 0,
+      "NXDOMAIN": 0,
+      "REFUSED": 0,
+      "SERVFAIL": 0
+    },
+    "bogus": 0,
+    "cacheHits": 0,
+    "cacheMisses": 5,
+    "extended": true,
+    "memory": {
+      "cache.message": 16729,
+      "cache.rrset": 16544,
+      "http.query_buffer": 0,
+      "http.response_buffer": 0,
+      "mod.iterator": 16844,
+      "mod.respip": 0,
+      "mod.validator": 16760,
+      "streamwait": 0
+    },
+    "prefetches": 0,
+    "queries": 5,
+    "queryTypes": {
+      "A": 4,
+      "NS": 1
+    },
+    "recursionAvg": 0,
+    "recursionMedian": 0,
+    "rpz": {},
+    "secure": 0,
+    "uptime": 45.676382
+  }
+}

@@ -1,0 +1,3 @@
+nameserver 127.0.0.1 # resolvd: lo0
+nameserver 9.9.9.9 # resolvd: lo0
+lookup file bind
