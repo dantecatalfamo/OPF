@@ -744,7 +744,46 @@ Types, roughly in order of usefulness:
 - [ ] `veb` + `vport` bridges (bridging LAN ports). The address and pf
       filtering are on the vport, so the LAN macro follows it. The older
       `bridge(4)` is similar.
-- [ ] `aggr` link aggregation: `trunkport` lines, members only `up`.
+- [ ] **Aggregated links:** add `aggr` and `trunk` interfaces. OPF
+      leaves hand-made ones alone on import today, and a VLAN on one
+      too.
+      - `aggr(4)` is LACP (802.3ad), for a switch that speaks it:
+        `trunkport` lines, `lacpmode active|passive`, `lacptimeout
+        fast|slow`.
+      - `trunk(4)` covers the rest with `trunkproto`: `failover` (one
+        port at a time, the others standby; `trunkport em1 trunkport
+        em2`, the first is master), `loadbalance`, `roundrobin`,
+        `broadcast`, `none`. It also does `lacp`, but aggr is the
+        better LACP driver.
+      - Member ports are `up` only, with no address, VLAN or role of
+        their own: the validator refuses a port that's a member and
+        anything else. A member can't be in two aggregates.
+      - The aggregate takes the members' role: its own address, DHCP,
+        role (WAN or inside) and pf macro. Its MTU follows its members.
+      - Import: read `hostname.aggrN`/`trunkN` into the model, members
+        noted as such, instead of leaving them as they are.
+      - The interfaces page lists members under their aggregate, with
+        each port's LACP or failover state (`ifconfig aggr0` prints
+        each port's state; `trunk0` its active and master ports).
+      - Conformance: declare the `ifconfig` lines and their output in
+        the registry, and give the suite's guest a model with both
+        (the guest needs spare ports: more vio devices, or vether
+        members, which aggr refuses since it needs real Ethernet; check
+        what trunk takes).
+- [ ] **VLANs on aggregates:** a VLAN whose parent is an `aggr` or
+      `trunk` OPF manages (the usual case: tagged VLANs over a LACP
+      bond to a switch). The vlanParent check accepts one, enabled if
+      the VLAN is; the aggregate then carries VLANs only, or VLANs and
+      an untagged network, as a port does. Commit order is already
+      right: netstart and OPF both bring aggr and trunk up before
+      VLANs (netstartOrder 1, VLANs 2). After the aggregates above.
+- [ ] VLANs on `vether` (and `vport`): netstart brings vether, bridge,
+      veb, vport and tpmr up in its first pass, with the physical
+      ports, but OPF's netstartOrder applies them last (5), after
+      VLANs, so a commit adding a VLAN on vether0 would make the VLAN
+      first. Fix the order to netstart's first, and have the
+      conformance suite compare netstart's first pass too, not only
+      its lower and routing passes. Then allow them as parents.
 - [ ] `pppoe` WANs: credentials need secret storage (Security), and the
       default route goes through the PPPoE link instead of `mygate`.
 - [ ] `carp` failover with `pfsync`: a shared password (secret storage),
@@ -2229,7 +2268,9 @@ Found by the suite on 7.9, open:
       lets the split block and the way out's rtable skip what's
       `tagged opf_local`. The dhcp-inside model has a way out too now.
 - [ ] VLANs are only allowed on physical ports; OpenBSD carries them on
-      aggr, trunk and vether too.
+      aggr, trunk and vether too. Needs the aggregates first, and
+      vether's order fixed (under Interfaces: aggregated links, VLANs
+      on aggregates, VLANs on vether).
 - [ ] Speed: the suite's commit of the everything model took over
       7 minutes on the guest; find what's slow.
 
