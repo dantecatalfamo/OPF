@@ -101,6 +101,7 @@ export function FlowExportCard() {
   const [editing, setEditing] = useState<FlowExport | null>(null);
   const flows = staged.firewall.flowExports ?? [];
   const every = staged.firewall.options.stateDefaults?.includes('pflow') ?? false;
+  const marked = staged.firewall.rules.filter((r) => r.enabled && r.kind === 'form' && r.action === 'pass' && r.state?.pflow && r.state.mode !== 'none').length;
 
   const setFlows = (summary: string, fn: (all: FlowExport[]) => FlowExport[]) =>
     edit('firewall', summary, (m) => {
@@ -135,9 +136,12 @@ export function FlowExportCard() {
           disabled={!canEdit}
           onChange={(e) => setEvery(e.currentTarget.checked)}
         />
-        {flows.length > 0 && !every && (
+        {!every && marked > 0 && (
+          <Text size="sm" c="dimmed">{marked === 1 ? 'One rule exports its connections.' : `${marked} rules export their connections.`}</Text>
+        )}
+        {flows.length > 0 && !every && !marked && (
           <Alert color="yellow" variant="light" p="sm" icon={<IconAlertTriangle size={16} />}>
-            Unless a raw rule says pflow, nothing is sent. Turn on Export every connection to send them all.
+            No rule exports its connections, so nothing is sent unless a raw rule says pflow. Turn on Export every connection, or mark rules under Connection tracking and limits.
           </Alert>
         )}
         {flows.length ? (

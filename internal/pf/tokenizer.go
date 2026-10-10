@@ -106,7 +106,7 @@ var keywords = map[string]bool{
 	"af-to": true, "divert-to": true,
 	"max": true, "max-src-conn": true, "max-src-conn-rate": true,
 	"overload": true, "flush": true, "global": true,
-	"sloppy": true, "if-bound": true, "floating": true,
+	"sloppy": true, "pflow": true, "if-bound": true, "floating": true,
 	"any": true, "self": true, "return": true, "return-rst": true,
 	"return-icmp": true, "return-icmp6": true,
 	"tcp": true, "udp": true, "icmp": true, "icmp6": true,

@@ -312,7 +312,10 @@ type StateOptions struct {
 	Overload       string       `json:"overload,omitempty"`
 	FlushGlobal    bool         `json:"flushGlobal,omitempty"`
 	Sloppy         bool         `json:"sloppy,omitempty"`
-	Policy         StatePolicy  `json:"policy,omitempty"`
+	// Pflow exports the rule's connections to the flow exports
+	// (FlowExport) as they end.
+	Pflow  bool        `json:"pflow,omitempty"`
+	Policy StatePolicy `json:"policy,omitempty"`
 }
 
 type LogMode string

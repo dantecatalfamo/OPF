@@ -290,6 +290,9 @@ func generateFormRule(r *Rule, m *Model) string {
 			if st.Sloppy {
 				opts = append(opts, "sloppy")
 			}
+			if st.Pflow {
+				opts = append(opts, "pflow")
+			}
 			if st.Policy != "" {
 				opts = append(opts, string(st.Policy))
 			}

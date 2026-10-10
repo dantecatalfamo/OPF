@@ -1059,6 +1059,9 @@ func (p *Parser) parseStateOptions() (*StateOptions, bool) {
 			case p.checkKeyword("sloppy"):
 				p.advance()
 				state.Sloppy = true
+			case p.checkKeyword("pflow"):
+				p.advance()
+				state.Pflow = true
 			case p.checkKeyword("if-bound"):
 				p.advance()
 				state.Policy = StatePolicyIfBound
@@ -1068,7 +1071,7 @@ func (p *Parser) parseStateOptions() (*StateOptions, bool) {
 			case p.check(TokenComma):
 				p.advance()
 			default:
-				// source-track, max-src-nodes, timeouts, no-sync, pflow
+				// source-track, max-src-nodes, timeouts, no-sync
 				// and so on aren't modelled.
 				p.notForm = true
 				p.advance()

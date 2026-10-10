@@ -445,6 +445,16 @@ export function RuleDrawer({
                         />
                         <Switch mt={30} label="Sloppy tracking (asymmetric routing)" checked={!!state.sloppy} onChange={(e) => setState({ sloppy: e.currentTarget.checked })} />
                       </SimpleGrid>
+                      <Switch
+                        label="Export as flow records (pflow)"
+                        description={!model.firewall.flowExports?.length
+                          ? 'No collector gets them yet. Add one under Firewall › Settings › Flow export.'
+                          : model.firewall.options.stateDefaults?.includes('pflow')
+                            ? 'Every connection is exported already, because Export every connection is on.'
+                            : 'Each connection this rule lets through is sent to the collectors once it ends.'}
+                        checked={!!state.pflow}
+                        onChange={(e) => setState({ pflow: e.currentTarget.checked || undefined })}
+                      />
                     </Stack>
                   </Accordion.Panel>
                 </Accordion.Item>

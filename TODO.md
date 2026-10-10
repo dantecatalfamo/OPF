@@ -1732,8 +1732,8 @@ its setting on Firewall › Settings), and tried on 7.9:
       take-over imports hostname.pflowN files OPF can write back.
       The conformance suite checks ifconfig's pflow line and an IPFIX
       record reaching a collector on lo0 (TestFlowExport).
-  - [ ] Rules marked `pflow` in the rule form, to export some traffic
-        only; now only raw rules can.
+  - [x] Rules marked `pflow` in the rule form (Connection tracking
+        and limits), to export some traffic only.
   - [ ] Each collector's state on its row (ifconfig's RUNNING, packets
         sent).
 

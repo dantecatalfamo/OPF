@@ -195,6 +195,11 @@ func TestGenerateRule_StateOptions(t *testing.T) {
 			contains: []string{"keep state (max 1000)"},
 		},
 		{
+			name:     "exported by pflow",
+			state:    &StateOptions{Mode: StateModeKeep, Sloppy: true, Pflow: true},
+			contains: []string{"keep state (sloppy, pflow)"},
+		},
+		{
 			name:     "overload with flush",
 			state:    &StateOptions{Mode: StateModeKeep, Overload: "bruteforce", FlushGlobal: true},
 			contains: []string{"overload <bruteforce> flush global"},

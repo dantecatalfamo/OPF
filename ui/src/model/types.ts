@@ -96,6 +96,8 @@ export interface StateOptions {
   overload?: string; // table alias to add offenders to
   flushGlobal?: boolean;
   sloppy?: boolean;
+  /** Exported to the flow exports as each connection ends. */
+  pflow?: boolean;
   policy?: 'if-bound' | 'floating';
 }
 
