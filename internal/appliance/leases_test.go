@@ -112,11 +112,32 @@ func TestDHCPLeases(t *testing.T) {
 	}
 
 	ends := stamp(now.Add(time.Hour))
-	write(fmt.Sprintf(`lease 192.168.20.117 { starts %[1]s; ends %[2]s; hardware ethernet D8:F1:5B:8E:22:90; client-hostname "tv-lobby"; }
-lease 192.168.1.112 { starts %[1]s; ends %[2]s; hardware ethernet 3c:22:fb:91:04:7d; client-hostname "Priya's iPad"; }
-lease 192.168.1.113 { starts %[1]s; ends never; hardware ethernet 3c:22:fb:91:04:7e; }
-lease 192.168.1.114 { starts %[1]s; ends %[3]s; client-hostname "gone"; }
-lease 10.99.0.1 { ends %[2]s; client-hostname "%[4]s"; }
+	write(fmt.Sprintf(`lease 192.168.20.117 {
+	starts %[1]s;
+	ends %[2]s;
+	hardware ethernet D8:F1:5B:8E:22:90;
+	client-hostname "tv-lobby";
+}
+lease 192.168.1.112 {
+	starts %[1]s;
+	ends %[2]s;
+	hardware ethernet 3c:22:fb:91:04:7d;
+	client-hostname "Priya's iPad";
+}
+lease 192.168.1.113 {
+	starts %[1]s;
+	ends never;
+	hardware ethernet 3c:22:fb:91:04:7e;
+}
+lease 192.168.1.114 {
+	starts %[1]s;
+	ends %[3]s;
+	client-hostname "gone";
+}
+lease 10.99.0.1 {
+	ends %[2]s;
+	client-hostname "%[4]s";
+}
 `, stamp(now.Add(-time.Hour)), ends, stamp(now.Add(-time.Minute)), "elsewhere\u202e"))
 	if err := w.Sync(context.Background()); err != nil {
 		t.Fatal(err)

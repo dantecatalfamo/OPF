@@ -26,7 +26,7 @@ func activityEnv(t *testing.T) (*env, string) {
 		return fmt.Sprintf("%d %s UTC", t.Weekday(), t.Format("2006/01/02 15:04:05"))
 	}
 	lf := filepath.Join(dir, "dhcpd.leases")
-	lease := fmt.Sprintf("lease 192.168.1.112 { starts %s; ends %s; hardware ethernet 3C:22:FB:91:04:7D; client-hostname \"priya-mbp\"; }\n", stamp(now.Add(-time.Hour)), stamp(now.Add(time.Hour)))
+	lease := fmt.Sprintf("lease 192.168.1.112 {\n\tstarts %s;\n\tends %s;\n\thardware ethernet 3C:22:FB:91:04:7D;\n\tclient-hostname \"priya-mbp\";\n}\n", stamp(now.Add(-time.Hour)), stamp(now.Add(time.Hour)))
 	if err := os.WriteFile(lf, []byte(lease), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestDNSActivityLooksUpNewDevices(t *testing.T) {
 		return fmt.Sprintf("%d %s UTC", t.Weekday(), t.UTC().Format("2006/01/02 15:04:05"))
 	}
 	f, _ := os.OpenFile(e.m.leases.File, os.O_APPEND|os.O_WRONLY, 0644)
-	fmt.Fprintf(f, "lease 192.168.1.140 { starts %s; ends %s; hardware ethernet 02:00:00:00:00:aa; client-hostname \"new-phone\"; }\n", stamp(now.Add(-time.Minute)), stamp(now.Add(time.Hour)))
+	fmt.Fprintf(f, "lease 192.168.1.140 {\n\tstarts %s;\n\tends %s;\n\thardware ethernet 02:00:00:00:00:aa;\n\tclient-hostname \"new-phone\";\n}\n", stamp(now.Add(-time.Minute)), stamp(now.Add(time.Hour)))
 	f.Close()
 	appendLog(t, path, logLine(now, "reply: 192.168.1.140 b.example. A IN NOERROR 0.010000 0 56"))
 	e.m.readDNSActivity(model, now.Add(missEvery))

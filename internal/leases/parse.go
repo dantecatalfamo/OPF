@@ -40,6 +40,10 @@ type Lease struct {
 	// Hostname is what the client sent (client-hostname). Untrusted.
 	Hostname  string
 	Abandoned bool
+	// Malformed says the lease had a statement Parse couldn't read,
+	// which only a client's hostname can cause: it's Abandoned too, so
+	// its address has no current lease.
+	Malformed bool
 }
 
 // Active reports whether the lease is current at now.
@@ -81,9 +85,17 @@ func Current(leases []Lease, now time.Time) []Lease {
 	return out
 }
 
-// Parse reads a dhcpd.leases file. Statements it doesn't use are
-// skipped; anything malformed is an error, so a half-written or damaged
-// file is never mistaken for one with fewer leases.
+// Parse reads a dhcpd.leases file.
+//
+// A client chooses its hostname, and dhcpd writes it into the file as
+// it is, quotes and backslashes included (db.c refuses only bytes below
+// 33 or above 126, so never a space or a newline). Parse reads the file
+// the way dhcpd writes it, one statement a line, so what a client puts
+// in its hostname can only spoil its own lease: a lease with anything
+// it can't read is Malformed, and counts as no lease at all for its
+// address. Statements it doesn't use are skipped. Only a file that ends
+// inside a string or a lease is an error, so a half-written one is
+// never mistaken for one with fewer leases.
 func Parse(r io.Reader) ([]Lease, error) {
 	data, err := io.ReadAll(io.LimitReader(r, maxFile+1))
 	if err != nil {
@@ -92,7 +104,7 @@ func Parse(r io.Reader) ([]Lease, error) {
 	if len(data) > maxFile {
 		return nil, fmt.Errorf("leases file is over %d bytes", maxFile)
 	}
-	p := &parser{lex: lexer{r: bufio.NewReader(bytes.NewReader(data)), line: 1}}
+	p := &parser{lex: lexer{r: bufio.NewReader(bytes.NewReader(data)), line: 1, first: true}}
 	var leases []Lease
 	for {
 		t, err := p.next()
@@ -101,17 +113,22 @@ func Parse(r io.Reader) ([]Lease, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		if t.kind == word && t.text == "lease" {
-			l, err := p.lease()
+		switch {
+		case t.kind == word && t.text == "lease":
+			l, ok, err := p.lease(t)
 			if err != nil {
 				return nil, err
 			}
-			leases = append(leases, l)
-			continue
-		}
-		// Some other top-level statement: skip it.
-		if err := p.skip(t); err != nil {
-			return nil, err
+			if ok {
+				leases = append(leases, l)
+			}
+		case t.kind == punct && t.text == "}":
+			// What's left of a lease whose line a client spoiled.
+		default:
+			// Some other top-level statement: skip it.
+			if err := p.skip(t); err != nil {
+				return nil, err
+			}
 		}
 	}
 }
@@ -122,17 +139,23 @@ const (
 	word kind = iota
 	str
 	punct // { } ;
+	// bad is a string a line ended inside: dhcpd never writes one, so a
+	// client's quote made it.
+	bad
 )
 
 type token struct {
 	kind kind
 	text string
 	line int
+	// first says it's the first token on its line.
+	first bool
 }
 
 type lexer struct {
-	r    *bufio.Reader
-	line int
+	r     *bufio.Reader
+	line  int
+	first bool // the next token is the first on its line
 }
 
 func (l *lexer) next() (token, error) {
@@ -141,10 +164,14 @@ func (l *lexer) next() (token, error) {
 		if err != nil {
 			return token{}, err
 		}
+		first := l.first
 		switch {
 		case c == '\n':
 			l.line++
+			l.first = true
+			continue
 		case c == ' ' || c == '\t' || c == '\r':
+			continue
 		case c == '#':
 			for c != '\n' {
 				if c, err = l.r.ReadByte(); err != nil {
@@ -152,10 +179,17 @@ func (l *lexer) next() (token, error) {
 				}
 			}
 			l.line++
+			l.first = true
+			continue
+		}
+		l.first = false
+		switch {
 		case c == '{' || c == '}' || c == ';':
-			return token{punct, string(c), l.line}, nil
+			return token{punct, string(c), l.line, first}, nil
 		case c == '"':
-			return l.quoted()
+			t, err := l.quoted()
+			t.first = first
+			return t, err
 		default:
 			var b strings.Builder
 			b.WriteByte(c)
@@ -172,38 +206,54 @@ func (l *lexer) next() (token, error) {
 				}
 				b.WriteByte(c)
 			}
-			return token{word, b.String(), l.line}, nil
+			return token{word, b.String(), l.line, first}, nil
 		}
 	}
 }
 
+// quoted reads a string as dhcpd's read_string does (conflex.c): a
+// backslash keeps the character after it, except a quote, which always
+// ends the string. One a line ends inside is bad.
 func (l *lexer) quoted() (token, error) {
 	line := l.line
 	var b strings.Builder
+	escaped := false
 	for {
 		c, err := l.r.ReadByte()
 		if err != nil {
 			return token{}, fmt.Errorf("line %d: unterminated string", line)
 		}
-		switch c {
-		case '"':
-			return token{str, b.String(), line}, nil
-		case '\\':
-			if c, err = l.r.ReadByte(); err != nil {
-				return token{}, fmt.Errorf("line %d: unterminated string", line)
-			}
-		case '\n':
-			return token{}, fmt.Errorf("line %d: newline in string", line)
+		switch {
+		case c == '"':
+			return token{kind: str, text: b.String(), line: line}, nil
+		case c == '\n':
+			l.line++
+			l.first = true
+			return token{kind: bad, line: line}, nil
+		case escaped:
+			escaped = false
+			b.WriteByte(c)
+		case c == '\\':
+			escaped = true
+		default:
+			b.WriteByte(c)
 		}
-		b.WriteByte(c)
 	}
 }
 
 type parser struct {
-	lex lexer
+	lex  lexer
+	back []token // tokens put back, read again first
 }
 
-func (p *parser) next() (token, error) { return p.lex.next() }
+func (p *parser) next() (token, error) {
+	if n := len(p.back); n > 0 {
+		t := p.back[n-1]
+		p.back = p.back[:n-1]
+		return t, nil
+	}
+	return p.lex.next()
+}
 
 // need reads a token, treating the end of the file as an error.
 func (p *parser) need() (token, error) {
@@ -214,8 +264,8 @@ func (p *parser) need() (token, error) {
 	return t, err
 }
 
-// skip discards a statement that started with t: up to its semicolon,
-// or its block if it has one.
+// skip discards a top-level statement that started with t: up to its
+// semicolon, or its block if it has one.
 func (p *parser) skip(t token) error {
 	depth := 0
 	for {
@@ -223,11 +273,7 @@ func (p *parser) skip(t token) error {
 		case t.kind == punct && t.text == "{":
 			depth++
 		case t.kind == punct && t.text == "}":
-			depth--
-			if depth < 0 {
-				return fmt.Errorf("line %d: unexpected }", t.line)
-			}
-			if depth == 0 {
+			if depth--; depth <= 0 {
 				return nil
 			}
 		case t.kind == punct && t.text == ";" && depth == 0:
@@ -240,88 +286,133 @@ func (p *parser) skip(t token) error {
 	}
 }
 
-// args reads a statement's arguments up to its semicolon.
-func (p *parser) args() ([]token, error) {
-	var out []token
-	for {
-		t, err := p.need()
-		if err != nil {
-			return nil, err
-		}
-		if t.kind == punct {
-			if t.text == ";" {
-				return out, nil
-			}
-			return nil, fmt.Errorf("line %d: unexpected %s", t.line, t.text)
-		}
-		out = append(out, t)
-	}
-}
-
-func (p *parser) lease() (Lease, error) {
-	var l Lease
-	t, err := p.need()
+// lease reads a lease after its "lease" keyword, as dhcpd's write_lease
+// writes it:
+//
+//	lease 192.168.1.112 {
+//		starts 1 2026/09/28 10:00:00 UTC;
+//		…
+//	}
+//
+// The header is one line, each statement is one line, and the lease
+// ends at a } alone at the start of a line. ok is false when the header
+// isn't a lease's (it's skipped); a lease with a statement it can't
+// read is returned Malformed.
+func (p *parser) lease(kw token) (l Lease, ok bool, err error) {
+	addr, err := p.need()
 	if err != nil {
-		return l, err
+		return l, false, err
 	}
-	if l.IP, err = netip.ParseAddr(t.text); t.kind != word || err != nil {
-		return l, fmt.Errorf("line %d: lease for %q, not an address", t.line, t.text)
+	brace, err := p.need()
+	if err != nil {
+		return l, false, err
 	}
-	if t, err = p.need(); err != nil {
-		return l, err
-	}
-	if t.kind != punct || t.text != "{" {
-		return l, fmt.Errorf("line %d: expected { after lease %s", t.line, l.IP)
+	l.IP, err = netip.ParseAddr(addr.text)
+	if addr.kind != word || err != nil || addr.line != kw.line || brace.kind != punct || brace.text != "{" || brace.line != kw.line {
+		return l, false, p.skip(brace)
 	}
 	haveEnds := false
 	for {
 		t, err := p.need()
 		if err != nil {
-			return l, err
+			return l, false, err
 		}
-		if t.kind == punct && t.text == "}" {
+		if t.kind == punct && t.text == "}" && t.first {
 			break
 		}
-		if t.kind != word {
-			return l, fmt.Errorf("line %d: unexpected %q in lease %s", t.line, t.text, l.IP)
+		if l.Malformed {
+			continue // to the lease's closing brace
 		}
-		args, err := p.args()
+		if t.kind != word || !t.first {
+			l.Malformed = true
+			continue
+		}
+		args, end, err := p.args(t.line)
 		if err != nil {
-			return l, err
+			return l, false, err
 		}
-		switch t.text {
-		case "starts":
-			if l.Starts, err = parseTime(args); err != nil {
-				return l, fmt.Errorf("line %d: starts: %w", t.line, err)
-			}
-		case "ends":
-			if l.Ends, err = parseTime(args); err != nil {
-				return l, fmt.Errorf("line %d: ends: %w", t.line, err)
-			}
-			haveEnds = true
-		case "hardware":
-			if len(args) == 2 {
-				l.MAC = strings.ToLower(args[1].text)
-			}
-		case "client-hostname":
-			if len(args) != 1 || args[0].kind != str {
-				return l, fmt.Errorf("line %d: client-hostname needs one string", t.line)
-			}
-			l.Hostname = args[0].text
-		case "abandoned":
-			l.Abandoned = true
+		if !end {
+			l.Malformed = true
+			continue
+		}
+		if !p.statement(&l, t.text, args, &haveEnds) {
+			l.Malformed = true
 		}
 	}
 	// A lease without an end isn't one dhcpd wrote; don't guess.
-	if !haveEnds {
+	if !haveEnds || l.Malformed {
 		l.Abandoned = true
 	}
-	return l, nil
+	return l, true, nil
+}
+
+// args reads a statement's arguments up to its semicolon. end is false
+// when the line doesn't hold exactly one statement: it ends first, or
+// something follows the semicolon.
+func (p *parser) args(line int) (out []token, end bool, err error) {
+	for {
+		t, err := p.need()
+		if err != nil {
+			return nil, false, err
+		}
+		if t.line != line {
+			p.unread(t)
+			return nil, false, nil
+		}
+		if t.kind == punct && t.text == ";" {
+			// Nothing else may follow on the line.
+			n, err := p.next()
+			if err == io.EOF {
+				return out, true, nil
+			} else if err != nil {
+				return nil, false, err
+			}
+			p.unread(n)
+			return out, n.line != line, nil
+		}
+		if t.kind == punct || t.kind == bad {
+			return nil, false, nil
+		}
+		out = append(out, t)
+	}
+}
+
+// unread puts a token back to be read next.
+func (p *parser) unread(t token) { p.back = append(p.back, t) }
+
+// statement applies one statement of a lease; false if it's malformed.
+func (p *parser) statement(l *Lease, name string, args []token, haveEnds *bool) bool {
+	var err error
+	switch name {
+	case "starts":
+		l.Starts, err = parseTime(args)
+	case "ends":
+		l.Ends, err = parseTime(args)
+		*haveEnds = true
+	case "hardware":
+		if len(args) != 2 || args[0].kind != word || args[1].kind != word {
+			return false
+		}
+		l.MAC = strings.ToLower(args[1].text)
+	case "client-hostname":
+		if len(args) != 1 || args[0].kind != str {
+			return false
+		}
+		l.Hostname = args[0].text
+	case "abandoned":
+		l.Abandoned = true
+	}
+	return err == nil
 }
 
 // parseTime reads "never", or dhcpd's "<weekday> YYYY/MM/DD HH:MM:SS",
 // in UTC, with or without a trailing "UTC".
 func parseTime(args []token) (time.Time, error) {
+	for _, a := range args {
+		if a.kind != word {
+			return time.Time{}, errors.New("a time is words, not a string")
+		}
+	}
 	if len(args) == 1 && args[0].text == "never" {
 		return time.Time{}, nil
 	}
