@@ -1,4 +1,4 @@
-// Code generated from OpenBSD sbin/pfctl/parse.y 1.726 (the keywords table); DO NOT EDIT.
+// Code generated from OpenBSD sbin/pfctl/parse.y 1.724 (the keywords table); DO NOT EDIT.
 
 package pf
 
