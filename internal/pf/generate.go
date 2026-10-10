@@ -1501,11 +1501,11 @@ func GenerateUnboundConf(m *Model) string {
 	if own || len(lists) > 0 {
 		lines = append(lines, "\tmodule-config: \"respip validator iterator\"")
 	}
-	// A thread reloading a list's zone answers nothing until it's done
-	// (14 s for 575,000 names on 7.9); a second one keeps answering.
-	if len(lists) > 0 {
-		lines = append(lines, "\tnum-threads: 2")
-	}
+	// One thread, so unbound answers nothing while a list's zone reloads
+	// (14 s for 575,000 names on 7.9; the blocklists card says so). Two
+	// would keep answering, but OpenBSD builds unbound without threads,
+	// so num-threads starts processes: a zone reload reaches only the
+	// first, and dump_cache is refused.
 	if own {
 		lines = append(lines, "", "rpz:", "\tname: \""+OwnZoneName+"\"", "\tzonefile: \""+OwnZonePath+"\"", "\trpz-log: yes", "\trpz-log-name: \""+OwnLogName+"\"")
 	}

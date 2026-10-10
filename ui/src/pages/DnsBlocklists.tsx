@@ -2,18 +2,19 @@
 // blocks (ads, trackers), your own blocked and allowed names, and how a
 // blocked name is answered.
 import { useEffect, useState } from 'react';
-import { ActionIcon, Anchor, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Card, Group, Menu, Modal, NumberInput, SegmentedControl, Stack, Switch, Table, TagsInput, Text, TextInput, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconDots, IconDownload, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconClockPause, IconDots, IconDownload, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { backend, useStore } from '../model/store';
 import type { DnsListStatus } from '../lib/api';
 import type { DnsBlocklist, Model } from '../model/types';
 import { ListState } from '../components/ListState';
 import { Empty, SectionTitle } from '../components/ui';
 import { formatBytes } from '../lib/format';
-import { estimateBytes } from '../lib/dnsCost';
+import { estimateBytes, reloadSeconds } from '../lib/dnsCost';
 import { BlocklistMemory } from './DnsActivity';
+import { useLive } from '../lib/live';
 
 // Lists people use, in formats OPF reads, fetched to check them.
 const wellKnown: Omit<DnsBlocklist, 'id' | 'enabled'>[] = [
@@ -87,6 +88,26 @@ function Skipped({ skipped }: { skipped: Record<string, number> }) {
   );
 }
 
+/** unbound runs one process (OpenBSD builds it without threads, and a second process misses zone reloads), so it answers nothing while it loads a list downloaded again. */
+function ListReloadPause({ lists, status }: { lists: DnsBlocklist[]; status?: DnsListStatus[] }) {
+  const { data } = useLive('dnsStats');
+  let biggest: { name: string; names: number } | undefined;
+  for (const l of lists) {
+    const s = status?.find((x) => x.id === l.id && x.fetched);
+    if (l.enabled && s && s.blocked + s.allowed > (biggest?.names ?? 0)) biggest = { name: l.name, names: s.blocked + s.allowed };
+  }
+  if (!biggest) return null;
+  const secs = reloadSeconds(biggest.names, data?.lastReload);
+  if (secs < 3) return null;
+  return (
+    <Alert color="yellow" variant="light" p="sm" icon={<IconClockPause size={16} />} title="DNS pauses while a list reloads">
+      <Text size="sm">
+        Each time a list is downloaded again, on its schedule or by hand, devices can’t look up names until the resolver has loaded it: about {Math.max(1, Math.round(secs))} s for {biggest.name}. Smaller lists pause it less.
+      </Text>
+    </Alert>
+  );
+}
+
 export function DnsBlocklists() {
   const { staged, applied, edit } = useStore();
   const lists = staged.dns.blocklists ?? [];
@@ -138,6 +159,7 @@ export function DnsBlocklists() {
           Names on these lists, such as ad and tracker servers, don’t resolve for devices using this resolver. Lists are downloaded when you apply them and again on a schedule. Every list a Pi-hole takes works here. Browser lists like EasyList only partly apply: DNS sees names, not pages, so OPF uses their rules for whole names and says how many it left out.
         </Text>
         <BlocklistMemory status={status} />
+        <ListReloadPause lists={lists} status={status} />
         {lists.length ? (
           <Table.ScrollContainer minWidth={460}>
             <Table verticalSpacing="xs">

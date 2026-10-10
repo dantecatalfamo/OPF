@@ -179,8 +179,8 @@ func TestUnboundFormats(t *testing.T) {
 		ubCheck(t, "file /var/db/dhcpd.leases", p, string(b))
 	}
 
-	// Two threads (num-threads: 2, for a blocklist), and counters only
-	// printed when not zero.
+	// Two threads (an unbound.conf of the person's own may ask for
+	// them), and counters only printed when not zero.
 	stats := ubRead(t, "sysinfo/testdata/openbsd-7.9/unbound-control_stats_noreset.txt")
 	var thread1 []string
 	for _, l := range strings.Split(stats, "\n") {

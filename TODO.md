@@ -2197,14 +2197,16 @@ Found by the suite on 7.9, open:
       opf` leaves it running, `rcctl restart opf` starts a second one,
       which waits for the first's lock. Proposed: hand the restart to
       a detached `rcctl restart opf` when rc started OPF.
-- [ ] `num-threads: 2` (with DNS blocklists) makes unbound run two
+- [x] `num-threads: 2` (with DNS blocklists) made unbound run two
       processes on OpenBSD, which builds it without threads. Then
-      `auth_zone_reload` reaches only the first one (remote.c returns
-      before distributing it): a refreshed list is half applied until
-      unbound restarts. `dump_cache` is refused ("not supported in
-      multi-process operation"), so the DNS page's cache tool shows
-      nothing. Proposed: one thread again, and answers pause while a
-      big list reloads.
+      `auth_zone_reload` reached only the first one (remote.c returns
+      before distributing it): a refreshed list was half applied until
+      unbound restarted. `dump_cache` was refused ("not supported in
+      multi-process operation"), so the DNS page's cache tool showed
+      nothing. One thread again; the blocklists card warns that answers
+      pause while a list reloads (about the time its names take).
+      Keeping answers during a reload would take a second unbound, or
+      loading lists another way.
 - [ ] A commit with WireGuard peers named by host name hangs in
       netstart while their names don't resolve (no DNS, or DNS through
       the resolver the commit is changing), until the commit's two
@@ -2537,8 +2539,11 @@ Live data:
       782 MB and 13.6 s to start, and `unbound-control status` doesn't
       answer until every zone is loaded, which is what OPF times.
       Reloading one list's zone stopped every answer for 14 s with one
-      thread; with two, queries kept being answered, so unbound.conf
-      has `num-threads: 2` whenever a blocklist is on.
+      thread; with two, queries kept being answered. unbound.conf had
+      `num-threads: 2` whenever a blocklist was on, until the
+      conformance suite showed that two are two processes on OpenBSD
+      (below, under Conformance): it's one again, and the blocklists
+      card says how long DNS pauses while the biggest list reloads.
 - [x] DNS stats on the DNS page and the dashboard, from `unbound-control
       stats_noreset` (extended-statistics, over the control socket,
       which is now on whenever the resolver is): queries a second, cache
