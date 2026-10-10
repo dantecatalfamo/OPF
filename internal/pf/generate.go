@@ -1580,6 +1580,10 @@ func GenerateFiles(m *Model) []GeneratedFile {
 			Content: GenerateHostnameIf(&m.Interfaces[i], m),
 		})
 	}
+	for i := range m.Firewall.FlowExports {
+		e := &m.Firewall.FlowExports[i]
+		files = append(files, GeneratedFile{Path: "/etc/hostname." + e.Device, Content: GenerateHostnamePflow(e, m)})
+	}
 	// A port that only carries VLANs is no network of its own, but it
 	// has to be up for them to carry anything.
 	for _, p := range BareParents(m) {

@@ -723,6 +723,7 @@ func (v *validator) rawLine(path, s string, required bool) {
 }
 
 func (v *validator) firewall() {
+	v.flowExports()
 	if t := v.m.Firewall.Traffic; t != nil && t.Enabled {
 		v.intRange("firewall.traffic.days", t.Days, 1, MaxActivityDays)
 		if t.MaxDevices != 0 {

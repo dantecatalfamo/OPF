@@ -605,6 +605,9 @@ type Firewall struct {
 	Traffic *TrafficAccounting `json:"traffic,omitempty"`
 	// Authpf is sign-in access (authpf.go); nil, or not Enabled, none.
 	Authpf *Authpf `json:"authpf,omitempty"`
+	// FlowExports are pflow(4) interfaces, each sending flow records to
+	// a collector (pflow.go).
+	FlowExports []FlowExport `json:"flowExports,omitempty"`
 }
 
 // TrafficAccounting keeps each device's traffic, opt in like DNS

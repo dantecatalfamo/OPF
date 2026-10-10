@@ -7,6 +7,7 @@ import { timeoutNames, type FirewallOptions } from '../model/types';
 import { timeoutHelp } from '../lib/pfTimeouts';
 import { PageHeader, SectionTitle } from '../components/ui';
 import { TrafficSettingsCard } from './Traffic';
+import { FlowExportCard } from './FlowExports';
 
 // Number fields are '' while empty; empty means pf's default. The form
 // library reads dots in a field's path as nesting, so timeouts are kept
@@ -255,7 +256,6 @@ export function FirewallSettings() {
                       <Checkbox.Group label="Every connection’s state" description="Applies to every rule that keeps state." inputWrapperOrder={below} {...form.getInputProps('stateDefaults')}>
                         <Stack gap={6} my={6}>
                           <Checkbox value="no-sync" label="Not synchronized to a failover partner (no-sync)" />
-                          <Checkbox value="pflow" label="Exported as flow records (pflow)" />
                           <Checkbox value="sloppy" label="Sloppy TCP tracking, for asymmetric routing (sloppy)" />
                         </Stack>
                       </Checkbox.Group>
@@ -330,6 +330,7 @@ export function FirewallSettings() {
     </form>
     {/* A setting of its own, saved apart from the options above. */}
     <Box mt="md"><TrafficSettingsCard /></Box>
+    <Box mt="md"><FlowExportCard /></Box>
     </>
   );
 }

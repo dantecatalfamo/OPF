@@ -75,6 +75,7 @@ func Import(src ImportSources, opts ImportOptions) *ImportResult {
 
 	res.Notes = append(res.Notes, importName(m, src)...)
 	res.Notes = append(res.Notes, importInterfaces(m, src)...)
+	res.Notes = append(res.Notes, importFlowExports(m, src)...)
 	res.Notes = append(res.Notes, importGateway(m, src)...)
 
 	rc := RcValues(src.Files[RcPath])
@@ -366,6 +367,8 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 		}
 		kind := strings.TrimRight(dev, "0123456789")
 		switch {
+		case kind == "pflow":
+			continue // a flow export (importFlowExports)
 		case kind == "wg":
 			left("a WireGuard tunnel: left as it is (OPF keeps a tunnel's key in a file of its own, so it can't take one over yet)")
 			continue

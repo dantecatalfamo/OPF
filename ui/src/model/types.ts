@@ -265,6 +265,24 @@ export interface Firewall {
   traffic?: TrafficAccounting;
   /** Sign-in access (authpf); missing or not enabled, none. */
   authpf?: Authpf;
+  /** pflow interfaces, each sending flow records to a collector. */
+  flowExports?: FlowExport[];
+}
+
+/** A pflow(4) interface: records of the connections pf exports, sent to a collector over UDP. */
+export interface FlowExport {
+  id: string;
+  name: string;
+  enabled: boolean;
+  /** pflow0 and up. */
+  device: string;
+  /** The collector's IP address and UDP port. */
+  collector: string;
+  port: number;
+  /** The interface whose fixed IPv4 address they're sent from; missing, the one the route picks. */
+  source?: string;
+  /** 5 is NetFlow v5 (IPv4 connections only), 10 is IPFIX. */
+  version: 5 | 10;
 }
 
 // ---------- Routing ----------

@@ -3,6 +3,16 @@ const ipv4RE = new RegExp(`^${octet}(\\.${octet}){3}$`);
 
 export const isIPv4 = (s: string) => ipv4RE.test(s.trim());
 
+// An IPv6 address without a zone, as the URL parser reads one in brackets.
+export function isIPv6(s: string): boolean {
+  if (!/^[0-9a-f:.]+$/i.test(s) || !s.includes(':')) return false;
+  try {
+    return new URL(`http://[${s}]/`).hostname !== '';
+  } catch {
+    return false;
+  }
+}
+
 export function isCIDR(s: string): boolean {
   const [addr, prefix, extra] = s.trim().split('/');
   if (extra !== undefined || prefix === undefined) return false;

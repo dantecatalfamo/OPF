@@ -609,7 +609,19 @@
       "options": "",
       "beforeFilter": "# Example: keep ICMP path-MTU discovery working everywhere\npass quick inet proto icmp icmp-type { echoreq unreach }",
       "afterFilter": ""
-    }
+    },
+    "flowExports": [
+      {
+        "id": "flow_lab",
+        "name": "Lab collector",
+        "enabled": true,
+        "device": "pflow0",
+        "collector": "192.168.1.5",
+        "port": 4739,
+        "source": "lan",
+        "version": 10
+      }
+    ]
   },
   "dhcp": [
     {

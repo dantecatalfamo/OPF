@@ -95,6 +95,9 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
       if (inside.length) out.push({ what: `Alias ${a.name}`, effect: 'edit', detail: `holds ${inside.join(', ')}, on ${name}’s network` });
     }
   }
+  for (const e of m.firewall.flowExports ?? []) {
+    if (e.source === id) out.push({ what: `Flow export ${e.name}`, effect: 'changed', detail: `sent from the address the route to its collector picks, not ${name}’s` });
+  }
   const c = m.firewall.custom;
   for (const [text, where] of [[c.options, 'options'], [c.beforeFilter, 'rules before'], [c.afterFilter, 'rules after']] as const) {
     if (mentions(text, id)) out.push({ what: `Custom pf (${where})`, effect: 'edit', detail: `mentions $${id}` });
@@ -144,6 +147,7 @@ export function withoutInterface(m: Model, id: string): Model {
         return entries.length ? { ...a, entries } : a;
       }),
       forwards: m.firewall.forwards.filter((f) => f.iface !== id && !refersTo(f.source, id)),
+      ...(m.firewall.flowExports ? { flowExports: m.firewall.flowExports.map((e) => (e.source === id ? { ...e, source: undefined } : e)) } : {}),
       outboundNat: {
         ...m.firewall.outboundNat,
         rules: m.firewall.outboundNat.rules.filter((n) => n.iface !== id && !refersTo(n.source, id) && !refersTo(n.destination, id)),

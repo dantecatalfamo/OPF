@@ -598,7 +598,7 @@ func TestSysctlConfKeepsOtherLines(t *testing.T) {
 	m.Interfaces = m.Interfaces[:1] // nothing left to forward between
 	m.DHCP, m.Firewall.Rules, m.Firewall.Forwards, m.Routing.Routes = nil, nil, nil, nil
 	m.Routing.Gateways = m.Routing.Gateways[:1]
-	m.Firewall.OutboundNAT.Rules = nil
+	m.Firewall.OutboundNAT.Rules, m.Firewall.FlowExports = nil, nil
 	st, err := e.m.Stage(StageRequest{Base: live.Version, Model: m})
 	if err != nil {
 		t.Fatalf("stage: %v %+v", err, AsError(err).Details)

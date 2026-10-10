@@ -1724,13 +1724,18 @@ its setting on Firewall › Settings), and tried on 7.9:
       talkers. DNS names per device are the most personal data OPF
       holds: admin only, or a role of its own, and never in webhooks.
 
-- [ ] **NetFlow export** (pflow(4)): send flow records to a collector
-      the admin runs (ntopng, Elastiflow, nfdump), NetFlow v5 or IPFIX,
-      from a `pflow0` interface (`flowsrc`, `flowdst`) and `set
-      state-defaults pflow` or rules marked `pflow`. A setting on
-      Firewall › Settings with the collector's address and which
-      traffic; the page says what pflow sends and when (each flow once
-      it ends, as checked above), and that it leaves the box.
+- [x] **NetFlow export** (pflow(4)): Firewall › Settings › Flow export
+      adds collectors, each a pflowN interface (hostname.pflowN:
+      `flowsrc`/`-flowsrc`, `flowdst`, `pflowproto`), NetFlow v5 or
+      IPFIX, sent from an interface's fixed address or the route's.
+      "Export every connection" is `set state-defaults pflow`. The
+      take-over imports hostname.pflowN files OPF can write back.
+      The conformance suite checks ifconfig's pflow line and an IPFIX
+      record reaching a collector on lo0 (TestFlowExport).
+  - [ ] Rules marked `pflow` in the rule form, to export some traffic
+        only; now only raw rules can.
+  - [ ] Each collector's state on its row (ifconfig's RUNNING, packets
+        sent).
 
 ## UI
 
