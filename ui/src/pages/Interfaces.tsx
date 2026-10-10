@@ -36,7 +36,7 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
   const { data: live } = useLive('interfaces');
   // OPF's own ports, and the firewall's other ports, which then only
   // carry VLANs (OPF brings them up for it).
-  const physical = (dev: string) => !/^(vlan|svlan|aggr|trunk|carp|pppoe|tun|tap|gif|etherip|gre|egre|nvgre|eoip|vxlan|pflow|wg|bridge|veb|vport|tpmr|vether|lo|enc|pflog|pfsync)\d/.test(dev);
+  const physical = (dev: string) => !clonedKind.test(dev);
   const own = staged.interfaces.filter((i) => !i.vlan && i.role !== 'vpn' && physical(i.device));
   const bare = (live?.interfaces ?? []).filter((s) => settable(s) && physical(s.name) && !staged.interfaces.some((i) => i.device === s.name));
   const parents = [
@@ -105,6 +105,9 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
     </Modal>
   );
 }
+
+// The kinds of interface ifconfig creates (pf.ClonedKinds): not ports.
+const clonedKind = /^(aggr|bpe|bridge|carp|egre|enc|eoip|erspan|etherip|gif|gre|lo|mgre|mpe|mpip|mpw|nvgre|pair|pflog|pflow|pfsync|ppp|pppoe|rport|sec|svlan|tap|tpmr|trunk|tun|veb|vether|vlan|vport|vxlan|wg)\d/;
 
 // Interfaces the system has that aren't worth offering: loopback,
 // IPsec's enc, pflog's and pfsync's.

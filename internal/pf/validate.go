@@ -347,11 +347,15 @@ func (v *validator) vlanParent(path string, f *Iface) {
 // vio1, ix2) rather than an interface made in software: VLANs, tunnels,
 // bridges, aggregates.
 func PhysicalDevice(dev string) bool {
-	switch strings.TrimRight(dev, "0123456789") {
-	case "vlan", "svlan", "aggr", "trunk", "carp", "pppoe", "tun", "tap", "gif", "etherip", "gre", "egre", "nvgre", "eoip", "vxlan", "pflow", "wg", "bridge", "veb", "vport", "tpmr", "vether", "lo", "enc", "pflog", "pfsync", "mpe", "mpw", "mpip":
-		return false
-	}
-	return true
+	return !slices.Contains(ClonedKinds, strings.TrimRight(dev, "0123456789"))
+}
+
+// ClonedKinds are the kinds of interface ifconfig creates (ifconfig -C
+// on 7.9, which the conformance suite compares).
+var ClonedKinds = []string{
+	"aggr", "bpe", "bridge", "carp", "egre", "enc", "eoip", "erspan", "etherip", "gif", "gre", "lo", "mgre", "mpe", "mpip", "mpw",
+	"nvgre", "pair", "pflog", "pflow", "pfsync", "ppp", "pppoe", "rport", "sec", "svlan", "tap", "tpmr", "trunk", "tun", "veb", "vether",
+	"vlan", "vport", "vxlan", "wg",
 }
 
 func (v *validator) gatewayRef(path, id string) {

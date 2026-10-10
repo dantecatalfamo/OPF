@@ -244,3 +244,14 @@ func TestTableExpiry(t *testing.T) {
 		}
 	}
 }
+
+func TestPhysicalDevice(t *testing.T) {
+	for dev, want := range map[string]bool{"em0": true, "vio1": true, "ix12": true, "pair0": false, "bpe0": false, "mgre3": false, "rport0": false, "sec1": false, "vlan20": false} {
+		if got := PhysicalDevice(dev); got != want {
+			t.Errorf("PhysicalDevice(%q) = %v", dev, got)
+		}
+	}
+	if isPortKind("umb") || !isPortKind("em") {
+		t.Error("isPortKind: umb isn't a port, em is")
+	}
+}
