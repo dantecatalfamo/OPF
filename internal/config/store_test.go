@@ -1039,3 +1039,55 @@ func TestTemporaryCopyOfNestedInstance(t *testing.T) {
 		t.Errorf("DiffWith: %v", err)
 	}
 }
+
+// hangRunner hangs a command starting with hang until its context ends,
+// and, as exec.CommandContext does, refuses to start any command once
+// its context has ended.
+type hangRunner struct {
+	fakeRunner
+	hang string
+}
+
+func (r *hangRunner) Run(ctx context.Context, argv ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if strings.HasPrefix(strings.Join(argv, " "), r.hang) {
+		<-ctx.Done()
+		return nil, errors.New("signal: killed")
+	}
+	return r.fakeRunner.Run(ctx, argv...)
+}
+
+// A commit that runs out of time (a command that hangs, such as netstart
+// resolving a tunnel's endpoint with no DNS) is still reverted: the
+// revert gets time of its own rather than the commit's spent context.
+func TestRevertAfterCommitTimesOut(t *testing.T) {
+	root := t.TempDir()
+	s, err := New(Options{Root: root, StateDir: t.TempDir(), Files: testFiles, ConfirmTimeout: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &hangRunner{hang: "pfctl -f " + s.dir} // loading the staged copy hangs
+	s.run = r
+	writeLive(t, root, "/etc/pf.conf", "pass\n")
+	writeLive(t, root, "/etc/ntpd.conf", "servers pool.ntp.org\n")
+	stage(t, s, "ntpd", "servers time.example\n")
+	stage(t, s, "pf", "block\n")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	e, err := s.Commit(ctx, CommitInfo{})
+	if err == nil || e == nil || e.Status != StatusFailed {
+		t.Fatalf("commit: %+v, %v", e, err)
+	}
+	if strings.Contains(e.Log, "Revert errors") {
+		t.Errorf("the revert failed:\n%s", e.Log)
+	}
+	if !r.ran("pfctl -f " + filepath.Join(root, "/etc/pf.conf")) {
+		t.Errorf("live pf.conf not reloaded: %v", r.commands())
+	}
+	if got := readLive(t, root, "/etc/ntpd.conf"); got != "servers pool.ntp.org\n" {
+		t.Errorf("ntpd.conf not restored: %q", got)
+	}
+}

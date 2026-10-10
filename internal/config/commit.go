@@ -26,6 +26,9 @@ type pendingCommit struct {
 // files waits for confirmation; if it isn't confirmed before the
 // timeout the whole commit is reverted. If anything fails to apply, the whole commit is
 // reverted and the staged changes are kept so they can be fixed.
+// revertTimeout is how long a failed commit's revert may take.
+const revertTimeout = 2 * time.Minute
+
 func (s *Store) Commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 	e, err := s.commit(ctx, info)
 	if err == nil && e.Status == StatusPending {
@@ -107,7 +110,12 @@ func (s *Store) commit(ctx context.Context, info CommitInfo) (*Entry, error) {
 	var logBuf bytes.Buffer
 	fail := func(cause error) (*Entry, error) {
 		fmt.Fprintf(&logBuf, "\nFailed: %v\nReverting.\n", cause)
-		if err := s.revertEntry(ctx, e, &logBuf); err != nil {
+		// The revert gets time of its own: the commit's may be what ran
+		// out (a command that hung), and every command run with a spent
+		// context fails at once, leaving the machine half changed.
+		rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), revertTimeout)
+		defer cancel()
+		if err := s.revertEntry(rctx, e, &logBuf); err != nil {
 			fmt.Fprintf(&logBuf, "Revert errors: %v\n", err)
 		}
 		e.Status = StatusFailed
