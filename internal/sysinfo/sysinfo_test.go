@@ -455,3 +455,16 @@ func TestParseSyslog(t *testing.T) {
 		golden(t, dir, "syslog_messages", ParseSyslog(out, now))
 	})
 }
+
+// newsyslog starts a log it turned over with a line of its own, in ISO
+// 8601 UTC (7.9's newsyslog.c, log_trim).
+func TestParseSyslogNewsyslogLine(t *testing.T) {
+	now := time.Date(2026, 10, 10, 1, 0, 0, 0, time.UTC)
+	got := ParseSyslog("2026-10-10T00:00:07.661Z fw newsyslog[44465]: logfile turned over\nOct 10 00:00:08 fw ntpd[1]: adjusting\n", now)
+	if len(got) != 2 {
+		t.Fatalf("got %+v", got)
+	}
+	if s := got[0]; !s.Time.Equal(time.Date(2026, 10, 10, 0, 0, 7, 661e6, time.UTC)) || s.Host != "fw" || s.Program != "newsyslog" || s.PID != 44465 || s.Message != "logfile turned over" {
+		t.Errorf("newsyslog's line: %+v", s)
+	}
+}

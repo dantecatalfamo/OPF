@@ -33,15 +33,26 @@ func ParseSyslog(out string, now time.Time) []SyslogLine {
 
 func parseSyslogLine(l string, now time.Time) (SyslogLine, bool) {
 	var s SyslogLine
-	if len(l) < 16 || l[15] != ' ' {
-		return s, false
+	var after string
+	if stamp, rest, ok := strings.Cut(l, " "); ok && len(stamp) > 19 && stamp[4] == '-' && stamp[10] == 'T' {
+		// ISO 8601 in UTC: what newsyslog writes as the first line of
+		// a log it turned over ("%FT%T.%03ldZ"), and syslogd with -Z.
+		t, err := time.Parse(time.RFC3339Nano, stamp)
+		if err != nil {
+			return s, false
+		}
+		s.Time, after = t.In(now.Location()), rest
+	} else {
+		if len(l) < 16 || l[15] != ' ' {
+			return s, false
+		}
+		t, err := time.ParseInLocation("Jan _2 15:04:05", l[:15], now.Location())
+		if err != nil {
+			return s, false
+		}
+		s.Time, after = withYear(t, now), l[16:]
 	}
-	t, err := time.ParseInLocation("Jan _2 15:04:05", l[:15], now.Location())
-	if err != nil {
-		return s, false
-	}
-	s.Time = withYear(t, now)
-	host, rest, ok := strings.Cut(l[16:], " ")
+	host, rest, ok := strings.Cut(after, " ")
 	if !ok || host == "" {
 		return s, false
 	}
