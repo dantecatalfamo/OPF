@@ -1,4 +1,7 @@
-// ICMP and ICMPv6 type definitions for the rule form.
+// ICMP and ICMPv6 type definitions for the rule form. The names are
+// pfctl's (icmp_type, icmp6_type, icmp_code and icmp6_code in
+// pfctl_parser.c), since they're written into pf rules; the conformance
+// suite checks them against each release (TestSourceFacts).
 // Reference: https://www.openbsd.org/faq/pf/filter.html
 // https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml
 // https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml
@@ -48,7 +51,7 @@ export const icmpTypes: ICMPType[] = [
       { name: 'host-tos', number: 12, description: 'Host unreachable for TOS' },
       { name: 'filter-prohib', number: 13, description: 'Communication administratively prohibited' },
       { name: 'host-preced', number: 14, description: 'Host precedence violation' },
-      { name: 'preced-cutoff', number: 15, description: 'Precedence cutoff in effect' },
+      { name: 'cutoff-preced', number: 15, description: 'Precedence cutoff in effect' },
     ],
   },
   {
@@ -185,13 +188,11 @@ export const icmp6Types: ICMPType[] = [
     number: 1,
     description: 'Destination unreachable',
     codes: [
-      { name: 'noroute', number: 0, description: 'No route to destination' },
-      { name: 'admin-prohib', number: 1, description: 'Administratively prohibited' },
-      { name: 'beyond-scope', number: 2, description: 'Beyond scope of source address' },
+      { name: 'noroute-unr', number: 0, description: 'No route to destination' },
+      { name: 'admin-unr', number: 1, description: 'Administratively prohibited' },
+      { name: 'beyond-unr', number: 2, description: 'Beyond scope of source address' },
       { name: 'addr-unr', number: 3, description: 'Address unreachable' },
       { name: 'port-unr', number: 4, description: 'Port unreachable' },
-      { name: 'src-fail', number: 5, description: 'Source address failed policy' },
-      { name: 'rej-route', number: 6, description: 'Reject route to destination' },
     ],
   },
   {
@@ -215,7 +216,6 @@ export const icmp6Types: ICMPType[] = [
     codes: [
       { name: 'badhead', number: 0, description: 'Erroneous header field' },
       { name: 'nxthdr', number: 1, description: 'Unrecognized next header' },
-      { name: 'badoption', number: 2, description: 'Unrecognized IPv6 option' },
     ],
   },
   {
@@ -284,12 +284,12 @@ export const icmp6Types: ICMPType[] = [
     description: 'Redirect',
   },
   {
-    name: 'routerrenum',
+    name: 'routrrenum',
     number: 138,
     description: 'Router renumbering',
   },
   {
-    name: 'nireq',
+    name: 'niqry',
     number: 139,
     description: 'Node information query',
   },
@@ -297,16 +297,6 @@ export const icmp6Types: ICMPType[] = [
     name: 'nirep',
     number: 140,
     description: 'Node information response',
-  },
-  {
-    name: 'invrtrreq',
-    number: 141,
-    description: 'Inverse neighbor discovery solicitation',
-  },
-  {
-    name: 'invrtrrep',
-    number: 142,
-    description: 'Inverse neighbor discovery advertisement',
   },
   {
     name: 'mtraceresp',
@@ -370,8 +360,8 @@ export const returnIcmpCodes = [
 ];
 
 export const returnIcmp6Codes = [
-  { value: 'noroute', label: 'noroute', description: 'No route to destination' },
-  { value: 'admin-prohib', label: 'admin-prohib', description: 'Administratively prohibited' },
+  { value: 'noroute-unr', label: 'noroute-unr', description: 'No route to destination' },
+  { value: 'admin-unr', label: 'admin-unr', description: 'Administratively prohibited' },
   { value: 'addr-unr', label: 'addr-unr', description: 'Address unreachable' },
   { value: 'port-unr', label: 'port-unr', description: 'Port unreachable (default)' },
 ];
