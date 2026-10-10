@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -133,17 +134,23 @@ func TestTrustAnchorOnlyWhenMissing(t *testing.T) {
 			t.Errorf("ran %q with root.key there", c)
 		}
 	}
-	e = newEnv(t, time.Minute)
-	os.Remove(filepath.Join(e.root, pf.RootKeyPath))
-	st = stageDisable(t, e)
-	e.m.Commit(CommitRequest{Staged: st.Version})
-	want := "unbound-anchor -v -a " + filepath.Join(e.root, pf.RootKeyPath)
-	found := false
-	for _, c := range e.run.commands() {
-		found = found || c == want
-	}
-	if !found {
-		t.Errorf("want %q in %q", want, e.run.commands())
+	// Missing, it's made; with the resolver off too, as on a fresh
+	// install taken over, since unbound-checkconf still wants it.
+	for _, enabled := range []bool{true, false} {
+		e = newEnv(t, time.Minute)
+		os.Remove(filepath.Join(e.root, pf.RootKeyPath))
+		m := sample(t)
+		disableLANRule(m)
+		m.DNS.Enabled, m.DNS.DNSSEC = enabled, true
+		st, err := e.m.Stage(StageRequest{Base: e.live().Version, Model: m})
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.m.Commit(CommitRequest{Staged: st.Version})
+		want := "unbound-anchor -v -a " + filepath.Join(e.root, pf.RootKeyPath)
+		if !slices.Contains(e.run.commands(), want) {
+			t.Errorf("resolver on %v: want %q in %q", enabled, want, e.run.commands())
+		}
 	}
 }
 

@@ -133,7 +133,8 @@ func (m *Manager) prepareCommit(ctx context.Context, model *pf.Model) error {
 	if err := m.prepareDNSLists(ctx, model); err != nil {
 		return err
 	}
-	if model.DNS.Enabled && model.DNS.DNSSEC {
+	// Even with the resolver off: its file is still checked.
+	if pf.WantsTrustAnchor(model) {
 		key := m.store.SystemPath(pf.RootKeyPath)
 		if !exists(key) {
 			// Its exit status isn't meaningful (1 when it wrote the
