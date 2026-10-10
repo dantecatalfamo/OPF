@@ -539,6 +539,7 @@ const (
 	LabelIsolated  = "vpn-only"     // limits on a tunnel's devices kept to it, by interface id
 	LabelVPNIn     = "vpn-in"       // NAT into a tunnel from networks that may reach it, by tunnel id
 	LabelExit      = "exit"         // a way out through a VPN provider, by tunnel id
+	LabelLocal     = "local"        // an inside network addressed by DHCP, as one of your networks (LocalTag), by interface id
 	LabelAntispoof = "antispoof"    // an interface's antispoof rules, by interface id
 	LabelNTP       = "ntp"          // devices asking the firewall the time, by interface id
 	// Counting each device's traffic (TrafficAccounting), by interface
@@ -573,7 +574,7 @@ func ParseLabel(l string) (kind, id string, ok bool) {
 	}
 	kind, id, found = strings.Cut(rest, ":")
 	switch kind {
-	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelAntispoof, LabelNTP, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf, LabelAuthpf:
+	case LabelRule, LabelForward, LabelNAT, LabelAutoNAT, LabelBuiltin, LabelSplit, LabelIsolated, LabelVPNIn, LabelExit, LabelLocal, LabelAntispoof, LabelNTP, LabelTraffic, LabelTrafficUnknown, LabelTrafficSelf, LabelAuthpf:
 	default:
 		return "", "", false
 	}
@@ -888,7 +889,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	split := splitPeers(m)
 	exits := exitTunnels(m)
 	if len(split) > 0 || len(exits) > 0 {
-		add(fmt.Sprintf("table <%s> const { %s }", LocalTable, strings.Join(LocalNetworks(m, true), " ")),
+		add(fmt.Sprintf("table <%s> const { %s }", LocalTable, strings.Join(LocalNetworks(m), " ")),
 			&Origin{Label: "WireGuard: your networks", To: "/services/wireguard"})
 	}
 	// Declared empty: OPF adds the devices as it sees them, and a reload
@@ -1100,6 +1101,37 @@ func GeneratePfRuleset(m *Model) []PfLine {
 	}
 	blank()
 
+	// Your networks addressed by DHCP aren't in <opf_local>: a table
+	// can't hold an interface's network as it changes, and pfctl
+	// refuses the whole ruleset if one has no address yet. pf learns
+	// them with the lease here, (iface:network), matching nothing until
+	// then, and tags what's sent to them for the rules below.
+	notLocal := ""
+	if dyn := dynamicLocal(m); len(dyn) > 0 && (len(split) > 0 || len(exits) > 0) {
+		notLocal = " ! tagged " + LocalTag
+		var on []string
+		for _, t := range split {
+			on = append(on, "$"+t.iface.ID)
+		}
+		for _, t := range exits {
+			for _, i := range exitFrom(t, m) {
+				if !slices.Contains(on, "$"+i.ID) {
+					on = append(on, "$"+i.ID)
+				}
+			}
+		}
+		ifaces := on[0]
+		if len(on) > 1 {
+			ifaces = "{ " + strings.Join(on, " ") + " }"
+		}
+		add("# Your networks addressed by DHCP", nil)
+		for _, i := range dyn {
+			described(i.Name+" is one of your networks", &Origin{Label: "WireGuard: your networks", To: "/services/wireguard"},
+				fmt.Sprintf("match in on %s inet to ($%s:network) tag %s%s", ifaces, i.ID, LocalTag, label(LabelLocal, i.ID)))
+		}
+		blank()
+	}
+
 	// Devices told to send only local traffic through their tunnel may
 	// only reach local networks, whatever their own configuration says.
 	// Before every user rule, so no pass rule can widen it.
@@ -1116,7 +1148,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 				from = "{ " + strings.Join(addrs, " ") + " }"
 			}
 			described(fmt.Sprintf("%s: %s", t.iface.Name, strings.Join(names, ", ")), &Origin{Label: "WireGuard: " + t.iface.Name, To: "/services/wireguard/" + t.iface.ID},
-				fmt.Sprintf("block in log quick on $%s inet from %s to ! <%s>%s", t.iface.ID, from, LocalTable, label(LabelSplit, t.iface.ID)))
+				fmt.Sprintf("block in log quick on $%s inet from %s to ! <%s>%s%s", t.iface.ID, from, LocalTable, notLocal, label(LabelSplit, t.iface.ID)))
 		}
 		blank()
 	}
@@ -1138,7 +1170,7 @@ func GeneratePfRuleset(m *Model) []PfLine {
 			for _, i := range exitFrom(t, m) {
 				lines := []string{
 					// WireGuard's MTU is 1420: TCP's segments must fit inside it.
-					fmt.Sprintf("match in on $%s inet from ($%s:network) to ! <%s> rtable %d scrub (max-mss %d)%s", i.ID, i.ID, LocalTable, n, exitMSS, label(LabelExit, t.ID)),
+					fmt.Sprintf("match in on $%s inet from ($%s:network) to ! <%s>%s rtable %d scrub (max-mss %d)%s", i.ID, i.ID, LocalTable, notLocal, n, exitMSS, label(LabelExit, t.ID)),
 					fmt.Sprintf("match in on $%s to %s rtable 0%s", i.ID, self, label(LabelExit, t.ID)),
 				}
 				for _, w := range outsides(m) {
@@ -1625,15 +1657,38 @@ var trafficOrigin = &Origin{Label: "Traffic per device", To: "/firewall/settings
 // has split-tunnel peers.
 const LocalTable = "opf_local"
 
+// LocalTag marks what's sent to one of your networks addressed by DHCP
+// (dynamicLocal), which <opf_local> can't hold.
+const LocalTag = "opf_local"
+
+// dynamicLocal are the inside interfaces addressed by DHCP that count
+// as your networks, which LocalNetworks leaves out.
+func dynamicLocal(m *Model) []*Iface {
+	var out []*Iface
+	for k := range m.Interfaces {
+		if f := &m.Interfaces[k]; localIface(f) {
+			if _, ok := ifaceNet(f); !ok && f.IPv4.Mode == IPv4DHCP {
+				out = append(out, f)
+			}
+		}
+	}
+	return out
+}
+
+// localIface is whether an interface's network is one of yours.
+func localIface(f *Iface) bool {
+	// A way out's address is the provider's, not one of your networks.
+	return f.Enabled && f.Role != RoleWAN && (f.WireGuard == nil || f.WireGuard.Exit == nil)
+}
+
 // LocalNetworks is what counts as "your networks" for a split-tunnel
 // peer: every enabled inside interface's network, every network behind
 // a site-to-site peer, and every static route's. A peer's configuration
-// sends these into its tunnel, and pf lets it reach nothing else. With
-// dynamic, an inside interface addressed by DHCP is included as
-// $id:network, which pf resolves when it loads the rules; a device's
-// configuration can only list fixed networks, so without it they're
-// left out.
-func LocalNetworks(m *Model, dynamic bool) []string {
+// sends these into its tunnel, and pf lets it reach nothing else. An
+// inside interface addressed by DHCP is one too, but not here: a
+// device's configuration can only list fixed networks, and pf.conf has
+// them as dynamicLocal.
+func LocalNetworks(m *Model) []string {
 	var out []string
 	seen := map[string]bool{}
 	add := func(n string) {
@@ -1644,13 +1699,11 @@ func LocalNetworks(m *Model, dynamic bool) []string {
 	}
 	for i := range m.Interfaces {
 		f := &m.Interfaces[i]
-		if !f.Enabled || f.Role == RoleWAN || f.WireGuard != nil && f.WireGuard.Exit != nil {
-			continue // a way out's address is the provider's, not one of your networks
+		if !localIface(f) {
+			continue
 		}
 		if n, ok := ifaceNet(f); ok {
 			add(n.String())
-		} else if dynamic && f.IPv4.Mode == IPv4DHCP {
-			add("$" + f.ID + ":network")
 		}
 	}
 	for _, t := range m.Tunnels() {

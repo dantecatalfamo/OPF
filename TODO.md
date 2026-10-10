@@ -2218,10 +2218,16 @@ Found by the suite on 7.9, open:
       with a warning when the firewall can't, or when it's slow. Still
       open: a name that stops resolving later, and DNS through the
       resolver the commit restarts.
-- [ ] An inside network addressed by DHCP is `$id:network` in
+- [x] An inside network addressed by DHCP was `$id:network` in
       `<opf_local>` (split tunnels' table), which pfctl resolves when it
-      loads the rules: without a lease yet the whole ruleset fails
-      ("no IP address found"). The dhcp-inside model shows it.
+      loads the rules: without a lease yet the whole ruleset failed
+      ("no IP address found"), and with one the table kept the network
+      the address had then. A table can't hold an interface's network
+      as it changes, so it's left out, and `match in on <the split
+      tunnels and the ways out's networks> inet to ($id:network) tag
+      opf_local` ahead of them, which matches nothing until a lease,
+      lets the split block and the way out's rtable skip what's
+      `tagged opf_local`. The dhcp-inside model has a way out too now.
 - [ ] VLANs are only allowed on physical ports; OpenBSD carries them on
       aggr, trunk and vether too.
 - [ ] Speed: the suite's commit of the everything model took over
@@ -2389,10 +2395,12 @@ Stop it by the PID it wrote; never pkill.
       group or device, `set hostid`, quoted `set fingerprints`), scrub's
       `min-ttl` and `reassemble tcp`, and `antispoof log quick for $lan
       inet label …`.
-- [ ] Split-tunnel enforcement: pfctl accepts `$iface:network` entries
-      in a `const` table (used for DHCP-addressed inside networks in
-      `<opf_local>`), and the block rule stops a split-tunnel device
-      that sets `AllowedIPs = 0.0.0.0/0` from reaching the internet.
+- [ ] Split-tunnel enforcement: the block rule stops a split-tunnel
+      device that sets `AllowedIPs = 0.0.0.0/0` from reaching the
+      internet. (A DHCP-addressed inside network is no longer a
+      `$iface:network` entry in `<opf_local>`, which pfctl resolved once
+      and refused without a lease: it's tagged `opf_local` by a match
+      rule on `($iface:network)`, below under Conformance.)
 - [ ] The ARP and routing table parsers against real `arp -an` and
       `netstat -rnf inet`/`inet6` output.
 

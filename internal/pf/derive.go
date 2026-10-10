@@ -33,7 +33,7 @@ type Derived struct {
 func Derive(m *Model) Derived {
 	d := Derived{
 		AutomaticNAT:  AutomaticNAT(m),
-		LocalNetworks: LocalNetworks(m, false),
+		LocalNetworks: LocalNetworks(m),
 		Rules:         map[string]string{},
 		DynamicIfaces: map[string]bool{},
 		SelfDynamic:   ifaceDynamic(Endpoint{Type: EndpointSelf}, m),

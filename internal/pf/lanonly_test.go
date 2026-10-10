@@ -41,8 +41,8 @@ func TestLANOnlyVPNServer(t *testing.T) {
 		}
 	}
 	// The office network is local, for split-tunnel devices.
-	if !strings.Contains(strings.Join(LocalNetworks(&m, true), " "), "192.168.1.0/24") {
-		t.Errorf("local networks %v", LocalNetworks(&m, true))
+	if !strings.Contains(strings.Join(LocalNetworks(&m), " "), "192.168.1.0/24") {
+		t.Errorf("local networks %v", LocalNetworks(&m))
 	}
 	files := map[string]string{}
 	for _, f := range GenerateFiles(&m) {

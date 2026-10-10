@@ -39,6 +39,8 @@ export function labelOwner(m: Model, label: string | undefined): LabelOwner | un
       return iface && { text: `Automatic outbound NAT for ${iface.name}`, to: '/firewall/nat/outbound' };
     case 'split-tunnel':
       return iface && { text: `WireGuard: ${iface.name} (only your networks)`, to: `/services/wireguard/${iface.id}` };
+    case 'local':
+      return iface && { text: `WireGuard: ${iface.name} as one of your networks (addressed by DHCP)`, to: '/services/wireguard' };
     case 'vpn-in':
       return iface && { text: `WireGuard: into ${iface.name}, as OPF`, to: `/services/wireguard/${iface.id}` };
     case 'vpn-only':

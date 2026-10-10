@@ -47,7 +47,7 @@ func TestExitTunnel(t *testing.T) {
 		t.Errorf("hostname.wg2:\n%s", hif)
 	}
 
-	if slices.Contains(LocalNetworks(m, true), "10.64.1.2/32") {
+	if slices.Contains(LocalNetworks(m), "10.64.1.2/32") {
 		t.Error("the way out's address counts as one of your networks")
 	}
 	conf := GeneratePfConf(m)
@@ -69,6 +69,27 @@ func TestExitTunnel(t *testing.T) {
 	if strings.Contains(conf, "$lan inet from ($lan:network) to ! <opf_local> rtable") {
 		t.Error("the LAN leaves through the provider too")
 	}
+
+	// Traffic for a network addressed by DHCP stays home: tagged, as the
+	// table can't hold it.
+	for k := range m.Interfaces {
+		if m.Interfaces[k].ID == "lan" {
+			m.Interfaces[k].IPv4 = IPv4Config{Mode: IPv4DHCP}
+		}
+	}
+	dconf := GeneratePfConf(m)
+	for _, want := range []string{
+		`match in on { $wg $iot } inet to ($lan:network) tag opf_local label "opf:local:lan"`, // wg has a split peer
+		`match in on $iot inet from ($iot:network) to ! <opf_local> ! tagged opf_local rtable 202 scrub (max-mss 1380) label "opf:exit:vpnout"`,
+	} {
+		if !strings.Contains(dconf, want) {
+			t.Errorf("with the LAN addressed by DHCP, pf.conf lacks %q:\n%s", want, dconf)
+		}
+	}
+	if strings.Index(dconf, "tag opf_local") > strings.Index(dconf, "rtable 202") {
+		t.Error("the tag comes after the way out's rule")
+	}
+	m, exit = addExit(t)
 
 	unbound := GenerateUnboundConf(m)
 	if !strings.Contains(unbound, "forward-zone:\n\tname: \".\"\n\t# through Provider\n\tforward-addr: 10.64.0.1\n") || strings.Contains(unbound, "@853") {

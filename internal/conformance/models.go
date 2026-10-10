@@ -708,6 +708,12 @@ func dhcpInside(devs Devices) *pf.Model {
 		pf.Iface{ID: "remote", Name: "Remote access", Device: "wg0", Role: pf.RoleVPN, Enabled: true, IPv4: static("10.8.0.1", 24), IPv6: pf.IPv6None,
 			WireGuard: &pf.WireGuard{ListenPort: 51820, PublicKey: wgKey(1), Peers: []pf.Peer{
 				{ID: "p1", Name: "Laptop", PublicKey: wgKey(11), Address: "10.8.0.2/32", ClientRoutes: pf.ClientRoutesSplit},
+			}}},
+		// The LAN leaving through a way out: what it sends to the guest
+		// network, which pf learns with the lease, stays home.
+		pf.Iface{ID: "provider", Name: "Provider", Device: "wg2", Role: pf.RoleVPN, Enabled: true, IPv4: static("10.66.0.2", 32), IPv6: pf.IPv6None,
+			WireGuard: &pf.WireGuard{PublicKey: wgKey(3), Exit: &pf.Exit{
+				PublicKey: wgKey(31), Endpoint: "192.0.2.81:51820", Keepalive: num(25), From: []string{"lan"},
 			}}})
 	return m
 }

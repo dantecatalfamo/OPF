@@ -840,7 +840,9 @@ func TestSplitTunnelIsEnforced(t *testing.T) {
 	}
 
 	// Several split peers in one tunnel share one rule; a DHCP-addressed
-	// inside network is resolved by pf at load time.
+	// inside network is learned by pf with its lease, and tagged: a
+	// table can't hold it, and pfctl refuses a table entry, or a rule,
+	// naming $iot:network while it has no address.
 	m, _ = loadSampleModel(t)
 	tun := m.Tunnels()[0]
 	for i := range tun.WireGuard.Peers {
@@ -848,13 +850,21 @@ func TestSplitTunnelIsEnforced(t *testing.T) {
 	}
 	m.Interfaces[2].IPv4 = IPv4Config{Mode: IPv4DHCP}
 	conf = GeneratePfConf(m)
-	for _, want := range []string{"from { 10.8.0.2/32 10.8.0.3/32 } to ! <opf_local>", "($iot:network)"} {
+	for _, want := range []string{
+		"match in on $" + tun.ID + " inet to ($iot:network) tag opf_local label \"opf:local:iot\"",
+		"from { 10.8.0.2/32 10.8.0.3/32 } to ! <opf_local> ! tagged opf_local label",
+	} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("missing %q in:\n%s", want, conf)
 		}
 	}
-	if got := LocalNetworks(m, false); slices.Contains(got, "($iot:network)") {
-		t.Errorf("LocalNetworks(m, false) = %v, which a device configuration can't list", got)
+	for _, l := range strings.Split(conf, "\n") {
+		if strings.HasPrefix(l, "table <opf_local>") && strings.Contains(l, "iot") {
+			t.Errorf("a DHCP-addressed network in the table: %s", l)
+		}
+	}
+	if got := LocalNetworks(m); slices.ContainsFunc(got, func(n string) bool { return strings.Contains(n, "iot") }) {
+		t.Errorf("LocalNetworks(m) = %v, which a device configuration can't list", got)
 	}
 }
 
