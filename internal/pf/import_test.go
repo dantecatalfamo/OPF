@@ -272,6 +272,22 @@ subnet 10.0.1.0 netmask 255.255.255.0 {
 	}
 }
 
+// A VLAN's parent is a device, as hostname.vlanN names it, even when
+// the port is the WAN and has the id "wan".
+func TestImportVLANOnWAN(t *testing.T) {
+	src := ImportSources{Files: map[string]string{
+		"/etc/hostname.em0":    "inet autoconf\nup\n",
+		"/etc/hostname.vlan20": "vnetid 20 parent em0\ninet 192.168.20.1/24\nup\n",
+	}, Egress: []string{"em0"}}
+	m := Import(src, ImportOptions{}).Model
+	if i := m.Interfaces[slices.IndexFunc(m.Interfaces, func(i Iface) bool { return i.Device == "vlan20" })]; i.VLAN == nil || i.VLAN.Parent != "em0" {
+		t.Errorf("vlan20: %+v", i.VLAN)
+	}
+	for _, e := range Validate(m) {
+		t.Errorf("invalid: %v", e)
+	}
+}
+
 func TestMaskPrefix(t *testing.T) {
 	for in, want := range map[string]int{"255.255.255.0": 24, "0xffff0000": 16, "255.255.255.255": 32, "0.0.0.0": 0} {
 		if n, ok := maskPrefix(in); !ok || n != want {

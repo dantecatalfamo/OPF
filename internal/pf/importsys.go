@@ -429,14 +429,6 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 			notes = append(notes, ImportNote{File: p, Kind: NoteLost, Text: fmt.Sprintf("description %q", name), Message: "OPF gives every interface a description: its name"})
 		}
 	}
-	// VLAN parents by the model's id.
-	for i := range m.Interfaces {
-		if v := m.Interfaces[i].VLAN; v != nil {
-			if id := m.deviceID(v.Parent); id != "" {
-				v.Parent = id
-			}
-		}
-	}
 	return notes
 }
 
