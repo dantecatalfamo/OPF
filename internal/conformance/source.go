@@ -33,6 +33,8 @@ type SourceFacts struct {
 	// the second pass (after the physical ports) and the third (once
 	// routes are up).
 	NetstartSkipped []string `json:"netstartSkipped"`
+	// sys/net/if_trunk.h: trunk(4)'s protocols (TRUNK_PROTOS), by name.
+	TrunkProtos     []string `json:"trunkProtos,omitempty"`
 	NetstartLower   []string `json:"netstartLower"`
 	NetstartRouting []string `json:"netstartRouting"`
 }
@@ -74,13 +76,26 @@ func firsts(entries [][]string) []string {
 
 // cMacroStrings is the strings in a #define NAME { "a", "b", … } macro.
 func cMacroStrings(src, name string) ([]string, error) {
-	start := strings.Index(src, "#define "+name+" {")
-	if start < 0 {
+	loc := regexp.MustCompile(`#define[ \t]+` + regexp.QuoteMeta(name) + `[ \t]+\{`).FindStringIndex(src)
+	if loc == nil {
 		return nil, fmt.Errorf("no %s", name)
 	}
-	end := strings.Index(src[start:], "}")
+	// The macro goes on while its lines end in a backslash; its entries
+	// may be braced pairs, { "name", CONST }.
+	body := src[loc[0]:]
+	for i := 0; ; {
+		nl := strings.IndexByte(body[i:], '\n')
+		if nl < 0 {
+			break
+		}
+		if !strings.HasSuffix(strings.TrimRight(body[i:i+nl], " \t"), "\\") {
+			body = body[:i+nl]
+			break
+		}
+		i += nl + 1
+	}
 	var out []string
-	for _, m := range cStringRE.FindAllStringSubmatch(src[start:start+end], -1) {
+	for _, m := range cStringRE.FindAllStringSubmatch(body, -1) {
 		out = append(out, m[1])
 	}
 	return out, nil
@@ -143,6 +158,14 @@ func (f SourceFacts) Problems() []string {
 	same("set limit's pools (pf.LimitNames)", f.PfLimits, pf.LimitNames)
 	same("set timeout's names (pf.TimeoutNames)", f.PfTimeouts, pf.TimeoutNames)
 	same("ntpd.conf's keywords (pf.NTPKeywords)", f.NtpdKeywords, pf.NTPKeywords())
+	if f.TrunkProtos != nil { // not in captures before 2026-10-13
+		// lacp is aggr's in OPF, and default another name for roundrobin.
+		opf := []string{"lacp", "default"}
+		for _, p := range pf.TrunkProtos {
+			opf = append(opf, string(p))
+		}
+		same("trunk(4)'s protocols (pf.TrunkProtos)", f.TrunkProtos, opf)
+	}
 
 	// netstart's passes against the order OPF applies interfaces in
 	// (config.netstartOrder): the first pass starts all but the kinds it

@@ -767,6 +767,66 @@ func BareParents(m *Model) []BareParent {
 	return out
 }
 
+// aggregateLines set up an aggregate's ports. netstart only adds, so
+// ports it no longer has are taken out first, and a port still in
+// another aggregate leaves it: aggregates come up in netstart's order,
+// aggr before trunk, so one moving the other way would find it taken.
+func aggregateLines(a *AggregateConfig) []string {
+	var lines []string
+	if a.Proto != "" {
+		lines = append(lines, "trunkproto "+string(a.Proto))
+	} else {
+		// Both said each time, so turning one off takes effect.
+		mode, timeout := "active", "slow"
+		if a.LACPPassive {
+			mode = "passive"
+		}
+		if a.LACPFast {
+			timeout = "fast"
+		}
+		lines = append(lines, "lacpmode "+mode, "lacptimeout "+timeout)
+	}
+	// netstart reads each line with read, which drops backslashes, and
+	// joins its words with one space: awk needs neither.
+	ports := strings.Join(a.Ports, " ")
+	lines = append(lines,
+		fmt.Sprintf(`!for p in $(ifconfig $if | awk '$2 == "port" { print $1 }'); do case " %s " in *" $p "*) ;; *) ifconfig $if -trunkport $p ;; esac; done`, ports),
+		fmt.Sprintf(`!for p in %s; do d=$(ifconfig $p 2>/dev/null | awk '$1 == "trunk:" && $2 == "trunkdev" { print $3 }'); [ -z "$d" ] || [ "$d" = $if ] || ifconfig $d -trunkport $p; done`, ports),
+	)
+	for _, p := range a.Ports {
+		lines = append(lines, "trunkport "+p)
+	}
+	return lines
+}
+
+// AggregatePort is a port in an aggregate, which has no address or
+// rules of its own but has to be up for the aggregate to use it.
+type AggregatePort struct {
+	Device    string
+	Aggregate string // the aggregate's name
+}
+
+// AggregatePorts are the ports of the model's aggregates, by device.
+func AggregatePorts(m *Model) []AggregatePort {
+	var out []AggregatePort
+	for _, i := range m.Interfaces {
+		if i.Aggregate != nil {
+			for _, p := range i.Aggregate.Ports {
+				out = append(out, AggregatePort{p, i.Name})
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b AggregatePort) int { return strings.Compare(a.Device, b.Device) })
+	return out
+}
+
+// GenerateAggregatePort is hostname.if for a port in an aggregate: up,
+// and nothing else. The aggregate sets its MTU (aggr) or takes it
+// (trunk).
+func GenerateAggregatePort(p AggregatePort) string {
+	return strings.Join([]string{header, fmt.Sprintf("description \"Port of %s\"", p.Aggregate), "up"}, "\n") + "\n"
+}
+
 // GenerateBareParent is hostname.if for a port that only carries VLANs:
 // up, and nothing else.
 func GenerateBareParent(p BareParent) string {
@@ -1308,6 +1368,9 @@ func GenerateHostnameIf(i *Iface, m *Model) string {
 	if i.VLAN != nil {
 		lines = append(lines, fmt.Sprintf("vnetid %d parent %s", i.VLAN.Tag, i.VLAN.Parent))
 	}
+	if a := i.Aggregate; a != nil {
+		lines = append(lines, aggregateLines(a)...)
+	}
 
 	if wg := i.WireGuard; i.Role == RoleVPN && wg != nil {
 		// netstart evals each line; this one reads the key from its file.
@@ -1628,6 +1691,9 @@ func GenerateFiles(m *Model) []GeneratedFile {
 	// has to be up for them to carry anything.
 	for _, p := range BareParents(m) {
 		files = append(files, GeneratedFile{Path: "/etc/hostname." + p.Device, Content: GenerateBareParent(p)})
+	}
+	for _, p := range AggregatePorts(m) {
+		files = append(files, GeneratedFile{Path: "/etc/hostname." + p.Device, Content: GenerateAggregatePort(p)})
 	}
 
 	// The areas left as they're configured by hand.

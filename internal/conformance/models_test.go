@@ -34,8 +34,12 @@ func TestModelsValid(t *testing.T) {
 		}
 		for _, i := range nm.Model.Interfaces {
 			if i.Device != VMDevices.WAN && i.Device != VMDevices.LAN && !slices.Contains(VMDevices.Spare, i.Device) &&
-				!strings.HasPrefix(i.Device, "vlan") && !strings.HasPrefix(i.Device, "wg") {
+				!strings.HasPrefix(i.Device, "vlan") && !strings.HasPrefix(i.Device, "wg") && i.Aggregate == nil {
 				t.Errorf("%s: %s isn't one of the machine's devices", nm.Name, i.Device)
+			}
+			// An aggregate (made by its file) of the machine's spare ports.
+			if a := i.Aggregate; a != nil && slices.ContainsFunc(a.Ports, func(p string) bool { return !slices.Contains(VMDevices.Spare, p) }) {
+				t.Errorf("%s: %s's ports %v aren't spare ports", nm.Name, i.Device, a.Ports)
 			}
 			if i.Device == VMDevices.WAN && (!i.Enabled || i.IPv4.Mode != pf.IPv4DHCP) {
 				t.Errorf("%s: the WAN the suite comes in on must stay up by DHCP", nm.Name)

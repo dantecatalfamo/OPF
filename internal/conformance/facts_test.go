@@ -185,3 +185,15 @@ ifmstart "tun tap gif etherip gre egre nvgre eoip vxlan pflow wg"
 		t.Errorf("a first pass skipping vether: %v", p)
 	}
 }
+
+// TestCMacroStrings reads a macro's strings to its last continued line,
+// flat as pfvar.h's or in braced pairs as if_trunk.h's.
+func TestCMacroStrings(t *testing.T) {
+	src := "#define PFRES_NAMES { \\\n\t\"match\", \\\n\t\"bad-offset\", \\\n\tNULL \\\n}\n\n#define\tTRUNK_PROTO_DEFAULT\tTRUNK_PROTO_ROUNDROBIN\n" +
+		"#define TRUNK_PROTOS\t{\t\t\t\t\t\t\\\n\t{ \"roundrobin\",\t\tTRUNK_PROTO_ROUNDROBIN },\t\t\\\n\t{ \"default\",\t\tTRUNK_PROTO_DEFAULT }\t\t\t\\\n}\n\"after\"\n"
+	for name, want := range map[string][]string{"PFRES_NAMES": {"match", "bad-offset"}, "TRUNK_PROTOS": {"roundrobin", "default"}} {
+		if got, err := cMacroStrings(src, name); err != nil || !slices.Equal(got, want) {
+			t.Errorf("%s: %q %v", name, got, err)
+		}
+	}
+}

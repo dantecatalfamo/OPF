@@ -106,6 +106,8 @@ func Models(devs Devices) []NamedModel {
 	add("dhcp-inside", dhcpInside(devs))
 	add("route-to-dhcp-gateway", routeToDHCP(devs))
 	add("endpoints", endpoints(devs))
+	add("aggregate-lacp", aggregateLACP(devs))
+	add("trunk-failover", trunkFailover(devs))
 	return out
 }
 
@@ -726,6 +728,28 @@ func routeToDHCP(devs Devices) *pf.Model {
 		r.Family, r.Protocol, r.Port = pf.FamilyInet, pf.ProtoTCP, "443"
 		r.Source, r.Gateway = ifEP("lan", pf.PartNetwork), "gw_wan"
 	}))
+	return m
+}
+
+// aggregateLACP has an aggr(4) of the spare ports, LACP with nothing to
+// answer it, carrying an untagged network and a VLAN.
+func aggregateLACP(devs Devices) *pf.Model {
+	m := base(devs)
+	m.Interfaces = append(m.Interfaces,
+		pf.Iface{ID: "bond", Name: "Bond", Device: "aggr0", Role: pf.RoleOPT, Enabled: true, IPv4: static("172.16.6.1", 24), IPv6: pf.IPv6None, MTU: num(1400),
+			Aggregate: &pf.AggregateConfig{Ports: devs.Spare[:2], LACPPassive: true, LACPFast: true}},
+		pf.Iface{ID: "bond_vlan", Name: "Bond VLAN", Device: "vlan60", Role: pf.RoleOPT, Enabled: true, IPv4: static("172.16.60.1", 24), IPv6: pf.IPv6None,
+			VLAN: &pf.VLANConfig{Parent: "aggr0", Tag: 60}})
+	return m
+}
+
+// trunkFailover has a trunk(4) of the spare ports, failing over from the
+// first.
+func trunkFailover(devs Devices) *pf.Model {
+	m := base(devs)
+	m.Interfaces = append(m.Interfaces,
+		pf.Iface{ID: "pair_link", Name: "Paired link", Device: "trunk0", Role: pf.RoleOPT, Enabled: true, IPv4: static("172.16.7.1", 24), IPv6: pf.IPv6None,
+			Aggregate: &pf.AggregateConfig{Ports: devs.Spare[:2], Proto: pf.TrunkFailover}})
 	return m
 }
 

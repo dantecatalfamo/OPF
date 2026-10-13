@@ -166,18 +166,60 @@ type VLANConfig struct {
 	Tag    int    `json:"tag"`
 }
 
+// AggregateConfig makes an interface one link made of several ports:
+// aggr(4), LACP with a switch that speaks it, or trunk(4) for the other
+// ways (failover, say). The device says which: aggrN or trunkN. The
+// ports are Ethernet ports of no other interface, VLAN or aggregate;
+// the aggregate has their address, role and rules.
+type AggregateConfig struct {
+	// Ports are the member ports' devices. trunk's failover sends
+	// through the first while it's up.
+	Ports []string `json:"ports"`
+	// Proto is a trunk's trunkproto (TrunkProtos); an aggr is LACP.
+	Proto TrunkProto `json:"proto,omitempty"`
+	// An aggr's LACP: passive waits for the switch to start it (active
+	// by default), and fast times out a port after 3 s rather than 90.
+	LACPPassive bool `json:"lacpPassive,omitempty"`
+	LACPFast    bool `json:"lacpFast,omitempty"`
+}
+
+// TrunkProto is how a trunk(4) uses its ports.
+type TrunkProto string
+
+const (
+	// TrunkFailover sends and receives through the first port that's
+	// up, keeping the others for when it isn't.
+	TrunkFailover TrunkProto = "failover"
+	// TrunkLoadBalance spreads connections over the ports by a hash of
+	// their addresses, for a switch with a static link aggregation.
+	TrunkLoadBalance TrunkProto = "loadbalance"
+	// TrunkRoundRobin sends each packet through the next port.
+	TrunkRoundRobin TrunkProto = "roundrobin"
+	// TrunkBroadcast sends every packet through every port.
+	TrunkBroadcast TrunkProto = "broadcast"
+	// TrunkNone passes nothing, with the trunk still up.
+	TrunkNone TrunkProto = "none"
+)
+
+// TrunkProtos are the trunkproto values a trunk takes. trunk(4) has lacp
+// too, which aggr(4) does better; the conformance suite compares the
+// rest with the release's.
+var TrunkProtos = []TrunkProto{TrunkFailover, TrunkLoadBalance, TrunkRoundRobin, TrunkBroadcast, TrunkNone}
+
 type Iface struct {
-	ID           string      `json:"id"`
-	Name         string      `json:"name"`
-	Device       string      `json:"device"`
-	Role         IfaceRole   `json:"role"`
-	Enabled      bool        `json:"enabled"`
-	IPv4         IPv4Config  `json:"ipv4"`
-	IPv6         IPv6Mode    `json:"ipv6"`
-	MTU          *int        `json:"mtu,omitempty"`
-	VLAN         *VLANConfig `json:"vlan,omitempty"`
-	BlockPrivate bool        `json:"blockPrivate,omitempty"`
-	BlockBogons  bool        `json:"blockBogons,omitempty"`
+	ID      string      `json:"id"`
+	Name    string      `json:"name"`
+	Device  string      `json:"device"`
+	Role    IfaceRole   `json:"role"`
+	Enabled bool        `json:"enabled"`
+	IPv4    IPv4Config  `json:"ipv4"`
+	IPv6    IPv6Mode    `json:"ipv6"`
+	MTU     *int        `json:"mtu,omitempty"`
+	VLAN    *VLANConfig `json:"vlan,omitempty"`
+	// Aggregate is set on every aggrN and trunkN interface.
+	Aggregate    *AggregateConfig `json:"aggregate,omitempty"`
+	BlockPrivate bool             `json:"blockPrivate,omitempty"`
+	BlockBogons  bool             `json:"blockBogons,omitempty"`
 	// Antispoof blocks traffic claiming to come from this interface's
 	// network arriving anywhere else (pf's antispoof).
 	Antispoof bool `json:"antispoof,omitempty"`

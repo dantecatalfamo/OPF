@@ -43,6 +43,9 @@ func TestSource(t *testing.T) {
 	if f.LimitCounters, err = cMacroStrings(pfvar, "LCNT_NAMES"); err != nil {
 		t.Fatal(err)
 	}
+	if f.TrunkProtos, err = cMacroStrings(srcFile(t, "sys/net/if_trunk.h"), "TRUNK_PROTOS"); err != nil {
+		t.Fatal(err)
+	}
 	if f.NetstartSkipped, f.NetstartLower, f.NetstartRouting, err = netstartPasses(readFile(t, "/etc/netstart")); err != nil {
 		t.Fatal(err)
 	}

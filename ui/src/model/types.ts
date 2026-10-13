@@ -15,12 +15,26 @@ export interface Iface {
   ipv6: 'slaac' | 'none';
   mtu?: number;
   vlan?: { parent: string; tag: number };
+  /** aggrN and trunkN only: one link of several ports (pf.AggregateConfig). */
+  aggregate?: Aggregate;
   blockPrivate?: boolean; // WAN only
   blockBogons?: boolean; // WAN only
   antispoof?: boolean; // pf antispoof for the interface's network; fixed addresses only
   /** LAN or optional: traffic from OPF's other networks leaving here takes this interface's address. */
   masquerade?: boolean;
   wireguard?: WireGuard; // VPN interfaces (wgN) only: each is its own tunnel
+}
+
+/** trunk(4)'s ways of using its ports; an aggr is LACP. */
+export type TrunkProto = 'failover' | 'loadbalance' | 'roundrobin' | 'broadcast' | 'none';
+
+export interface Aggregate {
+  /** The member ports' devices; failover sends through the first while it's up. */
+  ports: string[];
+  /** A trunk's; absent on an aggr. */
+  proto?: TrunkProto;
+  lacpPassive?: boolean;
+  lacpFast?: boolean;
 }
 
 /** A VPN interface, with its tunnel. */

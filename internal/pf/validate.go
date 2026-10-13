@@ -332,8 +332,13 @@ func (v *validator) vlanParent(path string, f *Iface) {
 	case dev == f.Device:
 		v.fail(path, "a VLAN can't be carried on itself")
 		return
+	case IsAggregateDevice(dev):
+		if !slices.ContainsFunc(v.m.Interfaces, func(p Iface) bool { return p.Device == dev && p.Aggregate != nil }) {
+			v.fail(path, "%s isn't one of the interfaces here: a VLAN is carried on an aggregate OPF sets up", dev)
+			return
+		}
 	case !PhysicalDevice(dev):
-		v.fail(path, "%s isn't a port: a VLAN is carried on a physical port, like em1", dev)
+		v.fail(path, "%s isn't a port: a VLAN is carried on a physical port, like em1, or an aggregate", dev)
 		return
 	}
 	for _, p := range v.m.Interfaces {
@@ -341,6 +346,105 @@ func (v *validator) vlanParent(path string, f *Iface) {
 			v.fail(path, "its port, %s (%s), is turned off, so the VLAN would carry nothing", p.Name, dev)
 		}
 	}
+}
+
+// IsAggregateDevice reports whether a device is an aggregate of ports:
+// aggrN or trunkN.
+func IsAggregateDevice(dev string) bool {
+	k := strings.TrimRight(dev, "0123456789")
+	return k == "aggr" || k == "trunk"
+}
+
+// aggregate checks an aggregate's own settings; aggregatePorts checks
+// its ports against everything else.
+func (v *validator) aggregate(p string, f *Iface) {
+	a := f.Aggregate
+	isAggr := strings.HasPrefix(f.Device, "aggr")
+	switch {
+	case !IsAggregateDevice(f.Device):
+		v.fail(p+".device", "an aggregate's device is aggrN (LACP) or trunkN, like aggr0")
+		return
+	case len(a.Ports) == 0:
+		v.fail(p+".aggregate.ports", "an aggregate needs at least one port")
+	case len(a.Ports) > MaxAggregatePorts:
+		v.fail(p+".aggregate.ports", "has %d ports; an aggregate takes at most %d", len(a.Ports), MaxAggregatePorts)
+	}
+	if isAggr {
+		if a.Proto != "" {
+			v.fail(p+".aggregate.proto", "an aggr interface is always LACP; the others are trunk's (trunkN)")
+		}
+	} else {
+		v.oneOf(p+".aggregate.proto", string(a.Proto), trunkProtoNames()...)
+		if a.LACPPassive || a.LACPFast {
+			v.fail(p+".aggregate", "LACP settings are an aggr interface's (aggrN)")
+		}
+		// trunk(4) takes its first port's MTU, and a port's can't change
+		// once it's joined.
+		if f.MTU != nil {
+			v.fail(p+".mtu", "a trunk has its ports' MTU; for another, use an aggr interface (LACP)")
+		}
+	}
+	if f.VLAN != nil {
+		v.fail(p+".vlan", "an aggregate isn't a VLAN; a VLAN can be carried on one")
+	}
+}
+
+// aggregatePorts checks that each aggregate's ports are ports, and
+// nothing else's: not an interface, a VLAN's parent or another
+// aggregate's port.
+func (v *validator) aggregatePorts() {
+	owner := map[string]string{}
+	for i, f := range v.m.Interfaces {
+		if f.Aggregate == nil {
+			continue
+		}
+		for j, port := range f.Aggregate.Ports {
+			pp := fmt.Sprintf("%s.aggregate.ports[%d]", at("interfaces", i), j)
+			if !v.re(pp, port, deviceRE, "device name (like em1)") {
+				continue
+			}
+			if o, ok := owner[port]; ok {
+				if o == f.Name {
+					v.fail(pp, "%s is listed twice", port)
+				} else {
+					v.fail(pp, "%s is already a port of %s", port, o)
+				}
+				continue
+			}
+			owner[port] = f.Name
+			if !EthernetPort(port) {
+				v.fail(pp, "%s isn't a port: an aggregate is made of Ethernet ports, like em1", port)
+				continue
+			}
+			for _, o := range v.m.Interfaces {
+				switch {
+				case o.Device == port:
+					v.fail(pp, "%s is %s, an interface of its own; a port in an aggregate has the aggregate's address and rules instead", port, o.Name)
+				case o.VLAN != nil && o.VLAN.Parent == port:
+					v.fail(pp, "%s carries %s; carry the VLAN on %s instead", port, o.Name, f.Device)
+				}
+			}
+		}
+	}
+}
+
+// EthernetPort reports whether a device can be an aggregate's port:
+// aggr(4) and trunk(4) take Ethernet interfaces, physical ports or
+// vether(4).
+func EthernetPort(dev string) bool {
+	return PhysicalDevice(dev) || strings.TrimRight(dev, "0123456789") == "vether"
+}
+
+// MaxAggregatePorts is aggr(4)'s and trunk(4)'s limit
+// (AGGR_MAX_PORTS, TRUNK_MAX_PORTS).
+const MaxAggregatePorts = 32
+
+func trunkProtoNames() []string {
+	out := make([]string, len(TrunkProtos))
+	for i, p := range TrunkProtos {
+		out[i] = string(p)
+	}
+	return out
 }
 
 // PhysicalDevice reports whether a device name is a physical port (em0,
@@ -492,6 +596,11 @@ func (v *validator) interfaces() {
 				v.vlanParent(p+".vlan.parent", &f)
 			}
 		}
+		if f.Aggregate != nil {
+			v.aggregate(p, &f)
+		} else if IsAggregateDevice(f.Device) {
+			v.fail(p+".aggregate", "an aggr or trunk interface needs its ports")
+		}
 		// A VPN interface is a WireGuard tunnel, and only one is.
 		isWG := wgDeviceRE.MatchString(f.Device)
 		switch {
@@ -516,6 +625,8 @@ func (v *validator) interfaces() {
 			v.fail(p+".antispoof", "needs a fixed address; with an address that changes it would guard the old one")
 		}
 	}
+
+	v.aggregatePorts()
 
 	// Two interfaces on overlapping networks can't both be routed to.
 	type named struct {

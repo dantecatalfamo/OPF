@@ -217,9 +217,37 @@ type hostnameIf struct {
 	v6       IPv6Mode
 	mtu      *int
 	vlan     *VLANConfig
+	agg      *AggregateConfig // trunkport, trunkproto and lacp lines
 	down     bool
 	upOnly   bool // nothing but up: a port carrying VLANs
 	notModel []string
+}
+
+// aggregateWords reads a line of trunkport, trunkproto, lacpmode and
+// lacptimeout settings, which ifconfig takes several to a line of, into
+// a. It says false for a line that's anything else.
+func aggregateWords(line string, a *AggregateConfig) bool {
+	w := strings.Fields(line)
+	if len(w)%2 != 0 {
+		return false
+	}
+	next := *a
+	for i := 0; i < len(w); i += 2 {
+		switch k, v := w[i], w[i+1]; {
+		case k == "trunkport" && deviceRE.MatchString(v):
+			next.Ports = append(slices.Clip(next.Ports), v)
+		case k == "trunkproto":
+			next.Proto = TrunkProto(v)
+		case k == "lacpmode" && (v == "active" || v == "passive"):
+			next.LACPPassive = v == "passive"
+		case k == "lacptimeout" && (v == "fast" || v == "slow"):
+			next.LACPFast = v == "fast"
+		default:
+			return false
+		}
+	}
+	*a = next
+	return true
 }
 
 var (
@@ -270,6 +298,13 @@ func parseHostnameIf(content string) hostnameIf {
 			tag, parent := sub[1]+sub[4]+sub[5], sub[2]+sub[3]+sub[6]
 			n, _ := strconv.Atoi(tag)
 			h.vlan = &VLANConfig{Parent: parent, Tag: n}
+		case slices.Contains([]string{"trunkport", "trunkproto", "lacpmode", "lacptimeout"}, strings.Fields(line)[0]):
+			if h.agg == nil {
+				h.agg = &AggregateConfig{}
+			}
+			if !aggregateWords(line, h.agg) {
+				h.notModel = append(h.notModel, raw)
+			}
 		case ifInetRE.MatchString(line):
 			sub := ifInetRE.FindStringSubmatch(line)
 			prefix, ok := -1, true
@@ -296,6 +331,41 @@ func parseHostnameIf(content string) hostnameIf {
 	}
 	h.upOnly = upSeen && !other
 	return h
+}
+
+// aggregateImportable says why an aggregate's file and its ports' can't
+// be taken over, or "" when they can.
+func aggregateImportable(dev string, h hostnameIf, parsed map[string]hostnameIf, parents map[string]bool) string {
+	switch a := h.agg; {
+	case len(h.notModel) > 0:
+		return "left as it is: a setting OPF doesn't have" // noted line by line
+	case a == nil || len(a.Ports) == 0:
+		return "an aggregate without ports: left as it is"
+	case strings.HasPrefix(dev, "aggr") && a.Proto != "":
+		return "trunkproto is trunk's, not aggr's: left as it is"
+	case strings.HasPrefix(dev, "trunk") && a.Proto == "lacp":
+		return "a trunk doing LACP, which OPF does with aggr: left as it is"
+	case strings.HasPrefix(dev, "trunk") && a.Proto != "" && !slices.Contains(TrunkProtos, a.Proto):
+		return fmt.Sprintf("trunkproto %s isn't one OPF has: left as it is", a.Proto)
+	case strings.HasPrefix(dev, "trunk") && (a.LACPPassive || a.LACPFast):
+		return "LACP settings on a trunk that doesn't do LACP: left as it is"
+	case strings.HasPrefix(dev, "trunk") && h.mtu != nil:
+		return "a trunk takes its ports' MTU, which OPF doesn't set: left as it is"
+	case h.vlan != nil:
+		return "left as it is: an aggregate with a VLAN tag"
+	}
+	for _, port := range h.agg.Ports {
+		ph, ok := parsed[port]
+		switch {
+		case !EthernetPort(port):
+			return fmt.Sprintf("its port %s isn't an Ethernet port: left as it is", port)
+		case parents[port]:
+			return fmt.Sprintf("its port %s carries a VLAN of its own: left as it is", port)
+		case ok && (len(ph.notModel) > 0 || ph.v4.Mode != IPv4None || ph.v6 != IPv6None || ph.vlan != nil || ph.agg != nil || ph.mtu != nil || ph.down):
+			return fmt.Sprintf("its port %s has settings of its own: left as it is", port)
+		}
+	}
+	return ""
 }
 
 // maskPrefix is a netmask's length: 255.255.255.0, or 0xffffff00.
@@ -357,6 +427,30 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 			parents[h.vlan.Parent] = true
 		}
 	}
+	// Aggregates OPF can take over, and their ports, which are written by
+	// the generator (AggregatePorts), not modelled: a port's file may
+	// say only up, and a description, or be missing (aggr brings its
+	// ports up itself).
+	aggregates, ports := map[string]string{}, map[string]string{}
+	for _, p := range paths {
+		dev := ifFileRE.FindStringSubmatch(p)[1]
+		if h := parsed[dev]; IsAggregateDevice(dev) {
+			if why := aggregateImportable(dev, h, parsed, parents); why != "" {
+				aggregates[dev] = why
+			} else {
+				aggregates[dev] = ""
+			}
+			if h.agg != nil {
+				for _, port := range h.agg.Ports {
+					if other, ok := ports[port]; ok && other != dev {
+						why := fmt.Sprintf("its port %s is %s's too: left as it is", port, other)
+						aggregates[dev], aggregates[other] = why, fmt.Sprintf("its port %s is %s's too: left as it is", port, dev)
+					}
+					ports[port] = dev
+				}
+			}
+		}
+	}
 	used := map[string]bool{}
 	wan := false
 	for _, p := range paths {
@@ -366,13 +460,23 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 			notes = append(notes, ImportNote{File: p, Kind: NoteLeft, Message: why})
 		}
 		kind := strings.TrimRight(dev, "0123456789")
+		agg, isPort := ports[dev]
 		switch {
+		case isPort && aggregates[agg] != "":
+			left(fmt.Sprintf("a port of %s, which is left as it is", agg))
+			continue
+		case isPort:
+			notes = append(notes, ImportNote{File: p, Kind: NoteModel, Text: "up", Message: "a port of " + agg})
+			if h.desc != "" {
+				notes = append(notes, ImportNote{File: p, Kind: NoteLost, Text: fmt.Sprintf("description %q", h.desc), Message: "OPF gives it a description: the aggregate it's a port of"})
+			}
+			continue
 		case kind == "pflow":
 			continue // a flow export (importFlowExports)
 		case kind == "wg":
 			left("a WireGuard tunnel: left as it is (OPF keeps a tunnel's key in a file of its own, so it can't take one over yet)")
 			continue
-		case !slices.Contains([]string{"vlan", "svlan"}, kind) && !isPortKind(kind):
+		case !slices.Contains([]string{"vlan", "svlan"}, kind) && !IsAggregateDevice(dev) && !isPortKind(kind):
 			left(fmt.Sprintf("a %s interface, which OPF doesn't set up: left as it is", kind))
 			continue
 		case len(h.notModel) > 0:
@@ -380,6 +484,9 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 				notes = append(notes, ImportNote{File: p, Kind: NoteLeft, Text: strings.TrimSpace(l), Message: "a setting OPF doesn't have"})
 			}
 			left("left as it is, with the rules that name it kept as written")
+			continue
+		case IsAggregateDevice(dev) && aggregates[dev] != "":
+			left(aggregates[dev])
 			continue
 		case h.upOnly && parents[dev]:
 			notes = append(notes, ImportNote{File: p, Kind: NoteModel, Text: "up", Message: "carries VLANs only"},
@@ -418,6 +525,13 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 		if h.vlan != nil {
 			v := *h.vlan
 			i.VLAN = &v
+		}
+		if h.agg != nil {
+			a := *h.agg
+			if strings.HasPrefix(dev, "trunk") && a.Proto == "" {
+				a.Proto = TrunkRoundRobin // trunk(4)'s default
+			}
+			i.Aggregate = &a
 		}
 		m.Interfaces = append(m.Interfaces, i)
 		msg := "an interface"
