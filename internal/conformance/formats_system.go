@@ -31,8 +31,11 @@ const (
 )
 
 var (
-	sysDay = words("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-	sysMon = words("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+	// LACP_STATE_BITS and TRUNK_PORT_BITS, as printb_status prints them.
+	sysLACPState   = words("activity", "timeout", "aggregation", "sync", "collecting", "distributing", "defaulted", "expired")
+	sysTrunkPortFl = words("master", "stack", "active", "collecting", "distributing", "disabled")
+	sysDay         = words("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+	sysMon         = words("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 	// sysCtime is ctime(3) without its newline, and strftime's %c in
 	// the C locale ("%a %b %e %H:%M:%S %Y"): "Tue Sep 29 16:09:55 2026".
 	sysCtime = sysDay + ` ` + sysMon + ` [ \d]\d \d\d:\d\d:\d\d \d{4}`
@@ -359,6 +362,17 @@ func sysIfconfigLines(aliases bool) []Line {
 		// getencap.
 		L("encap", `\tencap:(?: vnetid (?:none|any|\d+\+?))?(?: parent (?:none|`+sysIf+`))?`+
 			`(?: txprio (?:packet|payload|\d+))?(?: rxprio (?:packet|payload|outer|\d+))?`),
+		// trunk_status, for aggr(4) and trunk(4): the protocol, LACP's
+		// ids, then each port's LACP and trunk flags; a port says its
+		// aggregate. The aggregates' ! lines in hostname.if read the
+		// port lines and trunkdev (pf.aggregateLines).
+		L("trunk", `\ttrunk: trunkproto `+words("roundrobin", "failover", "lacp", "loadbalance", "broadcast", "none", "<unknown>")+`(?: trunkdev `+sysIf+`)?`),
+		L("trunk port of", `\ttrunk: trunkdev `+sysIf),
+		L("trunk id", `\ttrunk id: \[\([0-9A-F]{4},`+sysMAC+`(?:,[0-9A-F]{4}){3}\),`),
+		L("trunk id partner", `\t\t \([0-9A-F]{4},`+sysMAC+`(?:,[0-9A-F]{4}){3}\)\]`),
+		L("trunk lacp", `\t\t`+sysIf+` lacp (?:actor|partner) system pri 0x[0-9a-f]+ mac `+sysMAC+`, key 0x[0-9a-f]+, port pri 0x[0-9a-f]+ number 0x[0-9a-f]+`),
+		L("trunk lacp state", `\t\t`+sysIf+` lacp (?:actor|partner) state (?:`+sysLACPState+`(?:,`+sysLACPState+`)*)?`),
+		L("trunk port", `\t\t`+sysIf+` port (?:`+sysTrunkPortFl+`(?:,`+sysTrunkPortFl+`)*)?`),
 		// carp_status: one vhid, or several (balancing) with a line each.
 		L("carp", `\tcarp: `+sysCarpStates+` carpdev (?:`+sysIf+`|none) vhid \d+ advbase \d+ advskew \d+(?: carppeer `+sysIPv4+`)?`),
 		L("carp balancing", `\tcarp: carpdev (?:`+sysIf+`|none) advbase \d+ balancing `+sysCarpBal+`(?: carppeer `+sysIPv4+`)?`),

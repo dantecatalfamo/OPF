@@ -384,6 +384,28 @@ func mockIfconfig(m *pf.Model, t float64) string {
 		if i.VLAN != nil {
 			fmt.Fprintf(&b, "\tencap: vnetid %d parent %s txprio packet rxprio outer\n", i.VLAN.Tag, i.VLAN.Parent)
 		}
+		if a := i.Aggregate; a != nil {
+			// As trunk_status prints them: em2 is unplugged, so it's in
+			// the aggregate but not used; failover's first port is the
+			// master.
+			proto := string(a.Proto)
+			if proto == "" {
+				proto = "lacp"
+			}
+			fmt.Fprintf(&b, "\ttrunk: trunkproto %s\n", proto)
+			for k, p := range a.Ports {
+				flags := "active"
+				switch {
+				case p == "em2":
+					flags = ""
+				case proto == "lacp":
+					flags = "active,collecting,distributing"
+				case proto == "failover" && k == 0:
+					flags = "master,active"
+				}
+				fmt.Fprintf(&b, "\t\t%s port %s\n", p, flags)
+			}
+		}
 		if w := i.WireGuard; w != nil {
 			fmt.Fprintf(&b, "\twgport %d\n\twgpubkey %s\n", w.ListenPort, w.PublicKey)
 			for k, p := range w.Peers {
@@ -450,6 +472,18 @@ func mockIfconfig(m *pf.Model, t float64) string {
 	for _, i := range m.Interfaces {
 		used[i.Device] = true
 	}
+	// Aggregates' ports: up, and saying whose they are.
+	for _, i := range m.Interfaces {
+		for _, p := range aggregatePorts(i) {
+			used[p] = true
+			status := "active"
+			if p == "em2" {
+				status = "no carrier"
+			}
+			fmt.Fprintf(&b, "%s: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n\tlladdr %s\n\tdescription: Port of %s\n\tindex 5 priority 0 llprio 3\n\ttrunk: trunkdev %s\n\tmedia: Ethernet autoselect (1000baseT full-duplex)\n\tstatus: %s\n",
+				p, mockMAC(p), i.Name, i.Device, status)
+		}
+	}
 	if !used["em2"] {
 		b.WriteString("em2: flags=8802<BROADCAST,SIMPLEX,MULTICAST> mtu 1500\n\tlladdr 00:0d:b9:5a:3c:12\n\tindex 3 priority 0 llprio 3\n\tmedia: Ethernet autoselect (none)\n\tstatus: no carrier\n")
 	}
@@ -459,6 +493,13 @@ func mockIfconfig(m *pf.Model, t float64) string {
 	b.WriteString("enc0: flags=0<>\n\tindex 20 priority 0 llprio 3\n\tgroups: enc\n\tstatus: active\n")
 	b.WriteString("pflog0: flags=141<UP,RUNNING,PROMISC> mtu 33136\n\tindex 21 priority 0 llprio 3\n\tgroups: pflog\n")
 	return b.String()
+}
+
+func aggregatePorts(i pf.Iface) []string {
+	if i.Aggregate == nil {
+		return nil
+	}
+	return i.Aggregate.Ports
 }
 
 // mockPing answers for any address, a few milliseconds away, with the

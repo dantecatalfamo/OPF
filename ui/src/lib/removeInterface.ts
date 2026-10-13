@@ -37,6 +37,9 @@ function opensTunnelPort(m: Model, iface: Iface | undefined, r: Rule): boolean {
 export function cannotDelete(m: Model, id: string): string | null {
   const gw = m.routing.gateways.find((g) => g.id === m.routing.defaultGateway);
   if (gw?.iface === id) return `The default gateway, ${gw.name}, is on this interface. Choose another default gateway first.`;
+  const dev = m.interfaces.find((i) => i.id === id)?.device;
+  const carried = m.interfaces.filter((i) => i.vlan && i.vlan.parent === dev);
+  if (carried.length) return `It carries ${carried.map((i) => i.name).join(', ')}. Delete ${carried.length === 1 ? 'that VLAN' : 'those VLANs'} first.`;
   return null;
 }
 

@@ -38,7 +38,7 @@ export const nav: NavGroup[] = [
   },
   {
     label: 'Network', icon: IconNetwork, items: [
-      { label: 'Interfaces', to: '/interfaces', keywords: 'ports nics network cards vlan wan lan ip address', monitors: true },
+      { label: 'Interfaces', to: '/interfaces', keywords: 'ports nics network cards vlan wan lan ip address aggregate lacp bond bonding trunk failover link aggregation', monitors: true },
       { label: 'Routing', to: '/network/routing', keywords: 'routes default route', monitors: true },
     ],
   },

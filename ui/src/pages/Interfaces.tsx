@@ -14,6 +14,8 @@ import { PageHeader, StatusDot, Mono } from '../components/ui';
 import { useMode } from '../lib/mode';
 import { TrafficSpark } from '../components/HistoryChart';
 import { useHistory } from '../lib/history';
+import { deviceFor, describeAggregate, freePorts, portOwners, portUse } from '../lib/aggregate';
+import { AggregateFields, aggregateValues, portsError, toAggregate } from '../components/AggregateFields';
 
 const roleLabel: Record<Iface['role'], string> = { wan: 'Internet', lan: 'Local network', opt: 'Extra network', vpn: 'VPN' };
 
@@ -37,8 +39,9 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
   // OPF's own ports, and the firewall's other ports, which then only
   // carry VLANs (OPF brings them up for it).
   const physical = (dev: string) => !clonedKind.test(dev);
-  const own = staged.interfaces.filter((i) => !i.vlan && i.role !== 'vpn' && physical(i.device));
-  const bare = (live?.interfaces ?? []).filter((s) => settable(s) && physical(s.name) && !staged.interfaces.some((i) => i.device === s.name));
+  const own = staged.interfaces.filter((i) => !i.vlan && i.role !== 'vpn' && (physical(i.device) || i.aggregate));
+  const ports = portOwners(staged);
+  const bare = (live?.interfaces ?? []).filter((s) => settable(s) && physical(s.name) && !staged.interfaces.some((i) => i.device === s.name) && !ports.has(s.name));
   const parents = [
     ...own.map((p) => ({ value: p.device, label: `${p.name} (${p.device})` })),
     ...bare.map((s) => ({ value: s.name, label: `${s.name}, only to carry VLANs` })),
@@ -98,6 +101,67 @@ function AddVlan({ opened, onClose }: { opened: boolean; onClose: () => void }) 
             <Button variant="default" onClick={onClose}>
               Cancel
             </Button>
+            <Button type="submit">Add network</Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+// One interface of several ports: LACP to a switch, or failover and the
+// like. Its ports become its own; the address is on it.
+function AddAggregate({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const { staged, edit } = useStore();
+  const navigate = useNavigate();
+  const { data: live } = useLive('interfaces');
+  const form = useForm({
+    initialValues: { name: '', role: 'opt' as 'lan' | 'opt', addressing: 'static' as 'static' | 'dhcp' | 'none', address: '', prefix: '24', ...aggregateValues() },
+    validate: {
+      name: (v) => (v.trim() ? null : 'Give the network a name'),
+      address: (v, vals) => (vals.addressing !== 'static' || isIPv4(v) ? null : 'Enter an IPv4 address like 192.168.30.1'),
+      ports: portsError,
+    },
+  });
+  const v = form.values;
+  const agg = toAggregate(v);
+  const device = deviceFor(staged, v.mode);
+  const submit = form.onSubmit((v) => {
+    const id = newId('net');
+    const iface: Iface = {
+      id, name: v.name.trim(), device, role: v.role, enabled: true, ipv6: 'none',
+      ipv4: v.addressing === 'static' ? { mode: 'static', address: v.address, prefix: Number(v.prefix) } : { mode: v.addressing },
+      aggregate: toAggregate(v),
+    };
+    edit('interfaces', `Added network “${iface.name}” (${device}, ${describeAggregate(iface.aggregate!)})`, (m) => ({ ...m, interfaces: [...m.interfaces, iface] }));
+    form.reset();
+    onClose();
+    navigate(`/interfaces/${id}`);
+  });
+  return (
+    <Modal opened={opened} onClose={onClose} title={<Text fw={600}>Combine ports</Text>} size="lg">
+      <form onSubmit={submit}>
+        <Stack>
+          <Text size="sm" c="dimmed">
+            One network over several ports: faster, or still connected when a cable or switch fails. OPF sets it up as {device}{agg.ports.length ? `, ${describeAggregate(agg)}` : ''}.
+          </Text>
+          <TextInput label="Name" placeholder="LAN" data-autofocus {...form.getInputProps('name')} />
+          <AggregateFields
+            values={v}
+            set={(k, val) => form.setFieldValue(k, val as never)}
+            error={form.errors.ports}
+            ports={freePorts(staged, live)}
+          />
+          <Select label="Role" data={[{ value: 'lan', label: 'Local network' }, { value: 'opt', label: 'Extra network' }]} allowDeselect={false} {...form.getInputProps('role')} />
+          <SegmentedControl data={[{ value: 'static', label: 'Fixed address' }, { value: 'dhcp', label: 'From DHCP' }, { value: 'none', label: 'None (VLANs only)' }]} {...form.getInputProps('addressing')} />
+          {v.addressing === 'static' && (
+            <Group grow align="flex-start">
+              <TextInput label="Firewall address" placeholder="192.168.30.1" {...form.getInputProps('address')} />
+              <Select label="Size" data={['24', '25', '26', '27', '28', '16']} allowDeselect={false} {...form.getInputProps('prefix')} renderOption={({ option }) => `/${option.value}`} />
+            </Group>
+          )}
+          <Group justify="flex-end" mt="sm">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button type="submit">Add network</Button>
           </Group>
         </Stack>
@@ -184,7 +248,7 @@ function Unmanaged({ ifs }: { ifs?: InterfacesResource }) {
   // Read-only, every interface is the machine's own, and none is set up.
   const { readOnly } = useMode();
   const [port, setPort] = useState<InterfaceState | null>(null);
-  const managed = new Set(staged.interfaces.flatMap((i) => (i.vlan && i.enabled ? [i.device, i.vlan.parent] : [i.device])));
+  const managed = new Set(staged.interfaces.flatMap((i) => [i.device, ...(i.vlan && i.enabled ? [i.vlan.parent] : []), ...(i.aggregate?.ports ?? [])]));
   const others = (ifs?.interfaces ?? []).filter((s) => !managed.has(s.name) && !pseudo.test(s.name));
   if (!others.length) return null;
   return (
@@ -232,6 +296,7 @@ export function Interfaces() {
   const { staged } = useStore();
   const { readOnly } = useMode();
   const [opened, dlg] = useDisclosure();
+  const [aggOpened, aggDlg] = useDisclosure();
   const { data: ifs } = useLive('interfaces');
   const { data: routes } = useLive('routes');
   // The last hour of every interface's traffic, in one request.
@@ -243,9 +308,14 @@ export function Interfaces() {
         title="Interfaces"
         description={readOnly ? 'This machine’s interfaces, as ifconfig has them.' : 'The networks OPF connects. Each one gets its own firewall rules and, if you want, its own DHCP server.'}
         actions={readOnly ? undefined : (
-          <Button leftSection={<IconPlus size={16} />} onClick={dlg.open}>
-            Add VLAN
-          </Button>
+          <Group gap="sm">
+            <Button variant="default" leftSection={<IconPlus size={16} />} onClick={aggDlg.open}>
+              Combine ports
+            </Button>
+            <Button leftSection={<IconPlus size={16} />} onClick={dlg.open}>
+              Add VLAN
+            </Button>
+          </Group>
         )}
       />
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
@@ -292,8 +362,20 @@ export function Interfaces() {
                   {i.wireguard ? (
                     // Its keys, port and devices are set on its WireGuard tab.
                     <Anchor component={Link} to={`/services/wireguard/${i.id}`} size="sm">WireGuard tunnel</Anchor>
-                  ) : s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : i.vlan ? `VLAN ${i.vlan.tag} on ${i.vlan.parent}` : mediaLabel(s) ?? '—'}
+                  ) : s?.vlan ? `VLAN ${s.vlan.id} on ${s.vlan.parent}` : i.vlan ? `VLAN ${i.vlan.tag} on ${i.vlan.parent}` : i.aggregate ? describeAggregate(i.aggregate) : mediaLabel(s) ?? '—'}
                 </Field>
+                {i.aggregate && (
+                  <Field label="Ports">
+                    <Group gap="md" justify="flex-end">
+                      {i.aggregate.ports.map((p) => {
+                        const ps = ifs?.interfaces.find((x) => x.name === p);
+                        const use = portUse(s, p);
+                        const pl = !ifs ? '…' : !ps ? 'Not on this system' : !ps.up ? 'Down' : ps.status === 'no carrier' ? 'No link' : use?.label ?? 'Up';
+                        return <Group key={p} gap={4} wrap="nowrap"><Mono>{p}</Mono><StatusDot ok={use ? use.ok && pl === use.label : pl === 'Up'} label={pl} /></Group>;
+                      })}
+                    </Group>
+                  </Field>
+                )}
                 <Field label="Traffic">
                   <span className="num">
                     {s?.rxBps !== undefined && s.txBps !== undefined ? `↓ ${formatBits(s.rxBps)} · ↑ ${formatBits(s.txBps)}` : '—'}
@@ -317,6 +399,7 @@ export function Interfaces() {
       </SimpleGrid>
       <Unmanaged ifs={ifs} />
       <AddVlan opened={opened} onClose={dlg.close} />
+      <AddAggregate opened={aggOpened} onClose={aggDlg.close} />
     </>
   );
 }

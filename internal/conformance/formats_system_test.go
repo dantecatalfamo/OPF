@@ -286,6 +286,36 @@ wg1: flags=80c3<UP,BROADCAST,RUNNING,NOARP,MULTICAST> mtu 1420
 		wgaip 10.8.1.0/24
 	groups: wg
 	inet6 fd00::1 prefixlen 64
+aggr0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	lladdr fe:e1:ba:d0:aa:01
+	index 15 priority 0 llprio 7
+	trunk: trunkproto lacp
+	trunk id: [(8000,fe:e1:ba:d0:aa:01,0007,0000,0000),
+		 (FFFF,00:00:00:00:00:00,0000,0000,0000)]
+		em4 lacp actor system pri 0x8000 mac fe:e1:ba:d0:aa:01, key 0x7, port pri 0x8000 number 0x2
+		em4 lacp actor state activity,aggregation,defaulted
+		em4 lacp partner system pri 0xffff mac 00:00:00:00:00:00, key 0x0, port pri 0x0 number 0x0
+		em4 lacp partner state aggregation,sync,collecting,distributing,defaulted
+		em4 port active,collecting,distributing
+		em5 port 
+	groups: aggr
+	media: Ethernet autoselect
+	status: active
+em4: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	lladdr fe:e1:ba:d0:aa:01
+	index 16 priority 0 llprio 3
+	trunk: trunkdev aggr0
+	media: Ethernet autoselect (1000baseT full-duplex)
+	status: active
+trunk0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	lladdr 00:0d:b9:5a:3c:13
+	index 17 priority 0 llprio 3
+	trunk: trunkproto failover
+		em7 port active
+		em6 port master,active
+	groups: trunk
+	media: Ethernet autoselect
+	status: active
 `
 
 func TestSystemFormatsIfconfig(t *testing.T) {

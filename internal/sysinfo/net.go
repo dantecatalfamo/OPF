@@ -27,6 +27,7 @@ type Interface struct {
 	IPv4      []string   `json:"ipv4"`
 	IPv6      []string   `json:"ipv6"`
 	VLAN      *VLAN      `json:"vlan,omitempty"`
+	Trunk     *Trunk     `json:"trunk,omitempty"`
 	Carp      *Carp      `json:"carp,omitempty"`
 	WireGuard *WireGuard `json:"wireguard,omitempty"`
 }
@@ -35,6 +36,23 @@ type Interface struct {
 type VLAN struct {
 	ID     int    `json:"id"`
 	Parent string `json:"parent"`
+}
+
+// Trunk is an aggr(4) or trunk(4) interface's protocol and ports, or a
+// port's aggregate (Dev, alone).
+type Trunk struct {
+	// Proto is trunkproto: lacp for an aggr, failover and the like for
+	// a trunk.
+	Proto string      `json:"proto,omitempty"`
+	Ports []TrunkPort `json:"ports,omitempty"`
+	Dev   string      `json:"dev,omitempty"`
+}
+
+// TrunkPort is a port of an aggregate, with trunk(4)'s flags for it
+// (master, active, collecting, distributing...).
+type TrunkPort struct {
+	Name  string   `json:"name"`
+	Flags []string `json:"flags"`
 }
 
 // Carp is a carp(4) interface's state (MASTER, BACKUP, INIT).
@@ -114,8 +132,17 @@ func ParseIfconfig(out string) []Interface {
 			continue
 		}
 		if strings.HasPrefix(l, "\t\t") {
-			if peer != nil {
+			switch f := strings.Fields(l); {
+			case peer != nil:
 				parseWGPeerLine(peer, strings.TrimSpace(l))
+			case cur.Trunk != nil && len(f) >= 2 && f[1] == "port":
+				// "\t\tem0 port master,active"; the lacp lines name the
+				// port too, with "lacp" second.
+				p := TrunkPort{Name: f[0], Flags: []string{}}
+				if len(f) > 2 {
+					p.Flags = strings.Split(f[2], ",")
+				}
+				cur.Trunk.Ports = append(cur.Trunk.Ports, p)
 			}
 			continue
 		}
@@ -154,6 +181,20 @@ func ParseIfconfig(out string) []Interface {
 				}
 			}
 			cur.VLAN = v
+		case "trunk:":
+			// trunk: trunkproto lacp [trunkdev aggr0], or a port's
+			// trunk: trunkdev aggr0
+			f := strings.Fields(val)
+			t := &Trunk{}
+			for i := 0; i+1 < len(f); i += 2 {
+				switch f[i] {
+				case "trunkproto":
+					t.Proto = f[i+1]
+				case "trunkdev":
+					t.Dev = f[i+1]
+				}
+			}
+			cur.Trunk = t
 		case "carp:":
 			// carp: MASTER carpdev em0 vhid 1 advbase 1 advskew 0
 			f := strings.Fields(val)

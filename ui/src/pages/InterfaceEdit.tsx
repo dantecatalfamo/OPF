@@ -14,6 +14,9 @@ import { HistoryCard } from '../components/HistoryChart';
 
 import { DeleteInterface } from '../components/DeleteInterface';
 import { FileLink } from './ConfigFiles';
+import { AggregateFields, aggregateValues, portsError, toAggregate, type AggregateValues } from '../components/AggregateFields';
+import { deviceFor, describeAggregate, freePorts } from '../lib/aggregate';
+import { useLive } from '../lib/live';
 
 interface Values {
   name: string;
@@ -30,6 +33,8 @@ interface Values {
   masquerade: boolean;
   /** The WAN's VLAN, for providers that tag theirs; '' for none. */
   vlanTag: number | '';
+  /** An aggregate's ports and how it uses them. */
+  agg: AggregateValues;
 }
 
 // The gateway the WAN page edits: the default one when it's on this
@@ -75,6 +80,7 @@ function toValues(i: Iface, m: Model): Values {
     antispoof: !!i.antispoof,
     masquerade: !!i.masquerade,
     vlanTag: i.role === 'wan' && i.vlan ? i.vlan.tag : '',
+    agg: aggregateValues(i.aggregate),
   };
 }
 
@@ -93,6 +99,9 @@ function describe(before: Iface, after: Iface): string {
   if (!!before.blockBogons !== !!after.blockBogons) parts.push(after.blockBogons ? 'blocks bogon networks' : 'allows bogon networks');
   if (!!before.antispoof !== !!after.antispoof) parts.push(after.antispoof ? 'blocks spoofed addresses' : 'no longer blocks spoofed addresses');
   if (!!before.masquerade !== !!after.masquerade) parts.push(after.masquerade ? 'shares its address with OPF’s other networks' : 'no longer shares its address');
+  if (before.aggregate && after.aggregate && JSON.stringify(before.aggregate) !== JSON.stringify(after.aggregate)) {
+    parts.push(`now ${after.device}, ${describeAggregate(after.aggregate)}`);
+  }
   if (before.vlan?.tag !== after.vlan?.tag) parts.push(after.vlan ? `tagged as VLAN ${after.vlan.tag} on ${after.vlan.parent}` : `no longer tagged, on ${after.device}`);
   return `${before.name}: ${parts.join(', ') || 'updated'}`;
 }
@@ -103,6 +112,7 @@ export function InterfaceEdit() {
   const { staged, edit } = useStore();
   const [deleting, setDeleting] = useState(false);
   const iface = staged.interfaces.find((i) => i.id === id);
+  const { data: live } = useLive('interfaces');
 
   const form = useForm<Values>({
     initialValues: toValues(iface ?? staged.interfaces[0], staged),
@@ -125,6 +135,7 @@ export function InterfaceEdit() {
         const other = staged.interfaces.find((i) => i.id !== iface?.id && i.device === `vlan${v}`);
         return other ? `${other.name} already uses VLAN ${v}` : null;
       },
+      agg: { ports: (v) => (iface?.aggregate ? portsError(v) : null) },
     },
   });
 
@@ -141,6 +152,8 @@ export function InterfaceEdit() {
   }
 
   const isWan = iface.role === 'wan';
+  // A trunk takes its first port's MTU (trunk(4)); an aggr sets its ports'.
+  const trunk = !!iface.aggregate && form.values.agg.mode !== 'lacp';
   const inside = iface.role === 'lan' || iface.role === 'opt';
   const lockout = iface.role === 'lan' && (form.values.mode !== 'static' || form.values.address !== iface.ipv4.address);
 
@@ -153,13 +166,17 @@ export function InterfaceEdit() {
         ? { mode: 'static', address: v.address, prefix: Number(v.prefix) }
         : { mode: v.mode },
       ipv6: v.ipv6,
-      mtu: v.mtu === '' ? undefined : Number(v.mtu),
+      mtu: v.mtu === '' || trunk ? undefined : Number(v.mtu),
       ...(isWan ? { blockPrivate: v.blockPrivate, blockBogons: v.blockBogons } : {}),
       // Antispoof needs a fixed address (pf expands it when it loads).
       antispoof: v.mode === 'static' && v.antispoof ? true : undefined,
       masquerade: inside && v.mode !== 'none' && v.masquerade ? true : undefined,
     };
-    if (isWan) {
+    if (iface.aggregate) {
+      next.aggregate = toAggregate(v.agg);
+      next.device = deviceFor(staged, v.agg.mode, iface);
+    }
+    if (isWan && !iface.aggregate) {
       // Tagged, the WAN is a VLAN on its port; untagged, the port itself.
       const port = iface.vlan?.parent ?? iface.device;
       if (v.vlanTag === '') {
@@ -172,12 +189,15 @@ export function InterfaceEdit() {
     }
     if (next.antispoof === undefined) delete next.antispoof;
     if (next.masquerade === undefined) delete next.masquerade;
+    if (next.mtu === undefined) delete next.mtu;
     // The WAN's gateway is kept under Routing, where mygate comes from.
     const gateway = isWan && v.mode === 'static' && v.gateway ? v.gateway : isWan && v.mode === 'dhcp' ? 'dhcp' : undefined;
     const gwBefore = ownGateway(staged, iface.id);
     const gwAfter = gateway ? ownGateway(withGateway(staged, next, gateway), iface.id) : gwBefore;
     if (JSON.stringify(next) !== JSON.stringify(iface)) {
-      edit('interfaces', describe(iface, next), (m) => ({ ...m, interfaces: m.interfaces.map((i) => (i.id === iface.id ? next : i)) }));
+      // VLANs it carries follow it to a new device (aggr to trunk).
+      const moved = (i: Iface): Iface => (i.vlan?.parent === iface.device && next.device !== iface.device ? { ...i, vlan: { ...i.vlan, parent: next.device } } : i);
+      edit('interfaces', describe(iface, next), (m) => ({ ...m, interfaces: m.interfaces.map((i) => (i.id === iface.id ? next : moved(i))) }));
     }
     if (gateway && gwAfter && JSON.stringify(gwAfter) !== JSON.stringify(gwBefore)) {
       edit('routing', gwAfter.address === 'dhcp' ? `${gwAfter.name}: from ${next.name}’s DHCP lease` : `${gwAfter.name}: ${gwAfter.address}${gwBefore ? '' : ', added'} on ${next.name}`, (m) => withGateway(m, next, gateway));
@@ -200,15 +220,15 @@ export function InterfaceEdit() {
                 WireGuard tunnel {iface.device} ·{' '}
                 <Anchor component={Link} to={`/services/wireguard/${iface.id}`} size="sm">Its keys, port and devices are on WireGuard VPN</Anchor>
               </>
-            ) : iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : `Port ${iface.device}`}
+            ) : iface.vlan ? `VLAN ${iface.vlan.tag} on ${iface.vlan.parent}` : iface.aggregate ? `${iface.device}, ${describeAggregate(iface.aggregate)}` : `Port ${iface.device}`}
             {' · '}<FileLink path={`/etc/hostname.${iface.device}`} />
           </>
         }
         actions={
           <>
-            {iface.vlan && (
+            {(iface.vlan || iface.aggregate) && (
               <Button variant="subtle" color="red" onClick={() => setDeleting(true)}>
-                Delete VLAN
+                {iface.vlan ? 'Delete VLAN' : 'Delete'}
               </Button>
             )}
             <Button variant="default" component={Link} to="/interfaces">
@@ -228,7 +248,7 @@ export function InterfaceEdit() {
               description={isWan ? 'Turning this off disconnects OPF from the internet.' : undefined}
               {...form.getInputProps('enabled', { type: 'checkbox' })}
             />
-            {isWan && (
+            {isWan && !iface.aggregate && (
               <NumberInput
                 label="VLAN ID" placeholder="None" min={1} max={4094} allowDecimal={false}
                 description={`Set this only if your provider tags its traffic. Some fibre services do, for example with VLAN 35, 10 or 7, and their instructions say which. OPF then carries the WAN as that VLAN on ${iface.vlan?.parent ?? iface.device}.`}
@@ -237,6 +257,23 @@ export function InterfaceEdit() {
             )}
           </Stack>
         </Card>
+
+        {iface.aggregate && (
+          <Card>
+            <SectionTitle>Ports</SectionTitle>
+            <AggregateFields
+              values={form.values.agg}
+              set={(k, val) => form.setFieldValue(`agg.${k}`, val as never)}
+              error={form.errors['agg.ports']}
+              ports={freePorts(staged, live, iface)}
+            />
+            {deviceFor(staged, form.values.agg.mode, iface) !== iface.device && (
+              <Alert color="yellow" variant="light" mt="md" icon={<IconInfoCircle size={18} />}>
+                {form.values.agg.mode === 'lacp' ? 'LACP' : 'This'} is a different kind of interface, so it becomes {deviceFor(staged, form.values.agg.mode, iface)}, and {iface.device} goes away. The link drops for a moment while it’s applied.
+              </Alert>
+            )}
+          </Card>
+        )}
 
         <Card>
           <SectionTitle>IPv4 address</SectionTitle>
@@ -293,7 +330,11 @@ export function InterfaceEdit() {
               allowDeselect={false}
               {...form.getInputProps('ipv6')}
             />
-            <NumberInput label="MTU" description="Leave empty unless your provider tells you otherwise." placeholder="1500" min={576} max={9000} {...form.getInputProps('mtu')} />
+            <NumberInput
+              label="MTU"
+              description={trunk ? 'A trunk uses its ports’ MTU. For another, choose LACP.' : 'Leave empty unless your provider tells you otherwise.'}
+              placeholder="1500" min={576} max={9000} disabled={trunk} {...form.getInputProps('mtu')}
+            />
           </Stack>
         </Card>
 
@@ -343,7 +384,7 @@ export function InterfaceEdit() {
           />
         </Card>
       </Stack>
-      {iface.vlan && <DeleteInterface iface={iface} kind="VLAN network" opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/interfaces')} />}
+      {(iface.vlan || iface.aggregate) && <DeleteInterface iface={iface} kind={iface.vlan ? 'VLAN network' : 'network'} opened={deleting} onClose={() => setDeleting(false)} onDeleted={() => navigate('/interfaces')} />}
     </form>
   );
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -185,6 +186,56 @@ func TestParseIfconfig(t *testing.T) {
 	eachFixture(t, "ifconfig_-A.txt", func(t *testing.T, dir, out string) {
 		golden(t, dir, "ifconfig_-A", ParseIfconfig(out))
 	})
+}
+
+// An aggr and a trunk as trunk_status prints them, and a port of each.
+const ifconfigTrunks = "aggr0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n" +
+	"\tlladdr fe:e1:ba:d0:aa:01\n" +
+	"\tindex 7 priority 0 llprio 7\n" +
+	"\ttrunk: trunkproto lacp\n" +
+	"\ttrunk id: [(8000,fe:e1:ba:d0:aa:01,0007,0000,0000),\n" +
+	"\t\t (FFFF,00:00:00:00:00:00,0000,0000,0000)]\n" +
+	"\t\tem1 lacp actor system pri 0x8000 mac fe:e1:ba:d0:aa:01, key 0x7, port pri 0x8000 number 0x2\n" +
+	"\t\tem1 lacp actor state activity,aggregation,defaulted\n" +
+	"\t\tem1 lacp partner system pri 0xffff mac 00:00:00:00:00:00, key 0x0, port pri 0x0 number 0x0\n" +
+	"\t\tem1 lacp partner state aggregation,sync,collecting,distributing,defaulted\n" +
+	"\t\tem1 port active,collecting,distributing\n" +
+	"\t\tem2 port \n" +
+	"\tgroups: aggr\n" +
+	"\tmedia: Ethernet autoselect\n" +
+	"\tstatus: active\n" +
+	"em1: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n" +
+	"\tlladdr fe:e1:ba:d0:aa:01\n" +
+	"\tindex 2 priority 0 llprio 3\n" +
+	"\ttrunk: trunkdev aggr0\n" +
+	"\tmedia: Ethernet autoselect (1000baseT full-duplex)\n" +
+	"\tstatus: active\n" +
+	"trunk0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500\n" +
+	"\tlladdr 00:0d:b9:5a:3c:13\n" +
+	"\tindex 8 priority 0 llprio 3\n" +
+	"\ttrunk: trunkproto failover\n" +
+	"\t\tem4 port active\n" +
+	"\t\tem3 port master,active\n" +
+	"\tgroups: trunk\n" +
+	"\tmedia: Ethernet autoselect\n" +
+	"\tstatus: active\n"
+
+func TestParseIfconfigTrunks(t *testing.T) {
+	ifs := ParseIfconfig(ifconfigTrunks)
+	if len(ifs) != 3 {
+		t.Fatalf("%d interfaces", len(ifs))
+	}
+	if tr := ifs[0].Trunk; tr == nil || tr.Proto != "lacp" || len(tr.Ports) != 2 ||
+		tr.Ports[0].Name != "em1" || strings.Join(tr.Ports[0].Flags, ",") != "active,collecting,distributing" ||
+		tr.Ports[1].Name != "em2" || len(tr.Ports[1].Flags) != 0 {
+		t.Errorf("aggr0: %+v", tr)
+	}
+	if tr := ifs[1].Trunk; tr == nil || tr.Dev != "aggr0" || tr.Proto != "" || len(tr.Ports) != 0 {
+		t.Errorf("em1: %+v", tr)
+	}
+	if tr := ifs[2].Trunk; tr == nil || tr.Proto != "failover" || len(tr.Ports) != 2 || strings.Join(tr.Ports[1].Flags, ",") != "master,active" {
+		t.Errorf("trunk0: %+v", tr)
+	}
 }
 
 func TestParseNetstat(t *testing.T) {

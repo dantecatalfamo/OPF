@@ -285,6 +285,8 @@ export interface InterfaceState {
   ipv4: string[];
   ipv6: string[];
   vlan?: { id: number; parent: string };
+  /** An aggr's or trunk's protocol and ports (with trunk(4)'s flags for each), or a port's aggregate (dev). */
+  trunk?: { proto?: string; ports?: { name: string; flags: string[] }[]; dev?: string };
   carp?: { state: string; device: string; vhid: number; advskew: number };
   wireguard?: { port?: number; publicKey?: string; peers: WgPeerState[] };
   counters?: { rxBytes: number; txBytes: number; rxPackets: number; txPackets: number; rxErrors: number; txErrors: number; collisions: number };

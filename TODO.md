@@ -744,39 +744,28 @@ Types, roughly in order of usefulness:
 - [ ] `veb` + `vport` bridges (bridging LAN ports). The address and pf
       filtering are on the vport, so the LAN macro follows it. The older
       `bridge(4)` is similar.
-- [ ] **Aggregated links:** add `aggr` and `trunk` interfaces. OPF
-      leaves hand-made ones alone on import today, and a VLAN on one
-      too.
-      - `aggr(4)` is LACP (802.3ad), for a switch that speaks it:
-        `trunkport` lines, `lacpmode active|passive`, `lacptimeout
-        fast|slow`.
-      - `trunk(4)` covers the rest with `trunkproto`: `failover` (one
-        port at a time, the others standby; `trunkport em1 trunkport
-        em2`, the first is master), `loadbalance`, `roundrobin`,
-        `broadcast`, `none`. It also does `lacp`, but aggr is the
-        better LACP driver.
-      - Member ports are `up` only, with no address, VLAN or role of
-        their own: the validator refuses a port that's a member and
-        anything else. A member can't be in two aggregates.
-      - The aggregate takes the members' role: its own address, DHCP,
-        role (WAN or inside) and pf macro. Its MTU follows its members.
-      - Import: read `hostname.aggrN`/`trunkN` into the model, members
-        noted as such, instead of leaving them as they are.
-      - The interfaces page lists members under their aggregate, with
-        each port's LACP or failover state (`ifconfig aggr0` prints
-        each port's state; `trunk0` its active and master ports).
-      - Conformance: declare the `ifconfig` lines and their output in
-        the registry, and give the suite's guest a model with both
-        (the guest needs spare ports: more vio devices, or vether
-        members, which aggr refuses since it needs real Ethernet; check
-        what trunk takes).
-- [ ] **VLANs on aggregates:** a VLAN whose parent is an `aggr` or
-      `trunk` OPF manages (the usual case: tagged VLANs over a LACP
-      bond to a switch). The vlanParent check accepts one, enabled if
-      the VLAN is; the aggregate then carries VLANs only, or VLANs and
-      an untagged network, as a port does. Commit order is already
-      right: netstart and OPF both bring aggr and trunk up before
-      VLANs (config.NetstartLower). After the aggregates above.
+- [ ] **Aggregated links** (`aggr` for LACP, `trunk` for failover,
+      loadbalance, roundrobin, broadcast, none): in the model
+      (`Iface.Aggregate`), validated, generated, imported, on the
+      Interfaces page ("Combine ports") and its edit page, with each
+      port's state from ifconfig's trunk lines, and in the mock. VLANs
+      can be carried on one. Left:
+      - **Run TestAggregates on the 7.9 guest** (written, not run:
+        openbsd-dev was unreachable). It runs OPF's hostname.if files
+        through netstart: ports join, a dropped port leaves, a port
+        moves from an aggr to a trunk. Recapture 7.9's source.json too,
+        for TRUNK_PROTOS (if_trunk.h) and netstart's first pass.
+      - A commit that takes a port out of an aggregate and makes it an
+        interface applies the port's file (netstart's first pass)
+        before the aggregate's lets it go; check on the guest that it
+        keeps its address once it's let go, or apply the aggregate
+        first in that case.
+      - A whole commit on the guest with the aggregate-lacp and
+        trunk-failover models (TestValidators only checks their
+        pf.conf now).
+      - trunk(4) with LACP is left as it is on import; aggr does LACP.
+        A trunk's MTU isn't set (it takes its first port's, and
+        refuses a change once ports join).
 - [ ] VLANs on `vether` (and `vport`): allow them as parents. The order
       is right now: OPF applies vether, bridge, veb, vport and tpmr in
       netstart's first pass, by name with the physical ports, and each
@@ -2267,10 +2256,8 @@ Found by the suite on 7.9, open:
       opf_local` ahead of them, which matches nothing until a lease,
       lets the split block and the way out's rtable skip what's
       `tagged opf_local`. The dhcp-inside model has a way out too now.
-- [ ] VLANs are only allowed on physical ports; OpenBSD carries them on
-      aggr, trunk and vether too. Needs the aggregates first (under
-      Interfaces: aggregated links, VLANs on aggregates, VLANs on
-      vether).
+- [ ] VLANs are allowed on physical ports and aggregates; OpenBSD
+      carries them on vether too (Interfaces: VLANs on vether).
 - [ ] Speed: the suite's commit of the everything model took over
       7 minutes on the guest; find what's slow.
 
