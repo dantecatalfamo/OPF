@@ -153,3 +153,35 @@ func TestSourceFacts(t *testing.T) {
 		})
 	}
 }
+
+// TestNetstartPasses reads netstart's three ifmstart passes as 7.9's
+// /etc/netstart has them, and refuses one OPF doesn't know.
+func TestNetstartPasses(t *testing.T) {
+	src := `ifmstart "" "aggr trunk svlan vlan carp pppoe tun tap gif etherip gre egre nvgre eoip vxlan pflow wg"
+ifmstart "aggr trunk svlan vlan carp pppoe"
+ifmstart "tun tap gif etherip gre egre nvgre eoip vxlan pflow wg"
+`
+	f := SourceFacts{Release: "test"}
+	var err error
+	if f.NetstartSkipped, f.NetstartLower, f.NetstartRouting, err = netstartPasses(src); err != nil {
+		t.Fatal(err)
+	}
+	netstart := func() (p []string) {
+		for _, s := range f.Problems() {
+			if strings.HasPrefix(s, "netstart's ") {
+				p = append(p, s)
+			}
+		}
+		return p
+	}
+	if p := netstart(); len(p) != 0 {
+		t.Errorf("problems: %v", p)
+	}
+	if _, _, _, err := netstartPasses(src + `ifmstart "pfsync"` + "\n"); err == nil {
+		t.Error("a fourth pass: no error")
+	}
+	f.NetstartSkipped = append(f.NetstartSkipped[:0:0], "vether")
+	if p := netstart(); len(p) != 1 {
+		t.Errorf("a first pass skipping vether: %v", p)
+	}
+}

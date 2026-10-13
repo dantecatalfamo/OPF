@@ -776,14 +776,14 @@ Types, roughly in order of usefulness:
       the VLAN is; the aggregate then carries VLANs only, or VLANs and
       an untagged network, as a port does. Commit order is already
       right: netstart and OPF both bring aggr and trunk up before
-      VLANs (netstartOrder 1, VLANs 2). After the aggregates above.
-- [ ] VLANs on `vether` (and `vport`): netstart brings vether, bridge,
-      veb, vport and tpmr up in its first pass, with the physical
-      ports, but OPF's netstartOrder applies them last (5), after
-      VLANs, so a commit adding a VLAN on vether0 would make the VLAN
-      first. Fix the order to netstart's first, and have the
-      conformance suite compare netstart's first pass too, not only
-      its lower and routing passes. Then allow them as parents.
+      VLANs (config.NetstartLower). After the aggregates above.
+- [ ] VLANs on `vether` (and `vport`): allow them as parents. The order
+      is right now: OPF applies vether, bridge, veb, vport and tpmr in
+      netstart's first pass, by name with the physical ports, and each
+      held-back kind in netstart's order (config.NetstartLower and
+      NetstartRouting). The conformance suite compares all three
+      passes; recapture 7.9's source.json (TestSource) for the first
+      pass's skip list, which the 7.9 capture predates.
 - [ ] `pppoe` WANs: credentials need secret storage (Security), and the
       default route goes through the PPPoE link instead of `mygate`.
 - [ ] `carp` failover with `pfsync`: a shared password (secret storage),
@@ -2268,9 +2268,9 @@ Found by the suite on 7.9, open:
       lets the split block and the way out's rtable skip what's
       `tagged opf_local`. The dhcp-inside model has a way out too now.
 - [ ] VLANs are only allowed on physical ports; OpenBSD carries them on
-      aggr, trunk and vether too. Needs the aggregates first, and
-      vether's order fixed (under Interfaces: aggregated links, VLANs
-      on aggregates, VLANs on vether).
+      aggr, trunk and vether too. Needs the aggregates first (under
+      Interfaces: aggregated links, VLANs on aggregates, VLANs on
+      vether).
 - [ ] Speed: the suite's commit of the everything model took over
       7 minutes on the guest; find what's slow.
 

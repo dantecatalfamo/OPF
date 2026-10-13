@@ -43,7 +43,7 @@ func TestSource(t *testing.T) {
 	if f.LimitCounters, err = cMacroStrings(pfvar, "LCNT_NAMES"); err != nil {
 		t.Fatal(err)
 	}
-	if f.NetstartLower, f.NetstartRouting, err = netstartPasses(readFile(t, "/etc/netstart")); err != nil {
+	if f.NetstartSkipped, f.NetstartLower, f.NetstartRouting, err = netstartPasses(readFile(t, "/etc/netstart")); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := json.MarshalIndent(f, "", "  ")

@@ -29,8 +29,10 @@ type SourceFacts struct {
 	LimitCounters []string   `json:"limitCounters"` // LCNT_NAMES
 	// ntpd
 	NtpdKeywords []string `json:"ntpdKeywords"`
-	// /etc/netstart: the kinds started in the second pass (after the
-	// physical ports) and the third (once routes are up).
+	// /etc/netstart: the kinds its first pass skips, those started in
+	// the second pass (after the physical ports) and the third (once
+	// routes are up).
+	NetstartSkipped []string `json:"netstartSkipped"`
 	NetstartLower   []string `json:"netstartLower"`
 	NetstartRouting []string `json:"netstartRouting"`
 }
@@ -99,20 +101,26 @@ func yaccKeywords(src string) ([]string, error) {
 	return out, nil
 }
 
-// netstartPasses are the kinds of interface netstart starts in its
-// second and third passes (ifmstart "aggr trunk …" and "tun tap …").
-func netstartPasses(netstart string) (lower, routing []string, err error) {
+// netstartPasses are the kinds of interface netstart's first pass
+// skips (ifmstart "" "aggr trunk …"), and those it starts in its second
+// and third passes (ifmstart "aggr trunk …" and "tun tap …").
+func netstartPasses(netstart string) (skipped, lower, routing []string, err error) {
 	var passes [][]string
 	for _, m := range ifmRE.FindAllStringSubmatch(netstart, -1) {
 		args := cStringRE.FindAllStringSubmatch(m[1], -1)
-		if len(args) == 1 {
+		switch {
+		case len(args) == 2 && args[0][1] == "" && skipped == nil:
+			skipped = strings.Fields(args[1][1])
+		case len(args) == 1:
 			passes = append(passes, strings.Fields(args[0][1]))
+		default:
+			return nil, nil, nil, fmt.Errorf("netstart has an ifmstart OPF doesn't know: %s", m[0])
 		}
 	}
-	if len(passes) != 2 {
-		return nil, nil, fmt.Errorf("netstart has %d one-list ifmstart passes, OPF knows two", len(passes))
+	if skipped == nil || len(passes) != 2 {
+		return nil, nil, nil, fmt.Errorf("netstart has %d one-list ifmstart passes and a first pass %v, OPF knows two and one", len(passes), skipped != nil)
 	}
-	return passes[0], passes[1], nil
+	return skipped, passes[0], passes[1], nil
 }
 
 // Problems compares the source's names with OPF's.
@@ -136,20 +144,18 @@ func (f SourceFacts) Problems() []string {
 	same("set timeout's names (pf.TimeoutNames)", f.PfTimeouts, pf.TimeoutNames)
 	same("ntpd.conf's keywords (pf.NTPKeywords)", f.NtpdKeywords, pf.NTPKeywords())
 
-	// netstart's passes against the order OPF applies interfaces in.
-	for i, k := range f.NetstartLower {
-		o := config.NetstartOrder(k + "0")
-		if o < 1 || o > 4 {
-			p = append(p, fmt.Sprintf("netstart starts %s after the physical ports, before routes; OPF orders it %d", k, o))
-		}
-		if i > 0 && o < config.NetstartOrder(f.NetstartLower[i-1]+"0") {
-			p = append(p, fmt.Sprintf("netstart starts %s after %s; OPF the other way round", k, f.NetstartLower[i-1]))
+	// netstart's passes against the order OPF applies interfaces in
+	// (config.netstartOrder): the first pass starts all but the kinds it
+	// skips, by name, and the others follow kind by kind.
+	inOrder := func(what string, release, opf []string) {
+		if !slices.Equal(release, opf) {
+			p = append(p, fmt.Sprintf("netstart's %s: %s has %v, OPF %v", what, f.Release, release, opf))
 		}
 	}
-	for _, k := range f.NetstartRouting {
-		if o := config.NetstartOrder(k + "0"); o != 5 {
-			p = append(p, fmt.Sprintf("netstart starts %s once routes are up; OPF orders it %d", k, o))
-		}
+	if f.NetstartSkipped != nil { // not in captures before 2026-10-13
+		inOrder("first pass skips", f.NetstartSkipped, slices.Concat(config.NetstartLower, config.NetstartRouting))
 	}
+	inOrder("second pass", f.NetstartLower, config.NetstartLower)
+	inOrder("third pass", f.NetstartRouting, config.NetstartRouting)
 	return p
 }

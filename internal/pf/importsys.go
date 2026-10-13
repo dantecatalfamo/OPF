@@ -441,7 +441,7 @@ func importInterfaces(m *Model, src ImportSources) []ImportNote {
 }
 
 // isPortKind says whether an interface kind is a physical port: not one
-// of the virtual kinds (netstartOrder's).
+// of the virtual kinds (ClonedKinds).
 func isPortKind(kind string) bool {
 	// umb and wwan are devices, but mobile broadband, not ports.
 	return !slices.Contains(ClonedKinds, kind) && kind != "umb" && kind != "wwan"

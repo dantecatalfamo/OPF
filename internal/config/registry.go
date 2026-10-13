@@ -416,30 +416,32 @@ exit $st`
 // an anchor of their own, with $user_ip and $user_id defined.
 var AuthpfRulesCheck = []string{"pfctl", "-n", "-a", "authpf/opfcheck", "-D", "user_ip=192.0.2.1", "-D", "user_id=opfcheck", "-f", "{}"}
 
-// netstartOrder is when netstart brings an interface up at boot, so a
-// commit applies them the same way: physical ports first, then the
-// interfaces built on them (aggregates, then VLANs, then carp and PPPoE),
-// then tunnels, bridges and the rest. Not by name: a VLAN on vmx0 would
-// come before its parent.
-func netstartOrder(name string) int {
-	switch strings.TrimRight(strings.TrimPrefix(name, "hostname."), "0123456789") {
-	case "aggr", "trunk":
-		return 1
-	case "svlan", "vlan":
-		return 2
-	case "carp":
-		return 3
-	case "pppoe":
-		return 4
-	case "tun", "tap", "gif", "etherip", "gre", "egre", "nvgre", "eoip", "vxlan", "pflow", "wg", "bridge", "veb", "vport", "tpmr", "vether":
-		return 5
-	}
-	return 0 // a physical port
-}
+// NetstartLower and NetstartRouting are the kinds of interface netstart
+// holds back from its first pass, which starts every other hostname.if
+// by name (physical ports, and bridge, veb, vport, tpmr, vether and the
+// rest): the lower ones next, kind by kind in this order (aggregates,
+// then VLANs, then carp and PPPoE), and the others once routes are up.
+// The conformance suite compares them with each release's netstart.
+var (
+	NetstartLower   = []string{"aggr", "trunk", "svlan", "vlan", "carp", "pppoe"}
+	NetstartRouting = []string{"tun", "tap", "gif", "etherip", "gre", "egre", "nvgre", "eoip", "vxlan", "pflow", "wg"}
+)
 
-// NetstartOrder is netstartOrder for a device, for the conformance
-// suite to compare with the release's netstart.
-func NetstartOrder(dev string) int { return netstartOrder("hostname." + dev) }
+// netstartOrder is when netstart brings an interface up at boot, so a
+// commit applies them the same way: 0 for netstart's first pass, then
+// one step for each kind in NetstartLower and NetstartRouting, in order.
+// Ties go by name, as in netstart. Not by name alone: a VLAN on vmx0
+// would come before its parent.
+func netstartOrder(name string) int {
+	kind := strings.TrimRight(strings.TrimPrefix(name, "hostname."), "0123456789")
+	if i := slices.Index(NetstartLower, kind); i >= 0 {
+		return 1 + i
+	}
+	if i := slices.Index(NetstartRouting, kind); i >= 0 {
+		return 1 + len(NetstartLower) + i
+	}
+	return 0
+}
 
 // HostnameApply applies /etc/hostname.$1 with netstart. An interface
 // that leaves DHCP or SLAAC for a fixed address keeps its AUTOCONF flag
