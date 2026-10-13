@@ -11,7 +11,7 @@ bios0: vendor SeaBIOS version "1.16.3p12-OpenBSD-vmm" date 01/01/2011
 bios0: OpenBSD VMM
 acpi at bios0 not configured
 cpu0 at mainbus0: (uniprocessor)
-cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3807.96 MHz, 06-9e-09
+cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3804.58 MHz, 06-9e-09
 cpu0: cpuid 1 edx=78ba97f<FPU,VME,DE,PSE,TSC,MSR,PAE,CX8,SEP,PGE,CMOV,PAT,PSE36,CFLUSH,MMX,FXSR,SSE,SSE2> ecx=f6d83203<SSE3,PCLMUL,SSSE3,FMA3,CX16,SSE4.1,SSE4.2,MOVBE,POPCNT,AES,XSAVE,AVX,F16C,RDRAND,HV>
 cpu0: cpuid 7.0 ebx=9c23a9<FSGSBASE,BMI1,AVX2,SMEP,BMI2,ERMS,RDSEED,ADX,SMAP,CLFLUSHOPT> ecx=4<UMIP> edx=400<MD_CLEAR>
 cpu0: cpuid d.1 eax=5<XSAVEOPT,XGETBV1>
@@ -27,10 +27,10 @@ virtio0 at pci0 dev 1 function 0 "Qumranet Virtio 1.x RNG" rev 0x01
 viornd0 at virtio0
 virtio0: irq 3
 virtio1 at pci0 dev 2 function 0 "Qumranet Virtio 1.x Network" rev 0x01
-vio0 at virtio1: 1 queue, address fe:e1:bb:d1:42:99
+vio0 at virtio1: 1 queue, address fe:e1:bb:d1:97:4f
 virtio1: irq 5
 virtio2 at pci0 dev 3 function 0 "Qumranet Virtio 1.x Network" rev 0x01
-vio1 at virtio2: 1 queue, address fe:e1:bb:d2:07:26
+vio1 at virtio2: 1 queue, address fe:e1:bb:d2:e0:b0
 virtio2: irq 6
 virtio3 at pci0 dev 4 function 0 "Qumranet Virtio 1.x Storage" rev 0x01
 vioblk0 at virtio3
@@ -56,3 +56,5 @@ scsibus3 at vscsi0: 256 targets
 softraid0 at root
 scsibus4 at softraid0: 256 targets
 root on sd0a (b61413ddcf083763.a) swap on sd0b dump on sd0b
+WARNING: clock gained 3 days
+WARNING: CHECK AND RESET THE DATE!

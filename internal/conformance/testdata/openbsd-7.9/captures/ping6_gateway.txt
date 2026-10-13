@@ -2,4 +2,4 @@ PING ::1 (::1): 56 data bytes
 
 --- ::1 ping statistics ---
 3 packets transmitted, 3 packets received, 0.0% packet loss
-round-trip min/avg/max/std-dev = 3.157/5.788/10.410/3.278 ms
+round-trip min/avg/max/std-dev = 3.031/6.145/10.466/3.153 ms

@@ -9,33 +9,33 @@
   "devices": [
     {
       "key": "firewall",
-      "received": 2382,
-      "receivedPackets": 33,
-      "sent": 3930,
-      "sentPackets": 54
+      "received": 2442,
+      "receivedPackets": 34,
+      "sent": 3594,
+      "sentPackets": 51
     }
   ],
   "enabled": true,
   "firewall": {
-    "received": 2382,
-    "receivedPackets": 33,
-    "sent": 3930,
-    "sentPackets": 54
+    "received": 2442,
+    "receivedPackets": 34,
+    "sent": 3594,
+    "sentPackets": 51
   },
   "hours": [
     {
       "received": 0,
       "sent": 0,
-      "start": "2026-10-10T19:00:00Z",
-      "unknown": 2310
+      "start": "2026-10-13T15:00:00Z",
+      "unknown": 2246
     }
   ],
   "maxDevices": 100,
   "savedBytes": 0,
-  "since": "2026-10-10T00:00:00Z",
+  "since": "2026-10-13T00:00:00Z",
   "total": {
     "received": 0,
     "sent": 0
   },
-  "unknown": 2310
+  "unknown": 2246
 }

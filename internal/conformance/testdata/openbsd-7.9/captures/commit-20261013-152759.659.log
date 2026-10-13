@@ -11,6 +11,26 @@ for af in inet inet6; do
 	fi
 done
 exec sh /etc/netstart "$if" sh pair0
+# install /etc/hostname.vether0
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vether0
+# install /etc/hostname.vether1
+$ sh -c if=$1 f=/etc/hostname.$1
+for af in inet inet6; do
+	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
+	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
+		ifconfig "$if" $af -autoconf
+		sleep 2
+	fi
+done
+exec sh /etc/netstart "$if" sh vether1
 # install /etc/hostname.vio1
 $ sh -c if=$1 f=/etc/hostname.$1
 for af in inet inet6; do
@@ -71,26 +91,6 @@ for af in inet inet6; do
 	fi
 done
 exec sh /etc/netstart "$if" sh pflow2
-# install /etc/hostname.vether0
-$ sh -c if=$1 f=/etc/hostname.$1
-for af in inet inet6; do
-	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
-	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
-		ifconfig "$if" $af -autoconf
-		sleep 2
-	fi
-done
-exec sh /etc/netstart "$if" sh vether0
-# install /etc/hostname.vether1
-$ sh -c if=$1 f=/etc/hostname.$1
-for af in inet inet6; do
-	flag=AUTOCONF4; [ $af = inet6 ] && flag=AUTOCONF6
-	if ifconfig "$if" 2>/dev/null | head -n 1 | grep -q "$flag" && ! grep -qx "$af autoconf" "$f" 2>/dev/null; then
-		ifconfig "$if" $af -autoconf
-		sleep 2
-	fi
-done
-exec sh /etc/netstart "$if" sh vether1
 # install /etc/hostname.wg0
 $ sh -c if=$1 f=/etc/hostname.$1
 for af in inet inet6; do
@@ -136,7 +136,7 @@ exec sh /etc/netstart "$if" sh wg3
 # install /var/unbound/etc/unbound.conf
 # install /etc/ntpd.conf
 $ rcctl restart ntpd
-ntpd(killed)
+ntpd(ok)
 ntpd(ok)
 # install /etc/ssh/sshd_config
 $ rcctl reload sshd
@@ -178,9 +178,9 @@ done sh /etc/rc.conf.local
 dhcpd(ok)
 unbound(ok)
 # load /etc/pf.conf from staged copy
-$ pfctl -f /var/opf/history/20261010-192504.716/new/etc/pf.conf
+$ pfctl -f /var/opf/history/20261013-152759.659/new/etc/pf.conf
 
-Waiting for confirmation until 19:26:50.
+Waiting for confirmation until 15:29:16.
 
 Confirmed by conform.
 # install /etc/pf.conf

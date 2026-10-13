@@ -3,379 +3,372 @@
     {
       "host": "opfconform79",
       "message": "cancel settime because dns probe failed",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:51Z"
+      "time": "2026-10-13T15:28:17Z"
     },
     {
       "host": "opfconform79",
-      "message": "DNS root probe failed 3 times (gave up)",
-      "pid": 12958,
+      "message": "DNS root probe failed 4 times (gave up)",
+      "pid": 97278,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:51Z"
+      "time": "2026-10-13T15:28:17Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:50 dns: registering DHCP leases again",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:16 unbound info: start of service (unbound 1.24.2).",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:25:50Z"
+      "time": "2026-10-13T15:28:16Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:50 unbound info: start of service (unbound 1.24.2).",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:16 unbound notice: init module 2: iterator",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:25:50Z"
+      "time": "2026-10-13T15:28:16Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:50 unbound notice: init module 2: iterator",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:16 unbound notice: init module 1: validator",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:25:50Z"
+      "time": "2026-10-13T15:28:16Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:50 unbound notice: init module 1: validator",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:16 unbound notice: init module 0: respip",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:25:50Z"
+      "time": "2026-10-13T15:28:16Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:50 unbound notice: init module 0: respip",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:16 dns: registering DHCP leases again",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:25:50Z"
+      "time": "2026-10-13T15:28:16Z"
     },
     {
       "host": "opfconform79",
       "message": "rebuilding: route proposals",
-      "pid": 35619,
+      "pid": 97342,
       "program": "resolvd",
-      "time": "2026-10-10T19:25:46Z"
+      "time": "2026-10-13T15:28:12Z"
     },
     {
       "host": "opfconform79",
       "message": "adding 100.64.2.3 to vio0 (lease from 100.64.2.2)",
-      "pid": 65860,
+      "pid": 80813,
       "program": "dhcpleased",
-      "time": "2026-10-10T19:25:46Z"
+      "time": "2026-10-13T15:28:12Z"
     },
     {
       "host": "opfconform79",
       "message": "deleting nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)",
-      "pid": 65860,
+      "pid": 80813,
       "program": "dhcpleased",
-      "time": "2026-10-10T19:25:46Z"
+      "time": "2026-10-13T15:28:12Z"
     },
     {
       "host": "opfconform79",
       "message": "ntp engine ready",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "listening on ::1 ",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "listening on 127.0.0.1 rtable 202",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "listening on 192.168.1.1 ",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "listening on 192.168.20.1 ",
-      "pid": 66095,
+      "pid": 17947,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "/var/db/ntpd.drift is empty",
-      "pid": 77339,
+      "pid": 66557,
       "program": "ntpd",
-      "time": "2026-10-10T19:25:44Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:40 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791660339] unbound-control[85739:0] error: connect: No such file or directory for /var/run/unbound.sock",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:25:40Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:24 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791660324] unbound-control[48810:0] error: connect: No such file or directory for /var/run/unbound.sock",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:25:24Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "ntp engine exiting",
-      "pid": 39997,
-      "program": "ntpd",
-      "time": "2026-10-10T19:25:14Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:11 the firewall's own lookups go to 127.0.0.1, 9.9.9.9 first",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:25:11Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "rebuilding: route proposals",
-      "pid": 35619,
-      "program": "resolvd",
-      "time": "2026-10-10T19:25:10Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:25:10 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791660309] unbound-control[27670:0] error: connect: No such file or directory for /var/run/unbound.sock",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:25:10Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "cancel settime because dns probe failed",
-      "pid": 39997,
-      "program": "ntpd",
-      "time": "2026-10-10T19:25:00Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "DNS root probe failed 6 times (gave up)",
-      "pid": 36479,
-      "program": "ntpd",
-      "time": "2026-10-10T19:25:00Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "opf watchdog: 2026/10/10 19:24:55 commit 20261010-192451.202 is confirmed; nothing to watch",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:24:55Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "ntp engine ready",
-      "pid": 39997,
-      "program": "ntpd",
-      "time": "2026-10-10T19:24:53Z"
-    },
-    {
-      "host": "opfconform79",
-      "message": "/var/db/ntpd.drift is empty",
-      "pid": 3008,
-      "program": "ntpd",
-      "time": "2026-10-10T19:24:53Z"
+      "time": "2026-10-13T15:28:10Z"
     },
     {
       "host": "opfconform79",
       "message": "Terminating",
-      "pid": 97001,
+      "pid": 47828,
       "program": "ntpd",
-      "time": "2026-10-10T19:24:52Z"
+      "time": "2026-10-13T15:28:09Z"
     },
     {
       "host": "opfconform79",
       "message": "ntp engine exiting",
-      "pid": 42142,
+      "pid": 7207,
       "program": "ntpd",
-      "time": "2026-10-10T19:24:52Z"
+      "time": "2026-10-13T15:28:09Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:40 conform signed in as admin, from 127.0.0.1",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:06 the firewall's own lookups go to 127.0.0.1, 9.9.9.9 first",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:24:40Z"
+      "time": "2026-10-13T15:28:06Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:39 listening on https://127.0.0.1:8443",
-      "pid": 82095,
-      "program": "opf",
-      "time": "2026-10-10T19:24:39Z"
+      "message": "rebuilding: route proposals",
+      "pid": 97342,
+      "program": "resolvd",
+      "time": "2026-10-13T15:28:06Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:39 certificate SHA-256 E9:28:E2:E5:7B:AD:25:C9:35:6F:D8:27:C5:75:F8:FC:F1:4E:A9:92:4B:12:20:33:0E:FA:93:B2:38:92:B1:6C",
-      "pid": 82095,
+      "message": "opf: 2026/10/13 15:28:05 dns: registering DHCP leases: unbound isnM-bM^@M^Yt answering on its control socket: unbound-control -c /var/unbound/etc/unbound.conf list_local_data: exit status 1: [1791905285] unbound-control[1496:0] error: connect: No such file or directory for /var/run/unbound.sock",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:24:39Z"
+      "time": "2026-10-13T15:28:05Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:39 taken over: no longer read-only; the machine's configuration is staged, to review and commit",
-      "pid": 82095,
+      "message": "cancel settime because dns probe failed",
+      "pid": 7207,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:55Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "DNS root probe failed 4 times (gave up)",
+      "pid": 87835,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:55Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "opf watchdog: 2026/10/13 15:27:51 commit 20261013-152746.821 is confirmed; nothing to watch",
+      "pid": 57922,
       "program": "opf",
-      "time": "2026-10-10T19:24:39Z"
+      "time": "2026-10-13T15:27:51Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "ntp engine ready",
+      "pid": 7207,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:49Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "/var/db/ntpd.drift is empty",
+      "pid": 47828,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:48Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "Terminating",
+      "pid": 56452,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:48Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "ntp engine exiting",
+      "pid": 85792,
+      "program": "ntpd",
+      "time": "2026-10-13T15:27:48Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "opf: 2026/10/13 15:27:36 conform signed in as admin, from 127.0.0.1",
+      "pid": 57922,
+      "program": "opf",
+      "time": "2026-10-13T15:27:36Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "opf: 2026/10/13 15:27:35 listening on https://127.0.0.1:8443",
+      "pid": 57922,
+      "program": "opf",
+      "time": "2026-10-13T15:27:35Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "opf: 2026/10/13 15:27:35 certificate SHA-256 F3:39:69:8C:65:63:34:6E:67:60:76:A4:D6:3C:D4:9C:5B:F4:27:04:9B:B4:76:6E:B7:E1:8A:ED:BC:13:62:69",
+      "pid": 57922,
+      "program": "opf",
+      "time": "2026-10-13T15:27:35Z"
+    },
+    {
+      "host": "opfconform79",
+      "message": "opf: 2026/10/13 15:27:35 taken over: no longer read-only; the machine's configuration is staged, to review and commit",
+      "pid": 57922,
+      "program": "opf",
+      "time": "2026-10-13T15:27:35Z"
     },
     {
       "host": "opfconform79",
       "message": "opf(ok)",
-      "pid": 73588,
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:39Z"
+      "time": "2026-10-13T15:27:35Z"
     },
     {
       "host": "opfconform79",
       "message": "opf(ok)",
-      "pid": 73588,
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:38Z"
+      "time": "2026-10-13T15:27:34Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:37 taking over: rcctl restart opf, to start again without -readonly",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:33 taking over: rcctl restart opf, to start again without -readonly",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:37Z"
+      "time": "2026-10-13T15:27:33Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:37 taking over: opf_flags is now \"-listen 127.0.0.1:8443 -tls on\"",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:33 taking over: opf_flags is now \"-listen 127.0.0.1:8443 -tls on\"",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:37Z"
+      "time": "2026-10-13T15:27:33Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:35 conform signed in as admin, from 127.0.0.1",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:31 conform signed in as admin, from 127.0.0.1",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:35Z"
+      "time": "2026-10-13T15:27:31Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:35 conform took this machine over: its configuration is imported and staged",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:31 conform took this machine over: its configuration is imported and staged",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:35Z"
+      "time": "2026-10-13T15:27:31Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:35 taking the machine over: starting again out of read-only mode to stage its configuration",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:31 taking the machine over: starting again out of read-only mode to stage its configuration",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:35Z"
+      "time": "2026-10-13T15:27:31Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:31 conform signed in as admin, from 127.0.0.1",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:27 conform signed in as admin, from 127.0.0.1",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:31Z"
+      "time": "2026-10-13T15:27:27Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:31 listening on https://127.0.0.1:8443",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:26 listening on https://127.0.0.1:8443",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:31Z"
+      "time": "2026-10-13T15:27:26Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:30 unveil: /etc/authpf/users/* does not exist; skipping",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:25 unveil: /etc/authpf/users/* does not exist; skipping",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:30Z"
+      "time": "2026-10-13T15:27:26Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:29 certificate SHA-256 E9:28:E2:E5:7B:AD:25:C9:35:6F:D8:27:C5:75:F8:FC:F1:4E:A9:92:4B:12:20:33:0E:FA:93:B2:38:92:B1:6C",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:25 certificate SHA-256 F3:39:69:8C:65:63:34:6E:67:60:76:A4:D6:3C:D4:9C:5B:F4:27:04:9B:B4:76:6E:B7:E1:8A:ED:BC:13:62:69",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:29Z"
+      "time": "2026-10-13T15:27:25Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:29 made a self-signed certificate for 127.0.0.1, localhost",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:25 made a self-signed certificate for 127.0.0.1, localhost",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:29Z"
+      "time": "2026-10-13T15:27:25Z"
     },
     {
       "host": "opfconform79",
-      "message": "opf: 2026/10/10 19:24:29 read-only: monitoring this machine, changing nothing on it (/var/opf/readonly)",
-      "pid": 73588,
+      "message": "opf: 2026/10/13 15:27:25 read-only: monitoring this machine, changing nothing on it (/var/opf/readonly)",
+      "pid": 30781,
       "program": "opf",
-      "time": "2026-10-10T19:24:29Z"
+      "time": "2026-10-13T15:27:25Z"
     },
     {
       "host": "opfconform79",
       "message": "no core dump",
       "program": "savecore",
-      "time": "2026-10-10T19:14:33Z"
+      "time": "2026-10-13T15:17:28Z"
     },
     {
       "host": "opfconform79",
       "message": "cancel settime because dns probe failed",
-      "pid": 42142,
+      "pid": 85792,
       "program": "ntpd",
-      "time": "2026-10-10T19:14:32Z"
+      "time": "2026-10-13T15:17:27Z"
     },
     {
       "host": "opfconform79",
       "message": "DNS root probe failed 6 times (gave up)",
-      "pid": 30190,
+      "pid": 49961,
       "program": "ntpd",
-      "time": "2026-10-10T19:14:32Z"
+      "time": "2026-10-13T15:17:27Z"
     },
     {
       "host": "opfconform79",
       "message": "ntp engine ready",
-      "pid": 42142,
+      "pid": 85792,
       "program": "ntpd",
-      "time": "2026-10-10T19:14:26Z"
+      "time": "2026-10-13T15:17:21Z"
     },
     {
       "host": "opfconform79",
       "message": "/var/db/ntpd.drift is empty",
-      "pid": 66393,
+      "pid": 31574,
       "program": "ntpd",
-      "time": "2026-10-10T19:14:26Z"
+      "time": "2026-10-13T15:17:21Z"
     },
     {
       "host": "opfconform79",
       "message": "rebuilding: route proposals",
-      "pid": 35619,
+      "pid": 97342,
       "program": "resolvd",
-      "time": "2026-10-10T19:14:25Z"
+      "time": "2026-10-13T15:17:21Z"
     },
     {
       "host": "opfconform79",
       "message": "adding nameservers 100.64.2.2 (lease from 100.64.2.2 on vio0)",
-      "pid": 65860,
+      "pid": 80813,
       "program": "dhcpleased",
-      "time": "2026-10-10T19:14:25Z"
+      "time": "2026-10-13T15:17:21Z"
     },
     {
       "host": "opfconform79",
       "message": "adding 100.64.2.3 to vio0 (lease from 100.64.2.2)",
-      "pid": 65860,
+      "pid": 80813,
       "program": "dhcpleased",
-      "time": "2026-10-10T19:14:25Z"
+      "time": "2026-10-13T15:17:21Z"
     },
     {
       "host": "opfconform79",
@@ -434,7 +427,7 @@
     }
   ],
   "log": "daemon",
-  "matched": 62,
+  "matched": 61,
   "programs": [
     "dhcpleased",
     "ntpd",
@@ -442,5 +435,5 @@
     "resolvd",
     "savecore"
   ],
-  "read": 62
+  "read": 61
 }

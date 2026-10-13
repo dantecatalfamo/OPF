@@ -158,14 +158,12 @@ func (f SourceFacts) Problems() []string {
 	same("set limit's pools (pf.LimitNames)", f.PfLimits, pf.LimitNames)
 	same("set timeout's names (pf.TimeoutNames)", f.PfTimeouts, pf.TimeoutNames)
 	same("ntpd.conf's keywords (pf.NTPKeywords)", f.NtpdKeywords, pf.NTPKeywords())
-	if f.TrunkProtos != nil { // not in captures before 2026-10-13
-		// lacp is aggr's in OPF, and default another name for roundrobin.
-		opf := []string{"lacp", "default"}
-		for _, p := range pf.TrunkProtos {
-			opf = append(opf, string(p))
-		}
-		same("trunk(4)'s protocols (pf.TrunkProtos)", f.TrunkProtos, opf)
+	// lacp is aggr's in OPF, and default another name for roundrobin.
+	trunk := []string{"lacp", "default"}
+	for _, p := range pf.TrunkProtos {
+		trunk = append(trunk, string(p))
 	}
+	same("trunk(4)'s protocols (pf.TrunkProtos)", f.TrunkProtos, trunk)
 
 	// netstart's passes against the order OPF applies interfaces in
 	// (config.netstartOrder): the first pass starts all but the kinds it
@@ -175,9 +173,7 @@ func (f SourceFacts) Problems() []string {
 			p = append(p, fmt.Sprintf("netstart's %s: %s has %v, OPF %v", what, f.Release, release, opf))
 		}
 	}
-	if f.NetstartSkipped != nil { // not in captures before 2026-10-13
-		inOrder("first pass skips", f.NetstartSkipped, slices.Concat(config.NetstartLower, config.NetstartRouting))
-	}
+	inOrder("first pass skips", f.NetstartSkipped, slices.Concat(config.NetstartLower, config.NetstartRouting))
 	inOrder("second pass", f.NetstartLower, config.NetstartLower)
 	inOrder("third pass", f.NetstartRouting, config.NetstartRouting)
 	return p

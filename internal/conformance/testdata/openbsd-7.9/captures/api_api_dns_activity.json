@@ -14,21 +14,21 @@
     {
       "address": "127.0.0.1",
       "blocked": 0,
-      "cached": 13,
+      "cached": 2,
       "key": "firewall",
-      "last": "2026-10-10T19:27:18Z",
-      "queries": 19,
-      "servfail": 19
+      "last": "2026-10-13T15:28:57Z",
+      "queries": 4,
+      "servfail": 4
     }
   ],
   "enabled": true,
   "hours": [
     {
       "blocked": 0,
-      "cached": 13,
-      "queries": 19,
-      "servfail": 19,
-      "start": "2026-10-10T19:00:00Z"
+      "cached": 2,
+      "queries": 4,
+      "servfail": 4,
+      "start": "2026-10-13T15:00:00Z"
     }
   ],
   "maxDevices": 64,
@@ -36,11 +36,11 @@
   "names": [],
   "perDevice": true,
   "savedBytes": 0,
-  "since": "2026-10-10T00:00:00Z",
+  "since": "2026-10-13T00:00:00Z",
   "total": {
     "blocked": 0,
-    "cached": 13,
-    "queries": 19,
-    "servfail": 19
+    "cached": 2,
+    "queries": 4,
+    "servfail": 4
   }
 }

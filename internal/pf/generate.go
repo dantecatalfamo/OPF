@@ -767,7 +767,7 @@ func BareParents(m *Model) []BareParent {
 	return out
 }
 
-// aggregateLines set up an aggregate's ports. netstart only adds, so
+// aggregateLines set up an aggregate's ports. ifconfig only adds, so
 // ports it no longer has are taken out first, and a port still in
 // another aggregate leaves it: aggregates come up in netstart's order,
 // aggr before trunk, so one moving the other way would find it taken.
@@ -793,9 +793,9 @@ func aggregateLines(a *AggregateConfig) []string {
 		fmt.Sprintf(`!for p in $(ifconfig $if | awk '$2 == "port" { print $1 }'); do case " %s " in *" $p "*) ;; *) ifconfig $if -trunkport $p ;; esac; done`, ports),
 		fmt.Sprintf(`!for p in %s; do d=$(ifconfig $p 2>/dev/null | awk '$1 == "trunk:" && $2 == "trunkdev" { print $3 }'); [ -z "$d" ] || [ "$d" = $if ] || ifconfig $d -trunkport $p; done`, ports),
 	)
-	for _, p := range a.Ports {
-		lines = append(lines, "trunkport "+p)
-	}
+	// trunkport refuses a port that's in already (EBUSY), so only the
+	// others are added, in order: failover's master is the first.
+	lines = append(lines, fmt.Sprintf(`!for p in %s; do ifconfig $if | awk '$2 == "port" { print $1 }' | grep -qx $p || ifconfig $if trunkport $p; done`, ports))
 	return lines
 }
 

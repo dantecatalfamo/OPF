@@ -592,6 +592,34 @@
     "trusted",
     "weight"
   ],
+  "netstartSkipped": [
+    "aggr",
+    "trunk",
+    "svlan",
+    "vlan",
+    "carp",
+    "pppoe",
+    "tun",
+    "tap",
+    "gif",
+    "etherip",
+    "gre",
+    "egre",
+    "nvgre",
+    "eoip",
+    "vxlan",
+    "pflow",
+    "wg"
+  ],
+  "trunkProtos": [
+    "roundrobin",
+    "failover",
+    "lacp",
+    "loadbalance",
+    "broadcast",
+    "none",
+    "default"
+  ],
   "netstartLower": [
     "aggr",
     "trunk",

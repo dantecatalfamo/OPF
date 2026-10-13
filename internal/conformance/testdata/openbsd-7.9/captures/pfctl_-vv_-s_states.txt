@@ -1,99 +1,286 @@
-all tcp 100.64.2.3:22 <- 100.64.2.2:47330       ESTABLISHED:ESTABLISHED
-   [2525980680 + 16384] wscale 6  [2135619075 + 347520] wscale 6
-   age 00:11:34, expires in 23:59:58, 28744:15063 pkts, 40961394:811250 bytes
-   id: 6aca8e3e00000037 creatorid: dc8c28ed
-all udp 100.64.2.3:51821 -> 192.0.2.80:51820       SINGLE:NO_TRAFFIC
-   age 00:00:55, expires in 00:00:26, 11:0 pkts, 1936:0 bytes
-   id: 6aca8e3e000000a2 creatorid: dc8c28ed
-all udp 100.64.2.3:37176 -> 192.0.2.81:51820       SINGLE:NO_TRAFFIC
-   age 00:00:54, expires in 00:00:29, 11:0 pkts, 1936:0 bytes
-   id: 6aca8e3e000000a3 creatorid: dc8c28ed
-all udp 100.64.2.3:26671 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
-   age 00:00:28, expires in 00:00:32, 1:0 pkts, 45:0 bytes
-   id: 6aca8e3e000000a7 creatorid: dc8c28ed
-all udp 100.64.2.3:20861 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+all tcp 100.64.2.3:22 <- 100.64.2.2:9634       ESTABLISHED:ESTABLISHED
+   [1517166628 + 16384] wscale 6  [1917408969 + 330112] wscale 6
+   age 00:11:06, expires in 23:59:55, 28888:15128 pkts, 41128014:814674 bytes
+   id: 6ace4b2e00000037 creatorid: 299fbf56
+all udp 100.64.2.3:2331 -> 199.7.91.13:53       SINGLE:NO_TRAFFIC
+   age 00:00:59, expires in 00:00:01, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000068 creatorid: 299fbf56
+all udp 100.64.2.3:46244 -> 198.41.0.4:53       SINGLE:NO_TRAFFIC
+   age 00:00:59, expires in 00:00:01, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000069 creatorid: 299fbf56
+all udp 100.64.2.3:36533 -> 192.112.36.4:53       SINGLE:NO_TRAFFIC
+   age 00:00:59, expires in 00:00:01, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006a creatorid: 299fbf56
+all udp 100.64.2.3:9925 -> 192.203.230.10:53       SINGLE:NO_TRAFFIC
+   age 00:00:58, expires in 00:00:02, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006b creatorid: 299fbf56
+all udp 100.64.2.3:41186 -> 192.58.128.30:53       SINGLE:NO_TRAFFIC
+   age 00:00:58, expires in 00:00:02, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006c creatorid: 299fbf56
+all udp 100.64.2.3:42243 -> 199.7.91.13:53       SINGLE:NO_TRAFFIC
+   age 00:00:57, expires in 00:00:03, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006d creatorid: 299fbf56
+all udp 100.64.2.3:48097 -> 199.7.83.42:53       SINGLE:NO_TRAFFIC
+   age 00:00:57, expires in 00:00:03, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006e creatorid: 299fbf56
+all udp 100.64.2.3:12173 -> 199.7.83.42:53       SINGLE:NO_TRAFFIC
+   age 00:00:56, expires in 00:00:04, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e0000006f creatorid: 299fbf56
+all udp 100.64.2.3:15067 -> 193.0.14.129:53       SINGLE:NO_TRAFFIC
+   age 00:00:55, expires in 00:00:05, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000070 creatorid: 299fbf56
+all udp 100.64.2.3:18260 -> 192.36.148.17:53       SINGLE:NO_TRAFFIC
+   age 00:00:55, expires in 00:00:05, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000071 creatorid: 299fbf56
+all udp 100.64.2.3:44864 -> 192.33.4.12:53       SINGLE:NO_TRAFFIC
+   age 00:00:55, expires in 00:00:05, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000072 creatorid: 299fbf56
+all udp 100.64.2.3:26277 -> 202.12.27.33:53       SINGLE:NO_TRAFFIC
+   age 00:00:54, expires in 00:00:06, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000073 creatorid: 299fbf56
+all udp 100.64.2.3:25558 -> 192.112.36.4:53       SINGLE:NO_TRAFFIC
+   age 00:00:54, expires in 00:00:06, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000074 creatorid: 299fbf56
+all udp 100.64.2.3:3219 -> 170.247.170.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:53, expires in 00:00:07, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000075 creatorid: 299fbf56
+all udp 100.64.2.3:29772 -> 192.33.4.12:53       SINGLE:NO_TRAFFIC
+   age 00:00:53, expires in 00:00:07, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000076 creatorid: 299fbf56
+all udp 100.64.2.3:46678 -> 192.58.128.30:53       SINGLE:NO_TRAFFIC
+   age 00:00:52, expires in 00:00:08, 1:0 pkts, 56:0 bytes
+   id: 6ace4b2e00000077 creatorid: 299fbf56
+all udp 100.64.2.3:26396 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:48, expires in 00:00:12, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e00000078 creatorid: 299fbf56
+all udp 100.64.2.3:1327 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:47, expires in 00:00:13, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e0000007a creatorid: 299fbf56
+all udp 100.64.2.3:25957 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:46, expires in 00:00:14, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e0000007b creatorid: 299fbf56
+all udp 100.64.2.3:25900 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:43, expires in 00:00:17, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e0000007c creatorid: 299fbf56
+all udp 100.64.2.3:15797 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e0000007d creatorid: 299fbf56
+all udp 100.64.2.3:21356 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e0000007e creatorid: 299fbf56
+all udp 100.64.2.3:28571 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e0000007f creatorid: 299fbf56
+all udp 100.64.2.3:8113 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000080 creatorid: 299fbf56
+all udp 100.64.2.3:15846 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000081 creatorid: 299fbf56
+all udp 100.64.2.3:20438 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000082 creatorid: 299fbf56
+all udp 100.64.2.3:15335 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000083 creatorid: 299fbf56
+all udp 100.64.2.3:41072 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000084 creatorid: 299fbf56
+all udp 100.64.2.3:23607 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000085 creatorid: 299fbf56
+all udp 100.64.2.3:17579 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000086 creatorid: 299fbf56
+all udp 100.64.2.3:45052 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000087 creatorid: 299fbf56
+all udp 100.64.2.3:42190 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000088 creatorid: 299fbf56
+all udp 100.64.2.3:37607 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000089 creatorid: 299fbf56
+all udp 100.64.2.3:13748 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000008a creatorid: 299fbf56
+all udp 100.64.2.3:2381 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000008b creatorid: 299fbf56
+all udp 100.64.2.3:12954 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000008c creatorid: 299fbf56
+all udp 100.64.2.3:33643 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000008d creatorid: 299fbf56
+all udp 100.64.2.3:19121 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e0000008e creatorid: 299fbf56
+all udp 100.64.2.3:41415 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e0000008f creatorid: 299fbf56
+all udp 100.64.2.3:1683 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000090 creatorid: 299fbf56
+all udp 100.64.2.3:19241 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000091 creatorid: 299fbf56
+all udp 100.64.2.3:5276 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000092 creatorid: 299fbf56
+all udp 100.64.2.3:41240 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000093 creatorid: 299fbf56
+all udp 100.64.2.3:25140 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000094 creatorid: 299fbf56
+all udp 100.64.2.3:4898 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e00000095 creatorid: 299fbf56
+all udp 100.64.2.3:8202 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000096 creatorid: 299fbf56
+all udp 100.64.2.3:40012 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000097 creatorid: 299fbf56
+all udp 100.64.2.3:31012 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000098 creatorid: 299fbf56
+all udp 100.64.2.3:41530 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e00000099 creatorid: 299fbf56
+all udp 100.64.2.3:10794 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000009a creatorid: 299fbf56
+all udp 100.64.2.3:28773 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000009b creatorid: 299fbf56
+all udp 100.64.2.3:25905 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000009c creatorid: 299fbf56
+all udp 100.64.2.3:37755 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:42, expires in 00:00:18, 1:1 pkts, 70:56 bytes
+   id: 6ace4b2e0000009d creatorid: 299fbf56
+all udp 100.64.2.3:44303 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:28, expires in 00:00:32, 1:0 pkts, 60:0 bytes
+   id: 6ace4b2e000000a0 creatorid: 299fbf56
+all udp 100.64.2.3:45808 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:27, expires in 00:00:33, 1:0 pkts, 45:0 bytes
+   id: 6ace4b2e000000a4 creatorid: 299fbf56
+all udp 100.64.2.3:39150 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
    age 00:00:26, expires in 00:00:34, 1:1 pkts, 45:56 bytes
-   id: 6aca8e3e000000a8 creatorid: dc8c28ed
-all udp 100.64.2.3:47707 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   id: 6ace4b2e000000a5 creatorid: 299fbf56
+all udp 100.64.2.3:31318 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
    age 00:00:26, expires in 00:00:34, 1:0 pkts, 45:0 bytes
-   id: 6aca8e3e000000a9 creatorid: dc8c28ed
-all udp 100.64.2.3:23656 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   id: 6ace4b2e000000a6 creatorid: 299fbf56
+all udp 100.64.2.3:51821 -> 192.0.2.80:51820       SINGLE:NO_TRAFFIC
+   age 00:00:25, expires in 00:00:26, 5:0 pkts, 880:0 bytes
+   id: 6ace4b2e000000a7 creatorid: 299fbf56
+all udp 100.64.2.3:5757 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
    age 00:00:25, expires in 00:00:35, 1:1 pkts, 45:56 bytes
-   id: 6aca8e3e000000aa creatorid: dc8c28ed
-all udp 100.64.2.3:8730 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   id: 6ace4b2e000000a8 creatorid: 299fbf56
+all udp 100.64.2.3:11312 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
    age 00:00:25, expires in 00:00:35, 1:0 pkts, 45:0 bytes
-   id: 6aca8e3e000000ab creatorid: dc8c28ed
-all tcp 100.64.2.3:19235 -> 9.9.9.9:853       SYN_SENT:CLOSED
-   [2229581293 + 2]  [0 + 1]
-   age 00:00:24, expires in 00:01:36, 1:0 pkts, 64:0 bytes
-   id: 6aca8e3e000000ac creatorid: dc8c28ed
-vio0 udp 100.64.2.3:41356 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
-   age 00:00:23, expires in 00:00:37, 1:1 pkts, 45:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000ad creatorid: 00000001
-vio0 udp 100.64.2.3:38027 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
-   age 00:00:22, expires in 00:00:38, 1:0 pkts, 45:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000ae creatorid: 00000001
-vio0 tcp 100.64.2.3:11500 -> 9.9.9.9:853       SYN_SENT:CLOSED
-   [2985387847 + 2]  [0 + 1]
-   age 00:00:21, expires in 00:01:39, 1:0 pkts, 64:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000b1 creatorid: 00000001
-vio0 udp 100.64.2.3:4244 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
-   age 00:00:21, expires in 00:00:39, 1:1 pkts, 45:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000b4 creatorid: 00000001
-pair1 tcp (9) 192.168.1.60:38905 -> (9) 192.168.1.1:22       FIN_WAIT_2:FIN_WAIT_2
-   [2130396219 + 17088] wscale 6  [4175818025 + 16384] wscale 6
-   age 00:00:19, expires in 00:00:11, 4:4 pkts, 220:242 bytes, rule 42, pflow
-   id: 6aca8e3e000000ba creatorid: 00000001
-pair0 tcp 192.168.1.1:22 <- 192.168.1.60:38905       FIN_WAIT_2:FIN_WAIT_2
-   [4175818025 + 16384] wscale 6  [2130396219 + 17088] wscale 6
-   age 00:00:19, expires in 00:00:11, 4:4 pkts, 220:242 bytes, rule 47, pflow
-   id: 6aca8e3e000000bb creatorid: 00000001
-pair1 tcp (9) 192.168.1.60:36497 -> (9) 192.168.1.1:9       TIME_WAIT:TIME_WAIT
-   [328510567 + 2]  [0 + 256]
-   age 00:00:19, expires in 00:00:11, 1:1 pkts, 64:40 bytes, rule 42, pflow
-   id: 6aca8e3e000000bc creatorid: 00000001
-pair1 udp (9) 192.168.1.60:6349 -> (9) 100.64.2.2:9       SINGLE:NO_TRAFFIC
-   age 00:00:19, expires in 00:00:11, 2:2 pkts, 58:112 bytes, rule 42, pflow
-   id: 6aca8e3e000000bd creatorid: 00000001
-pair1 udp (9) 192.168.1.60:40492 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
-   age 00:00:19, expires in 00:00:41, 1:1 pkts, 68:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000be creatorid: 00000001
-vio0 tcp 100.64.2.3:33565 -> 9.9.9.9:853       SYN_SENT:CLOSED
-   [28095384 + 2]  [0 + 1]
-   age 00:00:18, expires in 00:01:42, 1:0 pkts, 64:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000bf creatorid: 00000001
-pair1 udp (9) 192.168.1.60:22107 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
+   id: 6ace4b2e000000a9 creatorid: 299fbf56
+all udp 100.64.2.3:34789 -> 192.0.2.81:51820       SINGLE:NO_TRAFFIC
+   age 00:00:24, expires in 00:00:26, 5:0 pkts, 880:0 bytes
+   id: 6ace4b2e000000aa creatorid: 299fbf56
+all udp 100.64.2.3:18802 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:24, expires in 00:00:36, 1:1 pkts, 45:56 bytes
+   id: 6ace4b2e000000ab creatorid: 299fbf56
+all udp 100.64.2.3:24044 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:24, expires in 00:00:36, 1:0 pkts, 45:0 bytes
+   id: 6ace4b2e000000ac creatorid: 299fbf56
+all udp 100.64.2.3:41938 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:23, expires in 00:00:37, 1:1 pkts, 60:56 bytes
+   id: 6ace4b2e000000ad creatorid: 299fbf56
+all udp 100.64.2.3:3266 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:23, expires in 00:00:37, 1:0 pkts, 60:0 bytes
+   id: 6ace4b2e000000ae creatorid: 299fbf56
+all tcp 100.64.2.3:31354 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [3061642857 + 2]  [0 + 1]
+   age 00:00:23, expires in 00:01:37, 1:0 pkts, 64:0 bytes
+   id: 6ace4b2e000000b0 creatorid: 299fbf56
+vio0 udp 100.64.2.3:31841 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:22, expires in 00:00:38, 1:1 pkts, 45:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000b1 creatorid: 00000001
+vio0 udp 100.64.2.3:12927 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:21, expires in 00:00:39, 1:0 pkts, 45:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000b2 creatorid: 00000001
+vio0 udp 100.64.2.3:37012 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:20, expires in 00:00:40, 1:1 pkts, 60:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000b7 creatorid: 00000001
+vio0 udp 100.64.2.3:48737 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:20, expires in 00:00:40, 1:1 pkts, 45:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000b8 creatorid: 00000001
+vio0 tcp 100.64.2.3:15736 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [1582017854 + 2]  [0 + 1]
+   age 00:00:20, expires in 00:01:40, 1:0 pkts, 64:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000b9 creatorid: 00000001
+pair1 tcp (9) 192.168.1.60:6301 -> (9) 192.168.1.1:22       TIME_WAIT:TIME_WAIT
+   [2815502752 + 17088] wscale 6  [3052684496 + 16362] wscale 6
+   age 00:00:18, expires in 00:00:12, 4:3 pkts, 208:190 bytes, rule 42, pflow
+   id: 6ace4b2e000000bd creatorid: 00000001
+pair0 tcp 192.168.1.1:22 <- 192.168.1.60:6301       TIME_WAIT:TIME_WAIT
+   [3052684496 + 16362] wscale 6  [2815502752 + 17088] wscale 6
+   age 00:00:18, expires in 00:00:12, 4:3 pkts, 208:190 bytes, rule 47, pflow
+   id: 6ace4b2e000000be creatorid: 00000001
+pair1 tcp (9) 192.168.1.60:7979 -> (9) 192.168.1.1:9       TIME_WAIT:TIME_WAIT
+   [1127336111 + 2]  [0 + 256]
+   age 00:00:18, expires in 00:00:12, 1:1 pkts, 64:40 bytes, rule 42, pflow
+   id: 6ace4b2e000000bf creatorid: 00000001
+pair1 udp (9) 192.168.1.60:36422 -> (9) 100.64.2.2:9       SINGLE:NO_TRAFFIC
+   age 00:00:18, expires in 00:00:12, 2:2 pkts, 58:112 bytes, rule 42, pflow
+   id: 6ace4b2e000000c0 creatorid: 00000001
+pair1 udp (9) 192.168.1.60:5255 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
+   age 00:00:18, expires in 00:00:42, 1:1 pkts, 68:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000c1 creatorid: 00000001
+vio0 tcp 100.64.2.3:17926 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [565570437 + 2]  [0 + 1]
+   age 00:00:17, expires in 00:01:43, 1:0 pkts, 64:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000c2 creatorid: 00000001
+pair1 udp (9) 192.168.1.60:27246 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
    age 00:00:16, expires in 00:00:44, 1:1 pkts, 72:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000c0 creatorid: 00000001
-vio0 udp 100.64.2.3:3222 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
-   age 00:00:16, expires in 00:00:44, 1:0 pkts, 61:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000c1 creatorid: 00000001
-vio0 tcp 100.64.2.3:15454 -> 9.9.9.9:853       SYN_SENT:CLOSED
-   [2728569333 + 2]  [0 + 1]
-   age 00:00:15, expires in 00:01:45, 1:0 pkts, 64:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000c2 creatorid: 00000001
-pair1 udp (9) 192.168.1.60:31347 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
+   id: 6ace4b2e000000c3 creatorid: 00000001
+vio0 udp 100.64.2.3:31562 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:15, expires in 00:00:45, 1:0 pkts, 61:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000c4 creatorid: 00000001
+vio0 tcp 100.64.2.3:45305 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [63606053 + 2]  [0 + 1]
+   age 00:00:14, expires in 00:01:46, 1:0 pkts, 64:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000c5 creatorid: 00000001
+pair1 udp (9) 192.168.1.60:2034 -> (9) 192.168.1.1:53       SINGLE:NO_TRAFFIC
    age 00:00:14, expires in 00:00:46, 1:1 pkts, 81:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000c3 creatorid: 00000001
-vio0 udp 100.64.2.3:26651 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
-   age 00:00:11, expires in 00:00:49, 1:1 pkts, 61:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000c5 creatorid: 00000001
-vio0 icmp 100.64.2.3:57073 -> 100.64.2.2:8       0:0
+   id: 6ace4b2e000000c6 creatorid: 00000001
+vio0 udp 100.64.2.3:23449 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:13, expires in 00:00:47, 1:0 pkts, 60:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000c7 creatorid: 00000001
+vio0 tcp 100.64.2.3:19625 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [4109170916 + 1]  [0 + 16384]
+   age 00:00:11, expires in 00:00:00, 2:0 pkts, 128:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000c8 creatorid: 00000001
+vio0 udp 100.64.2.3:24758 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:10, expires in 00:00:50, 1:1 pkts, 61:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000c9 creatorid: 00000001
+vio0 icmp 100.64.2.3:59324 -> 100.64.2.2:8       0:0
    age 00:00:08, expires in 00:00:02, 3:3 pkts, 252:252 bytes, rule 94, pflow
-   id: 6aca8e3e000000c6 creatorid: 00000001
-vio0 udp 100.64.2.3:33498 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
-   age 00:00:07, expires in 00:00:53, 1:0 pkts, 61:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000c7 creatorid: 00000001
-vio0 tcp 100.64.2.3:48797 -> 9.9.9.9:853       SYN_SENT:CLOSED
-   [2154157392 + 2]  [0 + 1]
-   age 00:00:06, expires in 00:01:54, 1:0 pkts, 64:0 bytes, rule 42, pflow
-   id: 6aca8e3e000000c8 creatorid: 00000001
-vio0 icmp 100.64.2.3:62942 -> 9.9.9.9:8       0:0
+   id: 6ace4b2e000000ca creatorid: 00000001
+vio0 udp 100.64.2.3:44400 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:07, expires in 00:00:53, 1:1 pkts, 60:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000cb creatorid: 00000001
+vio0 udp 100.64.2.3:44167 -> 9.9.9.9:53       SINGLE:NO_TRAFFIC
+   age 00:00:06, expires in 00:00:54, 1:0 pkts, 61:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000cc creatorid: 00000001
+vio0 tcp 100.64.2.3:3055 -> 9.9.9.9:853       SYN_SENT:CLOSED
+   [3024463776 + 2]  [0 + 1]
+   age 00:00:05, expires in 00:01:55, 1:0 pkts, 64:0 bytes, rule 42, pflow
+   id: 6ace4b2e000000cd creatorid: 00000001
+vio0 icmp 100.64.2.3:30166 -> 9.9.9.9:8       0:0
    age 00:00:04, expires in 00:00:06, 3:0 pkts, 252:0 bytes, rule 94, pflow
-   id: 6aca8e3e000000c9 creatorid: 00000001
-vether0 icmp 198.51.100.2:37812 -> 198.51.100.1:8       0:0
+   id: 6ace4b2e000000ce creatorid: 00000001
+vether0 icmp 198.51.100.2:53786 -> 198.51.100.1:8       0:0
    age 00:00:04, expires in 00:00:06, 3:0 pkts, 252:0 bytes, rule 94, pflow
-   id: 6aca8e3e000000ca creatorid: 00000001
-vio0 udp 100.64.2.3:46570 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
-   age 00:00:04, expires in 00:00:56, 1:1 pkts, 61:56 bytes, rule 42, pflow
-   id: 6aca8e3e000000cb creatorid: 00000001
+   id: 6ace4b2e000000cf creatorid: 00000001
+vio0 udp 100.64.2.3:42898 -> 100.64.2.2:53       SINGLE:NO_TRAFFIC
+   age 00:00:03, expires in 00:00:57, 1:1 pkts, 61:56 bytes, rule 42, pflow
+   id: 6ace4b2e000000d0 creatorid: 00000001

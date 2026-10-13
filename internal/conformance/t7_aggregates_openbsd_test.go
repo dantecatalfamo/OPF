@@ -95,7 +95,7 @@ func TestAggregates(t *testing.T) {
 	if !strings.Contains(out, "trunkproto lacp") || !strings.Contains(out, "172.16.67.1") {
 		t.Errorf("ifconfig %s:\n%s", aggr, out)
 	}
-	if out := mustT(&recorder{T: t}, "ifconfig", "vlan67"); !strings.Contains(out, "parent interface: "+aggr) {
+	if out := mustT(&recorder{T: t}, "ifconfig", "vlan67"); !strings.Contains(out, "encap: vnetid 67 parent "+aggr) {
 		t.Errorf("ifconfig vlan67:\n%s", out)
 	}
 

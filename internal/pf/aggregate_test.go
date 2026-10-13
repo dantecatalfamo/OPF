@@ -88,7 +88,7 @@ func TestAggregateFiles(t *testing.T) {
 	for _, want := range []string{
 		"lacpmode active\nlacptimeout slow\n",
 		`!for p in $(ifconfig $if | awk '$2 == "port" { print $1 }'); do case " em1 em2 " in *" $p "*) ;; *) ifconfig $if -trunkport $p ;; esac; done` + "\n",
-		"trunkport em1\ntrunkport em2\ndescription \"LAN\"\n",
+		`!for p in em1 em2; do ifconfig $if | awk '$2 == "port" { print $1 }' | grep -qx $p || ifconfig $if trunkport $p; done` + "\ndescription \"LAN\"\n",
 		"inet 192.168.1.1/24\n",
 	} {
 		if !strings.Contains(got, want) {
@@ -169,7 +169,7 @@ func TestImportAggregates(t *testing.T) {
 		t.Errorf("invalid: %v", e)
 	}
 	// The trunk's own file says what it did.
-	if got, _ := genFile(m, "/etc/hostname.trunk0"); !strings.Contains(got, "trunkproto failover\n") || !strings.Contains(got, "trunkport em3\ntrunkport em4\n") {
+	if got, _ := genFile(m, "/etc/hostname.trunk0"); !strings.Contains(got, "trunkproto failover\n") || !strings.Contains(got, "for p in em3 em4; do") {
 		t.Errorf("hostname.trunk0:\n%s", got)
 	}
 }

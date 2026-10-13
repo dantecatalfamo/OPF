@@ -2,10 +2,10 @@
   "groups": [
     {
       "itemBytes": 113664,
-      "items": 8,
+      "items": 7,
       "max": 9,
       "name": "system",
-      "series": 8,
+      "series": 7,
       "seriesBytes": 113664
     },
     {
@@ -47,10 +47,10 @@
     {
       "default": 500,
       "itemBytes": 56064,
-      "items": 2,
+      "items": 0,
       "max": 500,
       "name": "rules",
-      "series": 2,
+      "series": 0,
       "seriesBytes": 56064
     }
   ],
@@ -60,7 +60,6 @@
     "dhcp.lab.leases",
     "dhcp.lan.leases",
     "dns.blocked",
-    "dns.cachehit",
     "dns.queries",
     "gw.gw_edge.loss",
     "gw.gw_wan.loss",
@@ -97,8 +96,6 @@
     "load.1",
     "mem.used",
     "pf.blocked",
-    "pf.builtin.default-block",
-    "pf.builtin.self-out",
     "pf.states",
     "wg.p_full.rx",
     "wg.p_full.tx",

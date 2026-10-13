@@ -2,7 +2,7 @@ Routing tables
 
 Internet:
 Destination        Gateway            Flags   Refs      Use   Mtu  Prio Iface
-default            100.64.2.2         UGS        3       48     -     8 vio0 
+default            100.64.2.2         UGS        3       51     -     8 vio0 
 224/4              127.0.0.1          URS        0        0 32768     8 lo0  
 10.8.0/24          10.8.0.1           UCn        0        0     -     4 wg0  
 10.8.0.1           wg0                UHl        0        0     -     1 wg0  
@@ -16,25 +16,25 @@ default            100.64.2.2         UGS        3       48     -     8 vio0
 10.66.0.2          wg2                UHl        0        0     -     1 wg2  
 10.66.0.2/32       10.66.0.2          UCn        0        0     -     4 wg2  
 100.64.2.2/31      100.64.2.3         UCn        1        0     -     4 vio0 
-100.64.2.2         fe:e1:ba:d0:03:42  UHLch      2      164     -     3 vio0 
-100.64.2.3         fe:e1:bb:d1:42:99  UHLl       0        4     -     1 vio0 
+100.64.2.2         fe:e1:ba:d4:96:cf  UHLch      2      163     -     3 vio0 
+100.64.2.3         fe:e1:bb:d1:97:4f  UHLl       0        5     -     1 vio0 
 127/8              127.0.0.1          UGRS       0        0 32768     8 lo0  
-127.0.0.1          127.0.0.1          UHhl       6       54 32768     1 lo0  
+127.0.0.1          127.0.0.1          UHhl       7       63 32768     1 lo0  
 172.16.5/24        172.16.5.1         UCn        0        0     -     4 vether1
-172.16.5.1         fe:e1:ba:d2:4e:bc  UHLl       0        0     -     1 vether1
+172.16.5.1         fe:e1:ba:d2:6c:4e  UHLl       0        0     -     1 vether1
 172.16.5.255       172.16.5.1         UHb        0        0     -     1 vether1
 192.168.1/24       192.168.1.1        UCn        1        0     -     4 pair0
-192.168.1.1        fe:e1:ba:d0:d9:0a  UHLl       0       17     -     1 pair0
-192.168.1.60       fe:e1:ba:d3:e6:06  UHLc       0       21     -     3 pair0
+192.168.1.1        fe:e1:ba:d0:f5:16  UHLl       0       17     -     1 pair0
+192.168.1.60       fe:e1:ba:d3:a4:76  UHLc       0       21     -     3 pair0
 192.168.1.255      192.168.1.1        UHb        0        0     -     1 pair0
 192.168.20/24      192.168.20.1       UCn        0        0     -     4 vlan20
-192.168.20.1       fe:e1:bb:d2:07:26  UHLl       0        0     -     1 vlan20
+192.168.20.1       fe:e1:bb:d2:e0:b0  UHLl       0        0     -     1 vlan20
 192.168.20.255     192.168.20.1       UHb        0        0     -     1 vlan20
 192.168.40/24      192.168.40.1       Cn         0        0     -     4 vlan40
-192.168.40.1       fe:e1:bb:d2:07:26  UHLl       0        0     -     1 vlan40
+192.168.40.1       fe:e1:bb:d2:e0:b0  UHLl       0        0     -     1 vlan40
 192.168.40.255     192.168.40.1       Hb         0        0     -     1 vlan40
 198.51.100/24      198.51.100.2       UCn        1        0     -     4 vether0
-198.51.100.1       link#12            UHLch      1        5     -     3 vether0
-198.51.100.2       fe:e1:ba:d1:da:7b  UHLl       0        0     -     1 vether0
+198.51.100.1       link#7             UHLch      1        4     -     3 vether0
+198.51.100.2       fe:e1:ba:d1:59:eb  UHLl       0        0     -     1 vether0
 198.51.100.255     198.51.100.2       UHb        0        0     -     1 vether0
 203.0.113/24       198.51.100.1       UGS        0        0     -     8 vether0

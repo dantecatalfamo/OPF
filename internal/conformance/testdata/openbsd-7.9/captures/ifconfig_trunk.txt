@@ -1,0 +1,11 @@
+trunk7: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	lladdr fe:e1:ba:d4:c5:9a
+	description: Bond trunk7
+	index 24 priority 0 llprio 3
+	trunk: trunkproto failover
+		vether9 port 
+		vether8 port master,active
+	groups: trunk
+	media: Ethernet autoselect
+	status: active
+	inet 172.16.69.1 netmask 0xffffff00 broadcast 172.16.69.255

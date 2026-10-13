@@ -2,5 +2,5 @@ The following name servers are used for lookup of example.com.
 forwarding request:
 Delegation with 0 names, of which 0 can be examined to query further addresses.
 It provides 2 IP addresses.
-9.9.9.9         	rto 120000 msec, ttl 816, ping 0 var 94 rtt 376, tA 3, tAAAA 0, tother 3, probedelay 29, EDNS 0 assumed.
-2620:fe::fe     	rto 376 msec, ttl 819, ping 0 var 94 rtt 376, tA 0, tAAAA 0, tother 0, EDNS 0 assumed.
+9.9.9.9         	rto 120000 msec, ttl 823, ping 0 var 94 rtt 376, tA 3, tAAAA 0, tother 3, probedelay 36, EDNS 0 assumed.
+2620:fe::fe     	rto 376 msec, ttl 823, ping 0 var 94 rtt 376, tA 0, tAAAA 0, tother 0, EDNS 0 assumed.

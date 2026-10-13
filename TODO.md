@@ -774,12 +774,11 @@ Types, roughly in order of usefulness:
       (`Iface.Aggregate`), validated, generated, imported, on the
       Interfaces page ("Combine ports") and its edit page, with each
       port's state from ifconfig's trunk lines, and in the mock. VLANs
-      can be carried on one. Left:
-      - **Run TestAggregates on the 7.9 guest** (written, not run:
-        openbsd-dev was unreachable). It runs OPF's hostname.if files
-        through netstart: ports join, a dropped port leaves, a port
-        moves from an aggr to a trunk. Recapture 7.9's source.json too,
-        for TRUNK_PROTOS (if_trunk.h) and netstart's first pass.
+      can be carried on one. On the 7.9 guest (TestAggregates), OPF's
+      files through netstart: the ports join, a VLAN rides on the aggr,
+      a dropped port leaves, a port moves from an aggr to a failover
+      trunk as its master, and applying again adds nothing twice (run
+      19 found trunkport refusing a port already in). Left:
       - A commit that takes a port out of an aggregate and makes it an
         interface applies the port's file (netstart's first pass)
         before the aggregate's lets it go; check on the guest that it
@@ -795,9 +794,8 @@ Types, roughly in order of usefulness:
       is right now: OPF applies vether, bridge, veb, vport and tpmr in
       netstart's first pass, by name with the physical ports, and each
       held-back kind in netstart's order (config.NetstartLower and
-      NetstartRouting). The conformance suite compares all three
-      passes; recapture 7.9's source.json (TestSource) for the first
-      pass's skip list, which the 7.9 capture predates.
+      NetstartRouting), and the conformance suite compares all three
+      passes with the release's.
 - [ ] `pppoe` WANs: credentials need secret storage (Security), and the
       default route goes through the PPPoE link instead of `mygate`.
 - [ ] `carp` failover with `pfsync`: a shared password (secret storage),

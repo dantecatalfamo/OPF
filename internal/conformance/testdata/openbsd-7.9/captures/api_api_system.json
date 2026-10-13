@@ -1,22 +1,22 @@
 {
-  "bootedAt": "2026-10-10T19:12:57Z",
+  "bootedAt": "2026-10-13T15:15:53Z",
   "cpu": {
-    "idle": 91.72932330827068,
-    "interrupt": 1.5037593984962405,
+    "idle": 71.53846153846153,
+    "interrupt": 21.53846153846154,
     "nice": 0,
     "spin": 0,
-    "system": 6.7669172932330826,
+    "system": 6.923076923076923,
     "user": 0
   },
   "cpuModel": "Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz",
   "cpus": 1,
   "disks": [
     {
-      "available": 1094637568,
+      "available": 1094510592,
       "device": "/dev/sd0a",
       "mount": "/",
       "total": 1308620800,
-      "used": 148553728
+      "used": 148680704
     },
     {
       "available": 1970329600,
@@ -26,11 +26,11 @@
       "used": 18432
     },
     {
-      "available": 1349554176,
+      "available": 1349488640,
       "device": "/dev/sd0d",
       "mount": "/usr",
       "total": 3114448896,
-      "used": 1609172992
+      "used": 1609238528
     },
     {
       "available": 275564544,
@@ -59,15 +59,15 @@
   "errors": [],
   "hostname": "fw.office.arpa",
   "load": [
-    1.79,
-    2.4,
-    1.72
+    2.59,
+    2.67,
+    1.79
   ],
   "machine": "amd64",
   "memory": {
-    "active": 89636864,
-    "free": 373518336,
-    "inactive": 276602880,
+    "active": 89575424,
+    "free": 372482048,
+    "inactive": 277078016,
     "total": 1056940032
   },
   "product": "VMM",
@@ -76,16 +76,16 @@
     {
       "device": "vmmci0",
       "index": 0,
-      "number": -45.250155,
+      "number": -21.021319,
       "status": "OK",
       "type": "timedelta",
       "unit": "secs",
-      "value": "-45.250155 secs"
+      "value": "-21.021319 secs"
     }
   ],
   "swap": {
     "total": 268435456,
-    "used": 15114240
+    "used": 15015936
   },
   "time": {
     "status": "0/5 peers valid, 0/1 sensors valid, constraints configured but none available, clock unsynced",

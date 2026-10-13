@@ -14,7 +14,7 @@
       "where": "memory"
     },
     {
-      "current": 340992,
+      "current": 227328,
       "desc": "Queries, blocks and cache hits, a second",
       "fixed": "Always kept, at this size.",
       "group": "graphs",
@@ -38,14 +38,14 @@
       "where": "memory"
     },
     {
-      "current": 3182592,
+      "current": 3409920,
       "desc": "Traffic in and out of each",
       "group": "graphs",
       "id": "graphs-interfaces",
       "link": "/monitoring/graphs",
       "max": 7274496,
       "name": "Interfaces",
-      "note": "14 of at most 32 recorded, a month each.",
+      "note": "15 of at most 32 recorded, a month each.",
       "settings": [
         {
           "label": "System › General › Graphs",
@@ -110,14 +110,14 @@
       "where": "memory"
     },
     {
-      "current": 112128,
+      "current": 0,
       "desc": "Packets each rule matched",
       "group": "graphs",
       "id": "graphs-rules",
       "link": "/monitoring/graphs",
       "max": 28032000,
       "name": "Firewall rules",
-      "note": "2 of at most 500 recorded, a month each.",
+      "note": "0 of at most 500 recorded, a month each.",
       "settings": [
         {
           "label": "System › General › Graphs",
@@ -145,7 +145,7 @@
       "where": "disk"
     },
     {
-      "current": 13,
+      "current": 10,
       "desc": "Links, addresses, gateways, devices and commits as they happen",
       "fixed": "Fixed in OPF.",
       "group": "opf",
@@ -223,7 +223,7 @@
       "where": "disk"
     },
     {
-      "current": 105028,
+      "current": 105024,
       "desc": "The commits' files",
       "fixed": "There's no setting yet: nothing prunes it.",
       "group": "opf",
@@ -256,7 +256,7 @@
       "where": "disk"
     },
     {
-      "current": 31,
+      "current": 108,
       "desc": "pf's state table: one entry for each connection through or to the firewall",
       "group": "pf",
       "id": "pf-states",
@@ -309,7 +309,7 @@
       "where": "kernel"
     },
     {
-      "current": 200,
+      "current": 4191,
       "desc": "Packets pf logged: blocked ones, and rules set to log",
       "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
       "group": "logs",
@@ -332,7 +332,7 @@
       "where": "disk"
     },
     {
-      "current": 6536,
+      "current": 5911,
       "desc": "unbound, dhcpd, ntpd and OPF's own messages",
       "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
       "group": "logs",
@@ -345,7 +345,7 @@
       "where": "disk"
     },
     {
-      "current": 11052,
+      "current": 11186,
       "desc": "The kernel and most of the system",
       "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
       "group": "logs",
@@ -358,7 +358,7 @@
       "where": "disk"
     },
     {
-      "current": 1565,
+      "current": 1689,
       "desc": "SSH and other logins",
       "fixed": "Rotated by newsyslog, set in /etc/newsyslog.conf, which OPF doesn’t manage.",
       "group": "logs",
@@ -370,7 +370,7 @@
       "where": "disk"
     },
     {
-      "current": 49709056,
+      "current": 49295360,
       "desc": "OPF's processes, everything above that's in memory included",
       "group": "disk",
       "id": "opf-memory",
@@ -380,7 +380,7 @@
       "where": "memory"
     },
     {
-      "current": 148574208,
+      "current": 148701184,
       "desc": "Where OPF keeps its records",
       "group": "disk",
       "id": "disk",

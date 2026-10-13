@@ -4,12 +4,12 @@
     {
       "counters": {
         "collisions": 0,
-        "rxBytes": 115591,
+        "rxBytes": 115562,
         "rxErrors": 0,
-        "rxPackets": 241,
-        "txBytes": 115591,
+        "rxPackets": 245,
+        "txBytes": 115562,
         "txErrors": 0,
-        "txPackets": 241
+        "txPackets": 245
       },
       "flags": [
         "UP",
@@ -38,12 +38,12 @@
     {
       "counters": {
         "collisions": 0,
-        "rxBytes": 41376436,
+        "rxBytes": 41545156,
         "rxErrors": 0,
-        "rxPackets": 28913,
-        "txBytes": 1041845,
+        "rxPackets": 29057,
+        "txBytes": 1044217,
         "txErrors": 0,
-        "txPackets": 15285
+        "txPackets": 15341
       },
       "description": "WAN",
       "flags": [
@@ -63,14 +63,14 @@
         "100.64.2.3/31"
       ],
       "ipv6": [],
-      "mac": "fe:e1:bb:d1:42:99",
+      "mac": "fe:e1:bb:d1:97:4f",
       "media": "Ethernet autoselect",
       "mtu": 1500,
       "name": "vio0",
       "running": true,
       "rxBps": 0,
       "status": "active",
-      "txBps": 0,
+      "txBps": 2445.9667671496854,
       "up": true
     },
     {
@@ -96,7 +96,7 @@
       "groups": [],
       "ipv4": [],
       "ipv6": [],
-      "mac": "fe:e1:bb:d2:07:26",
+      "mac": "fe:e1:bb:d2:e0:b0",
       "media": "Ethernet autoselect",
       "mtu": 1500,
       "name": "vio1",
@@ -135,9 +135,9 @@
         "rxBytes": 0,
         "rxErrors": 0,
         "rxPackets": 0,
-        "txBytes": 2538,
+        "txBytes": 2578,
         "txErrors": 0,
-        "txPackets": 35
+        "txPackets": 37
       },
       "flags": [
         "UP",
@@ -153,18 +153,18 @@
       "name": "pflog0",
       "running": true,
       "rxBps": 0,
-      "txBps": 0,
+      "txBps": 904.8663184831206,
       "up": true
     },
     {
       "counters": {
         "collisions": 0,
-        "rxBytes": 1823,
+        "rxBytes": 1811,
         "rxErrors": 0,
         "rxPackets": 22,
-        "txBytes": 1864,
+        "txBytes": 1798,
         "txErrors": 0,
-        "txPackets": 23
+        "txPackets": 22
       },
       "description": "LAN",
       "flags": [
@@ -181,10 +181,84 @@
         "192.168.1.1/24"
       ],
       "ipv6": [],
-      "mac": "fe:e1:ba:d0:d9:0a",
+      "mac": "fe:e1:ba:d0:f5:16",
       "media": "Ethernet autoselect",
       "mtu": 1500,
       "name": "pair0",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 84,
+        "txErrors": 0,
+        "txPackets": 2
+      },
+      "description": "Edge",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST"
+      ],
+      "groups": [
+        "vether"
+      ],
+      "ipv4": [
+        "198.51.100.2/24"
+      ],
+      "ipv6": [],
+      "mac": "fe:e1:ba:d1:59:eb",
+      "media": "Ethernet autoselect",
+      "mtu": 1400,
+      "name": "vether0",
+      "running": true,
+      "rxBps": 0,
+      "status": "active",
+      "txBps": 0,
+      "up": true
+    },
+    {
+      "counters": {
+        "collisions": 0,
+        "rxBytes": 0,
+        "rxErrors": 0,
+        "rxPackets": 0,
+        "txBytes": 502,
+        "txErrors": 0,
+        "txPackets": 7
+      },
+      "description": "Lab",
+      "flags": [
+        "UP",
+        "BROADCAST",
+        "RUNNING",
+        "SIMPLEX",
+        "MULTICAST",
+        "AUTOCONF6TEMP",
+        "AUTOCONF6"
+      ],
+      "groups": [
+        "vether"
+      ],
+      "ipv4": [
+        "172.16.5.1/24"
+      ],
+      "ipv6": [
+        "fe80::fce1:baff:fed2:6c4e/64"
+      ],
+      "mac": "fe:e1:ba:d2:6c:4e",
+      "media": "Ethernet autoselect",
+      "mtu": 1500,
+      "name": "vether1",
       "running": true,
       "rxBps": 0,
       "status": "active",
@@ -216,7 +290,7 @@
         "192.168.20.1/24"
       ],
       "ipv6": [],
-      "mac": "fe:e1:bb:d2:07:26",
+      "mac": "fe:e1:bb:d2:e0:b0",
       "media": "Ethernet autoselect",
       "mtu": 1500,
       "name": "vlan20",
@@ -252,7 +326,7 @@
         "192.168.40.1/24"
       ],
       "ipv6": [],
-      "mac": "fe:e1:bb:d2:07:26",
+      "mac": "fe:e1:bb:d2:e0:b0",
       "media": "Ethernet autoselect",
       "mtu": 1500,
       "name": "vlan40",
@@ -272,9 +346,9 @@
         "rxBytes": 0,
         "rxErrors": 0,
         "rxPackets": 0,
-        "txBytes": 576,
+        "txBytes": 384,
         "txErrors": 0,
-        "txPackets": 3
+        "txPackets": 2
       },
       "description": "Suite collector",
       "flags": [
@@ -350,80 +424,6 @@
         "rxBytes": 0,
         "rxErrors": 0,
         "rxPackets": 0,
-        "txBytes": 210,
-        "txErrors": 0,
-        "txPackets": 5
-      },
-      "description": "Edge",
-      "flags": [
-        "UP",
-        "BROADCAST",
-        "RUNNING",
-        "SIMPLEX",
-        "MULTICAST"
-      ],
-      "groups": [
-        "vether"
-      ],
-      "ipv4": [
-        "198.51.100.2/24"
-      ],
-      "ipv6": [],
-      "mac": "fe:e1:ba:d1:da:7b",
-      "media": "Ethernet autoselect",
-      "mtu": 1400,
-      "name": "vether0",
-      "running": true,
-      "rxBps": 0,
-      "status": "active",
-      "txBps": 0,
-      "up": true
-    },
-    {
-      "counters": {
-        "collisions": 0,
-        "rxBytes": 0,
-        "rxErrors": 0,
-        "rxPackets": 0,
-        "txBytes": 502,
-        "txErrors": 0,
-        "txPackets": 7
-      },
-      "description": "Lab",
-      "flags": [
-        "UP",
-        "BROADCAST",
-        "RUNNING",
-        "SIMPLEX",
-        "MULTICAST",
-        "AUTOCONF6TEMP",
-        "AUTOCONF6"
-      ],
-      "groups": [
-        "vether"
-      ],
-      "ipv4": [
-        "172.16.5.1/24"
-      ],
-      "ipv6": [
-        "fe80::fce1:baff:fed2:4ebc/64"
-      ],
-      "mac": "fe:e1:ba:d2:4e:bc",
-      "media": "Ethernet autoselect",
-      "mtu": 1500,
-      "name": "vether1",
-      "running": true,
-      "rxBps": 0,
-      "status": "active",
-      "txBps": 0,
-      "up": true
-    },
-    {
-      "counters": {
-        "collisions": 0,
-        "rxBytes": 0,
-        "rxErrors": 0,
-        "rxPackets": 0,
         "txBytes": 0,
         "txErrors": 0,
         "txPackets": 0
@@ -458,7 +458,7 @@
             "description": "Priya phone",
             "publicKey": "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws=",
             "rxBytes": 0,
-            "txBytes": 1628
+            "txBytes": 888
           },
           {
             "allowedIps": [
@@ -489,7 +489,7 @@
           }
         ],
         "port": 51820,
-        "publicKey": "B13xaqJqKYRFl/VH0UHOC1JuD2bR9QyDIotejB6+H2A="
+        "publicKey": "0iCJuK6kBMbezolwOiOmVhYXKA1h3ZXDwhAkf8WJDAA="
       }
     },
     {
@@ -535,7 +535,7 @@
             "endpoint": "192.0.2.80:51820",
             "publicKey": "FRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU=",
             "rxBytes": 0,
-            "txBytes": 1628
+            "txBytes": 740
           },
           {
             "allowedIps": [
@@ -568,7 +568,7 @@
           }
         ],
         "port": 51821,
-        "publicKey": "9W8my5bQi8GRrsOSoLd9H+4Idgahtxm4SNDsX0pl21s="
+        "publicKey": "OA/HAO4vLNUvANMs5GfeWa7xylbLPOucXACx62gNyR4="
       }
     },
     {
@@ -612,11 +612,11 @@
             "endpoint": "192.0.2.81:51820",
             "publicKey": "Hx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8=",
             "rxBytes": 0,
-            "txBytes": 1628
+            "txBytes": 740
           }
         ],
-        "port": 37176,
-        "publicKey": "yfa7oTSb8V17FQYWenbTDTAlDs3O94seutTIipuymnk="
+        "port": 34789,
+        "publicKey": "VTaSIOUYCXqep7TGUyPo0Cx78PaBYLxq3N+OZiNXrBg="
       }
     },
     {
@@ -661,16 +661,16 @@
           }
         ],
         "port": 51822,
-        "publicKey": "HXJxfKG2tmYm/trIVuuVwA63LdsorgebOo6vqrg/6gc="
+        "publicKey": "0lwiH6mFUQG09jVTegxCtlYxvkBbAbiKqUS3zVdeRwA="
       }
     },
     {
       "counters": {
         "collisions": 0,
-        "rxBytes": 1822,
+        "rxBytes": 1756,
         "rxErrors": 0,
-        "rxPackets": 22,
-        "txBytes": 1865,
+        "rxPackets": 21,
+        "txBytes": 1853,
         "txErrors": 0,
         "txPackets": 23
       },
@@ -688,7 +688,7 @@
         "192.168.1.60/24"
       ],
       "ipv6": [],
-      "mac": "fe:e1:ba:d3:e6:06",
+      "mac": "fe:e1:ba:d3:a4:76",
       "media": "Ethernet autoselect",
       "name": "pair1",
       "running": true,
