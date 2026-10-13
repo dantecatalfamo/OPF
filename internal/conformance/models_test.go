@@ -137,6 +137,11 @@ var generatorFiles = map[string]genFile{
 		"ParseLabel":       "reads pfctl's labels back; writes nothing",
 		"WantsTrustAnchor": "decides a step before the commit's checks (appliance); writes nothing",
 	}},
+	"gwgroups.go": {except: map[string]string{
+		"GroupInUse":          "chooses the gateways in use as their health changes (appliance); writes nothing",
+		"GatewayGroup.TierOf": "for the UI's and the event log's words (appliance)",
+		"GatewayNames":        "for the event log's words (appliance)",
+	}},
 	"pflow.go": {except: map[string]string{
 		"validator.flowExports":   "validation",
 		"validator.ifaceByDevice": "validation",
@@ -220,7 +225,6 @@ type allowed struct {
 }
 
 var allowlist = []allowed{
-	{"generate.go", "gatewayAddr", "return status.Address", "a DHCP gateway's address is learned at run time (GatewayStatuses), never from the model; it's written as an address like a fixed gateway's"},
 	{"generate.go", "gatewayAddr", `return ""`, "validation: every gateway a rule names exists, and the model is never nil"},
 	{"generate.go", "endpoint", `return "any"`, "validation: every endpoint has a known type (the default case)"},
 	{"generate.go", "ifaceDynamic", "return false", "self with no model; only the UI's previews generate without one"},
@@ -231,6 +235,7 @@ var allowlist = []allowed{
 	{"generate.go", "GenerateDHCPdConf", "continue", "validation: a DHCP scope's interface exists and has a fixed address"},
 	{"generate.go", "networkAddr", "return address", "validation: interface addresses are IPv4 addresses"},
 	{"generate.go", "generateFormRule", `s += fmt.Sprintf(" rtable %d", *r.RTable)`, "validation refuses a rule's routing table; only Upgrade writes one, into a raw rule (TestUpgradeRoutingTables)"},
+	{"gwgroups.go", "FindGateway", "return nil", "validation: every gateway a rule or group names exists"},
 	{"generate.go", "ExitRTable", "return 0, false", "validation: a way out's device is wg0 to wg55"},
 	{"dnsrecords.go", "firewallName", `return ""`, "validation: the host name and domain are required"},
 	{"dnsrecords.go", "firewallViewLines", "return nil", "validation: the host name and domain are required"},

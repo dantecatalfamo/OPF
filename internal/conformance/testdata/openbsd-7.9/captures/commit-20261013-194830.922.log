@@ -37,9 +37,9 @@ for s in $svcs; do
 	fi
 done sh /etc/rc.conf.local
 # load /etc/pf.conf from staged copy
-$ pfctl -f /var/opf/history/20261013-152746.821/new/etc/pf.conf
+$ pfctl -f /var/opf/history/20261013-194830.922/new/etc/pf.conf
 
-Waiting for confirmation until 15:28:50.
+Waiting for confirmation until 19:49:34.
 
 Confirmed by conform.
 # install /etc/pf.conf

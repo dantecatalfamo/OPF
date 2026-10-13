@@ -458,7 +458,6 @@
         "enabled": true,
         "flags": "-v",
         "name": "ntpd",
-        "rtable": 0,
         "timeout": 30
       }
     },

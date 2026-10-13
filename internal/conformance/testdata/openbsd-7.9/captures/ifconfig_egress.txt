@@ -1,5 +1,5 @@
 vio0: flags=808b43<UP,BROADCAST,RUNNING,PROMISC,ALLMULTI,SIMPLEX,MULTICAST,AUTOCONF4> mtu 1500
-	lladdr fe:e1:bb:d1:97:4f
+	lladdr fe:e1:bb:d1:ba:fc
 	description: WAN
 	index 1 priority 0 llprio 3
 	groups: egress

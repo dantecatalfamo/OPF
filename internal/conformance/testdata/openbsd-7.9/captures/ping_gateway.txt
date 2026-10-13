@@ -2,4 +2,4 @@ PING 100.64.2.2 (100.64.2.2): 56 data bytes
 
 --- 100.64.2.2 ping statistics ---
 3 packets transmitted, 3 packets received, 0.0% packet loss
-round-trip min/avg/max/std-dev = 9.314/11.058/14.194/2.222 ms
+round-trip min/avg/max/std-dev = 8.705/9.620/11.099/1.056 ms

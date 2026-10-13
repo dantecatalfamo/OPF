@@ -75,6 +75,11 @@ func TestPfTables(t *testing.T) {
 		t.Errorf("expire printed %q, which expiry.go doesn't read", exp)
 	}
 	step(t, "pfctl -t * -T * ...", []string{"pfctl", "-t", tbl, "-T", "delete", "198.51.100.7"})
+	// As the gateway watch puts a group's gateways in.
+	step(t, "pfctl -t * -T replace ...", []string{"pfctl", "-t", tbl, "-T", "replace", "198.51.100.9", "198.51.100.10"})
+	if show := must(t, "pfctl", "-t", tbl, "-T", "show"); strings.Contains(show, "198.51.100.0/24") || !strings.Contains(show, "198.51.100.10") {
+		t.Errorf("replace with addresses left:\n%s", show)
+	}
 	step(t, "pfctl -t * -T * ...", []string{"pfctl", "-t", tbl, "-T", "flush"})
 	run("pfctl", "-t", tbl, "-T", "kill") // cleaning up: OPF never kills an alias's table
 

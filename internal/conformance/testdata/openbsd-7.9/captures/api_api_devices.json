@@ -300,15 +300,16 @@
       ],
       "arp": [
         {
-          "expires": "19m40s",
+          "expires": "18m21s",
           "iface": "pair0",
           "ip": "192.168.1.60",
-          "mac": "fe:e1:ba:d3:a4:76"
+          "mac": "fe:e1:ba:d3:2c:2d"
         }
       ],
-      "key": "mac:fe:e1:ba:d3:a4:76",
+      "firstSeen": "2026-10-13T19:49:43.444988274Z",
+      "key": "mac:fe:e1:ba:d3:2c:2d",
       "kind": "device",
-      "mac": "fe:e1:ba:d3:a4:76",
+      "mac": "fe:e1:ba:d3:2c:2d",
       "networks": [
         {
           "device": "pair0",

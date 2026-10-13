@@ -50,6 +50,8 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
   const net = netOf(iface);
   const gateways = m.routing.gateways.filter((g) => g.iface === id);
   const gwIds = new Set(gateways.map((g) => g.id));
+  // A group that would have none of its gateways left goes too.
+  for (const g of m.routing.groups ?? []) if (g.members.every((x) => gwIds.has(x.gateway))) gwIds.add(g.id);
 
   if (m.dhcp.some((s) => s.iface === id)) out.push({ what: `DHCP server on ${name}`, effect: 'deleted' });
   if (m.dns.interfaces?.includes(id)) {
@@ -82,6 +84,10 @@ export function interfaceDependents(m: Model, id: string): Dependent[] {
     if (f.iface === id || refersTo(f.source, id)) out.push({ what: `Port forward “${f.description || f.id}”`, effect: 'deleted' });
   }
   for (const g of gateways) out.push({ what: `Gateway ${g.name}`, effect: 'deleted' });
+  for (const g of m.routing.groups ?? []) {
+    if (gwIds.has(g.id)) out.push({ what: `Gateway group ${g.name}`, effect: 'deleted', detail: 'all its gateways are on the interface' });
+    else if (g.members.some((x) => gwIds.has(x.gateway))) out.push({ what: `Gateway group ${g.name}`, effect: 'changed', detail: `loses ${gateways.filter((x) => g.members.some((y) => y.gateway === x.id)).map((x) => x.name).join(', ')}` });
+  }
   for (const r of m.routing.routes) {
     if (gwIds.has(r.gateway)) out.push({ what: `Route to ${r.network}`, effect: 'deleted', detail: 'its gateway is on the interface' });
   }
@@ -113,6 +119,10 @@ export function withoutInterface(m: Model, id: string): Model {
   const iface = m.interfaces.find((i) => i.id === id);
   const net = netOf(iface);
   const gwIds = new Set(m.routing.gateways.filter((g) => g.iface === id).map((g) => g.id));
+  // Groups lose its gateways; one left with none goes, and so does
+  // sending through it.
+  const groups = (m.routing.groups ?? []).map((g) => ({ ...g, members: g.members.filter((x) => !gwIds.has(x.gateway)) }));
+  for (const g of groups) if (!g.members.length) gwIds.add(g.id);
   const rules = m.firewall.rules
     .filter((r) => !opensTunnelPort(m, iface, r))
     .filter((r) => !(r.kind === 'form' && (refersTo(r.source, id) || refersTo(r.destination, id))))
@@ -138,6 +148,7 @@ export function withoutInterface(m: Model, id: string): Model {
       ...m.routing,
       gateways: m.routing.gateways.filter((g) => !gwIds.has(g.id)),
       routes: m.routing.routes.filter((r) => !gwIds.has(r.gateway)),
+      ...(m.routing.groups ? { groups: groups.filter((g) => g.members.length) } : {}),
     },
     firewall: {
       ...m.firewall,

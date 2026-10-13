@@ -354,6 +354,8 @@ type InterfaceState struct {
 // GatewaysStatus is each model gateway's health, by gateway id.
 type GatewaysStatus struct {
 	Gateways map[string]GatewayHealth `json:"gateways"`
+	// Groups are the gateway groups' gateways in use (gwwatch.go).
+	Groups map[string]GroupStatus `json:"groups"`
 }
 
 // GatewayHealth is the result of pinging a gateway.

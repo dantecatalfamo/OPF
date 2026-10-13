@@ -1,46 +1,46 @@
   PID STARTED                      COMMAND
-69848 -                            (nc)
-    1 Tue Oct 13 15:15:54 2026     /sbin/init
- 2509 Tue Oct 13 15:15:59 2026     /sbin/slaacd
-90677 Tue Oct 13 15:15:59 2026     slaacd: engine (slaacd)
-75095 Tue Oct 13 15:15:59 2026     slaacd: frontend (slaacd)
-21133 Tue Oct 13 15:16:04 2026     /sbin/dhcpleased
-80813 Tue Oct 13 15:16:04 2026     dhcpleased: engine (dhcpleased)
-12963 Tue Oct 13 15:16:04 2026     dhcpleased: frontend (dhcpleased)
-97342 Tue Oct 13 15:16:12 2026     /sbin/resolvd
-74463 Tue Oct 13 15:17:20 2026     syslogd: [priv] (syslogd)
-  570 Tue Oct 13 15:17:20 2026     /usr/sbin/syslogd
-57371 Tue Oct 13 15:17:21 2026     pflogd: [priv] (pflogd)
-51462 Tue Oct 13 15:17:21 2026     pflogd: [running] -s 160 -i pflog0 -f /var/log/pflog (pflogd)
-50678 Tue Oct 13 15:17:30 2026     sshd: /usr/sbin/sshd [listener] 1 of 10-100 startups (sshd)
- 4725 Tue Oct 13 15:17:30 2026     /usr/sbin/smtpd
- 3458 Tue Oct 13 15:17:30 2026     smtpd: crypto (smtpd)
-28786 Tue Oct 13 15:17:30 2026     smtpd: control (smtpd)
-87872 Tue Oct 13 15:17:30 2026     smtpd: lookup (smtpd)
-86681 Tue Oct 13 15:17:30 2026     smtpd: dispatcher (smtpd)
-62221 Tue Oct 13 15:17:30 2026     smtpd: queue (smtpd)
-31621 Tue Oct 13 15:17:30 2026     smtpd: scheduler (smtpd)
-70107 Tue Oct 13 15:17:31 2026     sshd-session: root [priv] (sshd-session)
-15733 Tue Oct 13 15:17:31 2026     /usr/sbin/cron
-52212 Tue Oct 13 15:17:32 2026     sshd-session: root@notty (sshd-session)
-28823 Tue Oct 13 15:20:38 2026     ksh -c cd /root/conformance && nohup env \t    OPF_CONFORMANCE_DISPOSABLE=I-WILL-LOSE-THIS-SYSTEM \t    OPF_CONFORMANCE_SRC=/root/conformance/src \t    OPF_CONFORMANCE_OUT=/root/conformance/out \t    OPF_CONFORMANCE_OPF=/root/conformance/opf \t    ksh -c './conformance.test -test.v -test.timeout 60m  > test.log 2>&1; echo $? > status' \t    > /dev/null 2>&1 &
-73682 Tue Oct 13 15:20:38 2026     ksh -c ./conformance.test -test.v -test.timeout 60m  > test.log 2>&1; echo $? > status
-58212 Tue Oct 13 15:20:38 2026     ./conformance.test -test.v -test.timeout 60m
-64530 Tue Oct 13 15:27:34 2026     /usr/local/sbin/opf -listen 127.0.0.1:8443 -tls on
-57922 Tue Oct 13 15:27:34 2026     logger -isp daemon.info -t opf
-25045 Tue Oct 13 15:27:35 2026     /usr/local/sbin/opf
-60662 Tue Oct 13 15:29:29 2026     sshd-session: [accepted] (sshd-session)
-61968 Tue Oct 13 15:29:29 2026     sshd-auth: [session-auth] (sshd-auth)
-80116 Tue Oct 13 15:29:57 2026     /usr/sbin/ntpd -v
-82214 Tue Oct 13 15:29:58 2026     ntpd: ntp engine (ntpd)
-42589 Tue Oct 13 15:29:58 2026     ntpd: dns engine (ntpd)
-20888 Tue Oct 13 15:30:02 2026     /usr/bin/sndiod
-89028 Tue Oct 13 15:30:02 2026     sndiod: helper (sndiod)
-30183 Tue Oct 13 15:30:22 2026     /usr/sbin/dhcpd pair0 vlan20 vether1
- 9090 Tue Oct 13 15:30:23 2026     /usr/sbin/unbound -c /var/unbound/etc/unbound.conf
-19126 Tue Oct 13 15:30:24 2026     ssh -i /tmp/TestAuthpf2635679358/001/id -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -tt conformuser@192.168.1.1
-10737 Tue Oct 13 15:30:24 2026     sshd-session: conformuser [priv] (sshd-session)
-46191 Tue Oct 13 15:30:24 2026     sshd-session: conformuser@ttyp0 (sshd-session)
-52040 Tue Oct 13 15:30:25 2026     ps -axww -o pid
-96659 Tue Oct 13 15:30:24 2026     -authpf: conformuser@192.168.1.60 (authpf)
-77808 Tue Oct 13 15:17:31 2026     /usr/libexec/getty std.115200 tty00
+57906 -                            (nc)
+    1 Tue Oct 13 19:36:40 2026     /sbin/init
+22095 Tue Oct 13 19:36:45 2026     /sbin/slaacd
+28765 Tue Oct 13 19:36:45 2026     slaacd: engine (slaacd)
+48955 Tue Oct 13 19:36:45 2026     slaacd: frontend (slaacd)
+61129 Tue Oct 13 19:36:46 2026     /sbin/dhcpleased
+12754 Tue Oct 13 19:36:46 2026     dhcpleased: engine (dhcpleased)
+87490 Tue Oct 13 19:36:46 2026     dhcpleased: frontend (dhcpleased)
+72049 Tue Oct 13 19:36:57 2026     /sbin/resolvd
+ 3828 Tue Oct 13 19:38:04 2026     syslogd: [priv] (syslogd)
+61964 Tue Oct 13 19:38:05 2026     /usr/sbin/syslogd
+11254 Tue Oct 13 19:38:05 2026     pflogd: [priv] (pflogd)
+15593 Tue Oct 13 19:38:05 2026     pflogd: [running] -s 160 -i pflog0 -f /var/log/pflog (pflogd)
+18573 Tue Oct 13 19:38:14 2026     sshd: /usr/sbin/sshd [listener] 1 of 10-100 startups (sshd)
+82251 Tue Oct 13 19:38:15 2026     sshd-session: root [priv] (sshd-session)
+20418 Tue Oct 13 19:38:15 2026     /usr/sbin/smtpd
+73801 Tue Oct 13 19:38:15 2026     smtpd: crypto (smtpd)
+44261 Tue Oct 13 19:38:15 2026     smtpd: control (smtpd)
+12833 Tue Oct 13 19:38:15 2026     smtpd: lookup (smtpd)
+36471 Tue Oct 13 19:38:15 2026     smtpd: dispatcher (smtpd)
+31290 Tue Oct 13 19:38:15 2026     smtpd: queue (smtpd)
+99050 Tue Oct 13 19:38:15 2026     smtpd: scheduler (smtpd)
+73971 Tue Oct 13 19:38:16 2026     /usr/sbin/cron
+87241 Tue Oct 13 19:38:17 2026     sshd-session: root@notty (sshd-session)
+83328 Tue Oct 13 19:41:42 2026     ksh -c cd /root/conformance && nohup env \t    OPF_CONFORMANCE_DISPOSABLE=I-WILL-LOSE-THIS-SYSTEM \t    OPF_CONFORMANCE_SRC=/root/conformance/src \t    OPF_CONFORMANCE_OUT=/root/conformance/out \t    OPF_CONFORMANCE_OPF=/root/conformance/opf \t    ksh -c './conformance.test -test.v -test.timeout 60m  > test.log 2>&1; echo $? > status' \t    > /dev/null 2>&1 &
+93417 Tue Oct 13 19:41:43 2026     ksh -c ./conformance.test -test.v -test.timeout 60m  > test.log 2>&1; echo $? > status
+50325 Tue Oct 13 19:41:43 2026     ./conformance.test -test.v -test.timeout 60m
+50255 Tue Oct 13 19:48:18 2026     /usr/local/sbin/opf -listen 127.0.0.1:8443 -tls on
+16045 Tue Oct 13 19:48:18 2026     logger -isp daemon.info -t opf
+53117 Tue Oct 13 19:48:20 2026     /usr/local/sbin/opf
+17228 Tue Oct 13 19:51:20 2026     sshd-session: [accepted] (sshd-session)
+10535 Tue Oct 13 19:51:20 2026     sshd-auth: [session-auth] (sshd-auth)
+28175 Tue Oct 13 19:51:49 2026     /usr/sbin/ntpd -v
+86513 Tue Oct 13 19:51:49 2026     ntpd: ntp engine (ntpd)
+26818 Tue Oct 13 19:51:49 2026     ntpd: dns engine (ntpd)
+60735 Tue Oct 13 19:51:54 2026     /usr/bin/sndiod
+88593 Tue Oct 13 19:51:54 2026     sndiod: helper (sndiod)
+81306 Tue Oct 13 19:52:14 2026     /usr/sbin/dhcpd pair0 vlan20 vether1
+89254 Tue Oct 13 19:52:15 2026     /usr/sbin/unbound -c /var/unbound/etc/unbound.conf
+37987 Tue Oct 13 19:52:16 2026     ssh -i /tmp/TestAuthpf2175280726/001/id -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -tt conformuser@192.168.1.1
+85929 Tue Oct 13 19:52:16 2026     sshd-session: conformuser [priv] (sshd-session)
+45323 Tue Oct 13 19:52:17 2026     sshd-session: conformuser@ttyp0 (sshd-session)
+69891 Tue Oct 13 19:52:17 2026     ps -axww -o pid
+69757 Tue Oct 13 19:52:17 2026     -authpf: conformuser@192.168.1.60 (authpf)
+21316 Tue Oct 13 19:38:16 2026     /usr/libexec/getty std.115200 tty00

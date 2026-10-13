@@ -466,7 +466,11 @@ func (m *Manager) sampleSlow(c *collector) {
 			}
 		}
 	}
-	model, _, _ := m.live()
+	model, version, _ := m.live()
+	if err != nil {
+		gws = nil
+	}
+	m.watchGateways(model, version, gws, time.Now())
 	m.watchSlow(model, gws, time.Now())
 }
 

@@ -546,20 +546,26 @@ func pfTableChangeFormats() []Format {
 			L("flushed", m.flushed),
 		}}
 	}
-	return []Format{
-		change("pfctl -t * -T * ...", "pfctl_-t_table_-T_change.txt"),
-		change("pfctl -t opf_hosts -T * ...", "pfctl_-t_opf_hosts_-T_change.txt"),
-		{Command: "pfctl -t opf_hosts -T kill", Fixture: "pfctl_-t_opf_hosts_-T_kill.txt", Lines: []Line{
-			L("killed", m.killed),
-		}, Need: []string{"killed"}},
-		{Command: "pfctl -t * -T replace -f *", Fixture: "pfctl_-t_table_-T_replace.txt", Lines: []Line{
+	replace := func(cmd, fixture string) Format {
+		// replace, from a file or the command line: counts without
+		// totals, or no changes.
+		return Format{Command: cmd, Fixture: fixture, Lines: []Line{
 			L("created", m.created),
 			L("duplicate", m.duplicate),
 			L("added", m.addedN),
 			L("deleted", m.deletedN),
 			L("changed", m.changedN),
 			L("no changes", m.none),
-		}},
+		}}
+	}
+	return []Format{
+		change("pfctl -t * -T * ...", "pfctl_-t_table_-T_change.txt"),
+		change("pfctl -t opf_hosts -T * ...", "pfctl_-t_opf_hosts_-T_change.txt"),
+		{Command: "pfctl -t opf_hosts -T kill", Fixture: "pfctl_-t_opf_hosts_-T_kill.txt", Lines: []Line{
+			L("killed", m.killed),
+		}, Need: []string{"killed"}},
+		replace("pfctl -t * -T replace -f *", "pfctl_-t_table_-T_replace.txt"),
+		replace("pfctl -t * -T replace ...", "pfctl_-t_table_-T_replace_addresses.txt"),
 		{Command: "pfctl -t * -T expire *", Fixture: "pfctl_-t_table_-T_expire.txt", Lines: []Line{
 			L("expired", m.expired),
 		}, Need: []string{"expired"}},

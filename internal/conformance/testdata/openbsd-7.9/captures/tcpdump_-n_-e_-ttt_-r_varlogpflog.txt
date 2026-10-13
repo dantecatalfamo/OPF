@@ -1,25 +1,68 @@
 tcpdump: WARNING: snaplen raised from 116 to 160
-Oct 13 15:28:03.392724 rule def/(ip-option) block out on vether1: :: > ff02::1:ffd2:6c4e: HBH icmp6: multicast listener report  [hlim 1]
-Oct 13 15:28:15.432876 rule 93/(match) match out on vio0: 100.64.2.3.31841 > 100.64.2.2.53: 11138+% NS? .(17)
-Oct 13 15:28:15.441754 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
-Oct 13 15:28:16.502940 rule 93/(match) match out on vio0: 100.64.2.3.12927 > 9.9.9.9.53: 15509+% NS? .(17)
-Oct 13 15:28:17.343714 rule 93/(match) match out on vio0: 100.64.2.3.37012 > 100.64.2.2.53: 21473+ A? www.google.com.(32)
-Oct 13 15:28:17.351880 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
-Oct 13 15:28:17.523653 rule 93/(match) match out on vio0: 100.64.2.3.48737 > 100.64.2.2.53: 15509+% NS? .(17)
-Oct 13 15:28:17.526814 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
-Oct 13 15:28:17.550205 rule 93/(match) match out on vio0: 100.64.2.3.15736 > 9.9.9.9.853: S 1582017854:1582017854(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3649135878[|tcp]> (DF)
-Oct 13 15:28:18.181564 rule 93/(match) match out on vio0: 192.168.1.60 > 100.64.2.2: icmp: echo request
-Oct 13 15:28:18.188369 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
-Oct 13 15:28:18.385036 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
-Oct 13 15:28:18.391173 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
-Oct 13 15:28:18.593702 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
-Oct 13 15:28:18.596175 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
-Oct 13 15:28:18.794478 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
-Oct 13 15:28:18.797056 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
-Oct 13 15:28:18.993804 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
-Oct 13 15:28:18.996149 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
-Oct 13 15:28:20.575169 rule 93/(match) match out on vio0: 100.64.2.3.17926 > 9.9.9.9.853: S 565570437:565570437(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3010962108[|tcp]> (DF)
-Oct 13 15:28:22.573433 rule 93/(match) match out on vio0: 100.64.2.3.31562 > 9.9.9.9.53: 43516+[|domain]
-Oct 13 15:28:23.585180 rule 93/(match) match out on vio0: 100.64.2.3.45305 > 9.9.9.9.853: S 63606053:63606053(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3326423667[|tcp]> (DF)
-Oct 13 15:28:24.043972 rule 93/(match) match out on vio0: 100.64.2.3.23449 > 9.9.9.9.53: 21473+ A? www.google.com.(32)
-Oct 13 15:28:26.606459 rule 93/(match) match out on vio0: 100.64.2.3.19625 > 9.9.9.9.853: S 4109170915:4109170915(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3859227032[|tcp]> (DF)
+Oct 13 19:48:47.546670 rule def/(ip-option) block out on vether1: :: > ff02::1:ffd2:442c: HBH icmp6: multicast listener report  [hlim 1]
+Oct 13 19:49:28.646732 rule 93/(match) match out on vio0: 100.64.2.3.25852 > 100.64.2.2.53: 58104+% NS? .(17)
+Oct 13 19:49:28.654450 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:49:29.819837 rule 93/(match) match out on vio0: 100.64.2.3.17999 > 9.9.9.9.53: 50108+% NS? .(17)
+Oct 13 19:49:30.829617 rule 93/(match) match out on vio0: 100.64.2.3.43939 > 100.64.2.2.53: 50108+% NS? .(17)
+Oct 13 19:49:30.838752 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:49:30.871054 rule 93/(match) match out on vio0: 100.64.2.3.35848 > 9.9.9.9.853: S 563533303:563533303(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1609985307[|tcp]> (DF)
+Oct 13 19:49:31.956476 rule 93/(match) match out on vio0: 192.168.1.60 > 100.64.2.2: icmp: echo request
+Oct 13 19:49:31.963368 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
+Oct 13 19:49:32.160185 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:49:32.165508 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
+Oct 13 19:49:32.359878 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:49:32.362352 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
+Oct 13 19:49:32.560269 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:49:32.567016 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
+Oct 13 19:49:32.759617 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:49:32.762142 rule 93/(match) match in on vio0: 100.64.2.2 > 192.168.1.60: icmp: echo reply
+Oct 13 19:49:33.901688 rule 93/(match) match out on vio0: 100.64.2.3.40315 > 9.9.9.9.853: S 4173956404:4173956404(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 797161726[|tcp]> (DF)
+Oct 13 19:49:36.358961 rule 93/(match) match out on vio0: 100.64.2.3.29334 > 9.9.9.9.53: 57054+[|domain]
+Oct 13 19:49:36.920153 rule 93/(match) match out on vio0: 100.64.2.3.47663 > 9.9.9.9.853: S 2305485300:2305485300(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 69324594[|tcp]> (DF)
+Oct 13 19:49:39.943571 rule 93/(match) match out on vio0: 100.64.2.3.17696 > 9.9.9.9.853: S 1117313494:1117313494(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1140887696[|tcp]> (DF)
+Oct 13 19:49:41.371773 rule 93/(match) match out on vio0: 100.64.2.3.11437 > 100.64.2.2.53: 57054+[|domain]
+Oct 13 19:49:41.380516 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:49:41.528992 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:49:41.752787 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:49:41.941547 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:49:44.729893 rule 93/(match) match out on vio0: 100.64.2.3.17886 > 9.9.9.9.53: 57054+[|domain]
+Oct 13 19:49:45.950051 rule 93/(match) match out on vio0: 100.64.2.3.17696 > 9.9.9.9.853: S 1117313494:1117313494(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 1140893706[|tcp]> (DF)
+Oct 13 19:49:45.971977 rule 93/(match) match out on vio0: 100.64.2.3.10846 > 9.9.9.9.853: S 567981538:567981538(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 39391577[|tcp]> (DF)
+Oct 13 19:49:48.080509 rule 93/(match) match out on vio0: 100.64.2.3.44536 > 100.64.2.2.53: 57054+[|domain]
+Oct 13 19:49:48.083607 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:49:51.981070 rule 93/(match) match out on vio0: 100.64.2.3.10846 > 9.9.9.9.853: S 567981538:567981538(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 39397588[|tcp]> (DF)
+Oct 13 19:49:54.761867 rule 93/(match) match out on vio0: 100.64.2.3.2318 > 9.9.9.9.53: 57054+[|domain]
+Oct 13 19:50:01.443268 rule 93/(match) match out on vio0: 100.64.2.3.30181 > 100.64.2.2.53: 57054+[|domain]
+Oct 13 19:50:01.446314 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:50:01.464214 rule 93/(match) match out on vio0: 100.64.2.3.26240 > 9.9.9.9.853: S 4237686308:4237686308(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3634043246[|tcp]> (DF)
+Oct 13 19:50:06.474482 rule 93/(match) match out on vio0: 100.64.2.3.27232 > 9.9.9.9.53: 27799+[|domain]
+Oct 13 19:50:07.474495 rule 93/(match) match out on vio0: 100.64.2.3.26240 > 9.9.9.9.853: S 4237686308:4237686308(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3634049256[|tcp]> (DF)
+Oct 13 19:50:11.487395 rule 93/(match) match out on vio0: 100.64.2.3.22939 > 100.64.2.2.53: 27799+[|domain]
+Oct 13 19:50:11.493679 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:50:11.626878 rule 93/(match) match out on vio0: 192.168.1.1.29734 > 192.0.2.50.2055: udp 792
+Oct 13 19:50:14.836496 rule 93/(match) match out on vio0: 100.64.2.3.26753 > 9.9.9.9.53: 27799+[|domain]
+Oct 13 19:50:18.187310 rule 93/(match) match out on vio0: 100.64.2.3.24852 > 100.64.2.2.53: 27799+[|domain]
+Oct 13 19:50:18.190478 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:50:19.476856 rule 93/(match) match out on vio0: 100.64.2.3.26240 > 9.9.9.9.853: S 4237686308:4237686308(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 3634061261[|tcp]> (DF)
+Oct 13 19:50:21.270337 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:50:21.479172 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:50:21.679826 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:50:24.867872 rule 93/(match) match out on vio0: 100.64.2.3.40978 > 9.9.9.9.53: 27799+[|domain]
+Oct 13 19:50:31.549518 rule 93/(match) match out on vio0: 100.64.2.3.11750 > 100.64.2.2.53: 27799+[|domain]
+Oct 13 19:50:31.552736 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:50:31.561661 rule 93/(match) match out on vio0: 100.64.2.3.37773 > 9.9.9.9.853: S 68160796:68160796(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2988024207[|tcp]> (DF)
+Oct 13 19:50:37.560388 rule 93/(match) match out on vio0: 100.64.2.3.37773 > 9.9.9.9.853: S 68160796:68160796(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2988030218[|tcp]> (DF)
+Oct 13 19:50:41.980515 rule 93/(match) match out on vio0: 100.64.2.3.52569 > 192.0.2.50.2055: udp 648
+Oct 13 19:50:44.906404 rule 93/(match) match out on vio0: 100.64.2.3.40898 > 9.9.9.9.53: 27799+[|domain]
+Oct 13 19:50:49.569409 rule 93/(match) match out on vio0: 100.64.2.3.37773 > 9.9.9.9.853: S 68160796:68160796(0) win 16384 <mss 1460,nop,nop,sackOK,nop,wscale 6,nop,nop,timestamp 2988042227[|tcp]> (DF)
+Oct 13 19:50:58.264710 rule 93/(match) match out on vio0: 100.64.2.3.9203 > 100.64.2.2.53: 27799+[|domain]
+Oct 13 19:50:58.267935 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: 100.64.2.2 udp port 53 unreachable
+Oct 13 19:51:01.133443 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:51:01.341221 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:51:01.542955 rule 93/(match) match out on vio0: 100.64.2.3 > 9.9.9.9: icmp: echo request
+Oct 13 19:51:04.242766 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:51:04.251177 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: echo reply
+Oct 13 19:51:04.448538 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:51:04.454549 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: echo reply
+Oct 13 19:51:04.648429 rule 93/(match) match out on vio0: 100.64.2.3 > 100.64.2.2: icmp: echo request
+Oct 13 19:51:04.654833 rule 93/(match) match in on vio0: 100.64.2.2 > 100.64.2.3: icmp: echo reply

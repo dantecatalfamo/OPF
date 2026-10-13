@@ -1,5 +1,5 @@
 trunk7: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> mtu 1500
-	lladdr fe:e1:ba:d4:c5:9a
+	lladdr fe:e1:ba:d4:15:a4
 	description: Bond trunk7
 	index 24 priority 0 llprio 3
 	trunk: trunkproto failover

@@ -136,7 +136,7 @@ exec sh /etc/netstart "$if" sh wg3
 # install /var/unbound/etc/unbound.conf
 # install /etc/ntpd.conf
 $ rcctl restart ntpd
-ntpd(ok)
+ntpd(killed)
 ntpd(ok)
 # install /etc/ssh/sshd_config
 $ rcctl reload sshd
@@ -178,9 +178,9 @@ done sh /etc/rc.conf.local
 dhcpd(ok)
 unbound(ok)
 # load /etc/pf.conf from staged copy
-$ pfctl -f /var/opf/history/20261013-152759.659/new/etc/pf.conf
+$ pfctl -f /var/opf/history/20261013-194843.742/new/etc/pf.conf
 
-Waiting for confirmation until 15:29:16.
+Waiting for confirmation until 19:50:29.
 
 Confirmed by conform.
 # install /etc/pf.conf

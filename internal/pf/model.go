@@ -727,7 +727,35 @@ type Routing struct {
 	DefaultGateway string        `json:"defaultGateway"`
 	Gateways       []Gateway     `json:"gateways"`
 	Routes         []StaticRoute `json:"routes"`
+	// Groups are gateways used together: a rule's "send via" can name
+	// one as it names a gateway (ids are shared).
+	Groups []GatewayGroup `json:"groups,omitempty"`
 }
+
+// GatewayGroup is gateways in tiers, as pfSense's gateway groups: the
+// first tier with a gateway that answers is used, and its gateways that
+// answer share the traffic (round-robin); the next tier takes over when
+// none in it does. pf reads the gateways in use from a table
+// (GatewayTable), which OPF fills as their health changes.
+type GatewayGroup struct {
+	ID      string        `json:"id"`
+	Name    string        `json:"name"`
+	Members []GroupMember `json:"members"`
+	// Sticky keeps each source on the gateway it was first sent to
+	// (sticky-address), for sites that see a client change address
+	// and sign it out.
+	Sticky      bool   `json:"sticky,omitempty"`
+	Description string `json:"description"`
+}
+
+// GroupMember is a gateway in a group, in its tier: 1 is used first.
+type GroupMember struct {
+	Gateway string `json:"gateway"`
+	Tier    int    `json:"tier"`
+}
+
+// MaxGroupTiers is how many tiers a gateway group has at most.
+const MaxGroupTiers = 5
 
 // ---------- Services ----------
 

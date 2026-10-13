@@ -4,6 +4,7 @@ bogons
 drop_list
 office_hosts
 office_nets
+opf_gw_both
 opf_hosts
 opf_local
 private

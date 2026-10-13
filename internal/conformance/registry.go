@@ -135,6 +135,7 @@ var Commands = []Command{
 	cmd(Read, "appliance tablecontents", "TestPfTables", "pfctl -t * -T show -v"),
 	cmd(Read, "appliance traffic", "TestPfTables", "pfctl -t opf_hosts -T show -v"),
 	cmd(Change, "appliance tablecontents (add, delete, flush)", "TestPfTables", "pfctl -t * -T * ..."),
+	cmd(Change, "appliance gwwatch (a group's gateways)", "TestPfTables", "pfctl -t * -T replace ..."),
 	cmd(Change, "appliance traffic (add, delete)", "TestPfTables", "pfctl -t opf_hosts -T * ..."),
 	cmd(Change, "appliance traffic", "TestPfTables", "pfctl -t opf_hosts -T kill"),
 	cmd(Change, "appliance tables", "TestPfTables", "pfctl -t * -T replace -f *"),

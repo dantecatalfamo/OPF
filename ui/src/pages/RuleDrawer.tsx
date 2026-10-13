@@ -142,7 +142,10 @@ export function RuleDrawer({
 
   const tables = model.firewall.aliases.filter((a) => a.type === 'table').map((a) => a.name);
   const portAliases = model.firewall.aliases.filter((a) => a.type === 'ports').map((a) => `alias:${a.name}`);
-  const gateways = model.routing.gateways.map((g) => ({ value: g.id, label: `${g.name} (${g.address === 'dhcp' ? 'DHCP' : g.address})` }));
+  const gateways = [
+    ...model.routing.gateways.map((g) => ({ value: g.id, label: `${g.name} (${g.address === 'dhcp' ? 'DHCP' : g.address})` })),
+    ...(model.routing.groups ?? []).map((g) => ({ value: g.id, label: `${g.name} (gateway group)` })),
+  ];
 
   // Parse rule from raw syntax state
   const [parseLoading, setParseLoading] = useState(false);
@@ -469,6 +472,9 @@ export function RuleDrawer({
                         <Select label="Send via gateway" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('gateway')} />
                         <Select label="Send replies via" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('replyTo')} />
                       </SimpleGrid>
+                      {v.family !== 'inet' && [v.gateway, v.replyTo].some((id) => id && ((model.routing.groups ?? []).some((g) => g.id === id) || model.routing.gateways.some((g) => g.id === id && g.address === 'dhcp'))) && (
+                        <Text size="xs" c="yellow">A gateway group or a DHCP gateway sends IPv4 only: set “Address family” above to IPv4.</Text>
+                      )}
                     </Stack>
                   </Accordion.Panel>
                 </Accordion.Item>

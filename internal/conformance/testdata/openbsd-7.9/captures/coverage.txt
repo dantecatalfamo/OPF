@@ -37,6 +37,7 @@ pfctl -t * -T show: TestPfTables
 pfctl -t * -T show -v: TestPfTables
 pfctl -t opf_hosts -T show -v: TestPfTables
 pfctl -t * -T * ...: TestPfTables
+pfctl -t * -T replace ...: TestPfTables
 pfctl -t opf_hosts -T * ...: TestPfTables
 pfctl -t opf_hosts -T kill: TestPfTables
 pfctl -t * -T replace -f *: TestPfTables

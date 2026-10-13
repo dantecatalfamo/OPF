@@ -314,6 +314,7 @@ func TestPfFormatsSamples(t *testing.T) {
 		{"pfctl -t opf_hosts -T kill", "kill", pfLines("1 table deleted.")},
 		{"pfctl -t * -T replace -f *", "changes", pfLines("1 table created.", "3 addresses added.", "1 addresses deleted.", "2 addresses changed.")},
 		{"pfctl -t * -T replace -f *", "no changes", pfLines("no changes.")},
+		{"pfctl -t * -T replace ...", "a group's gateways", pfLines("2 addresses added.", "1 addresses deleted.")},
 		{"pfctl -t * -T expire *", "expire", pfLines("0/0 addresses expired.")},
 		{"pfctl -k id -k *", "kill", pfLines("killed 1 states")},
 		{"pfctl -a authpf -s Anchors", "sessions", pfLines("  authpf/alice(1234)", "  authpf/5678", "  authpf/alice(1234)/sub")},
@@ -422,7 +423,7 @@ func TestPfFormatsNames(t *testing.T) {
 		"pfctl -vv -s Interfaces", "pfctl -vv -s states", "pfctl -vv -s rules", "pfctl -s labels", "pfctl -s Tables",
 		"tcpdump -n -e -ttt -r /var/log/pflog", "pfctl -t * -T show", "pfctl -t * -T show -v",
 		"pfctl -t opf_hosts -T show -v", "pfctl -t * -T * ...", "pfctl -t opf_hosts -T * ...", "pfctl -t opf_hosts -T kill",
-		"pfctl -t * -T replace -f *", "pfctl -t * -T expire *", "pfctl -k id -k *", "pfctl -nvf *", "pfctl -a authpf -s Anchors"} {
+		"pfctl -t * -T replace -f *", "pfctl -t * -T replace ...", "pfctl -t * -T expire *", "pfctl -k id -k *", "pfctl -nvf *", "pfctl -a authpf -s Anchors"} {
 		if _, ok := Formats[f]; !ok {
 			t.Errorf("no Format for %s", f)
 		}

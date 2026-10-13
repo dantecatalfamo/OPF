@@ -3,11 +3,11 @@ kern.osrelease=7.9
 kern.version=OpenBSD 7.9 (GENERIC) #399: Wed May  6 13:01:58 MDT 2026
     deraadt@amd64.openbsd.org:/usr/src/sys/arch/amd64/compile/GENERIC
 
-kern.boottime=Tue Oct 13 15:15:53 2026
+kern.boottime=Tue Oct 13 19:36:39 2026
 hw.machine=amd64
 hw.model=Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz
 hw.vendor=OpenBSD
 hw.product=VMM
 hw.ncpuonline=1
 hw.physmem=1056940032
-vm.loadavg=2.29 2.61 1.77
+vm.loadavg=0.50 1.85 1.54

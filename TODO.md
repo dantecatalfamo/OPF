@@ -359,31 +359,41 @@ In order. Each step's details are in the section it points to.
       anchors, including a managed anchor per service; `binat-to` (1:1
       NAT), `af-to` (NAT64) and `divert-to`.
 - [ ] **Gateway groups** (multi-WAN), as pfSense and OPNsense have them:
-      a named group of gateways in tiers. One tier at a time is used,
-      the next when every gateway in it is down (failover); gateways in
-      the same tier share the traffic (load balancing). A rule's "Send
-      via gateway", and the default gateway, can name a group.
-  - pf: a group is a `route-to { gw1 gw2 }` pool of the tier in use
-    (round-robin, or `source-hash`/`sticky-address` to keep a client
-    on one WAN), with each gateway's interface given, so replies and
-    NAT leave the right WAN (`nat-to` per WAN interface).
-  - Failover needs health: the real gateway monitor (Live data ›
-    gateway health; dpinger-like, loss and latency over time) decides
-    which tier is up, and a change reloads only the pool (a table or
-    anchor, not the whole ruleset) and the default route.
+      gateways in tiers. The first tier with a gateway that answers is
+      used, its answering gateways sharing the traffic (round-robin);
+      the next tier takes over when none answers.
+  - Done: the model (`routing.groups`, ids shared with gateways),
+    validation (IPv4 gateways, a table name's length, IPv4 rules), Routing
+    › Gateway groups with each tier's state and the one in use, and a
+    rule's "Send via gateway" offering groups. pf sends through
+    `route-to <opf_gw_ID> round-robin [sticky-address]`, a table
+    declared empty and persist; after each 10 s look at the gateways
+    (down after 2 misses, up after 3 answers) OPF replaces its
+    contents with the tier in use, and again after each commit. An
+    event says when a group moves. A rule through a DHCP gateway goes
+    the same way, a one-address table, instead of the `route-to
+    0.0.0.0` it got before (the lease's address isn't in the model).
+  - On the guest (TestGatewayGroups, written, run 21): the everything
+    model's group moves from the edge, which never answers, to the
+    test client, in pf's table, the status and the event log, and a
+    reload keeps the table.
+  - Next: the default gateway as a group (the firewall's own traffic
+    and anything without route-to: replace the default route as the
+    tier moves; two DHCP WANs both install one, which dhcpleased
+    needs told apart).
+  - Next: a trigger beyond "doesn't answer": loss or latency over a
+    threshold, per group, from the collector's samples.
   - States through a gateway that went down stay on it: kill them on
     failover, as an option, as pfSense's "kill states on gateway
     failure" does (check pfctl(8)'s -k forms for one by gateway).
-  - The firewall's own traffic follows the default route, which moves
-    to the group's working tier.
-  - `route-to` on a DHCP gateway: the generator resolves it to the
-    address it has at generation time, so a new lease needs the
-    ruleset regenerated; the group's reload is the place for it.
-  - UI: Routing › Gateway groups (name, tiers, per gateway its tier
-    and weight, the trigger: down, or loss or latency over a
-    threshold), offered wherever a gateway is; status per group.
-  - Conformance: the generated pools load, and a gateway brought down
-    on the guest moves traffic and the default route.
+  - NAT: traffic sent out a second WAN is translated by that WAN's
+    outbound NAT; check automatic NAT covers every WAN interface, and
+    that replies to connections coming in on WAN2 leave by WAN2
+    (reply-to on its pass rules).
+  - Weights within a tier: pf's round-robin has none, and a table holds
+    each address once; least-states is the other pool type a table
+    takes.
+  - IPv6 gateways in groups (a table of IPv6 addresses, inet6 rules).
   - Routing tables stay hidden: OPF's only use of one is a way out.
     Named tables (a default route each, for a daemon or network to
     use) only if a need comes up that route-to and groups don't meet.

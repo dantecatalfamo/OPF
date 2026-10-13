@@ -1,37 +1,37 @@
        4096 bytes per page
      245675 pages managed
-      91193 pages free
-      21707 pages active
-      67559 pages inactive
+      90610 pages free
+      22703 pages active
+      67357 pages inactive
           0 pages being paged out
           2 pages wired
-          0 pages zeroed
+       6830 pages zeroed
          32 pages reserved for pagedaemon
          64 pages reserved for kernel
           0 pages in per-cpu caches
           0 per-cpu cache hits
           0 per-cpu cache misses
       65535 swap pages
-       3666 swap pages in use
-    1373010 page faults
-    1497159 traps
-     212171 interrupts
-     331856 cpu context switches
+       3687 swap pages in use
+    1477899 page faults
+    1582010 traps
+     232152 interrupts
+     339691 cpu context switches
           0 fpu context switches
-     215761 software interrupts
-    1074095 syscalls
-       5233 pagein operations
-       1998 forks
-         57 forks where vmspace is shared
+     225917 software interrupts
+    1166851 syscalls
+       5165 pagein operations
+       2431 forks
+         59 forks where vmspace is shared
          11 kernel map entries
-     169264 zeroed page hits
-     547636 zeroed page misses
-         92 number of times the pagedaemon woke up
-         92 number of times the pagedaemon scanned for free pages
-     164476 pages freed by pagedaemon
-    1690354 pages scanned by pagedaemon
+     234290 zeroed page hits
+     511254 zeroed page misses
+         89 number of times the pagedaemon woke up
+         89 number of times the pagedaemon scanned for free pages
+     164689 pages freed by pagedaemon
+    1706933 pages scanned by pagedaemon
           0 pages reactivated by pagedaemon
           0 busy pages found by pagedaemon
-      84125 total name lookups
-            cache hits (76% pos + 4% neg) system 0% per-directory
+      95110 total name lookups
+            cache hits (78% pos + 4% neg) system 0% per-directory
             deletions 2%, falsehits 0%, toolong 0%

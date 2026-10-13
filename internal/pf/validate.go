@@ -36,6 +36,7 @@ func Validate(m *Model) []FieldError {
 	v.system()
 	v.interfaces()
 	v.routing()
+	v.groups()
 	v.firewall()
 	v.dhcp()
 	v.dns()
@@ -465,6 +466,69 @@ var ClonedKinds = []string{
 func (v *validator) gatewayRef(path, id string) {
 	if !slices.ContainsFunc(v.m.Routing.Gateways, func(g Gateway) bool { return g.ID == id }) {
 		v.fail(path, "no gateway %q", id)
+	}
+}
+
+// sendVia checks a rule's route-to or reply-to: a gateway or a group.
+// One sent through a table (a group, a DHCP gateway) needs an id that
+// makes a table name, and an IPv4 rule: the table holds IPv4 addresses,
+// and an IPv6 packet sent to one would be lost.
+func (v *validator) sendVia(path, id string, r *Rule) {
+	if FindGroup(v.m, id) == nil {
+		v.gatewayRef(path, id)
+	}
+	if !tabled(v.m, id) {
+		return
+	}
+	if len(id) > maxTabledID || !tableRE.MatchString(GatewayTable(id)) {
+		v.fail(path, "%q is in a pf table's name, so it's at most %d letters, digits and _", id, maxTabledID)
+	}
+	if r.Family != FamilyInet {
+		v.fail(path, "sending through a gateway group or a DHCP gateway works for IPv4: set the rule to IPv4")
+	}
+}
+
+// groups checks the gateway groups: each gateway once, in a tier, all
+// of them one family.
+func (v *validator) groups() {
+	ids := map[string]bool{}
+	for _, g := range v.m.Routing.Gateways {
+		ids[g.ID] = true
+	}
+	for i, g := range v.m.Routing.Groups {
+		p := at("routing.groups", i)
+		if v.re(p+".id", g.ID, idRE, "id") && ids[g.ID] {
+			v.fail(p+".id", "%q is a gateway's id or another group's; a rule names either by it", g.ID)
+		}
+		ids[g.ID] = true
+		v.re(p+".name", g.Name, plainNameRE, "name")
+		v.text(p+".description", g.Description, 200, false)
+		if len(g.ID) > maxTabledID || !tableRE.MatchString(GatewayTable(g.ID)) {
+			v.fail(p+".id", "is in a pf table's name, so it's at most %d letters, digits and _", maxTabledID)
+		}
+		if len(g.Members) == 0 {
+			v.fail(p+".members", "a group needs a gateway")
+		}
+		seen := map[string]bool{}
+		for j, mb := range g.Members {
+			mp := fmt.Sprintf("%s.members[%d]", p, j)
+			v.gatewayRef(mp+".gateway", mb.Gateway)
+			v.unique(mp+".gateway", seen, mb.Gateway, "gateway")
+			v.intRange(mp+".tier", mb.Tier, 1, MaxGroupTiers)
+			if gw := FindGateway(v.m, mb.Gateway); gw != nil && gw.Address != "dhcp" {
+				if a, err := netip.ParseAddr(gw.Address); err == nil && !a.Is4() {
+					v.fail(mp+".gateway", "%s is an IPv6 gateway; a group has IPv4 gateways", gw.Name)
+				}
+			}
+		}
+	}
+	for i, rt := range v.m.Routing.Routes {
+		if FindGroup(v.m, rt.Gateway) != nil {
+			v.fail(at("routing.routes", i)+".gateway", "a static route goes through one gateway, not a group")
+		}
+	}
+	if FindGroup(v.m, v.m.Routing.DefaultGateway) != nil {
+		v.fail("routing.defaultGateway", "the default gateway is one gateway; a group can't be it yet")
 	}
 }
 
@@ -1021,10 +1085,10 @@ func (v *validator) formRule(p string, r Rule) {
 		v.text(p+".osFingerprint", r.OSFingerprint, 64, false)
 	}
 	if r.Gateway != "" {
-		v.gatewayRef(p+".gateway", r.Gateway)
+		v.sendVia(p+".gateway", r.Gateway, &r)
 	}
 	if r.ReplyTo != "" {
-		v.gatewayRef(p+".replyTo", r.ReplyTo)
+		v.sendVia(p+".replyTo", r.ReplyTo, &r)
 	}
 	if r.RTable != nil {
 		v.fail(p+".rtable", "a rule doesn't choose a routing table; send its traffic through a gateway instead")

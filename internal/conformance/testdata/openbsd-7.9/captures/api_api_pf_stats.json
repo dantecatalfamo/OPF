@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-13T15:28:39.322926426Z",
+  "at": "2026-10-13T19:51:12.024024869Z",
   "errors": [],
   "info": {
     "counters": {
@@ -8,7 +8,7 @@
       "congestion": 0,
       "fragment": 0,
       "ip-option": 1,
-      "match": 234,
+      "match": 257,
       "max states per rule": 0,
       "max-src-conn": 0,
       "max-src-conn-rate": 0,
@@ -33,18 +33,18 @@
     },
     "debug": "notice",
     "enabled": true,
-    "enabledFor": 760,
-    "halfOpenTcp": 7,
+    "enabledFor": 867,
+    "halfOpenTcp": 8,
     "iface": {
-      "bytesIn": 1475,
-      "bytesOut": 1114,
+      "bytesIn": 2495,
+      "bytesOut": 2174,
       "name": "pair0",
-      "packetsInBlocked": 6,
-      "packetsInPassed": 15,
+      "packetsInBlocked": 9,
+      "packetsInPassed": 24,
       "packetsOutBlocked": 0,
-      "packetsOutPassed": 14
+      "packetsOutPassed": 27
     },
-    "states": 86,
+    "states": 17,
     "tables": {
       "fragments": {
         "current": 0,
@@ -59,16 +59,16 @@
         "searches": 0
       },
       "states": {
-        "current": 86,
-        "inserts": 209,
-        "removals": 123,
-        "searches": 44477
+        "current": 17,
+        "inserts": 214,
+        "removals": 197,
+        "searches": 44593
       }
     }
   },
   "interfaces": [
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -87,12 +87,12 @@
         "bytes": 0,
         "packets": 0
       },
-      "rules": 6,
+      "rules": 7,
       "skip": false,
-      "states": 62
+      "states": 4
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -116,7 +116,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:08Z",
+      "cleared": "2026-10-13T19:48:50Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -135,12 +135,12 @@
         "bytes": 0,
         "packets": 0
       },
-      "rules": 2,
+      "rules": 3,
       "skip": false,
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -164,7 +164,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -188,7 +188,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -212,7 +212,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -236,7 +236,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:17Z",
+      "cleared": "2026-10-13T19:49:30Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -260,7 +260,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:02Z",
+      "cleared": "2026-10-13T19:48:46Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -284,15 +284,15 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:02Z",
+      "cleared": "2026-10-13T19:48:46Z",
       "group": false,
       "inBlock": {
-        "bytes": 343,
-        "packets": 6
+        "bytes": 595,
+        "packets": 9
       },
       "inPass": {
-        "bytes": 1132,
-        "packets": 15
+        "bytes": 1900,
+        "packets": 24
       },
       "name": "pair0",
       "outBlock": {
@@ -300,23 +300,23 @@
         "packets": 0
       },
       "outPass": {
-        "bytes": 1114,
-        "packets": 14
+        "bytes": 2174,
+        "packets": 27
       },
-      "rules": 85,
+      "rules": 87,
       "skip": false,
-      "states": 1
+      "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:17Z",
+      "cleared": "2026-10-13T19:49:27Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
         "packets": 0
       },
       "inPass": {
-        "bytes": 1434,
-        "packets": 20
+        "bytes": 0,
+        "packets": 0
       },
       "name": "pair1",
       "outBlock": {
@@ -324,15 +324,15 @@
         "packets": 0
       },
       "outPass": {
-        "bytes": 1475,
-        "packets": 21
+        "bytes": 0,
+        "packets": 0
       },
       "rules": 0,
-      "skip": false,
-      "states": 6
+      "skip": true,
+      "states": 0
     },
     {
-      "cleared": "2026-10-13T15:17:20Z",
+      "cleared": "2026-10-13T19:38:05Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -356,7 +356,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:17:20Z",
+      "cleared": "2026-10-13T19:38:05Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -380,7 +380,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:04Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -404,7 +404,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:04Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -428,7 +428,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:05Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -452,7 +452,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:05Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -476,7 +476,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:03Z",
+      "cleared": "2026-10-13T19:48:47Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -500,7 +500,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:03Z",
+      "cleared": "2026-10-13T19:48:47Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -516,15 +516,15 @@
         "packets": 0
       },
       "outPass": {
-        "bytes": 504,
-        "packets": 6
+        "bytes": 1008,
+        "packets": 12
       },
       "rules": 21,
       "skip": false,
-      "states": 1
+      "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:03Z",
+      "cleared": "2026-10-13T19:48:47Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -540,23 +540,23 @@
         "packets": 1
       },
       "outPass": {
-        "bytes": 376,
-        "packets": 6
+        "bytes": 320,
+        "packets": 5
       },
       "rules": 16,
       "skip": true,
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
         "packets": 0
       },
       "inPass": {
-        "bytes": 41137150,
-        "packets": 29045
+        "bytes": 41227254,
+        "packets": 29105
       },
       "name": "vio0",
       "outBlock": {
@@ -564,15 +564,15 @@
         "packets": 0
       },
       "outPass": {
-        "bytes": 829308,
-        "packets": 15344
+        "bytes": 839139,
+        "packets": 15410
       },
       "rules": 29,
       "skip": false,
-      "states": 16
+      "states": 13
     },
     {
-      "cleared": "2026-10-13T15:28:37Z",
+      "cleared": "2026-10-13T19:51:10Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -596,7 +596,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:04Z",
+      "cleared": "2026-10-13T19:48:48Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -620,7 +620,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:04Z",
+      "cleared": "2026-10-13T19:48:48Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -644,7 +644,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:04Z",
+      "cleared": "2026-10-13T19:48:48Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -668,7 +668,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:05Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": true,
       "inBlock": {
         "bytes": 0,
@@ -692,7 +692,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:05Z",
+      "cleared": "2026-10-13T19:48:49Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -716,7 +716,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:06Z",
+      "cleared": "2026-10-13T19:48:50Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -740,7 +740,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:07Z",
+      "cleared": "2026-10-13T19:48:50Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -764,7 +764,7 @@
       "states": 0
     },
     {
-      "cleared": "2026-10-13T15:28:08Z",
+      "cleared": "2026-10-13T19:48:51Z",
       "group": false,
       "inBlock": {
         "bytes": 0,
@@ -901,8 +901,8 @@
   ],
   "used": {
     "src-nodes": 0,
-    "states": 86,
-    "table-entries": 33,
-    "tables": 15
+    "states": 17,
+    "table-entries": 35,
+    "tables": 16
   }
 }

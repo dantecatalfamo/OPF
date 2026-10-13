@@ -1,24 +1,24 @@
-Status: Enabled for 0 days 00:12:38           Debug: notice
+Status: Enabled for 0 days 00:14:25           Debug: notice
 
 Hostid:   0x00000001
-Checksum: 0xaab2b0bffdbe0f6724ff6ca95224860f
+Checksum: 0xd18f21eb24f004f303315bd6bb6da75e
 
 Interface Stats for pair0             IPv4             IPv6
-  Bytes In                            1475                0
-  Bytes Out                           1114                0
+  Bytes In                            2495                0
+  Bytes Out                           2174                0
   Packets In
-    Passed                              15                0
-    Blocked                              6                0
+    Passed                              24                0
+    Blocked                              9                0
   Packets Out
-    Passed                              14                0
+    Passed                              27                0
     Blocked                              0                0
 
 State Table                          Total             Rate
-  current entries                      108               
+  current entries                       22               
   half-open tcp                          8               
-  searches                           44474           58.7/s
-  inserts                              209            0.3/s
-  removals                             101            0.1/s
+  searches                           44593           51.6/s
+  inserts                              214            0.2/s
+  removals                             192            0.2/s
 Source Tracking Table
   current entries                        0               
   searches                               0            0.0/s
@@ -30,7 +30,7 @@ Fragments
   inserts                                0            0.0/s
   removals                               0            0.0/s
 Counters
-  match                                234            0.3/s
+  match                                257            0.3/s
   bad-offset                             0            0.0/s
   fragment                               0            0.0/s
   short                                  1            0.0/s

@@ -1,24 +1,26 @@
    10.8.0.2
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.8.0.3
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.8.0.4
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.8.0.5
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.9.0.2
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.9.0.3
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.9.0.4
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
    10.9.0.5
-	Cleared:     Tue Oct 13 15:28:16 2026
+	Cleared:     Tue Oct 13 19:49:31 2026
+   192.0.2.77
+	Cleared:     Tue Oct 13 19:51:19 2026
    192.168.1.60
-	Cleared:     Tue Oct 13 15:29:25 2026
+	Cleared:     Tue Oct 13 19:50:30 2026
 	In/Block:    [ Packets: 0                  Bytes: 0                  ]
-	In/Match:    [ Packets: 3                  Bytes: 252                ]
+	In/Match:    [ Packets: 6                  Bytes: 504                ]
 	In/Pass:     [ Packets: 0                  Bytes: 0                  ]
 	Out/Block:   [ Packets: 0                  Bytes: 0                  ]
-	Out/Match:   [ Packets: 3                  Bytes: 252                ]
+	Out/Match:   [ Packets: 6                  Bytes: 504                ]
 	Out/Pass:    [ Packets: 0                  Bytes: 0                  ]

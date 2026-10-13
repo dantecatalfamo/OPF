@@ -2,11 +2,11 @@
   "tables": [
     {
       "entries": 2,
-      "fetched": "2026-10-13T15:27:56.532030318Z",
+      "fetched": "2026-10-13T19:48:40.478579964Z",
       "name": "drop_list",
       "refresh": {
         "everyHours": 12,
-        "next": "2026-10-14T03:27:56.532030318Z"
+        "next": "2026-10-14T07:48:40.478579964Z"
       },
       "url": "https://lists.example.com/drop.txt"
     }

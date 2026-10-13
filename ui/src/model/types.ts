@@ -323,6 +323,18 @@ export interface Routing {
   defaultGateway: string;
   gateways: Gateway[];
   routes: StaticRoute[];
+  /** Gateways used together; a rule's "send via" names one as it names a gateway. */
+  groups?: GatewayGroup[];
+}
+
+/** Gateways in tiers (pf.GatewayGroup): the first tier with one that answers is used, its gateways sharing the traffic. */
+export interface GatewayGroup {
+  id: string;
+  name: string;
+  members: { gateway: string; tier: number }[];
+  /** Keep each source on the gateway it was first sent to. */
+  sticky?: boolean;
+  description: string;
 }
 
 // ---------- Services ----------

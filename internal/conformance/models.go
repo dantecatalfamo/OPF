@@ -322,10 +322,19 @@ func everything(devs Devices) *pf.Model {
 		Gateways: []pf.Gateway{
 			{ID: "gw_wan", Name: "WAN_DHCP", Iface: "wan", Address: "dhcp", Monitor: "9.9.9.9", Description: "The provider's"},
 			{ID: "gw_edge", Name: "Edge", Iface: "edge", Address: "198.51.100.1"},
+			// The suite's client, which answers pings: a gateway that's up.
+			{ID: "gw_client", Name: "Client", Iface: "lan", Address: "192.168.1.60"},
 		},
 		Routes: []pf.StaticRoute{
 			{ID: "r_partner", Enabled: true, Network: "203.0.113.0/24", Gateway: "gw_edge", Description: "Partner network"},
 			{ID: "r_off", Enabled: false, Network: "198.18.0.0/15", Gateway: "gw_edge"},
+		},
+		// The edge first, which nothing answers, so the client takes over
+		// (TestGatewayGroups), then the provider's; a group nothing uses
+		// isn't declared.
+		Groups: []pf.GatewayGroup{
+			{ID: "both", Name: "Both WANs", Members: []pf.GroupMember{{Gateway: "gw_edge", Tier: 1}, {Gateway: "gw_client", Tier: 2}, {Gateway: "gw_wan", Tier: 3}}, Sticky: true, Description: "Edge first"},
+			{ID: "unused", Name: "Unused", Members: []pf.GroupMember{{Gateway: "gw_wan", Tier: 1}, {Gateway: "gw_edge", Tier: 1}}},
 		},
 	}
 
@@ -400,6 +409,11 @@ func everything(devs Devices) *pf.Model {
 			r.Family, r.Protocol = pf.FamilyInet, pf.ProtoTCP
 			r.Source, r.Destination, r.Port = ifEP("lan", pf.PartNetwork), netEP("203.0.113.0/24"), "443"
 			r.Gateway = "gw_edge"
+		}),
+		form("lan-group", lan, func(r *pf.Rule) {
+			r.Family, r.Protocol = pf.FamilyInet, pf.ProtoTCP
+			r.Source, r.Destination, r.Port = ifEP("lan", pf.PartNetwork), netEP("198.51.100.0/24"), "80"
+			r.Gateway = "both"
 		}),
 		form("lan-tcpudp", lan, func(r *pf.Rule) {
 			r.Protocol, r.Destination, r.Port = pf.ProtoTCPUDP, aliasEP("office_nets"), "domain"
@@ -540,7 +554,10 @@ func everything(devs Devices) *pf.Model {
 		HostID:              &hostID,
 		Fingerprints:        "/etc/pf.os",
 		LogInterface:        "lan",
-		SkipOn:              []string{"lab", "enc0"},
+		// pair1 is the test client's side of the LAN's pair: unfiltered,
+		// as a machine of its own would be, or the LAN's antispoof drops
+		// what the firewall sends it (the gateway watch's pings).
+		SkipOn: []string{"lab", "enc0", "pair1"},
 	}
 	fw.Custom = pf.CustomPf{
 		Options:      "set timeout udp.multiple 60\n",

@@ -4,7 +4,7 @@
       "message": "WARNING: CHECK AND RESET THE DATE!"
     },
     {
-      "message": "WARNING: clock gained 3 days"
+      "message": "WARNING: clock gained 4 days"
     },
     {
       "message": "root on sd0a (b61413ddcf083763.a) swap on sd0b dump on sd0b"
@@ -82,7 +82,7 @@
       "message": "virtio2: irq 6"
     },
     {
-      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:e0:b0"
+      "message": "vio1 at virtio2: 1 queue, address fe:e1:bb:d2:a7:4f"
     },
     {
       "message": "virtio2 at pci0 dev 3 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01"
@@ -91,7 +91,7 @@
       "message": "virtio1: irq 5"
     },
     {
-      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:97:4f"
+      "message": "vio0 at virtio1: 1 queue, address fe:e1:bb:d1:ba:fc"
     },
     {
       "message": "virtio1 at pci0 dev 2 function 0 \"Qumranet Virtio 1.x Network\" rev 0x01"
@@ -139,7 +139,7 @@
       "message": "cpu0: cpuid 1 edx=78ba97f\u003cFPU,VME,DE,PSE,TSC,MSR,PAE,CX8,SEP,PGE,CMOV,PAT,PSE36,CFLUSH,MMX,FXSR,SSE,SSE2\u003e ecx=f6d83203\u003cSSE3,PCLMUL,SSSE3,FMA3,CX16,SSE4.1,SSE4.2,MOVBE,POPCNT,AES,XSAVE,AVX,F16C,RDRAND,HV\u003e"
     },
     {
-      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3804.58 MHz, 06-9e-09"
+      "message": "cpu0: Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz, 3813.41 MHz, 06-9e-09"
     },
     {
       "message": "cpu0 at mainbus0: (uniprocessor)"

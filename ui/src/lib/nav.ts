@@ -130,6 +130,7 @@ export const places: Place[] = [
   { label: 'Traffic per device', page: 'Firewall › Settings', to: '/firewall/settings#traffic', keywords: 'count bandwidth keep days devices' },
   // Network
   { label: 'Gateways', page: 'Routing', to: '/network/routing/gateways', keywords: 'gateway monitoring latency loss default', monitors: false },
+  { label: 'Gateway groups', page: 'Routing', to: '/network/routing/groups', keywords: 'multi-wan multiwan failover load balancing second internet connection backup wan tiers', monitors: false },
   { label: 'Static routes', page: 'Routing', to: '/network/routing/routes', keywords: 'route network via', monitors: false },
   { label: 'Routing table', page: 'Routing', to: '/network/routing/table', keywords: 'netstat routes kernel' },
   // Firewall

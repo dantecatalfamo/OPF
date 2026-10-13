@@ -1,22 +1,22 @@
 {
-  "bootedAt": "2026-10-13T15:15:53Z",
+  "bootedAt": "2026-10-13T19:36:39Z",
   "cpu": {
-    "idle": 71.53846153846153,
-    "interrupt": 21.53846153846154,
+    "idle": 82.08955223880596,
+    "interrupt": 8.955223880597014,
     "nice": 0,
     "spin": 0,
-    "system": 6.923076923076923,
+    "system": 8.955223880597014,
     "user": 0
   },
   "cpuModel": "Intel(R) Xeon(R) CPU E3-1270 v6 @ 3.80GHz",
   "cpus": 1,
   "disks": [
     {
-      "available": 1094510592,
+      "available": 1094391808,
       "device": "/dev/sd0a",
       "mount": "/",
       "total": 1308620800,
-      "used": 148680704
+      "used": 148799488
     },
     {
       "available": 1970329600,
@@ -26,11 +26,11 @@
       "used": 18432
     },
     {
-      "available": 1349488640,
+      "available": 1349453824,
       "device": "/dev/sd0d",
       "mount": "/usr",
       "total": 3114448896,
-      "used": 1609238528
+      "used": 1609273344
     },
     {
       "available": 275564544,
@@ -59,15 +59,15 @@
   "errors": [],
   "hostname": "fw.office.arpa",
   "load": [
-    2.59,
-    2.67,
-    1.79
+    0.5,
+    1.85,
+    1.54
   ],
   "machine": "amd64",
   "memory": {
-    "active": 89575424,
-    "free": 372482048,
-    "inactive": 277078016,
+    "active": 93618176,
+    "free": 370122752,
+    "inactive": 276279296,
     "total": 1056940032
   },
   "product": "VMM",
@@ -76,19 +76,19 @@
     {
       "device": "vmmci0",
       "index": 0,
-      "number": -21.021319,
+      "number": -110.744081,
       "status": "OK",
       "type": "timedelta",
       "unit": "secs",
-      "value": "-21.021319 secs"
+      "value": "-110.744081 secs"
     }
   ],
   "swap": {
     "total": 268435456,
-    "used": 15015936
+    "used": 15101952
   },
   "time": {
-    "status": "0/5 peers valid, 0/1 sensors valid, constraints configured but none available, clock unsynced",
+    "status": "0/5 peers valid, 1/1 sensors valid, constraints configured but none available, clock unsynced, clock offset is 50874.406ms",
     "synced": false
   },
   "vendor": "OpenBSD",

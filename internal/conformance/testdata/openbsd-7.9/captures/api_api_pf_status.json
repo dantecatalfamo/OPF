@@ -8,7 +8,7 @@
       "congestion": 0,
       "fragment": 0,
       "ip-option": 1,
-      "match": 234,
+      "match": 257,
       "max states per rule": 0,
       "max-src-conn": 0,
       "max-src-conn-rate": 0,
@@ -33,18 +33,18 @@
     },
     "debug": "notice",
     "enabled": true,
-    "enabledFor": 760,
-    "halfOpenTcp": 7,
+    "enabledFor": 867,
+    "halfOpenTcp": 8,
     "iface": {
-      "bytesIn": 1475,
-      "bytesOut": 1114,
+      "bytesIn": 2495,
+      "bytesOut": 2174,
       "name": "pair0",
-      "packetsInBlocked": 6,
-      "packetsInPassed": 15,
+      "packetsInBlocked": 9,
+      "packetsInPassed": 24,
       "packetsOutBlocked": 0,
-      "packetsOutPassed": 14
+      "packetsOutPassed": 27
     },
-    "states": 91,
+    "states": 17,
     "tables": {
       "fragments": {
         "current": 0,
@@ -59,10 +59,10 @@
         "searches": 0
       },
       "states": {
-        "current": 91,
-        "inserts": 209,
-        "removals": 118,
-        "searches": 44477
+        "current": 17,
+        "inserts": 214,
+        "removals": 197,
+        "searches": 44593
       }
     }
   },

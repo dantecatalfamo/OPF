@@ -67,7 +67,6 @@ func runMock(listen, seedPath string, timeout time.Duration, login string, readO
 
 	// Addresses the UI's sample status data reports, so generated
 	// route-to lines match what the pages show.
-	pf.GatewayStatuses["gw_wan"] = pf.GatewayStatus{Address: "203.0.113.1"}
 
 	dir, err := os.MkdirTemp("", "opf-mock-")
 	if err != nil {

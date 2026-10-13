@@ -3,11 +3,11 @@
   "enabled": true,
   "errors": [],
   "lastReload": {
-    "at": "2026-10-13T15:28:16.506675427Z",
+    "at": "2026-10-13T19:49:29.824381359Z",
     "names": 6,
-    "seconds": 0.528504453
+    "seconds": 0.775794472
   },
-  "memoryBytes": 11198464,
+  "memoryBytes": 11096064,
   "queriesPerSec": 0,
   "stats": {
     "answers": {
@@ -16,14 +16,14 @@
       "NOTIMPL": 0,
       "NXDOMAIN": 0,
       "REFUSED": 0,
-      "SERVFAIL": 4
+      "SERVFAIL": 47
     },
     "bogus": 0,
-    "cacheHits": 2,
-    "cacheMisses": 12,
+    "cacheHits": 34,
+    "cacheMisses": 23,
     "extended": true,
     "memory": {
-      "cache.message": 17740,
+      "cache.message": 18172,
       "cache.rrset": 16544,
       "http.query_buffer": 0,
       "http.response_buffer": 0,
@@ -33,15 +33,15 @@
       "streamwait": 0
     },
     "prefetches": 0,
-    "queries": 14,
+    "queries": 57,
     "queryTypes": {
-      "A": 13,
+      "A": 56,
       "NS": 1
     },
-    "recursionAvg": 0.003448,
-    "recursionMedian": 0,
+    "recursionAvg": 0.008133,
+    "recursionMedian": 0.00394971,
     "rpz": {},
     "secure": 0,
-    "uptime": 87.810785
+    "uptime": 125.491422
   }
 }

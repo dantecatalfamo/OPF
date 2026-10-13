@@ -1,73 +1,104 @@
 {
   "events": [
     {
+      "kind": "gateway",
+      "message": "Gateway group Both WANs: now sending through Client (tier 2)",
+      "subject": "both",
+      "time": "2026-10-13T19:51:02.810814183Z",
+      "warning": true
+    },
+    {
+      "kind": "gateway",
+      "message": "Gateway Client is answering again",
+      "subject": "gw_client",
+      "time": "2026-10-13T19:49:43.444988274Z"
+    },
+    {
+      "kind": "device",
+      "message": "New device fe:e1:ba:d3:2c:2d at 192.168.1.60 on LAN",
+      "subject": "fe:e1:ba:d3:2c:2d",
+      "time": "2026-10-13T19:49:43.444988274Z"
+    },
+    {
+      "kind": "service",
+      "message": "dhcpd is running again",
+      "subject": "dhcpd",
+      "time": "2026-10-13T19:49:43.444988274Z"
+    },
+    {
+      "kind": "service",
+      "message": "unbound is running again",
+      "subject": "unbound",
+      "time": "2026-10-13T19:49:43.444988274Z"
+    },
+    {
       "kind": "authpf",
       "message": "Made the sign-in account carol",
       "subject": "carol",
-      "time": "2026-10-13T15:28:07.860950801Z"
+      "time": "2026-10-13T19:48:52.674423516Z"
     },
     {
       "kind": "authpf",
       "message": "Made the sign-in account bob",
       "subject": "bob",
-      "time": "2026-10-13T15:28:07.554747724Z"
+      "time": "2026-10-13T19:48:51.963056767Z"
     },
     {
       "kind": "authpf",
       "message": "Made the sign-in account alice",
       "subject": "alice",
-      "time": "2026-10-13T15:28:06.712581986Z"
+      "time": "2026-10-13T19:48:51.598065508Z"
     },
     {
       "kind": "commit",
       "message": "Applied: Everything",
-      "subject": "20261013-152759.659",
-      "time": "2026-10-13T15:27:59.660295746Z"
+      "subject": "20261013-194843.742",
+      "time": "2026-10-13T19:48:43.743027467Z"
     },
     {
       "kind": "commit",
       "message": "Applied: Take over the stock system",
-      "subject": "20261013-152746.821",
-      "time": "2026-10-13T15:27:46.822127722Z"
+      "subject": "20261013-194830.922",
+      "time": "2026-10-13T19:48:30.923305916Z"
     },
     {
       "kind": "login",
       "message": "conform signed in as admin, from 127.0.0.1",
       "subject": "conform",
-      "time": "2026-10-13T15:27:36.16785704Z"
+      "time": "2026-10-13T19:48:21.254344265Z"
     },
     {
       "kind": "opf",
       "message": "OPF started",
-      "time": "2026-10-13T15:27:35.801011077Z"
+      "time": "2026-10-13T19:48:20.632080436Z"
     },
     {
       "kind": "commit",
       "message": "conform imported this machine's configuration; it's staged as OPF's first change, to review and commit",
-      "time": "2026-10-13T15:27:35.481384231Z"
+      "time": "2026-10-13T19:48:20.219664728Z"
     },
     {
       "kind": "login",
       "message": "conform signed in as admin, from 127.0.0.1",
       "subject": "conform",
-      "time": "2026-10-13T15:27:31.775208643Z"
+      "time": "2026-10-13T19:48:16.386533655Z"
     },
     {
       "kind": "login",
       "message": "conform took this machine over: its configuration is imported and staged",
       "subject": "conform",
-      "time": "2026-10-13T15:27:31.50675337Z"
+      "time": "2026-10-13T19:48:16.1210972Z"
     },
     {
       "kind": "login",
       "message": "conform signed in as admin, from 127.0.0.1",
       "subject": "conform",
-      "time": "2026-10-13T15:27:28.311655723Z"
+      "time": "2026-10-13T19:48:13.768546625Z"
     },
     {
       "kind": "opf",
       "message": "OPF started",
-      "time": "2026-10-13T15:27:26.856467831Z"
+      "time": "2026-10-13T19:48:09.884349579Z"
     }
   ]
 }

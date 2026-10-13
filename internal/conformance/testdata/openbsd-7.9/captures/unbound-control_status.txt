@@ -2,6 +2,6 @@ version: 1.24.2
 verbosity: 1
 threads: 1
 modules: 3 [ respip validator iterator ]
-uptime: 76 seconds
+uptime: 114 seconds
 options: control(namedpipe)
-unbound (pid 18392) is running...
+unbound (pid 62598) is running...

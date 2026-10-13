@@ -304,6 +304,8 @@ export interface InterfacesResource {
 /** GET /api/network/gateways: each gateway's health, by gateway id. */
 export interface GatewaysResource {
   gateways: Record<string, { address?: string; online: boolean; lossPct: number; rttMs?: number; error?: string }>;
+  /** Each gateway group's gateways in use, and their tier (0 before the first look). */
+  groups?: Record<string, { inUse: string[]; tier: number }>;
 }
 
 /** GET /api/system/updates */

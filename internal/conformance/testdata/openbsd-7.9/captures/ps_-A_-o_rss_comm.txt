@@ -1,40 +1,38 @@
   100 init
-  692 slaacd
-  768 slaacd
-  932 slaacd
- 1008 dhcpleased
- 1016 dhcpleased
+  700 slaacd
+  764 slaacd
+  908 slaacd
+ 1020 dhcpleased
+ 1020 dhcpleased
   944 dhcpleased
-  760 resolvd
+  724 resolvd
    24 syslogd
-  984 syslogd
+  840 syslogd
     8 pflogd
-  676 pflogd
- 3744 sshd
-   24 smtpd
-   24 smtpd
-   24 smtpd
-   24 smtpd
-   24 smtpd
-   24 smtpd
-   24 smtpd
-   24 sndiod
+  664 pflogd
+ 3708 sshd
    24 sshd-session
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
+   24 smtpd
    24 sndiod
-  568 cron
- 1344 sshd-session
+   24 sndiod
+  524 cron
+ 1364 sshd-session
     8 ksh
    24 ksh
-32312 conformance.test
-22428 opf
- 1096 logger
-15504 opf
- 2696 ntpd
- 1624 ntpd
- 2864 ntpd
- 2840 ntpd
- 1504 dhcpd
-10820 unbound
- 9508 opf
-  456 ps
+32032 conformance.test
+30672 opf
+ 1104 logger
+15432 opf
+ 1648 ntpd
+ 2852 ntpd
+ 2860 ntpd
+ 1428 dhcpd
+10776 unbound
+  452 ps
    24 getty

@@ -245,7 +245,11 @@ func (m *Manager) Gateways() (*GatewaysStatus, error) {
 	m.gwMu.Lock()
 	defer m.gwMu.Unlock()
 	if m.gwCache != nil && time.Since(m.gwAt) < gatewayCacheFor {
-		return m.gwCache, nil
+		c := *m.gwCache
+		if model, err := m.liveOrEmpty(); err == nil {
+			c.Groups = m.groupStatuses(model)
+		}
+		return &c, nil
 	}
 	model, err := m.liveOrEmpty()
 	if err != nil {
@@ -280,7 +284,9 @@ func (m *Manager) Gateways() (*GatewaysStatus, error) {
 	}
 	wg.Wait()
 	m.gwCache, m.gwAt = res, time.Now()
-	return res, nil
+	c := *res
+	c.Groups = m.groupStatuses(model)
+	return &c, nil
 }
 
 // gatewayTarget is the address to ping for a gateway: its monitor

@@ -112,6 +112,8 @@ type Manager struct {
 	gwMu    sync.Mutex
 	gwCache *GatewaysStatus
 	gwAt    time.Time
+	gwOnce  sync.Once
+	gw      *gwWatch // gwwatch.go
 
 	refMu sync.Mutex
 	refs  map[string]refreshRecord // list downloads (refresh.go)
@@ -298,6 +300,8 @@ func (m *Manager) changed() {
 		m.applySystemDNS(model)
 		m.syncAuthpfAccounts(model)
 	}
+	// The new configuration's gateway tables, from the last looks.
+	go m.gatewayTablesNow()
 	if m.onChange != nil {
 		m.onChange()
 	}
