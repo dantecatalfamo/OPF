@@ -36,7 +36,7 @@ const blank = {
   server: (s?: NtpServer): NtpServer => ({ address: '', one: false, trusted: false, weight: undefined, ...s }),
   sensor: (s?: NtpSensor): NtpSensor => ({ device: '', correction: undefined, refid: '', stratum: undefined, trusted: false, weight: undefined, ...s }),
   constraint: (c?: NtpConstraint): NtpConstraint => ({ url: '', every: false, addresses: [], ...c }),
-  listen: (l?: NtpListen): NtpListen => ({ address: '', rtable: undefined, ...l }),
+  listen: (l?: NtpListen): NtpListen => ({ address: '', ...l }),
 };
 
 function pick(s: SystemSettings): Values {
@@ -64,7 +64,7 @@ function settings(v: Values): NtpSettings | undefined {
     sensors: v.sensors.map((s) => clean({ device: s.device.trim(), correction: num(s.correction), refid: s.refid?.trim(), stratum: num(s.stratum), trusted: s.trusted, weight: num(s.weight) })),
     constraints: v.constraints.map((c) => clean({ url: c.url.trim(), every: c.every, addresses: c.every ? undefined : c.addresses })),
     serveOn: v.serveOn,
-    listen: v.listen.map((l) => clean({ address: l.address.trim(), rtable: num(l.rtable) })),
+    listen: v.listen.map((l) => clean({ address: l.address.trim() })),
     queryFrom: [v.query4.trim(), v.query6.trim()].filter(Boolean),
   });
   return Object.keys(n).length ? n : undefined;
@@ -264,7 +264,6 @@ export function TimeSettings() {
                 {v.listen.map((_, i) => (
                   <Group key={i} gap="xs" align="flex-start">
                     <TextInput size="xs" w={200} label="Address" placeholder="192.168.1.1" {...form.getInputProps(`listen.${i}.address`)} />
-                    <NumberInput size="xs" w={110} label="Routing table" min={0} max={255} placeholder="0" {...form.getInputProps(`listen.${i}.rtable`)} />
                     <Group mt={22}><Remove what="address" onClick={() => form.removeListItem('listen', i)} /></Group>
                   </Group>
                 ))}

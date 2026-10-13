@@ -82,7 +82,9 @@ type NTPConstraint struct {
 type NTPListen struct {
 	// Address is an IP address, or * for every one.
 	Address string `json:"address"`
-	// RTable is the routing table, 0 to 255.
+	// RTable is only read from older models, and from an ntpd.conf
+	// being imported: Upgrade drops it, and Validate refuses it, so
+	// such a line is left out. OPF creates no routing tables.
 	RTable int `json:"rtable,omitempty"`
 }
 
@@ -151,11 +153,7 @@ func ntpdConf(m *Model) string {
 		}
 	}
 	for _, l := range n.Listen {
-		line := "listen on " + ntpdWord(l.Address)
-		if l.RTable != 0 {
-			line += fmt.Sprintf(" rtable %d", l.RTable)
-		}
-		add("%s", line)
+		add("listen on %s", ntpdWord(l.Address))
 	}
 	// Before the servers: it applies to those after it.
 	for _, q := range n.QueryFrom {
@@ -300,8 +298,10 @@ func (v *validator) ntp() {
 		if l.Address != "*" {
 			v.addr(p+".address", l.Address, false)
 		}
-		v.intRange(p+".rtable", l.RTable, 0, 255)
-		v.unique(p+".address", seen, fmt.Sprintf("%s rtable %d", l.Address, l.RTable), "address")
+		if l.RTable != 0 {
+			v.fail(p+".rtable", "OPF doesn't run ntpd in another routing table")
+		}
+		v.unique(p+".address", seen, l.Address, "address")
 	}
 	families := map[bool]bool{}
 	for i, q := range n.QueryFrom {

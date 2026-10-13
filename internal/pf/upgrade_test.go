@@ -1,6 +1,9 @@
 package pf
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // An older model's interface gateway moves to Routing: into the
 // interface's DHCP gateway, or a new one, never over a fixed one.
@@ -109,4 +112,38 @@ func slicesContainsPath(errs []FieldError, path string) bool {
 		}
 	}
 	return false
+}
+
+// Routing table numbers OPF no longer sets: a form rule with one is
+// raw afterwards, written exactly as it was; a daemon's and ntpd's go.
+func TestUpgradeRoutingTables(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	r := &m.Firewall.Rules[0]
+	r.RTable = ptrTo(3)
+	before := GenerateRule(r, m)
+	m.System.Services = []ServiceSetting{{Name: "ntpd", Enabled: true, RTable: ptrTo(2)}}
+	m.System.NTP = &NTPSettings{Listen: []NTPListen{{Address: "*", RTable: 4}}}
+	if errs := Validate(m); len(errs) != 3 {
+		t.Errorf("before: %v", errs)
+	}
+	Upgrade(m)
+	r = &m.Firewall.Rules[0]
+	if !r.IsRaw() || r.Text != before || !strings.Contains(before, "rtable 3") || r.RTable != nil {
+		t.Errorf("rule: %+v\nwas %s", r, before)
+	}
+	if m.System.Services[0].RTable != nil || m.System.NTP.Listen[0].RTable != 0 {
+		t.Errorf("services %+v, listen %+v", m.System.Services, m.System.NTP.Listen)
+	}
+	for _, e := range Validate(m) {
+		t.Errorf("after: %v", e)
+	}
+}
+
+// A pf rule with rtable is imported raw, as written.
+func TestParseRTableRaw(t *testing.T) {
+	m, _ := loadSampleModel(t)
+	r, err := ParseRule("pass in on em1 from any to any rtable 2", m)
+	if err != nil || !r.IsRaw() || !strings.Contains(r.Text, "rtable 2") {
+		t.Errorf("%+v %v", r, err)
+	}
 }

@@ -259,13 +259,13 @@ func everything(devs Devices) *pf.Model {
 				{URL: "constraint.example.org"},
 			},
 			ServeOn:   []string{"lan", "iot"},
-			Listen:    []pf.NTPListen{{Address: "192.168.1.1"}, {Address: "127.0.0.1", RTable: 202}, {Address: "::1"}},
+			Listen:    []pf.NTPListen{{Address: "192.168.1.1"}, {Address: "127.0.0.1"}, {Address: "::1"}},
 			QueryFrom: []string{"192.168.1.1", "2001:db8::1"},
 		},
 		DNS: &pf.SystemDNS{Mode: pf.SystemDNSSelf, Servers: []string{"9.9.9.9"}, Only: true},
 		Services: []pf.ServiceSetting{
 			{Name: "pflogd", Enabled: true},
-			{Name: "ntpd", Enabled: true, Flags: text("-v"), RTable: num(0), Timeout: num(30)},
+			{Name: "ntpd", Enabled: true, Flags: text("-v"), Timeout: num(30)},
 			{Name: "smtpd", Enabled: false},
 			{Name: "multicast", Enabled: true},
 			{Name: "library_aslr", Enabled: false},
@@ -416,9 +416,9 @@ func everything(devs Devices) *pf.Model {
 		form("lan-sample", lan, func(r *pf.Rule) {
 			r.Action, r.Protocol, r.Tagged, r.Tag, r.Probability = pf.ActionMatch, pf.ProtoTCP, "bulk", "sampled", num(50)
 		}),
-		form("lan-rtable", lan, func(r *pf.Rule) {
-			r.Action, r.Source, r.Destination, r.RTable = pf.ActionMatch, ifEP("lan", pf.PartNetwork), netEP("10.99.0.0/16"), num(0)
-		}),
+		// An older model's rule with a routing table, as Upgrade leaves it.
+		{ID: "lan-rtable", Kind: "raw", Enabled: true, Interfaces: lan, Description: "lan-rtable",
+			Text: `match in on $lan inet from ($lan:network) to 10.99.0.0/16 rtable 0 label "opf:rule:lan-rtable"`},
 		form("lan-users", lan, func(r *pf.Rule) {
 			r.Source = pf.Endpoint{Type: pf.EndpointAuthpfUsers}
 			r.Destination = ifEP("iot", pf.PartNetwork)

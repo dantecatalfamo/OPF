@@ -420,7 +420,7 @@ func TestImportNTP(t *testing.T) {
 		a, notes := importNTP(m, ImportSources{Files: map[string]string{NTPdConfPath: content}})
 		return m, a, notes
 	}
-	m, a, notes := read(`listen on 10.0.0.1 rtable 2
+	m, a, notes := read(`listen on 10.0.0.1
 listen on *
 query from 192.0.2.1
 query from 192.0.2.9 # the last one counts
@@ -438,7 +438,7 @@ constraint from "https://9.9.9.9/dns" "2620:fe::fe" "9.9.9.9"
 		Servers:     []NTPServer{{Address: "pool.ntp.org", Weight: 5}, {Address: "ntp.example.org", One: true, Trusted: true}},
 		Sensors:     []NTPSensor{{Device: "nmea0", Correction: -70000, RefID: "GPS", Stratum: 2, Trusted: true, Weight: 10}},
 		Constraints: []NTPConstraint{{URL: "https://9.9.9.9/dns", Addresses: []string{"2620:fe::fe", "9.9.9.9"}}},
-		Listen:      []NTPListen{{Address: "10.0.0.1", RTable: 2}, {Address: "*"}},
+		Listen:      []NTPListen{{Address: "10.0.0.1"}, {Address: "*"}},
 		QueryFrom:   []string{"192.0.2.9", "2001:db8::1"},
 	}
 	if got, _ := json.Marshal(m.System.NTP); string(got) != string(must(json.Marshal(want))) {
@@ -448,13 +448,14 @@ constraint from "https://9.9.9.9/dns" "2620:fe::fe" "9.9.9.9"
 		t.Errorf("servers %v", m.System.NTPServers)
 	}
 	// A keyword as a name stays quoted.
-	if conf := ntpdConf(m); !strings.Contains(conf, `servers "weight"`+"\n") || !strings.HasPrefix(conf, "listen on 10.0.0.1 rtable 2\nlisten on *\nquery from 192.0.2.9\nquery from 2001:db8::1\n") {
+	if conf := ntpdConf(m); !strings.Contains(conf, `servers "weight"`+"\n") || !strings.HasPrefix(conf, "listen on 10.0.0.1\nlisten on *\nquery from 192.0.2.9\nquery from 2001:db8::1\n") {
 		t.Errorf("ntpd.conf:\n%s", conf)
 	}
 
 	for _, c := range []struct{ conf, why string }{
 		{"servers a.example\nquery from 192.0.2.1\n", "applies only to the servers after it"},
 		{"listen on gw.example\n", "isn't an IP address"},
+		{"listen on * rtable 2\n", "another routing table"},
 		{"servers a.example weight 11\n", "between 1 and 10"},
 		{"servers a.example weight \"5\"\n", "can't read it"},
 		{"sensor nmea0 refid TOOLONG\n", "1 to 4"},

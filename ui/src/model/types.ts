@@ -148,7 +148,6 @@ export interface FormRule extends RuleBase {
   state?: StateOptions;
   gateway?: string; // route-to, a gateway id
   replyTo?: string; // reply-to, a gateway id
-  rtable?: number;
   tag?: string;
   tagged?: string;
   prio?: number;
@@ -556,15 +555,13 @@ export interface NtpConstraint {
 export interface NtpListen {
   /** An IP address, or * for every one. */
   address: string;
-  rtable?: number;
 }
 
-/** A base service's boot settings: whether it starts at boot, and a daemon's flags (unset: rc.d's defaults), routing table and stop timeout. */
+/** A base service's boot settings: whether it starts at boot, and a daemon's flags (unset: rc.d's defaults) and stop timeout. */
 export interface ServiceSetting {
   name: string;
   enabled: boolean;
   flags?: string;
-  rtable?: number;
   timeout?: number;
 }
 

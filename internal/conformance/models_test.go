@@ -230,6 +230,7 @@ var allowlist = []allowed{
 	{"generate.go", "insideIfaces", "return out", "the model is never nil"},
 	{"generate.go", "GenerateDHCPdConf", "continue", "validation: a DHCP scope's interface exists and has a fixed address"},
 	{"generate.go", "networkAddr", "return address", "validation: interface addresses are IPv4 addresses"},
+	{"generate.go", "generateFormRule", `s += fmt.Sprintf(" rtable %d", *r.RTable)`, "validation refuses a rule's routing table; only Upgrade writes one, into a raw rule (TestUpgradeRoutingTables)"},
 	{"generate.go", "ExitRTable", "return 0, false", "validation: a way out's device is wg0 to wg55"},
 	{"dnsrecords.go", "firewallName", `return ""`, "validation: the host name and domain are required"},
 	{"dnsrecords.go", "firewallViewLines", "return nil", "validation: the host name and domain are required"},

@@ -36,7 +36,7 @@ function Markers({ rule, model }: { rule: Rule; model: Model }) {
   if (rule.state && (rule.state.maxStates || rule.state.maxSrcConn || rule.state.maxSrcConnRate || rule.state.mode !== 'keep')) {
     m.push({ icon: IconGauge, label: `Connection limits or ${rule.state.mode} state` });
   }
-  if (rule.gateway || rule.replyTo || rule.rtable !== undefined) {
+  if (rule.gateway || rule.replyTo) {
     const g = model.routing.gateways.find((x) => x.id === rule.gateway);
     m.push({ icon: IconArrowsSplit2, label: g ? `Routed via ${g.name}` : 'Custom routing' });
   }

@@ -146,13 +146,16 @@ func BaseServices() []ServiceInfo { return append([]ServiceInfo(nil), baseServic
 
 // ServiceSetting is a service's boot settings, as the admin sets them:
 // whether it starts at boot, and for a daemon its flags (nil: rc.d's
-// defaults), routing table and stop timeout.
+// defaults) and stop timeout.
 type ServiceSetting struct {
 	Name    string  `json:"name"`
 	Enabled bool    `json:"enabled"`
 	Flags   *string `json:"flags,omitempty"`
-	RTable  *int    `json:"rtable,omitempty"`
-	Timeout *int    `json:"timeout,omitempty"`
+	// RTable is only read from older models: Upgrade drops it, and
+	// Validate refuses it. OPF creates no routing tables for a daemon
+	// to run in.
+	RTable  *int `json:"rtable,omitempty"`
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // rcServiceMark ends each line OPF writes for a ServiceSetting. rc(8)
@@ -185,9 +188,6 @@ func rcServiceVars(s ServiceSetting) [][2]string {
 		}
 	}
 	out := [][2]string{{s.Name + "_flags", flags}}
-	if s.RTable != nil {
-		out = append(out, [2]string{s.Name + "_rtable", fmt.Sprint(*s.RTable)})
-	}
 	if s.Timeout != nil {
 		out = append(out, [2]string{s.Name + "_timeout", fmt.Sprint(*s.Timeout)})
 	}

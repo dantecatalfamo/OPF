@@ -17,6 +17,22 @@ import (
 // A dynamic table alias used to take initial entries, but pf.conf
 // declared the table empty, so they never reached pf. They're dropped.
 func Upgrade(m *Model) {
+	// Routing table numbers, which OPF no longer sets: a form rule with
+	// one becomes raw, written as it was; a daemon's or ntpd's goes.
+	for i := range m.Firewall.Rules {
+		if r := &m.Firewall.Rules[i]; r.IsForm() && r.RTable != nil {
+			*r = Rule{ID: r.ID, Kind: "raw", Enabled: r.Enabled, Interfaces: r.Interfaces, Groups: r.Groups,
+				Description: r.Description, Text: generateFormRule(r, m), Authpf: r.Authpf}
+		}
+	}
+	for i := range m.System.Services {
+		m.System.Services[i].RTable = nil
+	}
+	if n := m.System.NTP; n != nil {
+		for i := range n.Listen {
+			n.Listen[i].RTable = 0
+		}
+	}
 	for i := range m.Firewall.Aliases {
 		if a := &m.Firewall.Aliases[i]; a.Type == AliasTable {
 			a.Entries = []string{}

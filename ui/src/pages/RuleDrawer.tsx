@@ -65,7 +65,6 @@ function toRule(v: Values): Omit<FormRule, 'id'> {
   if (!isTcp(r.protocol) || !r.tcpFlags?.trim()) delete r.tcpFlags;
   if (r.state && r.state.mode === 'keep' && !Object.entries(r.state).some(([k, val]) => k !== 'mode' && val !== undefined && val !== false && val !== '')) delete r.state;
   for (const k of ['gateway', 'replyTo', 'tag', 'tagged', 'osFingerprint', 'icmpType'] as const) if (!r[k]) delete r[k];
-  if (r.rtable === undefined || (r.rtable as unknown) === '') delete r.rtable;
   if (r.prio === undefined || (r.prio as unknown) === '') delete r.prio;
   if (r.probability === undefined || (r.probability as unknown) === '' || r.probability === 100) delete r.probability;
   if (!r.once) delete r.once;
@@ -461,15 +460,14 @@ export function RuleDrawer({
 
                 <Accordion.Item value="routing">
                   <Accordion.Control>
-                    <SectionLabel label="Routing" count={countSet(v.gateway, v.replyTo, v.rtable)} />
+                    <SectionLabel label="Routing" count={countSet(v.gateway, v.replyTo)} />
                   </Accordion.Control>
                   <Accordion.Panel>
                     <Stack>
                       <Text size="xs" c="dimmed">Send matching traffic somewhere other than where the routing table says. This is useful for multiple internet connections or sending one device through a VPN.</Text>
-                      <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
                         <Select label="Send via gateway" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('gateway')} />
                         <Select label="Send replies via" placeholder="Routing table" data={gateways} clearable {...form.getInputProps('replyTo')} />
-                        <NumberInput label="Routing table" placeholder="0" min={0} max={255} {...form.getInputProps('rtable')} />
                       </SimpleGrid>
                     </Stack>
                   </Accordion.Panel>

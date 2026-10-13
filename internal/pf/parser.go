@@ -651,12 +651,10 @@ func (p *Parser) tryParseFormRule() (*Rule, bool) {
 			}
 
 		case p.checkKeyword("rtable"):
+			// The form has no routing table: the rule stays raw.
 			p.advance()
-			if n, ok := p.expectInt(); ok {
-				rule.RTable = &n
-			} else {
-				p.notForm = true
-			}
+			p.expectInt()
+			p.notForm = true
 
 		case p.checkKeyword("route-to", "reply-to"):
 			p.advance()

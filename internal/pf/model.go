@@ -396,31 +396,34 @@ type Rule struct {
 	Text string `json:"text,omitempty"`
 
 	// FormRule fields
-	Action         RuleAction    `json:"action,omitempty"`
-	Direction      Direction     `json:"direction,omitempty"`
-	Quick          bool          `json:"quick,omitempty"`
-	Family         Family        `json:"family,omitempty"`
-	Protocol       Protocol      `json:"protocol,omitempty"`
-	Source         Endpoint      `json:"source,omitzero"`
-	SourcePort     string        `json:"sourcePort,omitempty"`
-	Destination    Endpoint      `json:"destination,omitzero"`
-	Port           string        `json:"port,omitempty"`
-	Log            LogMode       `json:"log,omitempty"`
-	TCPFlags       string        `json:"tcpFlags,omitempty"`
-	ICMPType       string        `json:"icmpType,omitempty"`
-	State          *StateOptions `json:"state,omitempty"`
-	Gateway        string        `json:"gateway,omitempty"`
-	ReplyTo        string        `json:"replyTo,omitempty"`
-	RTable         *int          `json:"rtable,omitempty"`
-	Tag            string        `json:"tag,omitempty"`
-	Tagged         string        `json:"tagged,omitempty"`
-	Prio           *int          `json:"prio,omitempty"`
-	OSFingerprint  string        `json:"osFingerprint,omitempty"`
-	Probability    *int          `json:"probability,omitempty"`
-	Once           bool          `json:"once,omitempty"`
-	BlockReturn    BlockReturn   `json:"blockReturn,omitempty"`
-	ReturnRstTTL   *int          `json:"returnRstTtl,omitempty"`
-	ReturnICMPCode string        `json:"returnIcmpCode,omitempty"`
+	Action      RuleAction    `json:"action,omitempty"`
+	Direction   Direction     `json:"direction,omitempty"`
+	Quick       bool          `json:"quick,omitempty"`
+	Family      Family        `json:"family,omitempty"`
+	Protocol    Protocol      `json:"protocol,omitempty"`
+	Source      Endpoint      `json:"source,omitzero"`
+	SourcePort  string        `json:"sourcePort,omitempty"`
+	Destination Endpoint      `json:"destination,omitzero"`
+	Port        string        `json:"port,omitempty"`
+	Log         LogMode       `json:"log,omitempty"`
+	TCPFlags    string        `json:"tcpFlags,omitempty"`
+	ICMPType    string        `json:"icmpType,omitempty"`
+	State       *StateOptions `json:"state,omitempty"`
+	Gateway     string        `json:"gateway,omitempty"`
+	ReplyTo     string        `json:"replyTo,omitempty"`
+	// RTable is only read from older models: Upgrade makes a form rule
+	// with one raw, written as before, and Validate refuses it. OPF
+	// sends traffic elsewhere with Gateway (route-to) instead.
+	RTable         *int        `json:"rtable,omitempty"`
+	Tag            string      `json:"tag,omitempty"`
+	Tagged         string      `json:"tagged,omitempty"`
+	Prio           *int        `json:"prio,omitempty"`
+	OSFingerprint  string      `json:"osFingerprint,omitempty"`
+	Probability    *int        `json:"probability,omitempty"`
+	Once           bool        `json:"once,omitempty"`
+	BlockReturn    BlockReturn `json:"blockReturn,omitempty"`
+	ReturnRstTTL   *int        `json:"returnRstTtl,omitempty"`
+	ReturnICMPCode string      `json:"returnIcmpCode,omitempty"`
 
 	// Authpf, set, makes it a rule for signed-in users (authpf.go):
 	// loaded when one signs in, never from pf.conf.

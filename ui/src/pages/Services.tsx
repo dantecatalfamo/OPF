@@ -73,7 +73,6 @@ function BootModal({ s, onClose }: { s?: ServiceStatus; onClose: () => void }) {
   const save = () => {
     const next: ServiceSetting = { name: s.name, enabled: v.enabled };
     if (daemon && v.enabled && flags.trim()) next.flags = flags.trim();
-    if (daemon && v.rtable !== undefined) next.rtable = v.rtable;
     if (daemon && v.timeout !== undefined) next.timeout = v.timeout;
     set(`${s.name}: ${v.enabled ? 'starts at boot' : 'doesn’t start at boot'}${next.flags ? ` with ${next.flags}` : ''}`, next);
     onClose();
@@ -100,10 +99,7 @@ function BootModal({ s, onClose }: { s?: ServiceStatus; onClose: () => void }) {
               error={flagsError}
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
-            <Group grow>
-              <NumberInput label="Routing table" description="Leave empty to use table 0" min={0} max={255} allowDecimal={false} value={v.rtable ?? ''} onChange={(n) => setV({ ...v, rtable: typeof n === 'number' ? n : undefined })} />
-              <NumberInput label="Stop timeout" description="In seconds. Leave empty for 30." min={1} max={3600} allowDecimal={false} value={v.timeout ?? ''} onChange={(n) => setV({ ...v, timeout: typeof n === 'number' ? n : undefined })} />
-            </Group>
+            <NumberInput label="Stop timeout" description="In seconds. Leave empty for 30." min={1} max={3600} allowDecimal={false} value={v.timeout ?? ''} onChange={(n) => setV({ ...v, timeout: typeof n === 'number' ? n : undefined })} />
           </>
         )}
         <Text size="xs" c="dimmed">

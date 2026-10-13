@@ -1027,7 +1027,7 @@ func (v *validator) formRule(p string, r Rule) {
 		v.gatewayRef(p+".replyTo", r.ReplyTo)
 	}
 	if r.RTable != nil {
-		v.intRange(p+".rtable", *r.RTable, 0, 255)
+		v.fail(p+".rtable", "a rule doesn't choose a routing table; send its traffic through a gateway instead")
 	}
 	if r.Prio != nil {
 		v.intRange(p+".prio", *r.Prio, 0, 7)
@@ -1665,7 +1665,7 @@ func (v *validator) services() {
 			}
 		}
 		if s.RTable != nil {
-			v.intRange(p+".rtable", *s.RTable, 0, 255)
+			v.fail(p+".rtable", "OPF doesn't run a daemon in another routing table")
 		}
 		if s.Timeout != nil {
 			v.intRange(p+".timeout", *s.Timeout, 1, 3600)

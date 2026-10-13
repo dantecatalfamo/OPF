@@ -358,10 +358,35 @@ In order. Each step's details are in the section it points to.
       traffic shaping (`queue` definitions and assigning rules to them);
       anchors, including a managed anchor per service; `binat-to` (1:1
       NAT), `af-to` (NAT64) and `divert-to`.
-- [ ] Multi-WAN: gateway groups (`route-to` pools with failover driven
-      by gateway health; relayd or ifstated could drive it), and
-      `route-to` on a DHCP gateway, which the generator resolves to the
-      address it has at generation time.
+- [ ] **Gateway groups** (multi-WAN), as pfSense and OPNsense have them:
+      a named group of gateways in tiers. One tier at a time is used,
+      the next when every gateway in it is down (failover); gateways in
+      the same tier share the traffic (load balancing). A rule's "Send
+      via gateway", and the default gateway, can name a group.
+  - pf: a group is a `route-to { gw1 gw2 }` pool of the tier in use
+    (round-robin, or `source-hash`/`sticky-address` to keep a client
+    on one WAN), with each gateway's interface given, so replies and
+    NAT leave the right WAN (`nat-to` per WAN interface).
+  - Failover needs health: the real gateway monitor (Live data ›
+    gateway health; dpinger-like, loss and latency over time) decides
+    which tier is up, and a change reloads only the pool (a table or
+    anchor, not the whole ruleset) and the default route.
+  - States through a gateway that went down stay on it: kill them on
+    failover, as an option, as pfSense's "kill states on gateway
+    failure" does (check pfctl(8)'s -k forms for one by gateway).
+  - The firewall's own traffic follows the default route, which moves
+    to the group's working tier.
+  - `route-to` on a DHCP gateway: the generator resolves it to the
+    address it has at generation time, so a new lease needs the
+    ruleset regenerated; the group's reload is the place for it.
+  - UI: Routing › Gateway groups (name, tiers, per gateway its tier
+    and weight, the trigger: down, or loss or latency over a
+    threshold), offered wherever a gateway is; status per group.
+  - Conformance: the generated pools load, and a gateway brought down
+    on the guest moves traffic and the default route.
+  - Routing tables stay hidden: OPF's only use of one is a way out.
+    Named tables (a default route each, for a daemon or network to
+    use) only if a need comes up that route-to and groups don't meet.
 - [ ] **Traffic shaping**, guided rather than raw-only (above): pf's
       queues (queue(5) in pf.conf). Most people want one thing first:
       `flows` (fair queuing, FQ-CoDel) on the WAN with its `bandwidth`
@@ -1083,7 +1108,7 @@ lines, all through the commit engine.
       packet filter off), a boot setting never started, a service set up
       on its own page only restarted or reloaded; stop asks first (sshd
       with why); each is an event naming who. Boot settings (on at boot,
-      a daemon's flags, routing table and stop timeout) are model
+      a daemon's flags and stop timeout) are model
       settings (`system.services`), reviewed and applied like any other,
       written into rc.conf.local as lines marked "# set by OPF".
   - Tried on the VM: rcctl enable and set sort the whole of
@@ -1291,7 +1316,7 @@ Network, VPN and logs:
 - [ ] Gateway health is a ping per request, cached 10 s. A real monitor
       (dpinger-like, in the collector) would keep loss and latency over
       time and could drive gateway-group failover (Models and
-      generators › Multi-WAN).
+      generators › Gateway groups).
 - [x] System logs (System › System logs, `GET /api/logs/system/{log}`):
       messages, daemon, authlog, maillog and dmesg, the last 5,000
       lines read as root, filtered by text and program on the firewall,
