@@ -614,10 +614,10 @@ until the admin does.
         to until the first commit, while they're unchanged. A machine
         OPF managed before only needs the marker removed and a restart;
         the page says how, by hand.
-  - [ ] Read-only pages that still read OPF's model: DHCP leases and DNS
-        stats pages are hidden (their configuration tabs crash on the
-        empty model); show their live halves (leases, unbound's
-        counters) on their own.
+  - [x] Read-only pages that still read OPF's model: DHCP server and
+        DNS resolver show their live halves on their own, as Routing
+        does: dhcpd's leases under the interface whose network holds
+        each, and unbound's counters.
 - [ ] First-run wizard: detect existing configs and offer to import them;
       set up WAN, LAN and the admin password. System › Take over already
       imports on a fresh install before its first commit (not only

@@ -19,6 +19,7 @@ import { DnsActivitySettingsCard, DnsActivityTab } from './DnsHistory';
 import { Link, useSearchParams } from 'react-router';
 import { FileLink } from './ConfigFiles';
 import { HandConfigured, handConfigured } from '../components/HandConfigured';
+import { useMode } from '../lib/mode';
 
 type Settings = Omit<DnsSettings, 'overrides'>;
 
@@ -267,6 +268,21 @@ const tabs = ['overview', 'activity', 'names', 'settings', 'blocking', 'tools'] 
 type Tab = (typeof tabs)[number];
 
 export function Dns() {
+  // Read-only, OPF has no resolver settings of its own: the machine's
+  // unbound's counters are the page.
+  const { readOnly } = useMode();
+  if (readOnly) {
+    return (
+      <>
+        <PageHeader title="DNS resolver" description="What this machine’s resolver, unbound, is answering, from its own counters." />
+        <DnsStatsCard />
+      </>
+    );
+  }
+  return <DnsPage />;
+}
+
+function DnsPage() {
   const { staged, applied } = useStore();
   const dns = staged.dns;
   const [params, setParams] = useSearchParams();

@@ -14,6 +14,8 @@ import { HistoryCard } from '../components/HistoryChart';
 import { FileLink } from './ConfigFiles';
 import { DeviceLink, macKey } from '../components/DeviceLink';
 import { HandConfigured, handConfigured } from '../components/HandConfigured';
+import { useMode } from '../lib/mode';
+import { useLive } from '../lib/live';
 
 
 function ScopeSettings({ iface, scope }: { iface: Iface; scope: DhcpScope }) {
@@ -186,7 +188,74 @@ function endsIn(ends: string | undefined, now: number): string {
   return min >= 60 ? `in ${Math.floor(min / 60)} h` : `in ${min} min`;
 }
 
+// Read-only, OPF has no DHCP settings of its own: dhcpd's leases are the
+// page, each under the interface whose network holds it.
+function ReadOnlyLeases() {
+  const { data, failed } = useDhcpLeases();
+  const { data: ifs } = useLive('interfaces');
+  const now = useNow(30_000);
+  const networkOf = (ip: string) =>
+    ifs?.interfaces.find((i) => i.ipv4.some((a) => {
+      const [addr, prefix] = a.split('/');
+      return prefix !== undefined && inSubnet(ip, addr, Number(prefix));
+    }));
+  const leases = data?.leases ?? [];
+  return (
+    <Card id="leases">
+      <SectionTitle right={<Badge color="gray">{leases.length} devices</Badge>}>Leases</SectionTitle>
+      {failed && <Alert color="red" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>Couldn’t ask OPF: {failed}</Alert>}
+      {data?.error && <Alert color="yellow" variant="light" p="sm" mb="sm" icon={<IconAlertTriangle size={16} />}>{data.error}.</Alert>}
+      <Table.ScrollContainer minWidth={520}>
+        <Table highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Device</Table.Th>
+              <Table.Th>Address</Table.Th>
+              <Table.Th>Interface</Table.Th>
+              <Table.Th>Lease ends</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {leases.map((l) => {
+              const i = networkOf(l.ip);
+              return (
+                <Table.Tr key={l.ip}>
+                  <Table.Td>
+                    {/* The name is the device's own choice; shown as text, never markup. */}
+                    <DeviceLink deviceKey={l.mac ? macKey(l.mac) : `ip:${l.ip}`}>
+                      {l.hostname ? <Text span size="sm" fw={500}>{l.hostname}</Text> : <Text span size="sm">Unnamed device</Text>}
+                    </DeviceLink>
+                    {l.mac && <div><Mono c="dimmed">{l.mac}</Mono></div>}
+                  </Table.Td>
+                  <Table.Td><Mono>{l.ip}</Mono></Table.Td>
+                  <Table.Td>{i ? <Text size="sm">{i.description || <Mono>{i.name}</Mono>}</Text> : <Text size="sm" c="dimmed">none of its networks</Text>}</Table.Td>
+                  <Table.Td><Text size="sm" c="dimmed" className="num">{endsIn(l.ends, now)}</Text></Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+      {data && leases.length === 0 && <Empty>No devices have an address from dhcpd.</Empty>}
+      {data?.truncated && <Text size="xs" c="dimmed">Showing the first 5000 leases.</Text>}
+    </Card>
+  );
+}
+
 export function Dhcp() {
+  const { readOnly } = useMode();
+  if (readOnly) {
+    return (
+      <>
+        <PageHeader title="DHCP server" description="The addresses dhcpd has handed out, from its leases file." />
+        <ReadOnlyLeases />
+      </>
+    );
+  }
+  return <DhcpSettings />;
+}
+
+function DhcpSettings() {
   const { staged, edit } = useStore();
   const [params] = useSearchParams();
   const navigate = useNavigate();

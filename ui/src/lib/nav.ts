@@ -58,8 +58,8 @@ export const nav: NavGroup[] = [
   {
     label: 'Services', icon: IconServer2, items: [
       { label: 'All services', to: '/services', keywords: 'daemons rcctl rc.d rc.conf start stop restart reload boot sshd ntpd smtpd', monitors: true },
-      { label: 'DHCP server', to: '/services/dhcp', keywords: 'dhcpd leases address pool range' },
-      { label: 'DNS resolver', to: '/services/dns', keywords: 'unbound name server dns' },
+      { label: 'DHCP server', to: '/services/dhcp', keywords: 'dhcpd leases address pool range', monitors: true },
+      { label: 'DNS resolver', to: '/services/dns', keywords: 'unbound name server dns', monitors: true },
       { label: 'WireGuard VPN', to: '/services/wireguard', keywords: 'vpn tunnels peers remote access wg' },
     ],
   },
@@ -147,15 +147,15 @@ export const places: Place[] = [
   { label: 'Packet normalization (scrub)', page: 'Firewall › Settings', to: '/firewall/settings#scrub', keywords: 'scrub mss fragments' },
   { label: 'Limits', page: 'Firewall › Settings', to: '/firewall/settings#limits', keywords: 'table entries states maximum memory' },
   // Services
-  { label: 'Reserved addresses', page: 'DHCP server', to: '/services/dhcp#reservations', keywords: 'static lease fixed address reserve' },
+  { label: 'Reserved addresses', page: 'DHCP server', to: '/services/dhcp#reservations', keywords: 'static lease fixed address reserve', monitors: false },
   { label: 'Connected devices', page: 'DHCP server', to: '/services/dhcp#leases', keywords: 'leases clients' },
   { label: 'Overview', page: 'DNS resolver', to: '/services/dns?tab=overview', keywords: 'queries cache hits stats' },
-  { label: 'Activity', page: 'DNS resolver', to: '/services/dns?tab=activity', keywords: 'top names looked up queries per device history' },
-  { label: 'Local names', page: 'DNS resolver', to: '/services/dns?tab=names', keywords: 'host overrides records a aaaa cname ptr mx domains zones' },
-  { label: 'Settings', page: 'DNS resolver', to: '/services/dns?tab=settings', keywords: 'forwarders forwarding dnssec dns over tls answer on interfaces' },
-  { label: 'DNS activity settings', page: 'DNS resolver › Settings', to: '/services/dns?tab=settings#activity', keywords: 'keep retention days devices' },
-  { label: 'Blocking', page: 'DNS resolver', to: '/services/dns?tab=blocking', keywords: 'blocklists block lists ad blocking adblock ads trackers malware rpz never block allow' },
-  { label: 'Tools', page: 'DNS resolver', to: '/services/dns?tab=tools', keywords: 'cache lookup flush test a name' },
+  { label: 'Activity', page: 'DNS resolver', to: '/services/dns?tab=activity', keywords: 'top names looked up queries per device history', monitors: false },
+  { label: 'Local names', page: 'DNS resolver', to: '/services/dns?tab=names', keywords: 'host overrides records a aaaa cname ptr mx domains zones', monitors: false },
+  { label: 'Settings', page: 'DNS resolver', to: '/services/dns?tab=settings', keywords: 'forwarders forwarding dnssec dns over tls answer on interfaces', monitors: false },
+  { label: 'DNS activity settings', page: 'DNS resolver › Settings', to: '/services/dns?tab=settings#activity', keywords: 'keep retention days devices', monitors: false },
+  { label: 'Blocking', page: 'DNS resolver', to: '/services/dns?tab=blocking', keywords: 'blocklists block lists ad blocking adblock ads trackers malware rpz never block allow', monitors: false },
+  { label: 'Tools', page: 'DNS resolver', to: '/services/dns?tab=tools', keywords: 'cache lookup flush test a name', monitors: false },
   // Monitoring
   { label: 'Ping', page: 'Tools', to: '/monitoring/tools?tool=ping', keywords: 'icmp reachable latency mtu' },
   { label: 'Traceroute', page: 'Tools', to: '/monitoring/tools?tool=traceroute', keywords: 'path hops route' },
